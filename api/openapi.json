@@ -31,6 +31,46 @@
         ],
         "type": "object"
       },
+      "CreatorProfileModel": {
+        "properties": {
+          "contentFocus": {
+            "nullable": true,
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "instagramHandle": {
+            "nullable": true,
+            "type": "string"
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "regionSido": {
+            "type": "string"
+          },
+          "regionSigungu": {
+            "nullable": true,
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "displayName",
+          "contentFocus",
+          "photoUrl",
+          "regionSido",
+          "regionSigungu",
+          "instagramHandle"
+        ],
+        "type": "object"
+      },
       "HealthModel": {
         "properties": {
           "status": {
@@ -96,6 +136,40 @@
         ],
         "type": "object"
       },
+      "UpsertCreatorProfileDto": {
+        "properties": {
+          "contentFocus": {
+            "maxLength": 30,
+            "type": "string"
+          },
+          "displayName": {
+            "maxLength": 20,
+            "minLength": 1,
+            "type": "string"
+          },
+          "instagramHandle": {
+            "description": "영문, 숫자, 점, 밑줄. 앞의 @ 하나는 떼고 저장한다.",
+            "maxLength": 30,
+            "type": "string"
+          },
+          "photoPath": {
+            "type": "string"
+          },
+          "regionSido": {
+            "description": "시·도 고정 목록(SIDO_LIST) 중 하나.",
+            "type": "string"
+          },
+          "regionSigungu": {
+            "maxLength": 20,
+            "type": "string"
+          }
+        },
+        "required": [
+          "displayName",
+          "regionSido"
+        ],
+        "type": "object"
+      },
       "UserRole": {
         "enum": [
           "STORE",
@@ -121,6 +195,68 @@
   },
   "openapi": "3.0.0",
   "paths": {
+    "/creators/me": {
+      "get": {
+        "operationId": "getMyCreatorProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatorProfileModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Creators"
+        ]
+      },
+      "put": {
+        "operationId": "upsertMyCreatorProfile",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertCreatorProfileDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatorProfileModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Creators"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "getHealth",

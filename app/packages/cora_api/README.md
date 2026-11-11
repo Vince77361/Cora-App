@@ -40,14 +40,20 @@ Please follow the [installation procedure](#installation--usage) and then run th
 ```dart
 import 'package:cora_api/api.dart';
 
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = HealthApi();
+final api_instance = CreatorsApi();
 
 try {
-    final result = api_instance.getHealth();
+    final result = api_instance.getMyCreatorProfile();
     print(result);
 } catch (e) {
-    print('Exception when calling HealthApi->getHealth: $e\n');
+    print('Exception when calling CreatorsApi->getMyCreatorProfile: $e\n');
 }
 
 ```
@@ -58,6 +64,8 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
+*CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
 *HealthApi* | [**getHealth**](doc//HealthApi.md#gethealth) | **GET** /health | 
 *UploadsApi* | [**createPhotoUpload**](doc//UploadsApi.md#createphotoupload) | **POST** /uploads/photos | 
 *UsersApi* | [**getMe**](doc//UsersApi.md#getme) | **GET** /me | 
@@ -67,10 +75,12 @@ Class | Method | HTTP request | Description
 ## Documentation For Models
 
  - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
+ - [CreatorProfileModel](doc//CreatorProfileModel.md)
  - [HealthModel](doc//HealthModel.md)
  - [MeModel](doc//MeModel.md)
  - [PhotoUploadModel](doc//PhotoUploadModel.md)
  - [UpdateRoleDto](doc//UpdateRoleDto.md)
+ - [UpsertCreatorProfileDto](doc//UpsertCreatorProfileDto.md)
  - [UserRole](doc//UserRole.md)
 
 

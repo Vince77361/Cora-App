@@ -206,6 +206,8 @@ class ApiClient {
           return value is DateTime ? value : DateTime.tryParse(value);
         case 'CreatePhotoUploadDto':
           return CreatePhotoUploadDto.fromJson(value);
+        case 'CreatorProfileModel':
+          return CreatorProfileModel.fromJson(value);
         case 'HealthModel':
           return HealthModel.fromJson(value);
         case 'MeModel':
@@ -214,6 +216,8 @@ class ApiClient {
           return PhotoUploadModel.fromJson(value);
         case 'UpdateRoleDto':
           return UpdateRoleDto.fromJson(value);
+        case 'UpsertCreatorProfileDto':
+          return UpsertCreatorProfileDto.fromJson(value);
         case 'UserRole':
           return UserRoleTypeTransformer().decode(value);
         default:

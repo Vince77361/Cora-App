@@ -28,15 +28,18 @@ part 'auth/oauth.dart';
 part 'auth/http_basic_auth.dart';
 part 'auth/http_bearer_auth.dart';
 
+part 'api/creators_api.dart';
 part 'api/health_api.dart';
 part 'api/uploads_api.dart';
 part 'api/users_api.dart';
 
 part 'model/create_photo_upload_dto.dart';
+part 'model/creator_profile_model.dart';
 part 'model/health_model.dart';
 part 'model/me_model.dart';
 part 'model/photo_upload_model.dart';
 part 'model/update_role_dto.dart';
+part 'model/upsert_creator_profile_dto.dart';
 part 'model/user_role.dart';
 
 /// An [ApiClient] instance that uses the default values obtained from
