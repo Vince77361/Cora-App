@@ -50,7 +50,7 @@
 - 저장소 provider는 기본값이 `throw UnimplementedError`이고 `main.dart`에서 override한다.
 - 테스트는 손으로 쓴 `Fake*` 구현을 쓴다. mockito와 jest mock 남용을 피한다. 테스트 이름은 영어 문장.
 - 가짜 연동 구현은 이름이 `Fake`로 시작한다. `NODE_ENV=production`에서 가짜가 선택되면 서버가 시작을 거부한다.
-- 이메일 로그인은 개발 전용이다. 운영 빌드(`CORA_ENV=prod`)에는 이메일 로그인 화면이 없다.
+- 로그인은 E1·E2 화면(2026-11-11 소유자 결정). 인증은 `AUTH_ADAPTER` 포트 뒤 가짜 구현으로 시작하고, 운영 빌드(`CORA_ENV=prod`)에서 가짜면 앱이 시작을 거부한다.
 - 화면 문구는 기획 캔버스의 문구를 그대로 쓴다.
 - 커밋: 한국어 conventional commit(`feat:`, `fix:`, `docs:`, `chore:`), 한 커밋에 한 목적. 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다. push는 소유자 확인 후에만 한다.
 - 코드 주석은 한국어로, "왜"를 설명한다.
@@ -712,6 +712,8 @@ git commit -m "feat: 공용 위젯과 화면 전환 규칙, 모션 갤러리 추
 ---
 
 ### Task 9: 앱 인증과 라우팅
+
+> 변경(2026-11-11): `DevLoginPage`·`LoginUnavailablePage`는 Task 9b의 E1·E2 화면으로 대체한다.
 
 **Files:**
 - Create: `app/lib/features/auth/domain/auth_repository.dart`, `app/lib/features/auth/domain/auth_session.dart`, `app/lib/features/auth/data/supabase_auth_repository.dart`, `app/lib/features/auth/presentation/viewmodels/auth_view_model.dart`, `app/lib/features/auth/presentation/viewmodels/dev_login_view_model.dart`, `app/lib/features/auth/presentation/pages/dev_login_page.dart`, `app/lib/features/auth/presentation/pages/login_unavailable_page.dart`, `app/lib/core/network/api_client_provider.dart`, `app/lib/core/navigation/app_router.dart`
