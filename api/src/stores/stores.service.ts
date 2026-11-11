@@ -219,8 +219,15 @@ export class StoresService {
   }
 
   // 내 가게여도 공개된 것만 보인다(미리 보기). 등록 중인 가게는 누구에게나 404다.
-  async getPublished(storeId: string): Promise<StoreDetailModel> {
-    const store = await this.requirePublished(storeId);
+  async getPublished(
+    userId: string,
+    storeId: string,
+  ): Promise<StoreDetailModel> {
+    const store = UUID.test(storeId)
+      ? await this.stores.findPublishedDetail(storeId, userId)
+      : null;
+    if (!store) throw new AppError('NOT_FOUND', '가게를 찾을 수 없어요.');
+    const mine = store.applications[0]?.status;
     return {
       ...this.toSummary(store),
       signatureMenu: store.signatureMenu,
@@ -228,8 +235,8 @@ export class StoresService {
       seats: store.seats,
       bestShootingTime: store.bestShootingTime,
       intro: store.intro,
-      // 지원 기능(6번 작업)이 생기면 내 살아 있는 지원 상태를 읽는다.
-      myApplicationStatus: 'NONE',
+      myApplicationStatus:
+        mine === 'APPLIED' || mine === 'OFFERED' ? mine : 'NONE',
     };
   }
 

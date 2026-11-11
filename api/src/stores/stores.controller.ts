@@ -97,7 +97,10 @@ export class StoresController {
   @Get(':id')
   @ApiOperation({ operationId: 'getPublishedStore' })
   @ApiOkResponse({ type: StoreDetailModel })
-  getPublished(@Param('id') id: string): Promise<StoreDetailModel> {
-    return this.stores.getPublished(id);
+  getPublished(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<StoreDetailModel> {
+    return this.stores.getPublished(user.userId, id);
   }
 }

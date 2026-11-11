@@ -1,8 +1,11 @@
 import { CreatorProfile, UserRole } from '@prisma/client';
 import { AppError } from '../common/errors/app-error';
+import { UploadRateLimiter } from '../uploads/upload-rate-limiter';
 import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
+import { FakeClock } from '../../test/support/fake-clock';
 import { FakeStoragePort } from '../../test/support/fake-storage.port';
+import type { UpsertCreatorProfileDto } from './dto/upsert-creator-profile.dto';
 import { CreatorsRepository } from './creators.repository';
 import type { CreatorProfileData } from './creators.repository';
 import { CreatorsService } from './creators.service';
@@ -64,7 +67,7 @@ describe('CreatorsService', () => {
   let repo: FakeCreatorsRepository;
   let users: FakeUsersService;
   let service: CreatorsService;
-  const input = {
+  const input: UpsertCreatorProfileDto = {
     displayName: '민지',
     regionSido: '서울특별시',
   };
@@ -76,7 +79,11 @@ describe('CreatorsService', () => {
     service = new CreatorsService(
       repo,
       users,
-      new UploadsService(users, storage),
+      new UploadsService(
+        users,
+        storage,
+        new UploadRateLimiter(new FakeClock()),
+      ),
       storage,
     );
   });

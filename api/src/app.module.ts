@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ApplicationsModule } from './applications/applications.module';
 import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
 import { ContentDraftsModule } from './content-drafts/content-drafts.module';
@@ -25,6 +26,7 @@ import { UsersModule } from './users/users.module';
     CreatorsModule,
     StoresModule,
     ContentDraftsModule,
+    ApplicationsModule,
   ],
 })
 export class AppModule {}

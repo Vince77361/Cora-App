@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  ApplicationStatus,
   ContentFormat,
   IndustryCategory,
   RewardType,
@@ -11,6 +12,11 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 
 export type StoreWithLinks = Store & { sourceLinks: StoreSourceLink[] };
+
+// 공개 상세: 요청자의 살아 있는 지원(지원 중, 오퍼 받음)이 있으면 한 건 함께 읽는다.
+export type PublishedStoreDetail = Store & {
+  applications: { status: ApplicationStatus }[];
+};
 
 // 가게의 글자 항목. 비어 있으면 null이다(업종 분류는 항상 값이 있다).
 export interface StoreFields {
@@ -55,7 +61,7 @@ const PUBLISHED = {
   defaultRewardType: { not: null },
 } as const;
 
-// 가게 조회는 모두 여기를 거친다. 6번 계획이 상세 조회에 내 지원 상태를 더한다.
+// 가게 조회는 모두 여기를 거친다.
 @Injectable()
 export class StoresRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -71,6 +77,27 @@ export class StoresRepository {
   findPublishedById(storeId: string): Promise<Store | null> {
     return this.prisma.store.findFirst({
       where: { id: storeId, ...PUBLISHED },
+    });
+  }
+
+  // 지원 모듈을 import하면 모듈이 순환하므로, 내 지원 상태는 관계로 함께 읽는다.
+  findPublishedDetail(
+    storeId: string,
+    viewerId: string,
+  ): Promise<PublishedStoreDetail | null> {
+    return this.prisma.store.findFirst({
+      where: { id: storeId, ...PUBLISHED },
+      include: {
+        applications: {
+          where: {
+            creatorId: viewerId,
+            status: { in: ['APPLIED', 'OFFERED'] },
+            deletedAt: null,
+          },
+          select: { status: true },
+          take: 1,
+        },
+      },
     });
   }
 

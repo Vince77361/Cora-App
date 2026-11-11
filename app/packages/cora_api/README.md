@@ -47,13 +47,14 @@ import 'package:cora_api/api.dart';
 // String yourTokenGeneratorFunction() { ... }
 //defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = ContentDraftsApi();
+final api_instance = ApplicationsApi();
+final id = id_example; // String | 
 
 try {
-    final result = api_instance.listMyContentDrafts();
+    final result = api_instance.applyToStore(id);
     print(result);
 } catch (e) {
-    print('Exception when calling ContentDraftsApi->listMyContentDrafts: $e\n');
+    print('Exception when calling ApplicationsApi->applyToStore: $e\n');
 }
 
 ```
@@ -64,6 +65,9 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*ApplicationsApi* | [**applyToStore**](doc//ApplicationsApi.md#applytostore) | **POST** /stores/{id}/applications | 
+*ApplicationsApi* | [**cancelMyApplication**](doc//ApplicationsApi.md#cancelmyapplication) | **DELETE** /stores/{id}/applications/mine | 
+*ApplicationsApi* | [**listMyStoreApplicants**](doc//ApplicationsApi.md#listmystoreapplicants) | **GET** /stores/me/applications | 
 *ContentDraftsApi* | [**listMyContentDrafts**](doc//ContentDraftsApi.md#listmycontentdrafts) | **GET** /stores/me/content-drafts | 
 *ContentDraftsApi* | [**regenerateMyContentDraft**](doc//ContentDraftsApi.md#regeneratemycontentdraft) | **POST** /stores/me/content-drafts/{kind}/regenerate | 
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
@@ -88,11 +92,15 @@ Class | Method | HTTP request | Description
  - [AdvanceOnboardingStep](doc//AdvanceOnboardingStep.md)
  - [AnalyzeLinksDto](doc//AnalyzeLinksDto.md)
  - [AnalyzeStoreLinksResultModel](doc//AnalyzeStoreLinksResultModel.md)
+ - [ApplicantModel](doc//ApplicantModel.md)
+ - [ApplicationModel](doc//ApplicationModel.md)
+ - [ApplicationStatus](doc//ApplicationStatus.md)
  - [ContentDraftKind](doc//ContentDraftKind.md)
  - [ContentDraftModel](doc//ContentDraftModel.md)
  - [ContentFormat](doc//ContentFormat.md)
  - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
  - [CreatorProfileModel](doc//CreatorProfileModel.md)
+ - [CreatorSummaryModel](doc//CreatorSummaryModel.md)
  - [DraftSceneModel](doc//DraftSceneModel.md)
  - [HealthModel](doc//HealthModel.md)
  - [IndustryCategory](doc//IndustryCategory.md)

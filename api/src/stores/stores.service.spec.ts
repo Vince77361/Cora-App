@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  ApplicationStatus,
   Store,
   StoreOnboardingStep,
   StoreSourceLink,
@@ -20,6 +21,7 @@ import { FakeClock } from '../../test/support/fake-clock';
 import { FakeStoragePort } from '../../test/support/fake-storage.port';
 import { StoresRepository } from './stores.repository';
 import type {
+  PublishedStoreDetail,
   StoreFields,
   StoreWithLinks,
   DefaultTermsData,
@@ -52,6 +54,29 @@ class FakeStoresRepository extends StoresRepository {
     return Promise.resolve(
       this.stores.find((s) => s.ownerId === ownerId && !s.deletedAt) ?? null,
     );
+  }
+
+  // 테스트가 직접 채우는 지원 상태(살아 있는 지원만 넣는다).
+  readonly applications: {
+    storeId: string;
+    creatorId: string;
+    status: ApplicationStatus;
+  }[] = [];
+
+  findPublishedDetail(
+    storeId: string,
+    viewerId: string,
+  ): Promise<PublishedStoreDetail | null> {
+    const store = this.stores.find(
+      (s) => s.id === storeId && s.status === 'PUBLISHED' && !s.deletedAt,
+    );
+    if (!store) return Promise.resolve(null);
+    return Promise.resolve({
+      ...store,
+      applications: this.applications
+        .filter((a) => a.storeId === storeId && a.creatorId === viewerId)
+        .map((a) => ({ status: a.status })),
+    });
   }
 
   findPublishedById(storeId: string): Promise<Store | null> {
@@ -553,7 +578,7 @@ describe('StoresService', () => {
 
   describe('public reads', () => {
     it('treats a malformed id as not found', async () => {
-      expect(await codeOf(service.getPublished('not-a-uuid'))).toBe(
+      expect(await codeOf(service.getPublished(OTHER, 'not-a-uuid'))).toBe(
         'NOT_FOUND',
       );
       expect(await codeOf(service.requirePublished('not-a-uuid'))).toBe(
@@ -561,10 +586,42 @@ describe('StoresService', () => {
       );
     });
 
+    it("reads the viewer's live application status onto the detail", async () => {
+      const published = makeStore({
+        ownerId: OWNER,
+        status: 'PUBLISHED',
+        name: '한그릇 라멘',
+        defaultFormat: 'REELS',
+        defaultRewardType: 'VOUCHER',
+      });
+      repo.stores.push(published);
+      expect(
+        (await service.getPublished(OTHER, published.id)).myApplicationStatus,
+      ).toBe('NONE');
+      repo.applications.push({
+        storeId: published.id,
+        creatorId: OTHER,
+        status: 'APPLIED',
+      });
+      expect(
+        (await service.getPublished(OTHER, published.id)).myApplicationStatus,
+      ).toBe('APPLIED');
+      repo.applications[0].status = 'OFFERED';
+      expect(
+        (await service.getPublished(OTHER, published.id)).myApplicationStatus,
+      ).toBe('OFFERED');
+      // 다른 사람의 지원은 보이지 않는다.
+      expect(
+        (await service.getPublished(OWNER, published.id)).myApplicationStatus,
+      ).toBe('NONE');
+    });
+
     it('hides drafts and soft-deleted stores', async () => {
       const draft = makeStore({ ownerId: OTHER });
       repo.stores.push(draft);
-      expect(await codeOf(service.getPublished(draft.id))).toBe('NOT_FOUND');
+      expect(await codeOf(service.getPublished(OTHER, draft.id))).toBe(
+        'NOT_FOUND',
+      );
       expect(await codeOf(service.requirePublished(draft.id))).toBe(
         'NOT_FOUND',
       );

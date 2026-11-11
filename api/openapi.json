@@ -55,6 +55,62 @@
         ],
         "type": "object"
       },
+      "ApplicantModel": {
+        "properties": {
+          "applicationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "appliedAt": {
+            "description": "지원한 시각(ISO 8601).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/CreatorSummaryModel"
+          }
+        },
+        "required": [
+          "applicationId",
+          "creator",
+          "appliedAt"
+        ],
+        "type": "object"
+      },
+      "ApplicationModel": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApplicationStatus"
+              }
+            ]
+          },
+          "storeId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "storeId",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ApplicationStatus": {
+        "enum": [
+          "APPLIED",
+          "CANCELLED",
+          "OFFERED",
+          "CLOSED"
+        ],
+        "type": "string"
+      },
       "ContentDraftKind": {
         "enum": [
           "CARD_NEWS",
@@ -175,6 +231,41 @@
           "regionSido",
           "regionSigungu",
           "instagramHandle"
+        ],
+        "type": "object"
+      },
+      "CreatorSummaryModel": {
+        "properties": {
+          "contentFocus": {
+            "nullable": true,
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "regionSido": {
+            "type": "string"
+          },
+          "regionSigungu": {
+            "nullable": true,
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "displayName",
+          "contentFocus",
+          "photoUrl",
+          "regionSido",
+          "regionSigungu"
         ],
         "type": "object"
       },
@@ -1087,6 +1178,36 @@
         ]
       }
     },
+    "/stores/me/applications": {
+      "get": {
+        "operationId": "listMyStoreApplicants",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ApplicantModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
     "/stores/me/content-drafts": {
       "get": {
         "operationId": "listMyContentDrafts",
@@ -1287,6 +1408,71 @@
         "summary": "",
         "tags": [
           "Stores"
+        ]
+      }
+    },
+    "/stores/{id}/applications": {
+      "post": {
+        "operationId": "applyToStore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/stores/{id}/applications/mine": {
+      "delete": {
+        "operationId": "cancelMyApplication",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Applications"
         ]
       }
     },
