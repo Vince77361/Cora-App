@@ -75,6 +75,13 @@ describe('UsersService', () => {
     });
   });
 
+  it('reads the role without creating a row', async () => {
+    expect(await service.getRole(ID)).toBeNull();
+    expect(repo.rows.size).toBe(0);
+    await service.setRole(ID, 'STORE');
+    expect(await service.getRole(ID)).toBe('STORE');
+  });
+
   it('exposes only id and role', async () => {
     expect(Object.keys(await service.getMe(ID)).sort()).toEqual(['id', 'role']);
   });

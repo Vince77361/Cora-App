@@ -204,10 +204,14 @@ class ApiClient {
           return valueString == 'true' || valueString == '1';
         case 'DateTime':
           return value is DateTime ? value : DateTime.tryParse(value);
+        case 'CreatePhotoUploadDto':
+          return CreatePhotoUploadDto.fromJson(value);
         case 'HealthModel':
           return HealthModel.fromJson(value);
         case 'MeModel':
           return MeModel.fromJson(value);
+        case 'PhotoUploadModel':
+          return PhotoUploadModel.fromJson(value);
         case 'UpdateRoleDto':
           return UpdateRoleDto.fromJson(value);
         case 'UserRole':

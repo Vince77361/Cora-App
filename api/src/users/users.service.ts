@@ -16,6 +16,11 @@ export class UsersService {
     return toMe(await this.users.upsert(userId));
   }
 
+  // 읽기 전용이라 사용자 행을 만들지 않는다. 행이 없거나 역할을 아직 안 골랐으면 null.
+  async getRole(userId: string): Promise<UserRole | null> {
+    return (await this.users.findById(userId))?.role ?? null;
+  }
+
   // 역할은 나중에 바꿀 수 있다(기획). 행이 없으면 먼저 만든다.
   async setRole(userId: string, role: UserRole): Promise<MeModel> {
     await this.users.upsert(userId);

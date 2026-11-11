@@ -59,14 +59,17 @@ All URIs are relative to *http://localhost*
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 *HealthApi* | [**getHealth**](doc//HealthApi.md#gethealth) | **GET** /health | 
+*UploadsApi* | [**createPhotoUpload**](doc//UploadsApi.md#createphotoupload) | **POST** /uploads/photos | 
 *UsersApi* | [**getMe**](doc//UsersApi.md#getme) | **GET** /me | 
 *UsersApi* | [**updateMyRole**](doc//UsersApi.md#updatemyrole) | **PATCH** /me/role | 
 
 
 ## Documentation For Models
 
+ - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
  - [HealthModel](doc//HealthModel.md)
  - [MeModel](doc//MeModel.md)
+ - [PhotoUploadModel](doc//PhotoUploadModel.md)
  - [UpdateRoleDto](doc//UpdateRoleDto.md)
  - [UserRole](doc//UserRole.md)
 

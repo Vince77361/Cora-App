@@ -1,6 +1,36 @@
 {
   "components": {
     "schemas": {
+      "CreatePhotoUploadDto": {
+        "properties": {
+          "contentType": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/heic"
+            ],
+            "type": "string"
+          },
+          "purpose": {
+            "enum": [
+              "STORE_COVER",
+              "CREATOR_PHOTO"
+            ],
+            "type": "string"
+          },
+          "sizeBytes": {
+            "maximum": 5242880,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "purpose",
+          "contentType",
+          "sizeBytes"
+        ],
+        "type": "object"
+      },
       "HealthModel": {
         "properties": {
           "status": {
@@ -33,6 +63,21 @@
         "required": [
           "id",
           "role"
+        ],
+        "type": "object"
+      },
+      "PhotoUploadModel": {
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "uploadUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uploadUrl",
+          "path"
         ],
         "type": "object"
       },
@@ -159,6 +204,43 @@
         "summary": "",
         "tags": [
           "Users"
+        ]
+      }
+    },
+    "/uploads/photos": {
+      "post": {
+        "operationId": "createPhotoUpload",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePhotoUploadDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoUploadModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Uploads"
         ]
       }
     }

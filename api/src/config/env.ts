@@ -8,6 +8,7 @@ import {
   IsString,
   Max,
   Min,
+  ValidateIf,
   validateSync,
 } from 'class-validator';
 
@@ -48,6 +49,14 @@ export class Env {
   @IsOptional()
   @IsString()
   SUPABASE_JWT_SECRET?: string;
+
+  // 모든 RLS를 우회하는 키라 서버 밖으로 나가면 안 된다. Storage가 쓴다.
+  // 개발·테스트에서는 비어도 시작하고(Storage를 쓸 때 오류), 운영에서는 비면 시작을 거부한다.
+  @Expose()
+  @ValidateIf((env: Env) => env.NODE_ENV === 'production')
+  @IsString()
+  @IsNotEmpty()
+  SUPABASE_SERVICE_ROLE_KEY?: string;
 
   @Expose()
   @IsIn(['fake', 'real'])

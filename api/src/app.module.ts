@@ -6,6 +6,7 @@ import { loadEnv } from './config/env';
 import { HealthModule } from './health/health.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { UsersModule } from './users/users.module';
     HealthModule,
     IntegrationsModule,
     UsersModule,
+    UploadsModule,
   ],
 })
 export class AppModule {}

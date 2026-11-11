@@ -52,6 +52,32 @@ describe('loadEnv', () => {
     );
   });
 
+  it('allows a missing SUPABASE_SERVICE_ROLE_KEY outside production', () => {
+    expect(loadEnv(valid).SUPABASE_SERVICE_ROLE_KEY).toBeUndefined();
+  });
+
+  it('keeps SUPABASE_SERVICE_ROLE_KEY when it is set', () => {
+    // @Expose가 빠지면 loadEnv가 이 키를 버려 Storage가 항상 키 없이 동작한다.
+    expect(
+      loadEnv({ ...valid, SUPABASE_SERVICE_ROLE_KEY: 'k' })
+        .SUPABASE_SERVICE_ROLE_KEY,
+    ).toBe('k');
+  });
+
+  it.each([undefined, ''])(
+    'rejects SUPABASE_SERVICE_ROLE_KEY=%p in production',
+    (value) => {
+      expect(() =>
+        loadEnv({
+          ...valid,
+          NODE_ENV: 'production',
+          PUSH_ADAPTER: 'real',
+          SUPABASE_SERVICE_ROLE_KEY: value,
+        }),
+      ).toThrow(/SUPABASE_SERVICE_ROLE_KEY/);
+    },
+  );
+
   it('ignores unrelated keys such as PATH', () => {
     expect(() => loadEnv({ ...valid, PATH: '/usr/bin' })).not.toThrow();
   });
