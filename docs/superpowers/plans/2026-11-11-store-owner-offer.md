@@ -24,7 +24,7 @@
 - 새 오류 코드 `RATE_LIMITED`(429)를 `ErrorCode`에 더한다.
 - 화면 문구는 설계 문서 3장과 기획 캔버스의 문구를 그대로 쓴다.
 - API를 바꾼 작업은 `./scripts/gen-api.sh`를 실행하고 생성물을 같은 커밋에 넣는다.
-- 작업 브랜치는 `feat/store-owner-offer`. push는 소유자 확인 후에만 한다.
+- 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다. push는 소유자 확인 후에만 한다.
 
 ## Review Focus
 

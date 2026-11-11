@@ -30,7 +30,7 @@
 - 초대 코드만으로는 아무것도 얻을 수 없다. 전환은 연결된 인스타그램 아이디가 `SENT`이고 만료되지 않은 연락의 대상 아이디와 같을 때만 일어난다.
 - 초대 웹 페이지의 HTML은 사용자가 넣은 모든 글(가게 이름, 동네, 식사권 이름)을 `escapeHtml`로 바꿔 넣는다. 인라인 스크립트를 쓰지 않는다. 응답 헤더: `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; form-action 'self'`, `X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`. GET은 아무것도 바꾸지 않는다(DM의 링크 미리보기가 GET을 부른다).
 - `DIRECTORY_ENABLED=false`면 `directory`·`outreach`·`DirectoryIntegrationsModule`을 불러오지 않는다. 그 경로는 모두 404 `NOT_FOUND`, `assertNoFakesInProduction`은 `DIRECTORY_ADAPTER`와 `OUTREACH_ADAPTER`를 검사하지 않는다. `GET /config`, `/i/*`, `/invites/*`, 전환, 만료 작업은 그대로 동작한다.
-- 작업 브랜치는 `feat/directory-outreach`.
+- 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다.
 
 ## Review Focus
 

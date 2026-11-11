@@ -23,7 +23,7 @@
 - 안내 줄(`SYSTEM` 메시지)은 코드와 값만 저장하고 문구는 읽는 사람에 맞춰 서버가 만든다. 상대에게 그만둔 이유와 차단 사실을 알리지 않는다.
 - WebSocket은 상태를 바꾸지 않는다. 새 메시지와 방의 변경을 밀어 주기만 한다. 이벤트 이름: `message.created`, `conversation.updated`, `session.expired`.
 - 새 테이블 6개(`conversations`, `conversation_members`, `messages`, `blocks`, `reports`, `contracts`)에 RLS를 켠다.
-- 작업 브랜치는 `feat/chat-agreement-contract`. push는 소유자 확인 후에만 한다.
+- 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다. push는 소유자 확인 후에만 한다.
 
 ## Review Focus
 

@@ -49,7 +49,7 @@
 - 가짜 연동 구현은 이름이 `Fake`로 시작한다. `NODE_ENV=production`에서 가짜가 선택되면 서버가 시작을 거부한다.
 - 이메일 로그인은 개발 전용이다. 운영 빌드(`CORA_ENV=prod`)에는 이메일 로그인 화면이 없다.
 - 화면 문구는 기획 캔버스의 문구를 그대로 쓴다.
-- 커밋: 한국어 conventional commit(`feat:`, `fix:`, `docs:`, `chore:`), 한 커밋에 한 목적. 작업 브랜치는 `feat/foundation`. push는 소유자 확인 후에만 한다.
+- 커밋: 한국어 conventional commit(`feat:`, `fix:`, `docs:`, `chore:`), 한 커밋에 한 목적. 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다. push는 소유자 확인 후에만 한다.
 - 코드 주석은 한국어로, "왜"를 설명한다.
 
 ## Review Focus
@@ -118,11 +118,12 @@ Cora-App/
 **Interfaces:**
 - Produces: 로컬 Supabase(API `http://127.0.0.1:54321`, DB `postgresql://postgres:postgres@127.0.0.1:54322/postgres`), Redis `127.0.0.1:6379`
 
-- [ ] **Step 1: 브랜치 만들기**
+- [ ] **Step 1: 시작 상태 확인**
 
-설계 문서와 이 계획 문서가 `main`에 커밋돼 있는지 먼저 확인한다(`git log --oneline main -- docs`). 없으면 멈추고 소유자에게 알린다.
+`main`에서 작업한다. 브랜치를 만들지 않는다. 설계 문서와 이 계획 문서가 `main`에 커밋돼 있고 작업 트리가 깨끗한지 확인한다. 아니면 멈추고 소유자에게 알린다.
 
-Run: `git switch main && git switch -c feat/foundation`
+Run: `git switch main && git status --short && git log --oneline -- docs | head -3`
+Expected: 작업 트리 변경 없음, 문서 커밋이 보임
 
 - [ ] **Step 2: `.gitignore` 작성**
 

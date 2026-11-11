@@ -24,7 +24,7 @@
 - 회고와 보관함은 작성자 본인만 읽는다. 남의 것을 ID로 요청하면 404. 회고의 값(고른 항목, 가능한 날, 희망 제작비, 다시 만날지)과 보관함의 값은 상대에게 가는 어떤 응답 모델에도 칸이 없다. 무산 사유는 그만둔 본인의 보관함에만 보인다.
 - 기한 알림은 알림만 보낸다. 단계를 바꾸지 않는다.
 - 새 테이블 8개(`production_guides`, `draft_versions`, `draft_pieces`, `draft_files`, `draft_comments`, `draft_approvals`, `retrospectives`, `keep_entries`)에 RLS를 켠다.
-- 작업 브랜치는 `feat/production-review-retro`. push는 소유자 확인 후에만 한다.
+- 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다. push는 소유자 확인 후에만 한다.
 
 ## Review Focus
 

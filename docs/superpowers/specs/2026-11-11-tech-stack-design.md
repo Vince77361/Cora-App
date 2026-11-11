@@ -98,7 +98,7 @@ Cora-App/
 └── docker-compose.yml   # Redis
 ```
 
-git 규칙은 Wiki의 [Git and commit workflow]를 따른다: 한국어 conventional commit, 원자적 커밋, feature 브랜치.
+git 규칙은 Wiki의 [Git and commit workflow]를 따른다: 한국어 conventional commit, 원자적 커밋. 단, 브랜치는 Wiki와 다르게 한다. **[결정]** 브랜치를 여러 개 두지 않고 `main`에 바로 커밋한다(2026-11-11).
 
 ### 4.2 데이터 흐름
 
