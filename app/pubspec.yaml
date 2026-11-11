@@ -43,6 +43,7 @@ dependencies:
   cora_api:
     path: packages/cora_api
   flutter_secure_storage: ^11.2.0
+  flutter_svg: ^2.3.3
 
 dev_dependencies:
   flutter_test:
