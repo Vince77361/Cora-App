@@ -72,6 +72,11 @@ export class PayoutAccountsService {
     return this.toModel(row, findBank(row.bankCode));
   }
 
+  // 협업 조회 화면이 "계좌 등록이 필요해요"를 가릴 때 쓴다. 번호는 열지 않는다.
+  async hasAccount(creatorId: string): Promise<boolean> {
+    return (await this.accounts.findByCreatorId(creatorId)) !== null;
+  }
+
   // 지급 모듈이 송금할 때 쓴다. 전체 번호를 여는 유일한 경로이고 호출자는 로그에 남기지 않는다.
   async getForPayout(creatorId: string): Promise<{
     bankCode: string;

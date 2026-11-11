@@ -13,7 +13,7 @@ Method | HTTP request | Description
 
 
 # **submitContentLink**
-> SubmissionResultModel submitContentLink(id, submitContentDto)
+> CollaborationModel submitContentLink(id, submitContentDto)
 
 
 
@@ -48,7 +48,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**SubmissionResultModel**](SubmissionResultModel.md)
+[**CollaborationModel**](CollaborationModel.md)
 
 ### Authorization
 

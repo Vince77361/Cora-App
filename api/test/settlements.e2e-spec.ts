@@ -370,9 +370,12 @@ describe('settlements', () => {
     it('moves to COUNTING and schedules eight snapshots and a settlement', async () => {
       const s = await seed();
       const res = await submit(s.collaborationId, REELS_URL).expect(200);
-      expect(res.body).toEqual({
-        collaborationId: s.collaborationId,
+      // 응답은 협업 모델이다(원장 판단 R8).
+      expect(res.body).toMatchObject({
+        id: s.collaborationId,
         stage: 'COUNTING',
+        role: 'CREATOR',
+        submittedUrl: REELS_URL,
       });
       const row = await collaborationOf(s.collaborationId);
       expect(row).toMatchObject({
@@ -409,9 +412,10 @@ describe('settlements', () => {
     it('settles a voucher-only collaboration immediately on submission', async () => {
       const s = await seed({ rewardType: 'VOUCHER' });
       const res = await submit(s.collaborationId, REELS_URL).expect(200);
-      expect(res.body).toEqual({
-        collaborationId: s.collaborationId,
+      expect(res.body).toMatchObject({
+        id: s.collaborationId,
         stage: 'SETTLED',
+        payoutStatus: 'NONE',
       });
       const row = await collaborationOf(s.collaborationId);
       expect(row).toMatchObject({ stage: 'SETTLED', submittedUrl: REELS_URL });

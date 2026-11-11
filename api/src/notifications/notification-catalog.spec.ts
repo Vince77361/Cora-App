@@ -60,6 +60,13 @@ describe('NOTIFICATION_CATALOG', () => {
     expect(render('CREATOR_CANCELLED', '하루 한 컵', { amount: 52000 })).toBe(
       '하루 한 컵님이 협업을 그만뒀어요. 52,000원을 돌려드려요.',
     );
+    // 식사권만 있는 협업은 돌려줄 돈이 없다: 환급 문장 없이 그만뒀다는 소식만 낸다.
+    expect(render('CREATOR_CANCELLED', '하루 한 컵', { amount: 0 })).toBe(
+      '하루 한 컵님이 협업을 그만뒀어요.',
+    );
+    expect(render('CREATOR_CANCELLED', null)).toBe(
+      '크리에이터님이 협업을 그만뒀어요.',
+    );
     expect(render('CANCEL_REQUESTED', '한그릇 라멘')).toBe(
       '한그릇 라멘이 협업 취소를 요청했어요.',
     );

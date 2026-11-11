@@ -61,7 +61,7 @@ class SubmissionsApi {
   /// * [String] id (required):
   ///
   /// * [SubmitContentDto] submitContentDto (required):
-  Future<SubmissionResultModel?> submitContentLink(
+  Future<CollaborationModel?> submitContentLink(
     String id,
     SubmitContentDto submitContentDto, {
     Future<void>? abortTrigger,
@@ -81,8 +81,8 @@ class SubmissionsApi {
         response.statusCode != HttpStatus.noContent) {
       return await apiClient.deserializeAsync(
         await _decodeBodyBytes(response),
-        'SubmissionResultModel',
-      ) as SubmissionResultModel;
+        'CollaborationModel',
+      ) as CollaborationModel;
     }
     return null;
   }

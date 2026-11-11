@@ -11,19 +11,19 @@
 import 'package:cora_api/api.dart';
 import 'package:test/test.dart';
 
-// tests for SubmissionResultModel
+// tests for CollaborationCounterpartModel
 void main() {
-  // final instance = SubmissionResultModel();
+  // final instance = CollaborationCounterpartModel();
 
-  group('test SubmissionResultModel', () {
-    // String collaborationId
-    test('to test the property `collaborationId`', () async {
+  group('test CollaborationCounterpartModel', () {
+    // 크리에이터에게는 가게 이름, 사장님에게는 크리에이터의 활동 이름.
+    // String name
+    test('to test the property `name`', () async {
       // TODO
     });
 
-    // 제출 뒤의 단계. 조회수 보상이 있으면 COUNTING, 식사권만 있으면 SETTLED.
-    // CollaborationStage stage
-    test('to test the property `stage`', () async {
+    // String photoUrl
+    test('to test the property `photoUrl`', () async {
       // TODO
     });
   });

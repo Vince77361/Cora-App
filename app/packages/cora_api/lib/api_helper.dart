@@ -71,8 +71,23 @@ String parameterToString(dynamic value) {
   if (value is ApplicationStatus) {
     return ApplicationStatusTypeTransformer().encode(value).toString();
   }
+  if (value is CollaborationKind) {
+    return CollaborationKindTypeTransformer().encode(value).toString();
+  }
+  if (value is CollaborationRole) {
+    return CollaborationRoleTypeTransformer().encode(value).toString();
+  }
+  if (value is CollaborationScope) {
+    return CollaborationScopeTypeTransformer().encode(value).toString();
+  }
   if (value is CollaborationStage) {
     return CollaborationStageTypeTransformer().encode(value).toString();
+  }
+  if (value is CollaborationStepKey) {
+    return CollaborationStepKeyTypeTransformer().encode(value).toString();
+  }
+  if (value is CollaborationStepState) {
+    return CollaborationStepStateTypeTransformer().encode(value).toString();
   }
   if (value is ContentDraftKind) {
     return ContentDraftKindTypeTransformer().encode(value).toString();
@@ -94,6 +109,9 @@ String parameterToString(dynamic value) {
   }
   if (value is PaymentStatus) {
     return PaymentStatusTypeTransformer().encode(value).toString();
+  }
+  if (value is PayoutStatus) {
+    return PayoutStatusTypeTransformer().encode(value).toString();
   }
   if (value is ReceivedOfferTab) {
     return ReceivedOfferTabTypeTransformer().encode(value).toString();

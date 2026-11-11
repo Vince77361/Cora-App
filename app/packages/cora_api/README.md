@@ -68,6 +68,11 @@ Class | Method | HTTP request | Description
 *ApplicationsApi* | [**applyToStore**](doc//ApplicationsApi.md#applytostore) | **POST** /stores/{id}/applications | 
 *ApplicationsApi* | [**cancelMyApplication**](doc//ApplicationsApi.md#cancelmyapplication) | **DELETE** /stores/{id}/applications/mine | 
 *ApplicationsApi* | [**listMyStoreApplicants**](doc//ApplicationsApi.md#listmystoreapplicants) | **GET** /stores/me/applications | 
+*CollaborationsApi* | [**acceptCollaborationCancel**](doc//CollaborationsApi.md#acceptcollaborationcancel) | **POST** /collaborations/{id}/cancel-requests/{requestId}/accept | 크리에이터가 사장님의 취소 요청에 동의한다(직접 그만두는 것과 같은 처리).
+*CollaborationsApi* | [**cancelCollaboration**](doc//CollaborationsApi.md#cancelcollaboration) | **POST** /collaborations/{id}/cancel | 크리에이터가 링크를 제출하기 전에 협업을 그만둔다(수수료까지 전액 환급).
+*CollaborationsApi* | [**getCollaboration**](doc//CollaborationsApi.md#getcollaboration) | **GET** /collaborations/{id} | 
+*CollaborationsApi* | [**listCollaborations**](doc//CollaborationsApi.md#listcollaborations) | **GET** /collaborations | 
+*CollaborationsApi* | [**requestCollaborationCancel**](doc//CollaborationsApi.md#requestcollaborationcancel) | **POST** /collaborations/{id}/cancel-requests | 사장님이 취소를 요청한다. 3일 안에 답이 없으면 사라진다.
 *ContentDraftsApi* | [**listMyContentDrafts**](doc//ContentDraftsApi.md#listmycontentdrafts) | **GET** /stores/me/content-drafts | 
 *ContentDraftsApi* | [**regenerateMyContentDraft**](doc//ContentDraftsApi.md#regeneratemycontentdraft) | **POST** /stores/me/content-drafts/{kind}/regenerate | 
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
@@ -115,7 +120,17 @@ Class | Method | HTTP request | Description
  - [ApplicationModel](doc//ApplicationModel.md)
  - [ApplicationStatus](doc//ApplicationStatus.md)
  - [BankModel](doc//BankModel.md)
+ - [CancelRequestModel](doc//CancelRequestModel.md)
+ - [CollaborationCounterpartModel](doc//CollaborationCounterpartModel.md)
+ - [CollaborationKind](doc//CollaborationKind.md)
+ - [CollaborationModel](doc//CollaborationModel.md)
+ - [CollaborationRole](doc//CollaborationRole.md)
+ - [CollaborationScope](doc//CollaborationScope.md)
+ - [CollaborationSettlementModel](doc//CollaborationSettlementModel.md)
  - [CollaborationStage](doc//CollaborationStage.md)
+ - [CollaborationStepKey](doc//CollaborationStepKey.md)
+ - [CollaborationStepModel](doc//CollaborationStepModel.md)
+ - [CollaborationStepState](doc//CollaborationStepState.md)
  - [CompleteInstagramConnectDto](doc//CompleteInstagramConnectDto.md)
  - [ContentDraftKind](doc//ContentDraftKind.md)
  - [ContentDraftModel](doc//ContentDraftModel.md)
@@ -140,6 +155,7 @@ Class | Method | HTTP request | Description
  - [PaymentStatus](doc//PaymentStatus.md)
  - [PaymentStatusModel](doc//PaymentStatusModel.md)
  - [PayoutAccountModel](doc//PayoutAccountModel.md)
+ - [PayoutStatus](doc//PayoutStatus.md)
  - [PhotoUploadModel](doc//PhotoUploadModel.md)
  - [ReceivedOfferModel](doc//ReceivedOfferModel.md)
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)
@@ -155,7 +171,6 @@ Class | Method | HTTP request | Description
  - [StoreSourceLinkModel](doc//StoreSourceLinkModel.md)
  - [StoreStatus](doc//StoreStatus.md)
  - [StoreSummaryModel](doc//StoreSummaryModel.md)
- - [SubmissionResultModel](doc//SubmissionResultModel.md)
  - [SubmitContentDto](doc//SubmitContentDto.md)
  - [UpdateRoleDto](doc//UpdateRoleDto.md)
  - [UpdateStoreDto](doc//UpdateStoreDto.md)

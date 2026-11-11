@@ -129,8 +129,13 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'SETTLEMENT',
     switch: 'ESSENTIAL',
     glyph: 'WON',
-    render: ({ actorName, params }) =>
-      `${actorName ?? CREATOR_FALLBACK}님이 협업을 그만뒀어요. ${josa(won(params.amount), '을/를')} 돌려드려요.`,
+    // 식사권만 있는 협업은 돌려줄 돈이 없어 금액이 0이다: 환급 문장은 빼고 그만뒀다는 소식만 낸다(판단 R41).
+    render: ({ actorName, params }) => {
+      const base = `${actorName ?? CREATOR_FALLBACK}님이 협업을 그만뒀어요.`;
+      return Number(params.amount ?? 0) > 0
+        ? `${base} ${josa(won(params.amount), '을/를')} 돌려드려요.`
+        : base;
+    },
   },
   // 표 "결제 완료, 링크 제출, 제출 기한, 취소·취소 요청, 미제출 종료" 줄(취소 요청): 협업 / 끌 수 없음 / 사진.
   CANCEL_REQUESTED: {

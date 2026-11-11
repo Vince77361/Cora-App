@@ -107,6 +107,21 @@ export class CollaborationsRepository {
     return count === 1;
   }
 
+  // 내가 당사자(맡긴 쪽 또는 크리에이터)인 협업을 최근 것부터. stage로 진행 중·끝남을 가른다.
+  listForParty(
+    userId: string,
+    stage: Prisma.EnumCollaborationStageFilter,
+  ): Promise<Collaboration[]> {
+    return this.prisma.collaboration.findMany({
+      where: {
+        OR: [{ commissionerId: userId }, { creatorId: userId }],
+        stage,
+        deletedAt: null,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+  }
+
   // 가게의 협업 가운데 이 단계들에 있는 것의 수.
   countForStore(
     storeId: string,

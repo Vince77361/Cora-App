@@ -20,10 +20,10 @@ import { PayoutsService } from './payouts.service';
 import { RefundsService } from './refunds.service';
 import { SettlementsRepository } from './settlements.repository';
 import { SettlementsService } from './settlements.service';
-import { SubmissionsController } from './submissions.controller';
 import { SubmissionsService } from './submissions.service';
 
 // 링크 제출, 조회수 집계, 정산, 지급, 환급. 이 모듈의 작업 처리기는 여기서 작업 큐의 표에 올린다.
+// 링크 제출의 컨트롤러는 협업 모델을 돌려줘야 해서 협업 조회·취소 모듈(CollaborationsApiModule)에 있다.
 @Module({
   imports: [
     CollaborationsModule,
@@ -37,7 +37,6 @@ import { SubmissionsService } from './submissions.service';
     PaymentsModule,
     PayoutAccountsModule,
   ],
-  controllers: [SubmissionsController],
   providers: [
     SettlementsRepository,
     SettlementsService,
@@ -51,7 +50,13 @@ import { SubmissionsService } from './submissions.service';
     RefundUnsubmittedHandler,
     SubmitReminderHandler,
   ],
-  exports: [SettlementsService],
+  // 협업 조회·취소 모듈이 읽기 모델(조회수·정산·지급)을 모으고, 환급을 요청하고, 링크 제출을 받을 때 쓴다.
+  exports: [
+    SettlementsService,
+    SettlementsRepository,
+    RefundsService,
+    SubmissionsService,
+  ],
 })
 export class SettlementsModule implements OnModuleInit {
   constructor(

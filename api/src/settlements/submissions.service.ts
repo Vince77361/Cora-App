@@ -11,7 +11,6 @@ import { ViewCountPort } from '../integrations/view-count/view-count.port';
 import { JobScheduler } from '../jobs/job-scheduler';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
-import { SubmissionResultModel } from './dto/submission-result.model';
 import { settleJobKey, SNAPSHOT_DAYS, snapshotJobKey } from './job-keys';
 import { isAcceptedLink } from './link-rules';
 
@@ -39,11 +38,12 @@ export class SubmissionsService {
   ) {}
 
   // 검사 순서: 역할 → 내 협업인가(아니면 404) → 제출할 수 있는 단계 → 링크 형식 → 내 계정의 게시물인가.
+  // 응답의 협업 모델은 협업 조회 모듈이 만든다(이 모듈이 그 모듈을 import하면 순환이라, 호출하는 컨트롤러가 이어서 읽는다).
   async submit(
     userId: string,
     collaborationId: string,
     rawUrl: string,
-  ): Promise<SubmissionResultModel> {
+  ): Promise<void> {
     if ((await this.users.getRole(userId)) !== 'CREATOR') {
       throw new AppError('FORBIDDEN', '크리에이터 계정만 쓸 수 있어요.');
     }
@@ -95,10 +95,6 @@ export class SubmissionsService {
     }
     await this.cancelDeadlineJobs(collaboration.id);
     await this.notifySubmitted(collaboration);
-    return {
-      collaborationId: collaboration.id,
-      stage: perView ? 'COUNTING' : 'SETTLED',
-    };
   }
 
   // 집계 작업을 올린다: 조회수 8번(0일째는 지금, 이후 하루 간격)과 정산 한 번.

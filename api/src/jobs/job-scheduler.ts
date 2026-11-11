@@ -15,11 +15,14 @@ export type PaymentJobPayload = { paymentId: string; attempt: number };
 export type OfferJobPayload = { offerId: string; declinedAt?: string };
 // 지급 송금 작업은 지급 행에 붙는다.
 export type PayoutJobPayload = { payoutId: string };
+// 사장님의 취소 요청 만료 작업은 요청 행에 붙는다.
+export type CancelRequestJobPayload = { cancelRequestId: string };
 export type JobPayload =
   | CollaborationJobPayload
   | OfferJobPayload
   | PaymentJobPayload
-  | PayoutJobPayload;
+  | PayoutJobPayload
+  | CancelRequestJobPayload;
 
 // 작업 처리기. 다시 실행돼도 같은 결과를 내야 하고, 시각은 Clock에서 읽는다.
 export type JobHandler = (payload: JobPayload) => Promise<void>;

@@ -18,7 +18,7 @@ void main() {
   group('tests for SubmissionsApi', () {
     //
     //
-    //Future<SubmissionResultModel> submitContentLink(String id, SubmitContentDto submitContentDto) async
+    //Future<CollaborationModel> submitContentLink(String id, SubmitContentDto submitContentDto) async
     test('test submitContentLink', () async {
       // TODO
     });

@@ -107,6 +107,48 @@ export class SettlementsRepository {
     });
   }
 
+  // 협업마다 가장 최근에 읽은 조회수(읽지 못한 날은 건너뛴다). 협업 조회 화면이 쓴다.
+  async latestViewsFor(ids: string[]): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (ids.length === 0) return map;
+    const rows = await this.prisma.viewSnapshot.findMany({
+      where: {
+        collaborationId: { in: ids },
+        views: { not: null },
+        deletedAt: null,
+      },
+      orderBy: { dayIndex: 'desc' },
+    });
+    for (const row of rows) {
+      if (row.views !== null && !map.has(row.collaborationId)) {
+        map.set(row.collaborationId, row.views);
+      }
+    }
+    return map;
+  }
+
+  async settlementsFor(ids: string[]): Promise<Map<string, Settlement>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.prisma.settlement.findMany({
+      where: { collaborationId: { in: ids }, deletedAt: null },
+    });
+    return new Map(rows.map((row) => [row.collaborationId, row]));
+  }
+
+  // 협업마다 가장 최근에 만든 지급 한 줄.
+  async latestPayoutsFor(ids: string[]): Promise<Map<string, Payout>> {
+    const map = new Map<string, Payout>();
+    if (ids.length === 0) return map;
+    const rows = await this.prisma.payout.findMany({
+      where: { collaborationId: { in: ids }, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    for (const row of rows) {
+      if (!map.has(row.collaborationId)) map.set(row.collaborationId, row);
+    }
+    return map;
+  }
+
   findSettlement(collaborationId: string): Promise<Settlement | null> {
     return this.prisma.settlement.findFirst({
       where: { collaborationId, deletedAt: null },

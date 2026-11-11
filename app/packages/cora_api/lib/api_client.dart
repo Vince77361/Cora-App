@@ -220,8 +220,28 @@ class ApiClient {
           return ApplicationStatusTypeTransformer().decode(value);
         case 'BankModel':
           return BankModel.fromJson(value);
+        case 'CancelRequestModel':
+          return CancelRequestModel.fromJson(value);
+        case 'CollaborationCounterpartModel':
+          return CollaborationCounterpartModel.fromJson(value);
+        case 'CollaborationKind':
+          return CollaborationKindTypeTransformer().decode(value);
+        case 'CollaborationModel':
+          return CollaborationModel.fromJson(value);
+        case 'CollaborationRole':
+          return CollaborationRoleTypeTransformer().decode(value);
+        case 'CollaborationScope':
+          return CollaborationScopeTypeTransformer().decode(value);
+        case 'CollaborationSettlementModel':
+          return CollaborationSettlementModel.fromJson(value);
         case 'CollaborationStage':
           return CollaborationStageTypeTransformer().decode(value);
+        case 'CollaborationStepKey':
+          return CollaborationStepKeyTypeTransformer().decode(value);
+        case 'CollaborationStepModel':
+          return CollaborationStepModel.fromJson(value);
+        case 'CollaborationStepState':
+          return CollaborationStepStateTypeTransformer().decode(value);
         case 'CompleteInstagramConnectDto':
           return CompleteInstagramConnectDto.fromJson(value);
         case 'ContentDraftKind':
@@ -270,6 +290,8 @@ class ApiClient {
           return PaymentStatusModel.fromJson(value);
         case 'PayoutAccountModel':
           return PayoutAccountModel.fromJson(value);
+        case 'PayoutStatus':
+          return PayoutStatusTypeTransformer().decode(value);
         case 'PhotoUploadModel':
           return PhotoUploadModel.fromJson(value);
         case 'ReceivedOfferModel':
@@ -300,8 +322,6 @@ class ApiClient {
           return StoreStatusTypeTransformer().decode(value);
         case 'StoreSummaryModel':
           return StoreSummaryModel.fromJson(value);
-        case 'SubmissionResultModel':
-          return SubmissionResultModel.fromJson(value);
         case 'SubmitContentDto':
           return SubmitContentDto.fromJson(value);
         case 'UpdateRoleDto':

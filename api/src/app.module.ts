@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ApplicationsModule } from './applications/applications.module';
 import { AuthModule } from './auth/auth.module';
+import { CollaborationsApiModule } from './collaborations/collaborations-api.module';
 import { CommonModule } from './common/common.module';
 import { ContentDraftsModule } from './content-drafts/content-drafts.module';
 import { CreatorsModule } from './creators/creators.module';
@@ -42,6 +43,7 @@ import { UsersModule } from './users/users.module';
     PaymentsModule,
     PayoutAccountsModule,
     SettlementsModule,
+    CollaborationsApiModule,
     PaymentsDevModule.register(process.env),
   ],
 })

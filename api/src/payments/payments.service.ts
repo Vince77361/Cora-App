@@ -153,6 +153,20 @@ export class PaymentsService {
     };
   }
 
+  // 협업 여러 개가 보관을 시작할 때 낸 금액(에스크로와 수수료). 결제가 없는 협업은 맵에 없다.
+  // 협업 조회 화면이 쓴다(서버 안의 호출 전용).
+  async fundedAmounts(
+    collaborationIds: string[],
+  ): Promise<Map<string, { escrow: number; fee: number }>> {
+    const rows = await this.payments.mapFundingPayments(collaborationIds);
+    return new Map(
+      [...rows].map(([id, payment]) => [
+        id,
+        { escrow: payment.amountEscrow, fee: payment.amountFee },
+      ]),
+    );
+  }
+
   async getStatus(
     userId: string,
     paymentId: string,

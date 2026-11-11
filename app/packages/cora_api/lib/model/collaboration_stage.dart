@@ -10,7 +10,6 @@
 
 part of cora_api;
 
-/// 제출 뒤의 단계. 조회수 보상이 있으면 COUNTING, 식사권만 있으면 SETTLED.
 enum CollaborationStage {
   AWAITING_PAYMENT._(r'AWAITING_PAYMENT'),
   FUNDED._(r'FUNDED'),
