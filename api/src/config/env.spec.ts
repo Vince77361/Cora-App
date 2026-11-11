@@ -22,6 +22,22 @@ describe('loadEnv', () => {
     );
   });
 
+  it.each(['DATABASE_URL', 'DIRECT_URL', 'SUPABASE_URL'])(
+    'rejects an empty %s',
+    (key) => {
+      expect(() => loadEnv({ ...valid, [key]: '' })).toThrow(new RegExp(key));
+    },
+  );
+
+  it('strips trailing slashes from SUPABASE_URL', () => {
+    // 끝에 /가 남으면 issuer와 JWKS 주소가 어긋나 모든 토큰이 거절된다.
+    const env = loadEnv({
+      ...valid,
+      SUPABASE_URL: 'https://example.supabase.co//',
+    });
+    expect(env.SUPABASE_URL).toBe('https://example.supabase.co');
+  });
+
   it('defaults PORT to 3000', () => {
     expect(loadEnv({ ...valid, PORT: undefined }).PORT).toBe(3000);
   });

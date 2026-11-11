@@ -8,6 +8,11 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
+  // 기본 오류 형식에는 쿼리 인자 값이 들어가 로그로 새어 나갈 수 있어 최소 형식을 쓴다.
+  constructor() {
+    super({ errorFormat: 'minimal' });
+  }
+
   async onModuleInit(): Promise<void> {
     await this.$connect();
   }

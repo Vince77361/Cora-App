@@ -13,6 +13,15 @@ describe('UsersRepository', () => {
     expect(await prisma.user.count()).toBe(1);
   });
 
+  it('concurrent upserts of the same id leave exactly one row', async () => {
+    // 첫 로그인 직후 앱이 /me를 동시에 여러 번 부르는 경우를 흉내 낸다.
+    const rows = await Promise.all(
+      Array.from({ length: 5 }, () => repo.upsert(ID)),
+    );
+    expect(rows.every((r) => r.id === ID)).toBe(true);
+    expect(await prisma.user.count()).toBe(1);
+  });
+
   it('keeps the role when upsert is called again', async () => {
     await repo.upsert(ID);
     await repo.updateRole(ID, 'BRAND');

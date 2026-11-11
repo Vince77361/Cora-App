@@ -12,7 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test,seed}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,apps,libs,test,seed,scripts}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -80,7 +80,9 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "src/**/*.ts",
+      "seed/**/*.ts",
+      "!**/*.spec.ts"
     ],
     "coverageDirectory": "coverage",
     "testEnvironment": "node"

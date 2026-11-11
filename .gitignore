@@ -12,6 +12,7 @@ app/config/*.json
 # 빌드 산출물과 의존성
 node_modules/
 dist/
+coverage/
 
 # 스크립트가 내려받는 도구(openapi-generator jar)
 .tools/

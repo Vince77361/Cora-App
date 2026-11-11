@@ -43,6 +43,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const res = host.switchToHttp().getResponse<Response>();
 
     if (exception instanceof AppError) {
+      // INTERNAL은 서버 쪽 장애(예: 키 묶음 조회 실패)라 로그가 없으면 보이지 않는다.
+      // AppError의 메시지는 화면에 보여 줄 고정 문구라 토큰이나 개인정보가 없다.
+      if (exception.code === 'INTERNAL') {
+        this.logger.error(
+          `AppError INTERNAL: ${exception.message}`,
+          exception.stack,
+        );
+      }
       this.send(
         res,
         STATUS_BY_CODE[exception.code],

@@ -20,8 +20,32 @@ if (!TEST_DIRECT_URL) {
   process.exit(1);
 }
 
+// 마이그레이션을 적용하기 전에 먼저 확인한다. 값이 틀린 채로 migrate deploy가 돌면
+// 개발 DB의 public에 마이그레이션이 먼저 들어가고, 그 뒤에야 다른 가드가 멈추기 때문이다.
+// 어떤 조건이 틀렸는지만 말하고 값은 출력하지 않는다.
+let parsed;
+try {
+  parsed = new URL(TEST_DIRECT_URL);
+} catch {
+  console.error('TEST_DIRECT_URL이 올바른 주소가 아니에요.');
+  process.exit(1);
+}
+const schema = parsed.searchParams.get('schema');
+if (!schema || schema === 'public') {
+  console.error(
+    'TEST_DIRECT_URL에 schema가 없거나 public이에요. ?schema=cora_test가 필요해요.',
+  );
+  process.exit(1);
+}
+if (parsed.port === '6543' || parsed.searchParams.has('pgbouncer')) {
+  console.error(
+    'TEST_DIRECT_URL이 트랜잭션 풀러(포트 6543 또는 pgbouncer)를 가리켜요. 세션 풀러(5432)를 써야 해요.',
+  );
+  process.exit(1);
+}
+
 // 세션 풀러는 클라이언트마다 백엔드를 하나씩 붙잡으므로, Prisma 기본 풀 크기를 줄여 연결 한도를 아낀다.
-const url = new URL(TEST_DIRECT_URL);
+const url = parsed;
 if (!url.searchParams.has('connection_limit')) {
   url.searchParams.set('connection_limit', '5');
 }

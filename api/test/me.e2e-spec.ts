@@ -86,11 +86,20 @@ describe('me', () => {
   });
 
   it('rejects fields that are not in the DTO', async () => {
-    await request(server)
+    const res = await request(server)
       .patch('/me/role')
       .set(auth)
       .send({ role: 'STORE', id: OTHER })
       .expect(400);
+    expect((res.body as { error: { code: string } }).error.code).toBe(
+      'VALIDATION_FAILED',
+    );
+    // 거절됐으니 역할은 그대로이고, 다른 사용자 행도 생기지 않는다.
+    await request(server)
+      .get('/me')
+      .set(auth)
+      .expect(200, { id: USER_A, role: 'CREATOR' });
+    expect(await prisma.user.findUnique({ where: { id: OTHER } })).toBeNull();
   });
 
   it('still serves /health without a token', async () => {

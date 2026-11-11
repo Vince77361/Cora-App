@@ -1,8 +1,9 @@
 import 'reflect-metadata';
-import { plainToInstance, Expose, Type } from 'class-transformer';
+import { plainToInstance, Expose, Transform, Type } from 'class-transformer';
 import {
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Max,
@@ -22,16 +23,24 @@ export class Env {
   @Max(65535)
   PORT: number = 3000;
 
+  // 빈 값은 연결이 시작된 뒤에야 알아보기 어려운 오류로 드러나므로 시작할 때 거부한다.
   @Expose()
   @IsString()
+  @IsNotEmpty()
   DATABASE_URL!: string;
 
   @Expose()
   @IsString()
+  @IsNotEmpty()
   DIRECT_URL!: string;
 
+  // 끝의 /를 지운다. 남기면 토큰 issuer와 JWKS 주소가 어긋나 모든 요청이 거절된다.
   @Expose()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.replace(/\/+$/, '') : value,
+  )
   @IsString()
+  @IsNotEmpty()
   SUPABASE_URL!: string;
 
   // 이 프로젝트의 Supabase는 비대칭 키(ES256)로 토큰을 서명하고 JWKS로 검증하므로 필수가 아니다.

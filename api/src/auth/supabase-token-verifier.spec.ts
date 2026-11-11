@@ -1,5 +1,7 @@
+import { Logger } from '@nestjs/common';
 import {
   createLocalJWKSet,
+  errors,
   exportJWK,
   generateKeyPair,
   JWTVerifyGetKey,
@@ -30,6 +32,7 @@ describe('SupabaseTokenVerifier', () => {
       iss?: string;
       exp?: string | number;
       sub?: string;
+      key?: CryptoKey;
     } = {},
   ) =>
     new SignJWT({})
@@ -39,7 +42,7 @@ describe('SupabaseTokenVerifier', () => {
       .setIssuer(over.iss ?? ISSUER)
       .setIssuedAt()
       .setExpirationTime(over.exp ?? '5m')
-      .sign(privateKey);
+      .sign(over.key ?? privateKey);
 
   async function expectRejected(token: string): Promise<void> {
     const err: unknown = await verifier.verify(token).catch((e: unknown) => e);
@@ -94,5 +97,63 @@ describe('SupabaseTokenVerifier', () => {
 
   it('rejects garbage', async () => {
     await expectRejected('not-a-jwt');
+  });
+
+  it('rejects a token signed by a different ES256 key pair', async () => {
+    const other = await generateKeyPair('ES256');
+    await expectRejected(await sign({ key: other.privateKey as CryptoKey }));
+  });
+
+  it('rejects a token without an exp claim', async () => {
+    const noExp = await new SignJWT({})
+      .setProtectedHeader({ alg: 'ES256' })
+      .setSubject(USER)
+      .setAudience('authenticated')
+      .setIssuer(ISSUER)
+      .sign(privateKey);
+    await expectRejected(noExp);
+  });
+
+  describe('when the key set cannot be fetched', () => {
+    let warn: jest.SpyInstance;
+    beforeEach(() => {
+      warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    });
+    afterEach(() => warn.mockRestore());
+
+    // 손으로 쓴 가짜: 키 묶음을 가져오다 실패한 상황을 그대로 던진다.
+    const failing = (error: Error): SupabaseTokenVerifier =>
+      new SupabaseTokenVerifier(SUPABASE_URL, () => Promise.reject(error));
+
+    async function errorOf(v: SupabaseTokenVerifier): Promise<AppError> {
+      const err: unknown = await v
+        .verify(await sign())
+        .catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(AppError);
+      return err as AppError;
+    }
+
+    it('reports a JWKS timeout as INTERNAL, not as a bad token', async () => {
+      const err = await errorOf(failing(new errors.JWKSTimeout()));
+      expect(err.code).toBe('INTERNAL');
+    });
+
+    it('reports a network failure as INTERNAL', async () => {
+      const err = await errorOf(failing(new Error('ECONNRESET')));
+      expect(err.code).toBe('INTERNAL');
+    });
+
+    it('logs only the error name, never the token or the message', async () => {
+      await errorOf(failing(new Error('ECONNRESET secret-detail')));
+      const logged = JSON.stringify(warn.mock.calls);
+      expect(logged).toContain('Error');
+      expect(logged).not.toContain('secret-detail');
+      expect(logged).not.toContain('eyJ');
+    });
+
+    it('keeps a missing signing key as UNAUTHENTICATED', async () => {
+      const err = await errorOf(failing(new errors.JWKSNoMatchingKey()));
+      expect(err.code).toBe('UNAUTHENTICATED');
+    });
   });
 });
