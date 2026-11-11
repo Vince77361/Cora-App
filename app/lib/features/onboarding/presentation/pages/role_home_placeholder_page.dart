@@ -7,7 +7,7 @@ import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_logo.dart';
 import '../../../../core/ui/cora_primary_button.dart';
-import '../../../auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../auth/domain/auth_repository_provider.dart';
 import '../../domain/user_role.dart';
 
 /// 임시 화면: 역할별 홈 자리만 잡아 둔다. 가게·브랜드·크리에이터 홈을 만드는 계획이 이
@@ -67,8 +67,7 @@ class RoleHomePlaceholderPage extends ConsumerWidget {
                   const SizedBox(height: 8),
                   CoraPrimaryButton(
                     label: '로그아웃',
-                    onPressed: () =>
-                        ref.read(authViewModelProvider.notifier).signOut(),
+                    onPressed: () => ref.read(authRepositoryProvider).signOut(),
                   ),
                 ],
               ),

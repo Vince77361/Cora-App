@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../auth/domain/current_user_provider.dart';
 import '../../domain/me.dart';
 import '../../domain/me_repository_provider.dart';
 
@@ -21,9 +21,7 @@ class MeViewModel extends AsyncNotifier<Me?> {
   /// 같은 사용자의 토큰 갱신은 사용자 ID가 그대로라 다시 부르지 않는다.
   @override
   Future<Me?> build() async {
-    final userId = ref.watch(
-      authViewModelProvider.select((session) => session.value?.userId),
-    );
+    final userId = ref.watch(currentUserIdProvider);
     if (userId == null) return null;
     return ref.watch(meRepositoryProvider).fetchMe();
   }
