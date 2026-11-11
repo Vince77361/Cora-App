@@ -26,6 +26,49 @@ InputDecorationThemeData _inputDecoration(CoraColors c) {
   );
 }
 
+/// 시드(라임)에서 파생되는 색이 화면에 나오지 않게 Material 역할을 모두 토큰으로 덮는다.
+/// 입력칸·다이얼로그·시트·스낵바 같은 기본 위젯이 이 역할을 읽는다.
+/// 캔버스에는 오류 빨강이 없다(오류는 글자색으로 보여 준다). 그래서 error 계열도 토큰이다.
+ColorScheme _colorScheme(Brightness brightness, CoraColors c) {
+  return ColorScheme(
+    brightness: brightness,
+    primary: c.primaryAction,
+    onPrimary: c.onPrimaryAction,
+    primaryContainer: c.surfaceMuted,
+    onPrimaryContainer: c.onSurfaceMuted,
+    secondary: c.text,
+    onSecondary: c.background,
+    secondaryContainer: c.surfaceSelected,
+    onSecondaryContainer: c.onSurfaceSelected,
+    tertiary: c.accent,
+    onTertiary: c.onAccent,
+    tertiaryContainer: c.accent,
+    onTertiaryContainer: c.onAccent,
+    error: c.text,
+    onError: c.background,
+    errorContainer: c.surface,
+    onErrorContainer: c.text,
+    surface: c.background,
+    onSurface: c.text,
+    onSurfaceVariant: c.textSecondary,
+    surfaceDim: c.background,
+    surfaceBright: c.background,
+    surfaceContainerLowest: c.background,
+    surfaceContainerLow: c.surface,
+    surfaceContainer: c.surface,
+    surfaceContainerHigh: c.surface,
+    surfaceContainerHighest: c.line,
+    outline: c.textSecondary,
+    outlineVariant: c.line,
+    shadow: c.scrim,
+    scrim: c.scrim,
+    inverseSurface: c.text,
+    onInverseSurface: c.background,
+    inversePrimary: c.accent,
+    surfaceTint: Colors.transparent,
+  );
+}
+
 ThemeData _build(Brightness brightness, CoraColors c) {
   // 색은 텍스트 스타일에 굽지 않고 여기서 기본 글자색으로만 입힌다.
   final textTheme = TextTheme(
@@ -44,16 +87,7 @@ ThemeData _build(Brightness brightness, CoraColors c) {
     brightness: brightness,
     fontFamily: 'NotoSansKR',
     scaffoldBackgroundColor: c.background,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: c.accent,
-      brightness: brightness,
-    ).copyWith(
-      surface: c.background,
-      onSurface: c.text,
-      primary: c.primaryAction,
-      onPrimary: c.onPrimaryAction,
-      outlineVariant: c.line,
-    ),
+    colorScheme: _colorScheme(brightness, c),
     textTheme: textTheme,
     inputDecorationTheme: _inputDecoration(c),
     // 기본 커서색은 colorScheme.primary(라이트에서 라임)라 흰 바탕에서 거의 안 보인다.

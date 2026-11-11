@@ -29,6 +29,17 @@ class CoraColors extends ThemeExtension<CoraColors> {
     required this.subtleAction,
     required this.onSubtleAction,
     required this.focusRing,
+    required this.stepPill,
+    required this.onStepPill,
+    required this.stepPillShadow,
+    required this.progressTrack,
+    required this.progressFill,
+    required this.navSurface,
+    required this.navActive,
+    required this.navInactive,
+    required this.navShadow,
+    required this.highlightAction,
+    required this.onHighlightAction,
   });
 
   final Color background;
@@ -76,6 +87,29 @@ class CoraColors extends ThemeExtension<CoraColors> {
   /// 써서 다크에서는 거의 보이지 않는다. 캔버스를 그대로 옮긴 값이다.
   final Color focusRing;
 
+  /// 단계 머리글(`CoraStepHeader`) 가운데 알약의 바탕, 그 위 글자, 그림자 색(NStoreLink).
+  /// 라이트는 흰 알약에 그림자 rgba(23,24,28,0.10), 다크는 밝은 알약에 그림자가 없다.
+  final Color stepPill;
+  final Color onStepPill;
+  final Color stepPillShadow;
+
+  /// 단계 진행 막대의 바탕과 채움(NStoreLink). 다크의 채움(#0F1012)은 바탕(#2A2D33)보다
+  /// 어둡다. 캔버스 그대로다.
+  final Color progressTrack;
+  final Color progressFill;
+
+  /// 하단 메뉴(`CoraBottomNav`)의 바탕, 선택된 항목, 꺼진 항목, 그림자 색(NStoreHome).
+  /// 다크는 선택 항목이 라임이고 그림자가 더 진하다(rgba(23,24,28,0.28)).
+  final Color navSurface;
+  final Color navActive;
+  final Color navInactive;
+  final Color navShadow;
+
+  /// 목록 줄 오른쪽 버튼 중 강조하는 것(NStoreHome `오퍼 보내기`)의 채움과 글자.
+  /// 라이트는 라임, 다크는 밝은 회색이다.
+  final Color highlightAction;
+  final Color onHighlightAction;
+
   static const light = CoraColors(
     background: Color(0xFFFFFFFF),
     text: Color(0xFF17181C),
@@ -106,6 +140,20 @@ class CoraColors extends ThemeExtension<CoraColors> {
     subtleAction: Color(0xFFF2F3F5),
     onSubtleAction: Color(0xFF17181C),
     focusRing: Color(0xFF17181C),
+    // NStoreLink 머리글 알약 #FFFFFF·#17181C·그림자 rgba(23,24,28,0.10), 막대 #E6E8EB/#17181C
+    stepPill: Color(0xFFFFFFFF),
+    onStepPill: Color(0xFF17181C),
+    stepPillShadow: Color(0x1A17181C),
+    progressTrack: Color(0xFFE6E8EB),
+    progressFill: Color(0xFF17181C),
+    // NStoreHome 하단 메뉴 #FFFFFF, 선택 #17181C, 꺼짐 #8B9099, 그림자 rgba(23,24,28,0.12)
+    navSurface: Color(0xFFFFFFFF),
+    navActive: Color(0xFF17181C),
+    navInactive: Color(0xFF8B9099),
+    navShadow: Color(0x1F17181C),
+    // NStoreHome `오퍼 보내기` #C6FF3D/#1F2A00
+    highlightAction: Color(0xFFC6FF3D),
+    onHighlightAction: Color(0xFF1F2A00),
   );
 
   // 다크의 surface, surfaceMuted, onAccent는 DarkPrinciples/DarkNEscrow/DarkNStoreHome에서
@@ -144,6 +192,20 @@ class CoraColors extends ThemeExtension<CoraColors> {
     subtleAction: Color(0xFF2A2D33),
     onSubtleAction: Color(0xFFF2F3F5),
     focusRing: Color(0xFF17181C),
+    // DarkNStoreLink 머리글 알약 #F2F3F5·#17181C·그림자 없음, 막대 #2A2D33/#0F1012
+    stepPill: Color(0xFFF2F3F5),
+    onStepPill: Color(0xFF17181C),
+    stepPillShadow: Color(0x0017181C),
+    progressTrack: Color(0xFF2A2D33),
+    progressFill: Color(0xFF0F1012),
+    // DarkNStoreHome 하단 메뉴 #26282D, 선택 #C6FF3D, 꺼짐 #A0A4AD, 그림자 rgba(23,24,28,0.28)
+    navSurface: Color(0xFF26282D),
+    navActive: Color(0xFFC6FF3D),
+    navInactive: Color(0xFFA0A4AD),
+    navShadow: Color(0x4717181C),
+    // DarkNStoreHome `오퍼 보내기` #F2F3F5/#0F1012
+    highlightAction: Color(0xFFF2F3F5),
+    onHighlightAction: Color(0xFF0F1012),
   );
 
   @override
@@ -173,6 +235,17 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? subtleAction,
     Color? onSubtleAction,
     Color? focusRing,
+    Color? stepPill,
+    Color? onStepPill,
+    Color? stepPillShadow,
+    Color? progressTrack,
+    Color? progressFill,
+    Color? navSurface,
+    Color? navActive,
+    Color? navInactive,
+    Color? navShadow,
+    Color? highlightAction,
+    Color? onHighlightAction,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -200,6 +273,17 @@ class CoraColors extends ThemeExtension<CoraColors> {
       subtleAction: subtleAction ?? this.subtleAction,
       onSubtleAction: onSubtleAction ?? this.onSubtleAction,
       focusRing: focusRing ?? this.focusRing,
+      stepPill: stepPill ?? this.stepPill,
+      onStepPill: onStepPill ?? this.onStepPill,
+      stepPillShadow: stepPillShadow ?? this.stepPillShadow,
+      progressTrack: progressTrack ?? this.progressTrack,
+      progressFill: progressFill ?? this.progressFill,
+      navSurface: navSurface ?? this.navSurface,
+      navActive: navActive ?? this.navActive,
+      navInactive: navInactive ?? this.navInactive,
+      navShadow: navShadow ?? this.navShadow,
+      highlightAction: highlightAction ?? this.highlightAction,
+      onHighlightAction: onHighlightAction ?? this.onHighlightAction,
     );
   }
 
@@ -233,6 +317,17 @@ class CoraColors extends ThemeExtension<CoraColors> {
       subtleAction: mix(subtleAction, other.subtleAction),
       onSubtleAction: mix(onSubtleAction, other.onSubtleAction),
       focusRing: mix(focusRing, other.focusRing),
+      stepPill: mix(stepPill, other.stepPill),
+      onStepPill: mix(onStepPill, other.onStepPill),
+      stepPillShadow: mix(stepPillShadow, other.stepPillShadow),
+      progressTrack: mix(progressTrack, other.progressTrack),
+      progressFill: mix(progressFill, other.progressFill),
+      navSurface: mix(navSurface, other.navSurface),
+      navActive: mix(navActive, other.navActive),
+      navInactive: mix(navInactive, other.navInactive),
+      navShadow: mix(navShadow, other.navShadow),
+      highlightAction: mix(highlightAction, other.highlightAction),
+      onHighlightAction: mix(onHighlightAction, other.onHighlightAction),
     );
   }
 }

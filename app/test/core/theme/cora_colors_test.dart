@@ -30,6 +30,17 @@ Map<String, Color> _fields(CoraColors c) => {
   'subtleAction': c.subtleAction,
   'onSubtleAction': c.onSubtleAction,
   'focusRing': c.focusRing,
+  'stepPill': c.stepPill,
+  'onStepPill': c.onStepPill,
+  'stepPillShadow': c.stepPillShadow,
+  'progressTrack': c.progressTrack,
+  'progressFill': c.progressFill,
+  'navSurface': c.navSurface,
+  'navActive': c.navActive,
+  'navInactive': c.navInactive,
+  'navShadow': c.navShadow,
+  'highlightAction': c.highlightAction,
+  'onHighlightAction': c.onHighlightAction,
 };
 
 /// 이름으로 필드 하나만 [color]로 바꾼 사본을 만든다.
@@ -85,6 +96,28 @@ CoraColors _copyWithField(CoraColors c, String name, Color color) {
       return c.copyWith(onSubtleAction: color);
     case 'focusRing':
       return c.copyWith(focusRing: color);
+    case 'stepPill':
+      return c.copyWith(stepPill: color);
+    case 'onStepPill':
+      return c.copyWith(onStepPill: color);
+    case 'stepPillShadow':
+      return c.copyWith(stepPillShadow: color);
+    case 'progressTrack':
+      return c.copyWith(progressTrack: color);
+    case 'progressFill':
+      return c.copyWith(progressFill: color);
+    case 'navSurface':
+      return c.copyWith(navSurface: color);
+    case 'navActive':
+      return c.copyWith(navActive: color);
+    case 'navInactive':
+      return c.copyWith(navInactive: color);
+    case 'navShadow':
+      return c.copyWith(navShadow: color);
+    case 'highlightAction':
+      return c.copyWith(highlightAction: color);
+    case 'onHighlightAction':
+      return c.copyWith(onHighlightAction: color);
   }
   throw ArgumentError(name);
 }
@@ -129,7 +162,23 @@ void main() {
     expect(c.subtleAction, const Color(0xFFF2F3F5));
     expect(c.onSubtleAction, const Color(0xFF17181C));
     // NVerify 지금 입력할 칸의 안쪽 테두리
-    expect(c.focusRing, const Color(0xFF17181C));
+    expect(
+      c.focusRing,
+      const Color(0xFF17181C),
+    ); // NStoreLink 머리글 알약 #FFFFFF·#17181C·그림자 rgba(23,24,28,0.10), 막대 #E6E8EB/#17181C
+    expect(c.stepPill, const Color(0xFFFFFFFF));
+    expect(c.onStepPill, const Color(0xFF17181C));
+    expect(c.stepPillShadow, const Color(0x1A17181C));
+    expect(c.progressTrack, const Color(0xFFE6E8EB));
+    expect(c.progressFill, const Color(0xFF17181C));
+    // NStoreHome 하단 메뉴 #FFFFFF, 선택 #17181C, 꺼짐 #8B9099, 그림자 rgba(23,24,28,0.12)
+    expect(c.navSurface, const Color(0xFFFFFFFF));
+    expect(c.navActive, const Color(0xFF17181C));
+    expect(c.navInactive, const Color(0xFF8B9099));
+    expect(c.navShadow, const Color(0x1F17181C));
+    // NStoreHome `오퍼 보내기` #C6FF3D/#1F2A00
+    expect(c.highlightAction, const Color(0xFFC6FF3D));
+    expect(c.onHighlightAction, const Color(0xFF1F2A00));
   });
 
   test('dark palette matches the design canvas', () {
@@ -164,7 +213,23 @@ void main() {
     expect(c.subtleAction, const Color(0xFF2A2D33));
     expect(c.onSubtleAction, const Color(0xFFF2F3F5));
     // 캔버스가 다크에서도 #17181C를 그대로 쓴다(어두운 바탕에서 거의 안 보인다).
-    expect(c.focusRing, const Color(0xFF17181C));
+    expect(
+      c.focusRing,
+      const Color(0xFF17181C),
+    ); // DarkNStoreLink 머리글 알약 #F2F3F5·#17181C·그림자 없음, 막대 #2A2D33/#0F1012
+    expect(c.stepPill, const Color(0xFFF2F3F5));
+    expect(c.onStepPill, const Color(0xFF17181C));
+    expect(c.stepPillShadow, const Color(0x0017181C));
+    expect(c.progressTrack, const Color(0xFF2A2D33));
+    expect(c.progressFill, const Color(0xFF0F1012));
+    // DarkNStoreHome 하단 메뉴 #26282D, 선택 #C6FF3D, 꺼짐 #A0A4AD, 그림자 rgba(23,24,28,0.28)
+    expect(c.navSurface, const Color(0xFF26282D));
+    expect(c.navActive, const Color(0xFFC6FF3D));
+    expect(c.navInactive, const Color(0xFFA0A4AD));
+    expect(c.navShadow, const Color(0x4717181C));
+    // DarkNStoreHome `오퍼 보내기` #F2F3F5/#0F1012
+    expect(c.highlightAction, const Color(0xFFF2F3F5));
+    expect(c.onHighlightAction, const Color(0xFF0F1012));
   });
 
   test('copyWith with no arguments keeps every field', () {

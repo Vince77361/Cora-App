@@ -6,12 +6,19 @@ import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/theme/cora_theme.dart';
+import '../../../../core/ui/cora_bottom_nav.dart';
 import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_glass_card.dart';
+import '../../../../core/ui/cora_info_tile.dart';
+import '../../../../core/ui/cora_list_row.dart';
 import '../../../../core/ui/cora_logo.dart';
+import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
+import '../../../../core/ui/cora_secondary_button.dart';
+import '../../../../core/ui/cora_segmented_tabs.dart';
 import '../../../../core/ui/cora_select_card.dart';
+import '../../../../core/ui/cora_step_header.dart';
 
 /// 개발용 모션 갤러리. 소유자가 실제 기기에서 전환 속도·곡선과 공용 위젯을 보고 승인한다.
 ///
@@ -171,6 +178,8 @@ class _GalleryHomeState extends State<_GalleryHome> {
   int _role = 0;
   bool _buttonOn = true;
   int _retries = 0;
+  int _tab = 0;
+  int _navIndex = 0;
 
   static const _modes = [ThemeMode.system, ThemeMode.light, ThemeMode.dark];
 
@@ -269,6 +278,143 @@ class _GalleryHomeState extends State<_GalleryHome> {
                 ),
               ),
 
+              const _SectionLabel('단계 머리글 · NStoreLink, NOffer'),
+              _Sample(
+                child: Column(
+                  children: [
+                    CoraStepHeader(
+                      title: '가게 등록',
+                      step: 1,
+                      total: 3,
+                      onBack: () {},
+                    ),
+                    const SizedBox(height: 12),
+                    CoraStepHeader(
+                      title: '하루 한 컵에게 오퍼',
+                      step: 1,
+                      total: 3,
+                      onBack: () {},
+                      backDimmed: true,
+                      leading: const CoraNetworkPhoto(url: null),
+                    ),
+                    const SizedBox(height: 12),
+                    CoraStepHeader(
+                      title: '가게 등록',
+                      step: 3,
+                      total: 3,
+                      onBack: () {},
+                    ),
+                  ],
+                ),
+              ),
+
+              const _SectionLabel('탭 · 목록 줄 · NStoreHome'),
+              _Sample(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 4, 0, 6),
+                      child: CoraSegmentedTabs(
+                        labels: const ['지원한 크리에이터 5', '보낸 오퍼 3'],
+                        selected: _tab,
+                        onChanged: (i) => setState(() => _tab = i),
+                      ),
+                    ),
+                    CoraListRow(
+                      title: '하루 한 컵',
+                      subtitle: '리빙 릴스, 팔로워 640명, 오늘 지원',
+                      actionLabel: '오퍼 보내기',
+                      actionHighlighted: true,
+                      onAction: () {},
+                    ),
+                    CoraListRow(
+                      title: '성수 한 끼',
+                      subtitle: '맛집 릴스, 팔로워 4,800명, 어제 지원',
+                      actionLabel: '프로필',
+                      onAction: () {},
+                    ),
+                    CoraListRow(
+                      title: '면치기 일기',
+                      subtitle: '라멘 리뷰, 팔로워 1.2만, 2일 전 지원',
+                      actionLabel: '프로필',
+                      onAction: () {},
+                    ),
+                  ],
+                ),
+              ),
+
+              const _SectionLabel('정보 칸 · 보조 버튼 · NStorePage'),
+              _Sample(
+                child: Column(
+                  children: [
+                    const Row(
+                      children: [
+                        Expanded(
+                          child: CoraInfoTile(
+                            label: '대표 메뉴',
+                            value: '돈코츠 라멘 11,000원',
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: CoraInfoTile(
+                            label: '영업시간',
+                            value: '11:30 – 21:00',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Row(
+                      children: [
+                        Expanded(
+                          child: CoraInfoTile(label: '좌석', value: '18석, 바 좌석'),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: CoraInfoTile(label: '찍기 좋은 시간', value: null),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CoraSecondaryButton(
+                            label: '정보 고치기',
+                            onPressed: () {},
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: CoraSecondaryButton(
+                            label: '다시 만들기',
+                            tone: CoraSecondaryTone.muted,
+                            onPressed: () {},
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const _SectionLabel('하단 메뉴 · NStoreHome'),
+              _Sample(
+                child: SizedBox(
+                  height: 84,
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: CoraBottomNav(
+                      items: CoraNavItems.store,
+                      currentIndex: _navIndex,
+                      onTap: (i) => setState(() => _navIndex = i),
+                    ),
+                  ),
+                ),
+              ),
+
               const _SectionLabel('오류 화면'),
               DecoratedBox(
                 // 실제 오류 화면처럼 `background` 위에 둔다. `surface` 위에서는
@@ -300,6 +446,30 @@ class _GalleryHomeState extends State<_GalleryHome> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 위젯 견본을 `background` 위 테두리 상자에 담는다. 캔버스 화면처럼 `background` 위에서 봐야
+/// `surface` 계열 채움이 캔버스와 같게 보인다.
+class _Sample extends StatelessWidget {
+  const _Sample({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: c.background,
+        border: Border.all(color: c.line),
+        borderRadius: BorderRadius.circular(CoraRadius.xl),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        child: child,
       ),
     );
   }

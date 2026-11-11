@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/navigation/app_routes.dart';
+import '../../../../core/navigation/role_entry.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_error_view.dart';
@@ -198,9 +199,6 @@ class _Content extends ConsumerWidget {
     final after = ref.read(roleSelectViewModelProvider).value;
     // 저장에 성공했을 때만 홈으로 간다(실패하면 saveFailed가 켜져 있다).
     if (after == null || after.saveFailed || after.saving) return;
-    context.go(
-      AppRoutes.homeFor(after.selected),
-      extra: AppRoutes.fromRoleSelect,
-    );
+    context.go(AppRoutes.withFromRoleSelect(roleHomePath(after.selected)));
   }
 }

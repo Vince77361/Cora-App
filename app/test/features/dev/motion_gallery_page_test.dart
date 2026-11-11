@@ -236,4 +236,21 @@ void main() {
     expect(theme.brightness, Brightness.dark);
     expect(theme.platform, TargetPlatform.iOS);
   });
+
+  testWidgets('the gallery shows the plan 2 widget samples', (tester) async {
+    _usePhone(tester);
+    await _pumpGallery(tester);
+
+    for (final text in [
+      '가게 등록',
+      '지원한 크리에이터 5',
+      '오퍼 보내기',
+      '아직 없어요',
+      '정보 고치기',
+      '다시 만들기',
+      'AI 글',
+    ]) {
+      expect(find.text(text, skipOffstage: false), findsWidgets, reason: text);
+    }
+  });
 }

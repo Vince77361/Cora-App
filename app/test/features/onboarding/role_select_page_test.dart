@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cora/core/navigation/app_routes.dart';
+import 'package:cora/core/ui/cora_coming_soon_page.dart';
 import 'package:cora/core/network/api_client_provider.dart';
 import 'package:cora/core/network/timeout_http_client.dart';
 import 'package:cora/core/theme/cora_colors.dart';
@@ -147,10 +148,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(me.savedRole, UserRole.creator);
-    expect(find.byType(RoleHomePlaceholderPage), findsOneWidget);
+    // 기본 진입 규칙은 크리에이터를 `준비 중이에요.` 화면으로 보낸다(10번 작업이 바꾼다).
+    expect(find.byType(CoraComingSoonPage), findsOneWidget);
     expect(find.text('크리에이터 홈'), findsOneWidget);
     expect(find.byType(RoleSelectPage), findsNothing);
-    expect(currentPath(tester), AppRoutes.homeFor(UserRole.creator));
+    expect(currentPath(tester), AppRoutes.creatorComingSoon('크리에이터 홈'));
   });
 
   testWidgets('the button is off while saving and a second tap saves once', (
@@ -307,7 +309,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('가게 홈'), findsOneWidget);
-    expect(currentPath(tester), AppRoutes.homeFor(UserRole.store));
+    expect(currentPath(tester), AppRoutes.storeComingSoon('가게 홈'));
     expect(me.fetchCalls, 1);
   });
 

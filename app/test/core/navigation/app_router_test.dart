@@ -1,5 +1,10 @@
 import 'package:cora/core/config/app_config.dart';
 import 'package:cora/core/navigation/app_routes.dart';
+import 'package:cora/core/navigation/cora_transitions.dart';
+import 'package:cora/core/navigation/role_entry.dart';
+import 'package:cora/core/ui/cora_coming_soon_page.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:cora/features/auth/presentation/pages/login_page.dart';
 import 'package:cora/features/auth/presentation/pages/phone_verify_page.dart';
 import 'package:cora/core/ui/cora_logo.dart';
@@ -9,6 +14,8 @@ import 'package:cora/features/onboarding/presentation/pages/role_home_placeholde
 import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
 import 'package:cora/core/network/api_client_provider.dart';
 import 'package:cora_api/api.dart' hide UserRole;
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -134,7 +141,7 @@ void main() {
     await pumpCoraApp(
       tester,
       auth: fake,
-      me: FakeMeRepository(role: UserRole.store),
+      me: FakeMeRepository(role: UserRole.brand),
     );
 
     await tester.tap(find.text('로그아웃'));
@@ -157,8 +164,8 @@ void main() {
     await tester.tap(find.text('카카오로 계속하기'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(RoleHomePlaceholderPage), findsOneWidget);
-    expect(currentPath(tester), AppRoutes.creator);
+    expect(find.byType(CoraComingSoonPage), findsOneWidget);
+    expect(currentPath(tester), AppRoutes.creatorComingSoon('크리에이터 홈'));
   });
 
   testWidgets('keeps /role reachable when a role exists', (tester) async {
@@ -185,10 +192,10 @@ void main() {
       me: FakeMeRepository(role: UserRole.store),
     );
 
-    routerOf(tester).go(AppRoutes.creator);
+    routerOf(tester).go(AppRoutes.creatorOffers);
     await tester.pumpAndSettle();
 
-    expect(currentPath(tester), AppRoutes.store);
+    expect(currentPath(tester), AppRoutes.storeComingSoon('가게 홈'));
     expect(find.text('가게 홈'), findsOneWidget);
   });
 
@@ -342,5 +349,267 @@ void main() {
 
     expect(find.byType(MotionGalleryPage), findsNothing);
     expect(find.byType(LoginPage), findsOneWidget);
+  });
+
+  group('role entry', () {
+    FakeAuthRepository signedIn() =>
+        FakeAuthRepository(session: FakeAuthRepository.signedInSession);
+
+    Override resolver(RoleEntryResolver fn) =>
+        roleEntryResolverProvider.overrideWithValue(fn);
+
+    Duration pushedDuration(WidgetTester tester, Type page) {
+      final route = ModalRoute.of(tester.element(find.byType(page)))!;
+      return route.transitionDuration;
+    }
+
+    testWidgets('the default resolver sends store and creator to coming soon', (
+      tester,
+    ) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final ref = container.read(Provider((ref) => ref));
+      expect(
+        await defaultRoleEntryResolver(ref, UserRole.store),
+        '/store/coming-soon/${Uri.encodeComponent('가게 홈')}',
+      );
+      expect(
+        await defaultRoleEntryResolver(ref, UserRole.creator),
+        startsWith('/creator/coming-soon/'),
+      );
+      expect(await defaultRoleEntryResolver(ref, UserRole.brand), '/brand');
+    });
+
+    testWidgets('a Korean title survives the path encoding', (tester) async {
+      usePhone(tester);
+      await pumpCoraApp(
+        tester,
+        auth: signedIn(),
+        me: FakeMeRepository(role: UserRole.store),
+      );
+
+      routerOf(tester).go(AppRoutes.storeComingSoon('사장님 홈 & 소개'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('사장님 홈 & 소개'), findsOneWidget);
+      expect(find.text('준비 중이에요.'), findsOneWidget);
+    });
+
+    testWidgets('the store resolver decides where /login and a cold start go', (
+      tester,
+    ) async {
+      usePhone(tester);
+      final calls = <UserRole>[];
+      await pumpCoraApp(
+        tester,
+        auth: signedIn(),
+        me: FakeMeRepository(role: UserRole.store),
+        overrides: [
+          resolver((ref, role) async {
+            calls.add(role);
+            return AppRoutes.storeOnboardingLinks;
+          }),
+        ],
+      );
+
+      expect(calls, [UserRole.store]);
+      expect(currentPath(tester), AppRoutes.storeOnboardingLinks);
+      expect(find.byType(CoraComingSoonPage), findsOneWidget);
+    });
+
+    testWidgets(
+      'opening /store follows the resolver and stays when it says /store',
+      (tester) async {
+        usePhone(tester);
+        var target = AppRoutes.storeOnboardingTerms;
+        await pumpCoraApp(
+          tester,
+          auth: signedIn(),
+          me: FakeMeRepository(role: UserRole.store),
+          overrides: [resolver((ref, role) async => target)],
+        );
+        expect(currentPath(tester), AppRoutes.storeOnboardingTerms);
+
+        target = AppRoutes.store;
+        routerOf(tester).go(AppRoutes.store);
+        await tester.pumpAndSettle();
+        expect(currentPath(tester), AppRoutes.store);
+      },
+    );
+
+    testWidgets('a creator without a profile lands on the setup route', (
+      tester,
+    ) async {
+      usePhone(tester);
+      await pumpCoraApp(
+        tester,
+        auth: signedIn(),
+        me: FakeMeRepository(role: UserRole.creator),
+        overrides: [
+          resolver((ref, role) async => AppRoutes.creatorProfileSetup),
+        ],
+      );
+      expect(currentPath(tester), AppRoutes.creatorProfileSetup);
+    });
+
+    testWidgets('inner role screens are left alone', (tester) async {
+      usePhone(tester);
+      var calls = 0;
+      await pumpCoraApp(
+        tester,
+        auth: signedIn(),
+        me: FakeMeRepository(role: UserRole.store),
+        overrides: [
+          resolver((ref, role) async {
+            calls++;
+            return AppRoutes.store;
+          }),
+        ],
+      );
+      final before = calls;
+
+      routerOf(tester).go(AppRoutes.storePage);
+      await tester.pumpAndSettle();
+
+      expect(currentPath(tester), AppRoutes.storePage);
+      expect(calls, before);
+    });
+
+    testWidgets('another role screen is sent to the own entry', (tester) async {
+      usePhone(tester);
+      await pumpCoraApp(
+        tester,
+        auth: signedIn(),
+        me: FakeMeRepository(role: UserRole.creator),
+        overrides: [resolver((ref, role) async => AppRoutes.creator)],
+      );
+
+      routerOf(tester).go(AppRoutes.storePage);
+      await tester.pumpAndSettle();
+
+      expect(currentPath(tester), AppRoutes.creator);
+    });
+
+    testWidgets(
+      'a failing resolver falls back to /role instead of a blank screen',
+      (tester) async {
+        usePhone(tester);
+        await pumpCoraApp(
+          tester,
+          auth: signedIn(),
+          me: FakeMeRepository(role: UserRole.store),
+          overrides: [
+            resolver((ref, role) async => throw StateError('network down')),
+          ],
+        );
+
+        expect(currentPath(tester), AppRoutes.role);
+        expect(find.byType(RoleSelectPage), findsOneWidget);
+      },
+    );
+
+    testWidgets('picking a role in A1 pushes the entry screen in', (
+      tester,
+    ) async {
+      usePhone(tester);
+      await pumpCoraApp(tester, auth: signedIn());
+
+      await tester.tap(find.text('가게를 알리고 싶어요'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('가게 링크로 시작하기'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CoraComingSoonPage), findsOneWidget);
+      expect(
+        pushedDuration(tester, CoraComingSoonPage),
+        CoraMotion.pushDuration,
+      );
+    });
+
+    testWidgets('a cold start shows the entry screen with a fade', (
+      tester,
+    ) async {
+      usePhone(tester);
+      await pumpCoraApp(
+        tester,
+        auth: signedIn(),
+        me: FakeMeRepository(role: UserRole.store),
+      );
+
+      expect(find.byType(CoraComingSoonPage), findsOneWidget);
+      expect(
+        pushedDuration(tester, CoraComingSoonPage),
+        CoraMotion.fadeDuration,
+      );
+    });
+
+    testWidgets('signing in shows the entry screen with a fade', (
+      tester,
+    ) async {
+      usePhone(tester);
+      await pumpCoraApp(
+        tester,
+        auth: FakeAuthRepository(),
+        me: FakeMeRepository(role: UserRole.creator),
+      );
+
+      await tester.tap(find.text('카카오로 계속하기'));
+      await tester.pumpAndSettle();
+
+      expect(
+        pushedDuration(tester, CoraComingSoonPage),
+        CoraMotion.fadeDuration,
+      );
+    });
+
+    testWidgets('pushing an entry route with stacked slides it in', (
+      tester,
+    ) async {
+      usePhone(tester);
+      await pumpCoraApp(
+        tester,
+        auth: signedIn(),
+        me: FakeMeRepository(role: UserRole.store),
+      );
+
+      unawaited(
+        routerOf(
+          tester,
+        ).push(AppRoutes.storeComingSoon('오퍼'), extra: AppRoutes.stacked),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('오퍼'), findsOneWidget);
+      expect(
+        pushedDuration(tester, CoraComingSoonPage),
+        CoraMotion.pushDuration,
+      );
+    });
+
+    testWidgets('every route of the store and creator flows is registered', (
+      tester,
+    ) async {
+      await pumpCoraApp(tester, auth: FakeAuthRepository());
+      final paths = _paths(routerOf(tester).configuration.routes);
+      expect(
+        paths,
+        containsAll([
+          '/store/onboarding/links',
+          '/store/onboarding/page',
+          '/store/onboarding/edit',
+          '/store/onboarding/drafts',
+          '/store/onboarding/terms',
+          '/store',
+          '/store/page',
+          '/store/drafts',
+          '/store/offers/new/:creatorId',
+          '/store/coming-soon/:title',
+          '/creator/profile/setup',
+          '/creator',
+          '/creator/stores/:id',
+          '/creator/offers',
+        ]),
+      );
+    });
   });
 }

@@ -12,40 +12,36 @@ FakeAuthRepository _signedIn() =>
     FakeAuthRepository(session: FakeAuthRepository.signedInSession);
 
 void main() {
-  testWidgets('each role opens its own home', (tester) async {
-    for (final (role, title) in [
-      (UserRole.store, '가게 홈'),
-      (UserRole.brand, '브랜드 홈'),
-      (UserRole.creator, '크리에이터 홈'),
-    ]) {
-      usePhone(tester);
-      await pumpCoraApp(
-        tester,
-        auth: _signedIn(),
-        me: FakeMeRepository(role: role),
-      );
+  testWidgets('the brand role opens the brand home placeholder', (
+    tester,
+  ) async {
+    usePhone(tester);
+    await pumpCoraApp(
+      tester,
+      auth: _signedIn(),
+      me: FakeMeRepository(role: UserRole.brand),
+    );
 
-      expect(find.text(title), findsOneWidget, reason: '$role');
-      expect(currentPath(tester), AppRoutes.homeFor(role));
-      expect(find.text('역할 다시 고르기'), findsOneWidget);
-      expect(find.text('로그아웃'), findsOneWidget);
-    }
+    expect(find.text('브랜드 홈'), findsOneWidget);
+    expect(currentPath(tester), AppRoutes.brand);
+    expect(find.text('역할 다시 고르기'), findsOneWidget);
+    expect(find.text('로그아웃'), findsOneWidget);
   });
 
   testWidgets('re-picking a role starts from the current role and saves', (
     tester,
   ) async {
     usePhone(tester);
-    final me = FakeMeRepository(role: UserRole.creator);
+    final me = FakeMeRepository(role: UserRole.brand);
     await pumpCoraApp(tester, auth: _signedIn(), me: me);
-    expect(find.text('크리에이터 홈'), findsOneWidget);
+    expect(find.text('브랜드 홈'), findsOneWidget);
 
     await tester.tap(find.text('역할 다시 고르기'));
     await tester.pumpAndSettle();
 
     expect(find.byType(RoleSelectPage), findsOneWidget);
     expect(currentPath(tester), AppRoutes.role);
-    expect(find.text('내 협업 원칙 정하기'), findsOneWidget);
+    expect(find.text('크리에이터 둘러보기'), findsOneWidget);
 
     await tester.tap(find.text('가게를 알리고 싶어요'));
     await tester.pumpAndSettle();

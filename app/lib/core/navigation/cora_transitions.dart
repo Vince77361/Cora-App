@@ -27,6 +27,9 @@ export 'cora_hero_tag.dart';
 ///
 /// 들어오는 화면이 뒤 화면의 움직임도 정한다(`delegatedTransition`). 그래서 시트를 열면
 /// 뒤 화면이 어떤 전환으로 들어왔든 96%로 줄어들고, push면 왼쪽으로 밀리며 어두워진다.
+///
+/// 주의: `CoraTransitions.push<Foo>(…)`처럼 제네릭 `T`를 직접 적어 부르면 위임 전환(`delegatedTransition`)이
+/// 빠져 뒤 화면이 움직이지 않는다. `T`는 추론에 맡긴다.
 abstract final class CoraTransitions {
   /// 시트 위 끝과 상태 표시줄 사이 간격. 줄어든 뒤 화면의 윗부분이 이 틈으로 보인다.
   static const double sheetTopGap = 10;
