@@ -17,14 +17,14 @@ import 'voucher_edit_sheet.dart';
 
 /// 오퍼 조건 3단계(형식 → 보상 → 확인). 기본 조건 화면과 오퍼 보내기(A5)가 함께 쓴다.
 ///
-/// 머리글 알약의 제목은 [headerTitle], 알약 안 왼쪽 사진은 [headerLeading]이다(A5는 가게 사진).
+/// 머리글에는 화면 이름을 그리지 않는다(소유자가 2026-11-12에 뺐다). [pageLabel]은 화면 읽기
+/// 프로그램용 이름이다.
 /// 마지막 단계의 버튼은 [submitLabel]이고, 누르면 고른 조건으로 [onSubmit]을 부른다. [onSubmit]이
 /// 예외(`Exception`)를 던지면 확인 단계에 머물며 [failureMessage]를 보인다.
 class OfferTermsWizard extends ConsumerStatefulWidget {
   const OfferTermsWizard({
     super.key,
-    required this.headerTitle,
-    this.headerLeading,
+    required this.pageLabel,
     this.initial,
     required this.storeName,
     required this.confirmTitle,
@@ -34,8 +34,7 @@ class OfferTermsWizard extends ConsumerStatefulWidget {
     this.failureMessage = defaultFailureMessage,
   });
 
-  final String headerTitle;
-  final Widget? headerLeading;
+  final String pageLabel;
 
   /// 처음 고를 값. 없으면 릴스, 식사권 + 조회수다.
   final OfferTermsInput? initial;
@@ -106,8 +105,7 @@ class _OfferTermsWizardState extends ConsumerState<OfferTermsWizard> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           CoraStepHeader(
-            title: widget.headerTitle,
-            leading: widget.headerLeading,
+            pageLabel: widget.pageLabel,
             step: state.step + 1,
             total: OfferTermsWizard.totalSteps,
             onBack: _vm.back,

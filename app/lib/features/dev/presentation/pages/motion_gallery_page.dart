@@ -12,7 +12,6 @@ import '../../../../core/ui/cora_glass_card.dart';
 import '../../../../core/ui/cora_info_tile.dart';
 import '../../../../core/ui/cora_list_row.dart';
 import '../../../../core/ui/cora_logo.dart';
-import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
@@ -283,23 +282,22 @@ class _GalleryHomeState extends State<_GalleryHome> {
                 child: Column(
                   children: [
                     CoraStepHeader(
-                      title: '가게 등록',
+                      pageLabel: '가게 등록',
                       step: 1,
                       total: 3,
                       onBack: () {},
                     ),
                     const SizedBox(height: 12),
                     CoraStepHeader(
-                      title: '하루 한 컵에게 오퍼',
+                      pageLabel: '하루 한 컵에게 오퍼',
                       step: 1,
                       total: 3,
                       onBack: () {},
                       backDimmed: true,
-                      leading: const CoraNetworkPhoto(url: null),
                     ),
                     const SizedBox(height: 12),
                     CoraStepHeader(
-                      title: '가게 등록',
+                      pageLabel: '가게 등록',
                       step: 3,
                       total: 3,
                       onBack: () {},

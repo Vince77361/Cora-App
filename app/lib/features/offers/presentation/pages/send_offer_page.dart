@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/ui/cora_error_view.dart';
-import '../../../../core/ui/cora_network_photo.dart';
 import '../../../offer_terms/domain/offer_terms.dart';
 import '../../../offer_terms/presentation/widgets/offer_terms_wizard.dart';
 import '../../../store_home/domain/applicant.dart';
@@ -21,7 +20,7 @@ class SendOfferPage extends ConsumerStatefulWidget {
 
   final String creatorId;
 
-  static String headerTitle(String creatorName) => '$creatorName에게 오퍼';
+  static String pageLabel(String creatorName) => '$creatorName에게 오퍼';
   static const confirmTitle = '이 오퍼를\n보낼까요?';
   static const confirmDescription = '상대가 수락하면 그때 결제해요.';
   static const submitLabel = '오퍼 보내기';
@@ -87,13 +86,7 @@ class _SendOfferPageState extends ConsumerState<SendOfferPage> {
             );
     } else {
       body = OfferTermsWizard(
-        headerTitle: SendOfferPage.headerTitle(applicant.creator.displayName),
-        headerLeading: SizedBox.square(
-          dimension: 28,
-          child: ClipOval(
-            child: CoraNetworkPhoto(url: applicant.creator.photoUrl),
-          ),
-        ),
+        pageLabel: SendOfferPage.pageLabel(applicant.creator.displayName),
         initial: initialTermsOf(store.defaultTerms),
         storeName: store.name ?? '',
         confirmTitle: SendOfferPage.confirmTitle,

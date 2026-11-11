@@ -56,7 +56,8 @@ void main() {
     await _openTerms(tester);
 
     expect(currentPath(tester), AppRoutes.storeOnboardingTerms);
-    expect(find.text('기본 오퍼 조건'), findsOneWidget);
+    expect(find.text('기본 오퍼 조건'), findsNothing);
+    expect(find.bySemanticsLabel('기본 오퍼 조건'), findsOneWidget);
     expect(find.text('1 / 3'), findsOneWidget);
     expect(find.text('어떤 콘텐츠를\n부탁할까요?'), findsOneWidget);
   });

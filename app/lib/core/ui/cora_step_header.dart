@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../theme/cora_colors.dart';
-import '../theme/cora_shadows.dart';
-import '../theme/cora_shapes.dart';
 import '../theme/cora_text_styles.dart';
 import 'cora_pressable.dart';
 
@@ -76,30 +74,30 @@ class _ChevronPainter extends CustomPainter {
   bool shouldRepaint(_ChevronPainter old) => old.color != color;
 }
 
-/// 여러 단계 화면의 머리글(캔버스 NStoreLink, NOffer). 높이 64의 줄에 뒤로 가기, 가운데 알약
-/// 제목, 오른쪽 `2 / 3`이 있고 그 아래에 4px 진행 막대가 붙는다.
+/// 여러 단계 화면의 머리글(캔버스 NStoreLink, NOffer). 높이 64의 줄에 뒤로 가기, 가운데 빈
+/// 자리, 오른쪽 `2 / 3`이 있고 그 아래에 4px 진행 막대가 붙는다.
 ///
-/// [leading]을 주면 알약 안 왼쪽에 들어간다(NOffer의 28px 원형 사진). 알약은 그만큼 왼쪽
-/// 안쪽 여백이 4로 줄고 사진과 글자 사이가 8이다.
+/// 캔버스에는 가운데에 화면 이름 알약(`가게 등록` 등)이 있지만, 소유자가 2026-11-12에 뺐다.
+/// 그래서 가운데는 비어 있고, 화면 이름은 화면 읽기 프로그램용 [pageLabel]로만 남는다.
 class CoraStepHeader extends StatelessWidget {
   const CoraStepHeader({
     super.key,
-    required this.title,
+    required this.pageLabel,
     required this.step,
     required this.total,
     this.onBack,
-    this.leading,
     this.backDimmed = false,
     this.showProgress = true,
   });
 
-  final String title;
+  /// 화면에는 그리지 않고 머리글(heading) 의미만 붙인다. 알약을 뺀 뒤에도 화면 읽기
+  /// 프로그램 사용자가 지금 어느 화면인지 알 수 있게 하려는 것이다.
+  final String pageLabel;
   final int step;
   final int total;
 
   /// null이면 뒤로 가기 버튼 자리는 비어 있다.
   final VoidCallback? onBack;
-  final Widget? leading;
   final bool backDimmed;
 
   /// false이면 오른쪽 `2 / 3`과 진행 막대를 그리지 않는다(등록이 끝난 뒤 다시 여는 화면).
@@ -133,9 +131,13 @@ class CoraStepHeader extends StatelessWidget {
                         : CoraBackButton(onPressed: onBack, dimmed: backDimmed),
                   ),
                 ),
+                // 소유자가 2026-11-12에 가운데 화면 이름 알약을 뺐다(캔버스와 다른 점).
+                // 자리는 그대로 두어 뒤로 가기와 `n / m`의 위치가 변하지 않는다.
                 Expanded(
-                  child: Center(
-                    child: _Pill(title: title, leading: leading),
+                  child: Semantics(
+                    header: true,
+                    label: pageLabel,
+                    child: const SizedBox.expand(),
                   ),
                 ),
                 SizedBox(
@@ -182,48 +184,6 @@ class CoraStepHeader extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  const _Pill({required this.title, required this.leading});
-
-  final String title;
-  final Widget? leading;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final text = Flexible(
-      child: Text(
-        title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: CoraTextStyles.label.copyWith(color: c.onStepPill),
-      ),
-    );
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: c.stepPill,
-        borderRadius: BorderRadius.circular(CoraRadius.pill),
-        boxShadow: CoraShadows.stepPill(c.stepPillShadow),
-      ),
-      child: Padding(
-        padding: leading == null
-            ? const EdgeInsets.symmetric(horizontal: 14, vertical: 8)
-            : const EdgeInsets.fromLTRB(4, 4, 14, 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (leading != null) ...[
-              SizedBox.square(dimension: 28, child: ClipOval(child: leading)),
-              const SizedBox(width: 8),
-            ],
-            text,
-          ],
-        ),
-      ),
     );
   }
 }

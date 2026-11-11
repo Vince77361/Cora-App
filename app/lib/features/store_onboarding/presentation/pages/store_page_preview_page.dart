@@ -102,7 +102,7 @@ class _StorePagePreviewPageState extends ConsumerState<StorePagePreviewPage> {
             : Column(
                 children: [
                   CoraStepHeader(
-                    title: widget.onboarding ? '가게 등록' : '가게 페이지',
+                    pageLabel: widget.onboarding ? '가게 등록' : '가게 페이지',
                     step: 2,
                     total: 3,
                     showProgress: widget.onboarding,

@@ -242,7 +242,6 @@ void main() {
     await _pumpGallery(tester);
 
     for (final text in [
-      '가게 등록',
       '지원한 크리에이터 5',
       '오퍼 보내기',
       '아직 없어요',

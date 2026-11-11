@@ -153,7 +153,7 @@ class _LinksFormState extends ConsumerState<_LinksForm> {
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Column(
         children: [
-          CoraStepHeader(title: '가게 등록', step: 1, total: 3, onBack: _back),
+          CoraStepHeader(pageLabel: '가게 등록', step: 1, total: 3, onBack: _back),
           Expanded(
             child: SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,

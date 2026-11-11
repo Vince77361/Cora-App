@@ -34,11 +34,13 @@ void main() {
   setUpAll(loadAppFonts);
 
   testWidgets('shows the canvas copy on the link step', (tester) async {
+    final semantics = tester.ensureSemantics();
     await pumpStoreApp(tester);
 
     expect(currentPath(tester), AppRoutes.storeOnboardingLinks);
     expect(find.byType(StoreLinksPage), findsOneWidget);
-    expect(find.text('가게 등록'), findsOneWidget);
+    expect(find.text('가게 등록'), findsNothing);
+    expect(find.bySemanticsLabel(RegExp('^가게 등록')), findsOneWidget);
     expect(find.text('1 / 3'), findsOneWidget);
     expect(find.text('가게 링크만 넣으면\n소개 페이지를 만들어 드려요.'), findsOneWidget);
     expect(
@@ -50,6 +52,7 @@ void main() {
     expect(find.text('인스타그램 · 선택'), findsOneWidget);
     expect(find.text('가져온 정보는 다음 화면에서 고칠 수 있어요. 공개 정보만 사용해요.'), findsOneWidget);
     expect(find.text('가게 페이지 만들기'), findsOneWidget);
+    semantics.dispose();
   });
 
   testWidgets('create button is disabled until one link is entered', (

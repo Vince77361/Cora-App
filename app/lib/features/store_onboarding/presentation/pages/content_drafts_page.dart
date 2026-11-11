@@ -118,7 +118,7 @@ class _ContentDraftsPageState extends ConsumerState<ContentDraftsPage> {
         child: Column(
           children: [
             CoraStepHeader(
-              title: widget.onboarding ? '가게 등록' : 'AI 글',
+              pageLabel: widget.onboarding ? '가게 등록' : 'AI 글',
               step: 3,
               total: 3,
               showProgress: widget.onboarding,

@@ -91,7 +91,8 @@ void main() {
   ) async {
     await _pumpDrafts(tester);
 
-    expect(find.text('가게 등록'), findsOneWidget);
+    expect(find.text('가게 등록'), findsNothing);
+    expect(find.bySemanticsLabel('가게 등록'), findsOneWidget);
     expect(find.text('3 / 3'), findsOneWidget);
     expect(find.text('가게 계정에 올릴\n초안도 만들었어요.'), findsOneWidget);
     expect(

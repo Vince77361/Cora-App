@@ -6,9 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/cora_test_app.dart';
 
-Finder _pill(String title) =>
-    find.ancestor(of: find.text(title), matching: find.byType(DecoratedBox));
-
 void main() {
   testWidgets('header row is 64 tall with a 4px bar under it', (tester) async {
     await tester.pumpWidget(
@@ -16,7 +13,7 @@ void main() {
         SizedBox(
           width: 358,
           child: CoraStepHeader(
-            title: '가게 등록',
+            pageLabel: '가게 등록',
             step: 1,
             total: 3,
             onBack: () {},
@@ -26,80 +23,124 @@ void main() {
     );
 
     expect(tester.getSize(find.byType(CoraStepHeader)).height, 68);
-    expect(find.text('가게 등록'), findsOneWidget);
     expect(find.text('1 / 3'), findsOneWidget);
   });
+
+  testWidgets('shows back, n / m and the progress bar but no title pill', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      coraTestApp(
+        SizedBox(
+          width: 358,
+          child: CoraStepHeader(
+            pageLabel: '가게 등록',
+            step: 2,
+            total: 3,
+            onBack: () {},
+          ),
+        ),
+      ),
+    );
+
+    // 소유자가 가운데 화면 이름 알약을 뺐다(2026-11-12).
+    expect(find.text('가게 등록'), findsNothing);
+    expect(find.byType(CoraBackButton), findsOneWidget);
+    expect(find.text('2 / 3'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is FractionallySizedBox && w.widthFactor == 0.67,
+      ),
+      findsOneWidget,
+    );
+
+    // 뒤로 가기는 왼쪽, `n / m`은 오른쪽에 그대로 있다.
+    final header = tester.getRect(find.byType(CoraStepHeader));
+    final back = tester.getRect(find.byType(CoraBackButton));
+    final count = tester.getRect(find.text('2 / 3'));
+    expect(back.left, header.left + 8);
+    expect(count.right, header.right - 16);
+    expect(back.center.dy, header.top + 32);
+    expect(count.center.dy, header.top + 32);
+  });
+
+  testWidgets(
+    'keeps the page name as an invisible heading for screen readers',
+    (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        coraTestApp(
+          const CoraStepHeader(pageLabel: '가게 등록', step: 1, total: 3),
+        ),
+      );
+
+      expect(find.bySemanticsLabel('가게 등록'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('가게 등록')),
+        matchesSemantics(label: '가게 등록', isHeader: true),
+      );
+      handle.dispose();
+    },
+  );
 
   testWidgets('progress is the rounded percent of step over total', (
     tester,
   ) async {
-    expect(const CoraStepHeader(title: 'a', step: 1, total: 3).progress, 0.33);
-    expect(const CoraStepHeader(title: 'a', step: 2, total: 3).progress, 0.67);
-    expect(const CoraStepHeader(title: 'a', step: 3, total: 3).progress, 1);
+    expect(
+      const CoraStepHeader(pageLabel: 'a', step: 1, total: 3).progress,
+      0.33,
+    );
+    expect(
+      const CoraStepHeader(pageLabel: 'a', step: 2, total: 3).progress,
+      0.67,
+    );
+    expect(const CoraStepHeader(pageLabel: 'a', step: 3, total: 3).progress, 1);
   });
 
-  testWidgets(
-    'light pill is white with a shadow and the bar uses canvas colors',
-    (tester) async {
-      await tester.pumpWidget(
-        coraTestApp(const CoraStepHeader(title: '가게 등록', step: 1, total: 3)),
-      );
-      final c = CoraColors.light;
-      final pill =
-          tester.widget<DecoratedBox>(_pill('가게 등록').first).decoration
-              as BoxDecoration;
-      expect(pill.color, const Color(0xFFFFFFFF));
-      expect(pill.boxShadow, isNotEmpty);
-      expect(pill.borderRadius, BorderRadius.circular(999));
-      final texts = tester.widgetList<Text>(find.byType(Text)).toList();
-      expect(
-        texts.firstWhere((t) => t.data == '1 / 3').style!.color,
-        c.textSecondary,
-      );
-      final track = tester
-          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
-          .map((d) => d.decoration)
-          .whereType<BoxDecoration>()
-          .where((d) => d.color == const Color(0xFFE6E8EB));
-      expect(track, isNotEmpty);
-      expect(
-        find.byWidgetPredicate(
-          (w) => w is ColoredBox && w.color == const Color(0xFF17181C),
-        ),
-        findsOneWidget,
-      );
-    },
-  );
+  testWidgets('light bar uses the canvas colors', (tester) async {
+    await tester.pumpWidget(
+      coraTestApp(const CoraStepHeader(pageLabel: '가게 등록', step: 1, total: 3)),
+    );
+    final texts = tester.widgetList<Text>(find.byType(Text)).toList();
+    expect(
+      texts.firstWhere((t) => t.data == '1 / 3').style!.color,
+      CoraColors.light.textSecondary,
+    );
+    final track = tester
+        .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .map((d) => d.decoration)
+        .whereType<BoxDecoration>()
+        .where((d) => d.color == const Color(0xFFE6E8EB));
+    expect(track, isNotEmpty);
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is ColoredBox && w.color == const Color(0xFF17181C),
+      ),
+      findsOneWidget,
+    );
+  });
 
-  testWidgets(
-    'dark pill is light gray without a shadow and the fill is darker than the track',
-    (tester) async {
-      await tester.pumpWidget(
-        coraTestApp(
-          const CoraStepHeader(title: '가게 등록', step: 1, total: 3),
-          theme: coraDarkTheme,
-        ),
-      );
-      final pill =
-          tester.widget<DecoratedBox>(_pill('가게 등록').first).decoration
-              as BoxDecoration;
-      expect(pill.color, const Color(0xFFF2F3F5));
-      expect(pill.boxShadow!.single.color.a, 0);
-      expect(
-        find.byWidgetPredicate(
-          (w) => w is ColoredBox && w.color == const Color(0xFF0F1012),
-        ),
-        findsOneWidget,
-      );
-    },
-  );
+  testWidgets('dark fill is darker than the track', (tester) async {
+    await tester.pumpWidget(
+      coraTestApp(
+        const CoraStepHeader(pageLabel: '가게 등록', step: 1, total: 3),
+        theme: coraDarkTheme,
+      ),
+    );
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is ColoredBox && w.color == const Color(0xFF0F1012),
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('back button calls onBack and is 44 x 44', (tester) async {
     var backs = 0;
     await tester.pumpWidget(
       coraTestApp(
         CoraStepHeader(
-          title: '가게 등록',
+          pageLabel: '가게 등록',
           step: 2,
           total: 3,
           onBack: () => backs++,
@@ -115,7 +156,7 @@ void main() {
 
   testWidgets('without onBack there is no back button', (tester) async {
     await tester.pumpWidget(
-      coraTestApp(const CoraStepHeader(title: '가게 등록', step: 1, total: 3)),
+      coraTestApp(const CoraStepHeader(pageLabel: '가게 등록', step: 1, total: 3)),
     );
     expect(find.byType(CoraBackButton), findsNothing);
   });
@@ -124,7 +165,7 @@ void main() {
     await tester.pumpWidget(
       coraTestApp(
         CoraStepHeader(
-          title: '오퍼',
+          pageLabel: '오퍼',
           step: 1,
           total: 3,
           onBack: () {},
@@ -141,21 +182,7 @@ void main() {
     expect(opacity.opacity, 0.3);
   });
 
-  testWidgets('leading puts a 28px circle inside the pill', (tester) async {
-    await tester.pumpWidget(
-      coraTestApp(
-        const CoraStepHeader(
-          title: '하루 한 컵에게 오퍼',
-          step: 1,
-          total: 3,
-          leading: ColoredBox(color: Colors.red, key: Key('lead')),
-        ),
-      ),
-    );
-    expect(tester.getSize(find.byKey(const Key('lead'))), const Size(28, 28));
-  });
-
-  testWidgets('does not overflow at 1.3x text and a long title', (
+  testWidgets('does not overflow at 1.3x text and a long page label', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1080, 1920);
@@ -164,7 +191,7 @@ void main() {
     await tester.pumpWidget(
       coraTestApp(
         CoraStepHeader(
-          title: '아주아주 긴 가게 이름을 가진 곳에게 보내는 오퍼',
+          pageLabel: '아주아주 긴 가게 이름을 가진 곳에게 보내는 오퍼',
           step: 2,
           total: 3,
           onBack: () {},

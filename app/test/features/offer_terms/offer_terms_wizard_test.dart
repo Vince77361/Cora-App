@@ -51,7 +51,7 @@ Future<void> _pump(
           body: SafeArea(
             bottom: false,
             child: OfferTermsWizard(
-              headerTitle: '기본 오퍼 조건',
+              pageLabel: '기본 오퍼 조건',
               initial: initial,
               storeName: '한그릇 라멘',
               confirmTitle: '이 조건으로 가게를\n공개할까요?',

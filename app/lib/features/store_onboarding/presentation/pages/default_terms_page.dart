@@ -12,7 +12,7 @@ import '../viewmodels/my_store_view_model.dart';
 class DefaultTermsPage extends ConsumerWidget {
   const DefaultTermsPage({super.key});
 
-  static const headerTitle = '기본 오퍼 조건';
+  static const pageLabel = '기본 오퍼 조건';
   static const confirmTitle = '이 조건으로 가게를\n공개할까요?';
   static const confirmDescription =
       '크리에이터가 가게 페이지에서 이 조건을 봐요. 오퍼를 보낼 때 바꿀 수 있어요.';
@@ -29,7 +29,7 @@ class DefaultTermsPage extends ConsumerWidget {
         child: store == null
             ? const SizedBox.expand()
             : OfferTermsWizard(
-                headerTitle: headerTitle,
+                pageLabel: pageLabel,
                 initial: _inputOf(store.defaultTerms),
                 storeName: store.name ?? '',
                 confirmTitle: confirmTitle,

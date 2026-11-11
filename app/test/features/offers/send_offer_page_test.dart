@@ -1,4 +1,5 @@
 import 'package:cora/core/navigation/app_routes.dart';
+import 'package:cora/core/ui/cora_step_header.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart';
 import 'package:cora/features/offers/presentation/pages/send_offer_page.dart';
 import 'package:cora/features/store_onboarding/domain/my_store.dart';
@@ -56,13 +57,16 @@ Future<void> _next(WidgetTester tester) async {
 void main() {
   setUpAll(loadAppFonts);
 
-  testWidgets('shows the creator in the header and starts at step 1', (
+  testWidgets('has no title pill in the header and starts at step 1', (
     tester,
   ) async {
     await _openSendOffer(tester);
 
     expect(find.byType(SendOfferPage), findsOneWidget);
-    expect(find.text('하루 한 컵에게 오퍼'), findsOneWidget);
+    // 소유자가 가운데 화면 이름 알약을 뺐다(2026-11-12). 이름은 화면 읽기용으로만 남는다.
+    expect(find.text('하루 한 컵에게 오퍼'), findsNothing);
+    expect(find.bySemanticsLabel('하루 한 컵에게 오퍼'), findsOneWidget);
+    expect(find.byType(CoraBackButton), findsOneWidget);
     expect(find.text('1 / 3'), findsOneWidget);
     expect(find.text('어떤 콘텐츠를\n부탁할까요?'), findsOneWidget);
   });

@@ -45,7 +45,8 @@ void main() {
   ) async {
     await _pumpPage(tester);
 
-    expect(find.text('가게 등록'), findsOneWidget);
+    expect(find.text('가게 등록'), findsNothing);
+    expect(find.bySemanticsLabel('가게 등록'), findsOneWidget);
     expect(find.text('2 / 3'), findsOneWidget);
     expect(find.text('링크에서 자동으로 만들었어요'), findsOneWidget);
     expect(find.text('라멘집, 성수동'), findsOneWidget);
