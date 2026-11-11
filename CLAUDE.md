@@ -6,7 +6,7 @@ Cora는 가게 사장님·브랜드와 크리에이터를 잇는 모바일 앱�
 
 - 설계: `docs/superpowers/specs/`. 시작은 `2026-11-11-tech-stack-design.md`.
 - **여러 설계에 걸친 규칙은 `2026-11-11-collaboration-common-model.md`에 있고, 기능 설계와 다르면 이 문서가 우선한다.**
-- 실행 계획: `docs/superpowers/plans/`. 순서는 공통 기반 → 가게 사장님 흐름과 오퍼 → 결제·에스크로·지급 → 브랜드 탐색·매칭 → 대화·계약 → 제작·검토·회고 → 포트폴리오·릴스·입찰 → 유입 전략.
+- 실행 계획: `docs/superpowers/plans/`. 순서는 공통 기반 → 가게 사장님 흐름과 오퍼 → 결제·에스크로·지급 → 브랜드 탐색·매칭 → 대화·계약 → 제작·검토·회고 → 포트폴리오·릴스·입찰 → 계정·설정 → 유입 전략 → 실제 연동 교체·출시 준비(이 계획의 보안 보강 묶음 Task 1~4는 2번 직후에 먼저 한다).
 - 코딩 패턴: https://github.com/Vince77361/Vince_Wiki 의 `wiki/`. 인증, 권한, API, DB, 업로드, 결제, 개인정보를 다룰 때는 `wiki/patterns/security-baseline.md`를 먼저 읽는다.
 
 ## 일하는 방식
