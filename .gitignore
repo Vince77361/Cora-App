@@ -13,5 +13,8 @@ app/config/*.json
 node_modules/
 dist/
 
+# 스크립트가 내려받는 도구(openapi-generator jar)
+.tools/
+
 # macOS
 .DS_Store

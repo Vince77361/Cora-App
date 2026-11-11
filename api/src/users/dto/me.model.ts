@@ -8,6 +8,7 @@ export class MeModel {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ enum: ['STORE', 'BRAND', 'CREATOR'], nullable: true })
+  // enumName을 같게 두어 문서와 Dart 클라이언트에 UserRole 열거형이 하나만 생기게 한다.
+  @ApiProperty({ enum: UserRole, enumName: 'UserRole', nullable: true })
   role!: MeRole;
 }

@@ -3,9 +3,10 @@ import {
   ValidationError,
   ValidationPipe,
 } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
 import { AppError } from './common/errors/app-error';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
+import { buildOpenApiDocument } from './openapi';
 
 // 중첩 DTO까지 풀어서 필드별 메시지 배열로 만든다.
 function flatten(
@@ -38,10 +39,5 @@ export function setupApp(app: INestApplication): void {
   );
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  const config = new DocumentBuilder()
-    .setTitle('Cora API')
-    .setVersion('0.1.0')
-    .addBearerAuth()
-    .build();
-  SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
+  SwaggerModule.setup('docs', app, buildOpenApiDocument(app));
 }

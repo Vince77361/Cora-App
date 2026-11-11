@@ -19,6 +19,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "node scripts/with-test-db.js jest --config ./test/jest-e2e.json --runInBand",
     "test:db": "node scripts/with-test-db.js jest --config ./test/jest-db.json --runInBand",
+    "openapi:export": "ts-node scripts/export-openapi.ts",
     "check:rls": "node scripts/check-rls.js",
     "postinstall": "prisma generate"
   },

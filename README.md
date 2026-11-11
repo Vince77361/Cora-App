@@ -37,3 +37,9 @@ API는 `Authorization: Bearer <토큰>`의 Supabase 액세스 토큰을 검증�
 2. 응답의 `access_token`을 꺼낸다.
 3. `curl -H "Authorization: Bearer <token>" http://127.0.0.1:3000/me`
 4. 기대 결과: `{"id":"<uuid>","role":null}`
+
+## API 클라이언트
+
+API를 바꾸면 `./scripts/gen-api.sh`를 실행하고 생성물을 같은 커밋에 넣는다. `app/packages/cora_api`는 손으로 고치지 않는다.
+
+생성기는 버전을 고정한 openapi-generator jar를 로컬 Java로 돌린다(Docker는 쓰지 않는다). jar는 처음 실행할 때 `.tools/`에 내려받고 체크섬을 검증한다.
