@@ -221,6 +221,20 @@ export class OffersRepository {
     );
   }
 
+  // 결제가 승인돼 결제 기한을 지운다. 오퍼는 ACCEPTED 그대로다. 이 갱신이 오퍼 행을 잠그므로,
+  // 취소·만료(오퍼 → 협업 순)와 같은 순서로 잠가 교착을 피하려면 결제 승인 트랜잭션은 이것을 먼저 부른다.
+  // ACCEPTED가 아니면(이미 만료·취소) 0행이라 false다.
+  async clearPaymentDue(
+    id: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const { count } = await tx.offer.updateMany({
+      where: { id, status: 'ACCEPTED', deletedAt: null },
+      data: { paymentDueAt: null },
+    });
+    return count === 1;
+  }
+
   // 오퍼 갱신(조건부)과 alongWith를 한 트랜잭션으로 묶는다. 갱신이 0행이면 alongWith는 부르지 않는다.
   // alongWith가 없으면 문장 하나짜리 갱신이라 트랜잭션을 열지 않는다: 목록을 읽을 때 여러 오퍼를
   // 동시에 정리하므로, 불필요한 대화형 트랜잭션이 연결을 붙잡아 풀이 마르는 것을 막는다.

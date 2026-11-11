@@ -85,6 +85,9 @@ Class | Method | HTTP request | Description
 *OffersApi* | [**listSentOffers**](doc//OffersApi.md#listsentoffers) | **GET** /offers/sent | 
 *OffersApi* | [**sendOffer**](doc//OffersApi.md#sendoffer) | **POST** /offers | 
 *OffersApi* | [**undoDeclineOffer**](doc//OffersApi.md#undodeclineoffer) | **POST** /offers/{id}/undo-decline | 
+*PaymentsApi* | [**createPayment**](doc//PaymentsApi.md#createpayment) | **POST** /collaborations/{id}/payments | 
+*PaymentsApi* | [**getPayment**](doc//PaymentsApi.md#getpayment) | **GET** /payments/{id} | 
+*PaymentsApi* | [**getPaymentQuote**](doc//PaymentsApi.md#getpaymentquote) | **GET** /collaborations/{id}/payment-quote | 
 *StoresApi* | [**advanceMyStoreOnboarding**](doc//StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
 *StoresApi* | [**analyzeMyStoreLinks**](doc//StoresApi.md#analyzemystorelinks) | **POST** /stores/me/analyze | 
 *StoresApi* | [**getMyStore**](doc//StoresApi.md#getmystore) | **GET** /stores/me | 
@@ -111,6 +114,7 @@ Class | Method | HTTP request | Description
  - [ContentDraftKind](doc//ContentDraftKind.md)
  - [ContentDraftModel](doc//ContentDraftModel.md)
  - [ContentFormat](doc//ContentFormat.md)
+ - [CreatePaymentDto](doc//CreatePaymentDto.md)
  - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
  - [CreatorProfileModel](doc//CreatorProfileModel.md)
  - [CreatorSummaryModel](doc//CreatorSummaryModel.md)
@@ -124,6 +128,11 @@ Class | Method | HTTP request | Description
  - [MyStoreModel](doc//MyStoreModel.md)
  - [OfferTermsModel](doc//OfferTermsModel.md)
  - [OfferView](doc//OfferView.md)
+ - [PaymentCreatedModel](doc//PaymentCreatedModel.md)
+ - [PaymentMethod](doc//PaymentMethod.md)
+ - [PaymentQuoteModel](doc//PaymentQuoteModel.md)
+ - [PaymentStatus](doc//PaymentStatus.md)
+ - [PaymentStatusModel](doc//PaymentStatusModel.md)
  - [PhotoUploadModel](doc//PhotoUploadModel.md)
  - [ReceivedOfferModel](doc//ReceivedOfferModel.md)
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)

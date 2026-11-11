@@ -226,6 +226,8 @@ class ApiClient {
           return ContentDraftModel.fromJson(value);
         case 'ContentFormat':
           return ContentFormatTypeTransformer().decode(value);
+        case 'CreatePaymentDto':
+          return CreatePaymentDto.fromJson(value);
         case 'CreatePhotoUploadDto':
           return CreatePhotoUploadDto.fromJson(value);
         case 'CreatorProfileModel':
@@ -252,6 +254,16 @@ class ApiClient {
           return OfferTermsModel.fromJson(value);
         case 'OfferView':
           return OfferViewTypeTransformer().decode(value);
+        case 'PaymentCreatedModel':
+          return PaymentCreatedModel.fromJson(value);
+        case 'PaymentMethod':
+          return PaymentMethodTypeTransformer().decode(value);
+        case 'PaymentQuoteModel':
+          return PaymentQuoteModel.fromJson(value);
+        case 'PaymentStatus':
+          return PaymentStatusTypeTransformer().decode(value);
+        case 'PaymentStatusModel':
+          return PaymentStatusModel.fromJson(value);
         case 'PhotoUploadModel':
           return PhotoUploadModel.fromJson(value);
         case 'ReceivedOfferModel':

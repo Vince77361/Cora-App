@@ -10,7 +10,8 @@ async function bootstrap() {
   loadDotenv({ quiet: true });
   // 운영에서 가짜 연동이 켜진 채로는 앱이 뜨지 않게 listen 전에 막는다.
   assertNoFakesInProduction(loadEnv(process.env));
-  const app = await NestFactory.create(AppModule);
+  // 결제 통지의 서명은 받은 본문 그대로에 대한 것이라 원본 본문(rawBody)을 함께 보관한다.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   setupApp(app);
   await app.listen(process.env.PORT ?? 3000);
 }

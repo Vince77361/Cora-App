@@ -178,6 +178,21 @@
         ],
         "type": "string"
       },
+      "CreatePaymentDto": {
+        "properties": {
+          "method": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentMethod"
+              }
+            ]
+          }
+        },
+        "required": [
+          "method"
+        ],
+        "type": "object"
+      },
       "CreatePhotoUploadDto": {
         "properties": {
           "contentType": {
@@ -576,6 +591,118 @@
           "CANCELLED"
         ],
         "type": "string"
+      },
+      "PaymentCreatedModel": {
+        "properties": {
+          "checkoutUrl": {
+            "description": "앱이 여는 결제창 주소.",
+            "type": "string"
+          },
+          "paymentId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paymentId",
+          "checkoutUrl"
+        ],
+        "type": "object"
+      },
+      "PaymentMethod": {
+        "enum": [
+          "CARD",
+          "TRANSFER",
+          "EASY_PAY"
+        ],
+        "type": "string"
+      },
+      "PaymentQuoteModel": {
+        "properties": {
+          "creatorName": {
+            "description": "오퍼를 수락한 크리에이터의 활동 이름.",
+            "type": "string"
+          },
+          "creatorPhotoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "escrow": {
+            "description": "에스크로에 보관할 금액. 조건의 조회수당 상한이다.",
+            "type": "integer"
+          },
+          "fee": {
+            "description": "서비스 수수료. 상한 × 수수료율을 내림한 값.",
+            "type": "integer"
+          },
+          "feeRate": {
+            "description": "수수료율(%).",
+            "type": "integer"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "orderName": {
+            "description": "PG에 넘기는 주문 이름.",
+            "type": "string"
+          },
+          "pieces": {
+            "description": "콘텐츠 편 수. 오퍼는 지금 한 편이다.",
+            "type": "integer"
+          },
+          "total": {
+            "description": "지금 결제할 금액(상한 + 수수료).",
+            "type": "integer"
+          },
+          "voucherName": {
+            "description": "식사권 이름. 보상에 식사권이 없으면 null.",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "escrow",
+          "fee",
+          "feeRate",
+          "total",
+          "orderName",
+          "creatorName",
+          "creatorPhotoUrl",
+          "format",
+          "pieces",
+          "voucherName"
+        ],
+        "type": "object"
+      },
+      "PaymentStatus": {
+        "description": "결제 완료 여부는 결제창의 결과가 아니라 서버가 PG에서 받은 통지로 정해진다. 앱은 창이 닫힌 뒤 이 값을 묻는다.",
+        "enum": [
+          "PENDING",
+          "APPROVED",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "type": "string"
+      },
+      "PaymentStatusModel": {
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentStatus"
+              }
+            ],
+            "description": "결제 완료 여부는 결제창의 결과가 아니라 서버가 PG에서 받은 통지로 정해진다. 앱은 창이 닫힌 뒤 이 값을 묻는다."
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
       },
       "PhotoUploadModel": {
         "properties": {
@@ -1157,6 +1284,88 @@
   },
   "openapi": "3.0.0",
   "paths": {
+    "/collaborations/{id}/payment-quote": {
+      "get": {
+        "operationId": "getPaymentQuote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentQuoteModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
+    "/collaborations/{id}/payments": {
+      "post": {
+        "operationId": "createPayment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentCreatedModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
     "/creators/me": {
       "get": {
         "operationId": "getMyCreatorProfile",
@@ -1662,6 +1871,42 @@
         "summary": "",
         "tags": [
           "Offers"
+        ]
+      }
+    },
+    "/payments/{id}": {
+      "get": {
+        "operationId": "getPayment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentStatusModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Payments"
         ]
       }
     },

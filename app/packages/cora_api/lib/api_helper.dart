@@ -86,6 +86,12 @@ String parameterToString(dynamic value) {
   if (value is OfferView) {
     return OfferViewTypeTransformer().encode(value).toString();
   }
+  if (value is PaymentMethod) {
+    return PaymentMethodTypeTransformer().encode(value).toString();
+  }
+  if (value is PaymentStatus) {
+    return PaymentStatusTypeTransformer().encode(value).toString();
+  }
   if (value is ReceivedOfferTab) {
     return ReceivedOfferTabTypeTransformer().encode(value).toString();
   }

@@ -59,8 +59,16 @@ export class FakePaymentAdapter extends PaymentPort {
     }
   }
 
-  fetchStatus(paymentId: string): Promise<'PENDING' | 'APPROVED' | 'FAILED'> {
-    return Promise.resolve(this.results.get(paymentId)?.status ?? 'PENDING');
+  fetchStatus(paymentId: string): Promise<{
+    status: 'PENDING' | 'APPROVED' | 'FAILED';
+    pgTransactionId: string | null;
+  }> {
+    // 개발 서버를 다시 띄우면 메모리 기록이 사라져 PENDING으로 돌아온다. 호출한 쪽은 이를 "아직 모름"으로 본다.
+    const recorded = this.results.get(paymentId);
+    return Promise.resolve({
+      status: recorded?.status ?? 'PENDING',
+      pgTransactionId: recorded?.pgTransactionId ?? null,
+    });
   }
 
   refund(input: {
@@ -78,21 +86,41 @@ export class FakePaymentAdapter extends PaymentPort {
     return Promise.resolve({ externalId });
   }
 
-  // 개발용 통지 경로(6번 작업)와 테스트가 쓴다: PG가 보냈을 법한 통지를 기록하고, 서명된 본문을 돌려준다.
+  // 개발용 통지 경로가 쓴다: PG가 결과를 냈다는 기록만 남긴다. 서명하지 않으므로 PAYMENT_WEBHOOK_SECRET 없이도 된다.
+  recordResult(input: {
+    paymentId: string;
+    status: 'APPROVED' | 'FAILED';
+    pgTransactionId?: string;
+  }): PaymentNotice {
+    const notice = this.noticeOf(input);
+    this.results.set(input.paymentId, notice);
+    return notice;
+  }
+
+  // 서명 경로(웹훅) 테스트가 쓴다: 결과를 기록하고, 서명된 본문을 돌려준다.
   recordFakeResult(input: {
     paymentId: string;
     status: 'APPROVED' | 'FAILED';
     pgTransactionId?: string;
   }): { rawBody: string; signature: string } {
-    const notice: PaymentNotice = {
+    const notice = this.noticeOf(input);
+    const rawBody = JSON.stringify(notice);
+    // 서명이 실패하면(비밀값 없음) 기록도 남기지 않는다.
+    const signature = this.sign(rawBody);
+    this.results.set(input.paymentId, notice);
+    return { rawBody, signature };
+  }
+
+  private noticeOf(input: {
+    paymentId: string;
+    status: 'APPROVED' | 'FAILED';
+    pgTransactionId?: string;
+  }): PaymentNotice {
+    return {
       paymentId: input.paymentId,
       pgTransactionId: input.pgTransactionId ?? `fake-tx-${input.paymentId}`,
       status: input.status,
     };
-    const rawBody = JSON.stringify(notice);
-    const signature = this.sign(rawBody);
-    this.results.set(input.paymentId, notice);
-    return { rawBody, signature };
   }
 
   private sign(rawBody: string): string {

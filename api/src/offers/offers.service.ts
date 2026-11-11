@@ -401,6 +401,21 @@ export class OffersService {
     await this.settle(row, this.clock.now());
   }
 
+  // 결제 승인 트랜잭션이 부른다(3번 계획, 원장 판단 R1). 결제를 기다리던 수락 오퍼의 결제 기한을 지운다.
+  // 승인 트랜잭션은 이것을 가장 먼저 불러 오퍼 → 협업 순으로 잠근다(취소·만료와 같은 순서).
+  // 오퍼가 이미 만료·취소됐으면 false다 — 호출한 쪽이 트랜잭션을 되돌린다.
+  clearPaymentDue(
+    offerId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    return this.offers.clearPaymentDue(offerId, tx);
+  }
+
+  // 결제가 승인되면 결제 기한 작업은 필요 없다. 지우지 못해도 처리기가 결제 기한이 없는 오퍼를 건드리지 않으므로 무해하다.
+  cancelPaymentDueJob(offerId: string): Promise<void> {
+    return this.cancelJob(`payment-due:${offerId}`);
+  }
+
   // 사장님 홈의 숫자 세 개. 목록과 같은 정리를 거친 뒤 센다.
   async getHomeSummary(userId: string): Promise<StoreHomeSummaryModel> {
     await this.assertRole(userId, 'STORE', '가게 계정만 쓸 수 있어요.');

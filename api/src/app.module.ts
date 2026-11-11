@@ -12,6 +12,8 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { JobsModule } from './jobs/jobs.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OffersModule } from './offers/offers.module';
+import { PaymentsDevModule } from './payments/payments-dev.module';
+import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StoresModule } from './stores/stores.module';
 import { UploadsModule } from './uploads/uploads.module';
@@ -35,6 +37,8 @@ import { UsersModule } from './users/users.module';
     ApplicationsModule,
     InstagramModule,
     OffersModule,
+    PaymentsModule,
+    PaymentsDevModule.register(process.env),
   ],
 })
 export class AppModule {}

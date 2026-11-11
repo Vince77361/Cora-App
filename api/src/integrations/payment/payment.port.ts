@@ -21,9 +21,12 @@ export abstract class PaymentPort {
     signature: string,
   ): PaymentNotice | null;
 
-  abstract fetchStatus(
-    paymentId: string,
-  ): Promise<'PENDING' | 'APPROVED' | 'FAILED'>;
+  // 통지를 놓쳤을 때 PG에 직접 묻는다. 환급이 PG 거래 번호를 요구하므로 승인된 결제는 그 번호도 함께 돌려준다
+  // (아직 PENDING이거나 PG가 모르는 결제는 null).
+  abstract fetchStatus(paymentId: string): Promise<{
+    status: 'PENDING' | 'APPROVED' | 'FAILED';
+    pgTransactionId: string | null;
+  }>;
 
   // 같은 idempotencyKey로 다시 불러도 환급이 한 번만 나가야 한다.
   abstract refund(input: {

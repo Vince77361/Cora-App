@@ -42,7 +42,8 @@ export async function createTestApp(
       inject: [JobHandlerRegistry],
     })
     .compile();
-  const app = moduleRef.createNestApplication();
+  // main.ts와 같게 원본 본문을 보관한다(결제 웹훅 서명 검증).
+  const app = moduleRef.createNestApplication({ rawBody: true });
   // 예상된 오류 로그가 테스트 출력을 어지럽히지 않게 한다.
   app.useLogger(false);
   setupApp(app);

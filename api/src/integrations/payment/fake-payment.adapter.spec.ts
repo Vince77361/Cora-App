@@ -65,11 +65,31 @@ describe('FakePaymentAdapter', () => {
     expect(adapter.verifyWebhook(notJson, sig2)).toBeNull();
   });
 
-  it('reports PENDING until a fake result is recorded, then that result', async () => {
+  it('reports PENDING until a fake result is recorded, then that result with its transaction id', async () => {
     const adapter = new FakePaymentAdapter(SECRET);
-    await expect(adapter.fetchStatus('pay_1')).resolves.toBe('PENDING');
+    await expect(adapter.fetchStatus('pay_1')).resolves.toEqual({
+      status: 'PENDING',
+      pgTransactionId: null,
+    });
     adapter.recordFakeResult({ paymentId: 'pay_1', status: 'APPROVED' });
-    await expect(adapter.fetchStatus('pay_1')).resolves.toBe('APPROVED');
+    await expect(adapter.fetchStatus('pay_1')).resolves.toEqual({
+      status: 'APPROVED',
+      pgTransactionId: 'fake-tx-pay_1',
+    });
+  });
+
+  it('records a result without a webhook secret so the dev flow works without one', async () => {
+    const adapter = new FakePaymentAdapter(undefined);
+    expect(
+      adapter.recordResult({ paymentId: 'pay_1', status: 'APPROVED' }),
+    ).toEqual({
+      paymentId: 'pay_1',
+      pgTransactionId: 'fake-tx-pay_1',
+      status: 'APPROVED',
+    });
+    await expect(adapter.fetchStatus('pay_1')).resolves.toMatchObject({
+      status: 'APPROVED',
+    });
   });
 
   it('returns the same refund id for the same idempotency key', async () => {
