@@ -4,6 +4,7 @@ import { UserRole } from '@prisma/client';
 import { AppError } from '../common/errors/app-error';
 import { StoragePort } from '../integrations/storage/storage.port';
 import { UsersService } from '../users/users.service';
+import { UploadRateLimiter } from './upload-rate-limiter';
 import { CreatePhotoUploadDto } from './dto/create-photo-upload.dto';
 import { PhotoUploadModel } from './dto/photo-upload.model';
 import {
@@ -29,6 +30,7 @@ export class UploadsService {
   constructor(
     private readonly users: UsersService,
     private readonly storage: StoragePort,
+    private readonly limiter: UploadRateLimiter,
   ) {}
 
   async createPhotoUpload(
@@ -61,7 +63,16 @@ export class UploadsService {
     }
     // 사용자 입력은 경로에 들어가지 않는다. 사용자 ID는 토큰에서, 파일 이름은 서버가 만든다.
     const path = `${rule.dir}/${userId}/${randomUUID()}.${extension}`;
-    return { uploadUrl: await this.storage.createUploadUrl(path), path };
+    // 역할·형식·크기 검증을 통과한 요청만 센다. 발급이 실패하면 되돌린다.
+    if (!this.limiter.tryAcquire(userId)) {
+      throw new AppError('RATE_LIMITED', '잠시 후 다시 시도해 주세요.');
+    }
+    try {
+      return { uploadUrl: await this.storage.createUploadUrl(path), path };
+    } catch (error) {
+      this.limiter.release(userId);
+      throw error;
+    }
   }
 
   // 클라이언트가 보낸 사진 경로를 저장하기 전에 부른다. 남의 사진이나 임의 경로를 못 끼워 넣게 한다.

@@ -1,7 +1,9 @@
 import { UserRole } from '@prisma/client';
 import { AppError } from '../common/errors/app-error';
 import { UsersService } from '../users/users.service';
+import { FakeClock } from '../../test/support/fake-clock';
 import { FakeStoragePort } from '../../test/support/fake-storage.port';
+import { UploadRateLimiter } from './upload-rate-limiter';
 import { UploadsService } from './uploads.service';
 
 const USER = '11111111-1111-4111-8111-111111111111';
@@ -43,6 +45,7 @@ function syncCodeOf(fn: () => void): string | undefined {
 describe('UploadsService', () => {
   let users: FakeUsersService;
   let storage: FakeStoragePort;
+  let clock: FakeClock;
   let service: UploadsService;
 
   const storeCover = {
@@ -54,7 +57,8 @@ describe('UploadsService', () => {
   beforeEach(() => {
     users = new FakeUsersService();
     storage = new FakeStoragePort();
-    service = new UploadsService(users, storage);
+    clock = new FakeClock();
+    service = new UploadsService(users, storage, new UploadRateLimiter(clock));
   });
 
   describe('createPhotoUpload', () => {
@@ -157,6 +161,77 @@ describe('UploadsService', () => {
       expect(await codeOf(service.createPhotoUpload(USER, storeCover))).toBe(
         'FORBIDDEN',
       );
+    });
+  });
+
+  describe('rate limit', () => {
+    const HOUR = 60 * 60 * 1000;
+    const issue = (userId = USER, over = {}) =>
+      service.createPhotoUpload(userId, { ...storeCover, ...over });
+    const issueMany = async (n: number, userId = USER) => {
+      for (let i = 0; i < n; i++) await issue(userId);
+    };
+
+    it('refuses the 31st issuance within an hour with RATE_LIMITED', async () => {
+      await issueMany(30);
+      expect(await codeOf(issue())).toBe('RATE_LIMITED');
+      expect(storage.uploadUrlPaths).toHaveLength(30);
+    });
+
+    it('allows issuing again once the window has passed', async () => {
+      await issueMany(30);
+      clock.advance(HOUR - 1);
+      expect(await codeOf(issue())).toBe('RATE_LIMITED');
+      clock.advance(2);
+      expect(await codeOf(issue())).toBeUndefined();
+    });
+
+    it('uses a rolling window, not a fixed hour', async () => {
+      await issueMany(15);
+      clock.advance(HOUR / 2);
+      await issueMany(15);
+      // 처음 15개가 창 밖으로 나가면 15개만 다시 쓸 수 있다.
+      clock.advance(HOUR / 2 + 1);
+      await issueMany(15);
+      expect(await codeOf(issue())).toBe('RATE_LIMITED');
+    });
+
+    it('counts each user separately', async () => {
+      await issueMany(30);
+      users.role = 'STORE';
+      expect(await codeOf(issue(OTHER))).toBeUndefined();
+    });
+
+    it('does not count requests rejected for role, type or size', async () => {
+      await issueMany(29);
+      expect(await codeOf(issue(USER, { contentType: 'image/gif' }))).toBe(
+        'VALIDATION_FAILED',
+      );
+      expect(await codeOf(issue(USER, { sizeBytes: MB5 + 1 }))).toBe(
+        'VALIDATION_FAILED',
+      );
+      users.role = 'CREATOR';
+      expect(await codeOf(issue())).toBe('FORBIDDEN');
+      users.role = 'STORE';
+      // 거절된 3건이 세어졌다면 여기서 막힌다.
+      expect(await codeOf(issue())).toBeUndefined();
+      expect(await codeOf(issue())).toBe('RATE_LIMITED');
+    });
+
+    it('does not count an issuance that failed in storage', async () => {
+      await issueMany(29);
+      const original = storage.createUploadUrl.bind(storage);
+      storage.createUploadUrl = () => Promise.reject(new Error('down'));
+      await expect(issue()).rejects.toThrow('down');
+      storage.createUploadUrl = original;
+      expect(await codeOf(issue())).toBeUndefined();
+    });
+
+    it('answers with the Korean retry message', async () => {
+      await issueMany(30);
+      await expect(issue()).rejects.toMatchObject({
+        message: '잠시 후 다시 시도해 주세요.',
+      });
     });
   });
 

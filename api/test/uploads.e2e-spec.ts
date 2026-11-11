@@ -142,3 +142,39 @@ describe('uploads', () => {
     expect(path.endsWith('.heic')).toBe(true);
   });
 });
+
+// 한도 상태는 앱(모듈)마다 따로이므로, 위 테스트와 섞이지 않게 새 앱으로 확인한다.
+describe('uploads rate limit', () => {
+  let app: INestApplication;
+  let prisma: PrismaClient;
+
+  beforeAll(async () => {
+    prisma = new PrismaClient();
+    await truncateTestDb(prisma);
+    app = await createTestApp();
+  });
+  afterAll(async () => {
+    await app.close();
+    await prisma.$disconnect();
+  });
+
+  it('answers 429 RATE_LIMITED on the 31st request within an hour', async () => {
+    const server = httpOf(app);
+    await request(server)
+      .patch('/me/role')
+      .set(auth)
+      .send({ role: 'STORE' })
+      .expect(200);
+    const send = () =>
+      request(server).post('/uploads/photos').set(auth).send({
+        purpose: 'STORE_COVER',
+        contentType: 'image/jpeg',
+        sizeBytes: 1024,
+      });
+    for (let i = 0; i < 30; i++) await send().expect(201);
+    const res = await send().expect(429);
+    expect((res.body as { error: { code: string } }).error.code).toBe(
+      'RATE_LIMITED',
+    );
+  });
+});
