@@ -15,24 +15,30 @@ describe('job queue in the test app', () => {
     await app.close();
   });
 
-  it('uses FakeJobScheduler and runs due jobs through the shared handler registry', async () => {
+  it('uses FakeJobScheduler on the app registry, and runs due jobs by time', async () => {
     const scheduler = app.get<FakeJobScheduler>(JobScheduler);
     expect(scheduler).toBeInstanceOf(FakeJobScheduler);
+    // 앱의 처리기 표를 그대로 쓰는지 확인한다(기능 모듈이 등록한 처리기가 runDue로 실행되는 근거).
+    expect(scheduler.registry).toBe(app.get(JobHandlerRegistry));
+    // 실제 작업 이름을 앱의 표에 등록하면 기능 모듈이 같은 이름을 등록할 때 충돌한다.
+    // 그래서 이 테스트는 별도의 표와 Fake 쌍으로 같은 동작을 확인한다.
+    const isolated = new JobHandlerRegistry();
+    const fake = new FakeJobScheduler(isolated);
     const ran: string[] = [];
-    app.get(JobHandlerRegistry).register('decline-notice', (p) => {
+    isolated.register('decline-notice', (p) => {
       ran.push(p.collaborationId);
       return Promise.resolve();
     });
     const at = new Date('2026-11-12T00:00:00.000Z');
-    await scheduler.schedule(
+    await fake.schedule(
       'decline-notice',
       { collaborationId: 'c1' },
       at,
       'decline:c1',
     );
-    await scheduler.runDue(new Date(at.getTime() - 1));
+    await fake.runDue(new Date(at.getTime() - 1));
     expect(ran).toEqual([]);
-    await scheduler.runDue(at);
+    await fake.runDue(at);
     expect(ran).toEqual(['c1']);
   });
 

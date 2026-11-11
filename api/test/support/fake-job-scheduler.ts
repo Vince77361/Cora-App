@@ -13,11 +13,12 @@ export type FakeJob = {
 
 // 등록된 작업을 기록하고, runDue(now)로 때가 된 작업을 처리기 표(JobHandlerRegistry)로 실행한다.
 // 운영 구현(BullMQ)과 같은 표를 쓰므로 처리기 등록이 빠지면 테스트에서도 실패로 드러난다.
-// 처리기가 던진 오류는 failed로 기록할 뿐 runDue가 다시 던지지 않는다(운영의 재시도 대신). 확인은 jobs로 한다.
+// 처리기가 던진 오류는 failed로 기록하고, 때가 된 나머지 작업을 다 돌린 뒤 runDue가 던진다
+// (망가진 처리기를 테스트가 조용히 지나치지 않게). 일부러 실패를 확인하는 테스트만 { allowFailures: true }를 쓴다.
 export class FakeJobScheduler extends JobScheduler {
   readonly jobs: FakeJob[] = [];
 
-  constructor(private readonly registry: JobHandlerRegistry) {
+  constructor(readonly registry: JobHandlerRegistry) {
     super();
   }
 
@@ -56,13 +57,16 @@ export class FakeJobScheduler extends JobScheduler {
   }
 
   // 실행 시각이 now 이하인 대기 작업을 시각 순으로 실행한다. 처리기가 새로 등록한 작업도 때가 됐으면 이어서 실행한다.
-  async runDue(now: Date): Promise<FakeJob[]> {
+  async runDue(
+    now: Date,
+    options: { allowFailures?: boolean } = {},
+  ): Promise<FakeJob[]> {
     const ran: FakeJob[] = [];
     for (;;) {
       const due = this.pending()
         .filter((j) => j.runAt.getTime() <= now.getTime())
         .sort((a, b) => a.runAt.getTime() - b.runAt.getTime())[0];
-      if (!due) return ran;
+      if (!due) break;
       try {
         await this.registry.run(due.name, due.payload);
         due.status = 'done';
@@ -72,5 +76,18 @@ export class FakeJobScheduler extends JobScheduler {
       }
       ran.push(due);
     }
+    const failed = ran.filter((j) => j.status === 'failed');
+    if (failed.length > 0 && !options.allowFailures) {
+      const first = failed[0];
+      const reason =
+        first.error instanceof Error
+          ? first.error.message
+          : String(first.error);
+      throw new Error(
+        `작업 ${failed.length}건이 실패했어요: ${first.name}(${first.jobKey}) ${reason}`,
+        { cause: first.error },
+      );
+    }
+    return ran;
   }
 }

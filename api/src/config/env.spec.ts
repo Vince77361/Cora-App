@@ -217,6 +217,9 @@ describe('loadEnv payment, payout and queue settings', () => {
     (key) => {
       const k = key as 'FEE_RATE_BID';
       expect(loadEnv(valid)[k]).toBe(10);
+      // 빈 값은 0%가 아니라 없는 값으로 본다.
+      expect(loadEnv({ ...valid, [key]: '' })[k]).toBe(10);
+      expect(loadEnv({ ...productionBase, [key]: '' })[k]).toBe(10);
       expect(loadEnv({ ...valid, [key]: '15' })[k]).toBe(15);
       expect(loadEnv({ ...valid, [key]: '0' })[k]).toBe(0);
       expect(() => loadEnv({ ...valid, [key]: '101' })).toThrow(
@@ -231,6 +234,13 @@ describe('loadEnv payment, payout and queue settings', () => {
 
   it('defaults FAKE_CLOCK_OFFSET_DAYS to 0 and parses an integer', () => {
     expect(loadEnv(valid).FAKE_CLOCK_OFFSET_DAYS).toBe(0);
+    expect(
+      loadEnv({ ...valid, FAKE_CLOCK_OFFSET_DAYS: '' }).FAKE_CLOCK_OFFSET_DAYS,
+    ).toBe(0);
+    expect(
+      loadEnv({ ...productionBase, FAKE_CLOCK_OFFSET_DAYS: '' })
+        .FAKE_CLOCK_OFFSET_DAYS,
+    ).toBe(0);
     expect(
       loadEnv({ ...valid, FAKE_CLOCK_OFFSET_DAYS: '5' }).FAKE_CLOCK_OFFSET_DAYS,
     ).toBe(5);

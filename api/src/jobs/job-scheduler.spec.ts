@@ -126,8 +126,10 @@ describe('FakeJobScheduler', () => {
       'payout:c1',
     );
     expect(scheduler.jobs).toHaveLength(1);
-    await scheduler.runDue(minutes(2));
+    await scheduler.runDue(minutes(2), { allowFailures: true });
     expect(scheduler.jobs[0].status).toBe('failed');
+    expect(scheduler.jobs[0].error).toBeInstanceOf(NoJobHandlerError);
+    // 실패한 작업은 다시 실행되지 않는다(재시도 없음).
     await scheduler.runDue(minutes(3));
     expect(scheduler.jobs[0].status).toBe('failed');
     warn.mockRestore();
@@ -154,9 +156,49 @@ describe('FakeJobScheduler', () => {
       minutes(2),
       'k2',
     );
-    await scheduler.runDue(minutes(5));
+    await scheduler.runDue(minutes(5), { allowFailures: true });
     expect(scheduler.jobs.map((j) => j.status)).toEqual(['failed', 'done']);
     expect(ran).toEqual(['ok']);
+  });
+
+  it('throws from runDue by default when a handler fails, after running the other due jobs', async () => {
+    const registry = new JobHandlerRegistry();
+    registry.register('settle', () => Promise.reject(new Error('boom')));
+    const ran: string[] = [];
+    registry.register('decline-notice', () => {
+      ran.push('ok');
+      return Promise.resolve();
+    });
+    const scheduler = new FakeJobScheduler(registry);
+    await scheduler.schedule(
+      'settle',
+      { collaborationId: 'a' },
+      minutes(1),
+      'k1',
+    );
+    await scheduler.schedule(
+      'decline-notice',
+      { collaborationId: 'b' },
+      minutes(2),
+      'k2',
+    );
+    await expect(scheduler.runDue(minutes(5))).rejects.toThrow(/settle.*boom/);
+    expect(ran).toEqual(['ok']);
+    expect(scheduler.jobs.map((j) => j.status)).toEqual(['failed', 'done']);
+  });
+
+  it('throws from runDue by default for a job with no handler', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const scheduler = new FakeJobScheduler(new JobHandlerRegistry());
+    await scheduler.schedule(
+      'payout-send',
+      { collaborationId: 'c1' },
+      minutes(1),
+      'payout:c1',
+    );
+    await expect(scheduler.runDue(minutes(2))).rejects.toThrow(/payout-send/);
+    expect(scheduler.jobs[0].status).toBe('failed');
+    warn.mockRestore();
   });
 
   it('runs jobs that a handler schedules during the same runDue when they are due', async () => {
@@ -234,7 +276,9 @@ class FakeJob implements JobLike {
     this.q.jobs.delete(this.id);
     return Promise.resolve();
   }
+  promoteError?: Error;
   promote() {
+    if (this.promoteError) return Promise.reject(this.promoteError);
     this.promoted = true;
     return Promise.resolve();
   }
@@ -368,6 +412,32 @@ describe('BullMqJobScheduler', () => {
     await expect(scheduler.promoteDue()).resolves.toBe(1);
     expect(queue.jobs.get(toBullJobId('settle:a'))!.promoted).toBe(true);
     expect(queue.jobs.get(toBullJobId('settle:b'))!.promoted).toBe(false);
+  });
+
+  it('keeps promoting and never throws when a job already moved on before promote', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const { queue, clock, scheduler } = build();
+    await scheduler.schedule(
+      'settle',
+      { collaborationId: 'a' },
+      minutes(60),
+      'settle:a',
+    );
+    await scheduler.schedule(
+      'settle',
+      { collaborationId: 'b' },
+      minutes(61),
+      'settle:b',
+    );
+    // 작업자가 먼저 가져가서 a는 더 이상 지연 상태가 아니다(promote가 -3으로 실패).
+    queue.jobs.get(toBullJobId('settle:a'))!.promoteError = new Error(
+      'Job is not in the delayed state',
+    );
+    clock.set(minutes(120));
+    await expect(scheduler.promoteDue()).resolves.toBe(1);
+    expect(queue.jobs.get(toBullJobId('settle:b'))!.promoted).toBe(true);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('turns a missing handler into an unrecoverable (non-retried) failure', async () => {

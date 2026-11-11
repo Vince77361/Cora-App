@@ -131,8 +131,16 @@ export class BullMqJobScheduler
     for (const job of await this.deps.queue.getDelayed()) {
       const runAt = job.data.runAt ? Date.parse(job.data.runAt) : NaN;
       if (!Number.isNaN(runAt) && runAt <= now) {
-        await job.promote();
-        promoted += 1;
+        // 그 사이 다른 작업자가 가져갔거나 이미 실행 중이면 promote가 실패한다. 앞당길 필요가 없어진 것이므로
+        // 시작을 막지 않고 넘어간다.
+        try {
+          await job.promote();
+          promoted += 1;
+        } catch (e) {
+          this.logger.warn(
+            `앞당기지 못하고 넘어갔어요(이미 지연 상태가 아님): ${(e as Error).message}`,
+          );
+        }
       }
     }
     return promoted;
@@ -157,9 +165,12 @@ export class BullMqJobScheduler
   async onApplicationBootstrap(): Promise<void> {
     if (!this.real) return;
     const { queue, connection, queueName } = this.real;
+    // autorun을 끄고 앞당기기가 끝난 뒤에 시작한다. 작업자가 먼저 돌면 때가 된 지연 작업을 스스로 가져가서
+    // 앞당기기와 경쟁한다.
     const worker = new Worker(queueName, (job) => this.process(job as never), {
       connection,
       concurrency: 4,
+      autorun: false,
     });
     worker.on('error', (e) => BullMqJobScheduler.logError('작업자', e));
     worker.on('failed', (job, e) => {
@@ -174,6 +185,7 @@ export class BullMqJobScheduler
       'Redis에 연결하지 못했어요. REDIS_URL과 Redis 실행 상태를 확인해 주세요.',
     );
     const promoted = await this.promoteDue();
+    worker.run().catch((e: Error) => BullMqJobScheduler.logError('작업자', e));
     this.logger.log(
       `작업 큐와 작업자가 연결됐어요 (큐=${queueName}, 앞당겨 실행한 작업 ${promoted}건)`,
     );

@@ -23,6 +23,12 @@ const DEV_DEFAULT_ADAPTER_KEYS = [
   'INSTAGRAM_ADAPTER',
   'OPERATOR_ALERT_ADAPTER',
 ] as const;
+const BLANK_MEANS_DEFAULT_KEYS = [
+  'FEE_RATE_STORE_OFFER',
+  'FEE_RATE_BID',
+  'FEE_RATE_BRAND_CONTRACT',
+  'FAKE_CLOCK_OFFSET_DAYS',
+] as const;
 const DEV_DEFAULT_REDIS_URL = 'redis://127.0.0.1:6379';
 
 const isProduction = (env: Env) => env.NODE_ENV === 'production';
@@ -178,6 +184,10 @@ export class Env {
 // process.env에는 PATH 같은 무관한 키가 많아서, Env에 선언한 키만 골라 검증한다.
 export function loadEnv(rawInput: Record<string, unknown>): Env {
   const raw = { ...rawInput };
+  // 빈 값을 Number('')가 0으로 바꾸면 "수수료 0%", "시계 0일"처럼 의도하지 않은 값이 된다. 없는 값으로 보고 기본값을 쓴다.
+  for (const key of BLANK_MEANS_DEFAULT_KEYS) {
+    if (raw[key] === '' || raw[key] === null) delete raw[key];
+  }
   if (raw.NODE_ENV !== 'production') {
     const isEmpty = (v: unknown) => v === undefined || v === null || v === '';
     for (const key of DEV_DEFAULT_ADAPTER_KEYS) {
