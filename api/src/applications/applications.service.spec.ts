@@ -160,6 +160,8 @@ class FakeCreatorsService extends CreatorsService {
       regionSido,
       regionSigungu,
       instagramHandle: null,
+      instagramConnected: false,
+      followers: null,
     });
   }
 

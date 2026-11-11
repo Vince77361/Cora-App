@@ -73,6 +73,10 @@ Class | Method | HTTP request | Description
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
 *CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
 *HealthApi* | [**getHealth**](doc//HealthApi.md#gethealth) | **GET** /health | 
+*InstagramApi* | [**beginInstagramConnect**](doc//InstagramApi.md#begininstagramconnect) | **POST** /instagram/connect | 
+*InstagramApi* | [**completeInstagramConnect**](doc//InstagramApi.md#completeinstagramconnect) | **POST** /instagram/connect/complete | 
+*InstagramApi* | [**disconnectInstagram**](doc//InstagramApi.md#disconnectinstagram) | **DELETE** /instagram/connection | 
+*InstagramApi* | [**getInstagramConnection**](doc//InstagramApi.md#getinstagramconnection) | **GET** /instagram/connection | 
 *OffersApi* | [**acceptOffer**](doc//OffersApi.md#acceptoffer) | **POST** /offers/{id}/accept | 
 *OffersApi* | [**cancelOffer**](doc//OffersApi.md#canceloffer) | **POST** /offers/{id}/cancel | 
 *OffersApi* | [**declineOffer**](doc//OffersApi.md#declineoffer) | **POST** /offers/{id}/decline | 
@@ -103,6 +107,7 @@ Class | Method | HTTP request | Description
  - [ApplicantModel](doc//ApplicantModel.md)
  - [ApplicationModel](doc//ApplicationModel.md)
  - [ApplicationStatus](doc//ApplicationStatus.md)
+ - [CompleteInstagramConnectDto](doc//CompleteInstagramConnectDto.md)
  - [ContentDraftKind](doc//ContentDraftKind.md)
  - [ContentDraftModel](doc//ContentDraftModel.md)
  - [ContentFormat](doc//ContentFormat.md)
@@ -112,6 +117,8 @@ Class | Method | HTTP request | Description
  - [DraftSceneModel](doc//DraftSceneModel.md)
  - [HealthModel](doc//HealthModel.md)
  - [IndustryCategory](doc//IndustryCategory.md)
+ - [InstagramConnectUrlModel](doc//InstagramConnectUrlModel.md)
+ - [InstagramConnectionModel](doc//InstagramConnectionModel.md)
  - [MeModel](doc//MeModel.md)
  - [MyApplicationStatus](doc//MyApplicationStatus.md)
  - [MyStoreModel](doc//MyStoreModel.md)

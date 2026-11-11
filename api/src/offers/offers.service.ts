@@ -9,6 +9,7 @@ import { CollaborationsRepository } from '../collaborations/collaborations.repos
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
+import { InstagramService } from '../instagram/instagram.service';
 import { JobScheduler } from '../jobs/job-scheduler';
 import {
   NotificationsService,
@@ -25,6 +26,7 @@ import { StoreHomeSummaryModel } from './dto/store-home-summary.model';
 import {
   canUndoDecline,
   DECLINE_UNDO_SECONDS,
+  needsInstagram,
   OFFER_RESPONSE_DAYS,
   paymentDaysLeft,
   storedStatusAt,
@@ -52,6 +54,7 @@ export class OffersService {
     private readonly applications: ApplicationsService,
     private readonly creators: CreatorsService,
     private readonly collaborations: CollaborationsRepository,
+    private readonly instagram: InstagramService,
     private readonly notifications: NotificationsService,
     private readonly jobs: JobScheduler,
     private readonly clock: Clock,
@@ -216,6 +219,7 @@ export class OffersService {
         : viewForCreator(row, now) === 'ACCEPTED',
     );
     const collaborationIds = await this.collaborationIds(shown);
+    const connected = (await this.instagram.getConnection(userId)) !== null;
     const cards = new Map<string, Awaited<ReturnType<typeof this.card>>>();
     const items: ReceivedOfferModel[] = [];
     for (const row of shown) {
@@ -225,7 +229,13 @@ export class OffersService {
       const card = cards.get(row.storeId);
       if (card) {
         items.push(
-          this.toReceived(row, card, now, collaborationIds.get(row.id) ?? null),
+          this.toReceived(
+            row,
+            card,
+            now,
+            collaborationIds.get(row.id) ?? null,
+            connected,
+          ),
         );
       }
     }
@@ -242,6 +252,11 @@ export class OffersService {
       throw this.expired();
     }
     if (stored !== 'SENT') throw this.alreadyHandled();
+    // 조회수 보상은 인스타그램 연결이 있어야 정산이 조회수를 읽을 수 있다. 수락 뒤에 알게 되지 않게 여기서 막는다.
+    const connected = (await this.instagram.getConnection(userId)) !== null;
+    if (needsInstagram(row, connected)) {
+      throw new AppError('CONFLICT', '인스타그램을 연동하면 수락할 수 있어요.');
+    }
     const card = await this.requireCard(row.storeId);
     // 수락과 협업 만들기는 한 트랜잭션이다. 식사권만 있는 오퍼는 낼 돈이 없어 결제 기한 없이 바로 FUNDED로 시작한다.
     const initial = initialStoreOfferState(row.rewardType, now);
@@ -283,16 +298,12 @@ export class OffersService {
       );
     }
     const collaboration = await this.collaborations.findByOfferId(row.id);
-    const actor = (await this.creators.getActor(userId)) ?? {
-      userId,
-      name: '크리에이터',
-      photoPath: null,
-    };
-    await this.notify({
+    // 이미 저장된 수락은 알림 때문에 500이 되면 안 된다. 상대 이름을 읽지 못해도 알림은 기본 이름으로 보낸다.
+    await this.notify(async () => ({
       userId: card.ownerId,
       role: 'STORE',
       kind: 'OFFER_ACCEPTED',
-      actor,
+      actor: await this.actorOf(userId),
       // 결제할 것이 있으면 결제 화면으로, 식사권만 있어 바로 FUNDED면 협업 화면으로 보낸다.
       target: {
         kind:
@@ -300,7 +311,7 @@ export class OffersService {
         id: collaboration?.id ?? null,
       },
       dedupeKey: `offer-accepted:${row.id}`,
-    });
+    }));
     return this.reload(userId, row.id, card, now, collaboration);
   }
 
@@ -498,7 +509,13 @@ export class OffersService {
     if (!fresh) throw this.notFound();
     const collaboration =
       known ?? (await this.collaborations.findByOfferId(fresh.id));
-    return this.toReceived(fresh, card, now, collaboration?.id ?? null);
+    return this.toReceived(
+      fresh,
+      card,
+      now,
+      collaboration?.id ?? null,
+      (await this.instagram.getConnection(userId)) !== null,
+    );
   }
 
   // 오퍼 id → 연결된 협업 id. 협업이 아직 없는(수락 전) 오퍼는 들어 있지 않다.
@@ -547,10 +564,28 @@ export class OffersService {
     }
   }
 
-  // 알림이 실패해도 이미 저장된 변경은 유효하다. 목록에서 볼 수 있다.
-  private async notify(input: NotifyInput): Promise<void> {
+  // 알림에 넣을 크리에이터. 프로필이 없거나 읽지 못하면 기본 이름을 쓴다.
+  private async actorOf(userId: string) {
+    let actor: Awaited<ReturnType<CreatorsService['getActor']>> = null;
     try {
-      await this.notifications.notify(input);
+      actor = await this.creators.getActor(userId);
+    } catch (error) {
+      this.logger.warn(
+        `알림에 넣을 크리에이터를 읽지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
+    return actor ?? { userId, name: '크리에이터', photoPath: null };
+  }
+
+  // 알림이 실패해도 이미 저장된 변경은 유효하다. 목록에서 볼 수 있다.
+  // 입력을 만드는 일(읽기)이 실패해도 같다. 만들기를 함수로 받아 같은 try 안에서 부른다.
+  private async notify(
+    input: NotifyInput | (() => Promise<NotifyInput>),
+  ): Promise<void> {
+    try {
+      await this.notifications.notify(
+        typeof input === 'function' ? await input() : input,
+      );
     } catch (error) {
       this.logger.warn(
         `오퍼 알림을 남기지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
@@ -591,6 +626,7 @@ export class OffersService {
     card: NonNullable<Awaited<ReturnType<typeof this.card>>>,
     now: Date,
     collaborationId: string | null,
+    instagramConnected: boolean,
   ): ReceivedOfferModel {
     return {
       id: row.id,
@@ -602,6 +638,7 @@ export class OffersService {
       view: viewForCreator(row, now),
       receivedAt: row.createdAt.toISOString(),
       canUndoDecline: canUndoDecline(row, now),
+      needsInstagram: needsInstagram(row, instagramConnected),
     };
   }
 

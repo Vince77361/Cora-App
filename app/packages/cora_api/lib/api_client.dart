@@ -218,6 +218,8 @@ class ApiClient {
           return ApplicationModel.fromJson(value);
         case 'ApplicationStatus':
           return ApplicationStatusTypeTransformer().decode(value);
+        case 'CompleteInstagramConnectDto':
+          return CompleteInstagramConnectDto.fromJson(value);
         case 'ContentDraftKind':
           return ContentDraftKindTypeTransformer().decode(value);
         case 'ContentDraftModel':
@@ -236,6 +238,10 @@ class ApiClient {
           return HealthModel.fromJson(value);
         case 'IndustryCategory':
           return IndustryCategoryTypeTransformer().decode(value);
+        case 'InstagramConnectUrlModel':
+          return InstagramConnectUrlModel.fromJson(value);
+        case 'InstagramConnectionModel':
+          return InstagramConnectionModel.fromJson(value);
         case 'MeModel':
           return MeModel.fromJson(value);
         case 'MyApplicationStatus':

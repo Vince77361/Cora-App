@@ -3,6 +3,7 @@ import {
   canUndoDecline,
   DECLINE_UNDO_SECONDS,
   OFFER_RESPONSE_DAYS,
+  needsInstagram,
   OfferTimes,
   paymentDaysLeft,
   PAYMENT_DUE_DAYS,
@@ -127,5 +128,33 @@ describe('offer rules', () => {
     expect(paymentDaysLeft(sent(), T0)).toBeNull();
     expect(paymentDaysLeft(declined(T0), T0)).toBeNull();
     expect(paymentDaysLeft(accepted(T0), at(3 * DAY))).toBeNull();
+  });
+
+  describe('needsInstagram', () => {
+    it('needs a connection for a per-view reels or card-news offer', () => {
+      for (const format of ['REELS', 'CARD_NEWS'] as const) {
+        for (const rewardType of ['PER_VIEW', 'BOTH'] as const) {
+          expect(needsInstagram({ format, rewardType }, false)).toBe(true);
+          expect(needsInstagram({ format, rewardType }, true)).toBe(false);
+        }
+      }
+    });
+
+    it('does not need one for a voucher-only offer or other formats', () => {
+      expect(
+        needsInstagram({ format: 'REELS', rewardType: 'VOUCHER' }, false),
+      ).toBe(false);
+      expect(
+        needsInstagram({ format: 'CARD_NEWS', rewardType: 'VOUCHER' }, false),
+      ).toBe(false);
+      for (const format of ['SHORTS', 'BLOG'] as const) {
+        expect(needsInstagram({ format, rewardType: 'PER_VIEW' }, false)).toBe(
+          false,
+        );
+        expect(needsInstagram({ format, rewardType: 'BOTH' }, false)).toBe(
+          false,
+        );
+      }
+    });
   });
 });

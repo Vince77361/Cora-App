@@ -7,6 +7,7 @@ import { ContentDraftsModule } from './content-drafts/content-drafts.module';
 import { CreatorsModule } from './creators/creators.module';
 import { loadEnv } from './config/env';
 import { HealthModule } from './health/health.module';
+import { InstagramModule } from './instagram/instagram.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { JobsModule } from './jobs/jobs.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -32,6 +33,7 @@ import { UsersModule } from './users/users.module';
     StoresModule,
     ContentDraftsModule,
     ApplicationsModule,
+    InstagramModule,
     OffersModule,
   ],
 })

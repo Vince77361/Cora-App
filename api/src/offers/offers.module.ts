@@ -2,6 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { ApplicationsModule } from '../applications/applications.module';
 import { CollaborationsModule } from '../collaborations/collaborations.module';
 import { CreatorsModule } from '../creators/creators.module';
+import { InstagramModule } from '../instagram/instagram.module';
 import { JobHandlerRegistry } from '../jobs/job-handler-registry';
 import { JobsModule } from '../jobs/jobs.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -22,6 +23,7 @@ import { OffersService } from './offers.service';
     CreatorsModule,
     ApplicationsModule,
     CollaborationsModule,
+    InstagramModule,
   ],
   controllers: [OffersController],
   providers: [

@@ -111,6 +111,20 @@
         ],
         "type": "string"
       },
+      "CompleteInstagramConnectDto": {
+        "properties": {
+          "code": {
+            "description": "인스타그램 승인 뒤 받은 코드. 개발용 가짜 연동에서는 연결할 계정 아이디를 입력한다.",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
       "ContentDraftKind": {
         "enum": [
           "CARD_NEWS",
@@ -203,6 +217,15 @@
           "displayName": {
             "type": "string"
           },
+          "followers": {
+            "description": "연결한 계정의 팔로워 수. 연결이 없거나 읽지 못했으면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "instagramConnected": {
+            "description": "인스타그램 계정을 연결했으면 true.",
+            "type": "boolean"
+          },
           "instagramHandle": {
             "nullable": true,
             "type": "string"
@@ -230,6 +253,8 @@
           "photoUrl",
           "regionSido",
           "regionSigungu",
+          "instagramConnected",
+          "followers",
           "instagramHandle"
         ],
         "type": "object"
@@ -242,6 +267,15 @@
           },
           "displayName": {
             "type": "string"
+          },
+          "followers": {
+            "description": "연결한 계정의 팔로워 수. 연결이 없거나 읽지 못했으면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "instagramConnected": {
+            "description": "인스타그램 계정을 연결했으면 true.",
+            "type": "boolean"
           },
           "photoUrl": {
             "nullable": true,
@@ -265,7 +299,9 @@
           "contentFocus",
           "photoUrl",
           "regionSido",
-          "regionSigungu"
+          "regionSigungu",
+          "instagramConnected",
+          "followers"
         ],
         "type": "object"
       },
@@ -319,6 +355,35 @@
           "DIET_SUPPLEMENT"
         ],
         "type": "string"
+      },
+      "InstagramConnectUrlModel": {
+        "properties": {
+          "connectUrl": {
+            "description": "앱이 열어서 인스타그램 승인을 받을 주소.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connectUrl"
+        ],
+        "type": "object"
+      },
+      "InstagramConnectionModel": {
+        "properties": {
+          "followers": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "handle": {
+            "description": "연결된 인스타그램 아이디(@ 없이).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "handle",
+          "followers"
+        ],
+        "type": "object"
       },
       "MeModel": {
         "properties": {
@@ -547,6 +612,10 @@
             "format": "uuid",
             "type": "string"
           },
+          "needsInstagram": {
+            "description": "릴스·카드뉴스의 조회수 보상을 받으려면 인스타그램 연동이 필요한데 아직 연동하지 않았으면 true. true인 오퍼는 수락할 수 없다.",
+            "type": "boolean"
+          },
           "receivedAt": {
             "description": "도착한 시각(ISO 8601).",
             "format": "date-time",
@@ -580,7 +649,8 @@
           "terms",
           "view",
           "receivedAt",
-          "canUndoDecline"
+          "canUndoDecline",
+          "needsInstagram"
         ],
         "type": "object"
       },
@@ -1168,6 +1238,115 @@
         "summary": "",
         "tags": [
           "Health"
+        ]
+      }
+    },
+    "/instagram/connect": {
+      "post": {
+        "operationId": "beginInstagramConnect",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramConnectUrlModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Instagram"
+        ]
+      }
+    },
+    "/instagram/connect/complete": {
+      "post": {
+        "operationId": "completeInstagramConnect",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteInstagramConnectDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramConnectionModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Instagram"
+        ]
+      }
+    },
+    "/instagram/connection": {
+      "delete": {
+        "operationId": "disconnectInstagram",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Instagram"
+        ]
+      },
+      "get": {
+        "operationId": "getInstagramConnection",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramConnectionModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Instagram"
         ]
       }
     },

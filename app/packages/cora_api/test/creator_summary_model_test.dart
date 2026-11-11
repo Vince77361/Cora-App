@@ -26,6 +26,18 @@ void main() {
       // TODO
     });
 
+    // 연결한 계정의 팔로워 수. 연결이 없거나 읽지 못했으면 null.
+    // int followers
+    test('to test the property `followers`', () async {
+      // TODO
+    });
+
+    // 인스타그램 계정을 연결했으면 true.
+    // bool instagramConnected
+    test('to test the property `instagramConnected`', () async {
+      // TODO
+    });
+
     // String photoUrl
     test('to test the property `photoUrl`', () async {
       // TODO

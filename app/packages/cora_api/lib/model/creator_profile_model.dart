@@ -15,6 +15,8 @@ class CreatorProfileModel {
   CreatorProfileModel({
     required this.contentFocus,
     required this.displayName,
+    required this.followers,
+    required this.instagramConnected,
     required this.instagramHandle,
     required this.photoUrl,
     required this.regionSido,
@@ -25,6 +27,12 @@ class CreatorProfileModel {
   String? contentFocus;
 
   String displayName;
+
+  /// 연결한 계정의 팔로워 수. 연결이 없거나 읽지 못했으면 null.
+  int? followers;
+
+  /// 인스타그램 계정을 연결했으면 true.
+  bool instagramConnected;
 
   String? instagramHandle;
 
@@ -42,6 +50,8 @@ class CreatorProfileModel {
       other is CreatorProfileModel &&
           other.contentFocus == contentFocus &&
           other.displayName == displayName &&
+          other.followers == followers &&
+          other.instagramConnected == instagramConnected &&
           other.instagramHandle == instagramHandle &&
           other.photoUrl == photoUrl &&
           other.regionSido == regionSido &&
@@ -53,6 +63,8 @@ class CreatorProfileModel {
       // ignore: unnecessary_parenthesis
       (contentFocus == null ? 0 : contentFocus!.hashCode) +
       (displayName.hashCode) +
+      (followers == null ? 0 : followers!.hashCode) +
+      (instagramConnected.hashCode) +
       (instagramHandle == null ? 0 : instagramHandle!.hashCode) +
       (photoUrl == null ? 0 : photoUrl!.hashCode) +
       (regionSido.hashCode) +
@@ -61,7 +73,7 @@ class CreatorProfileModel {
 
   @override
   String toString() =>
-      'CreatorProfileModel[contentFocus=$contentFocus, displayName=$displayName, instagramHandle=$instagramHandle, photoUrl=$photoUrl, regionSido=$regionSido, regionSigungu=$regionSigungu, userId=$userId]';
+      'CreatorProfileModel[contentFocus=$contentFocus, displayName=$displayName, followers=$followers, instagramConnected=$instagramConnected, instagramHandle=$instagramHandle, photoUrl=$photoUrl, regionSido=$regionSido, regionSigungu=$regionSigungu, userId=$userId]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -71,6 +83,12 @@ class CreatorProfileModel {
       json[r'contentFocus'] = null;
     }
     json[r'displayName'] = this.displayName;
+    if (this.followers != null) {
+      json[r'followers'] = this.followers;
+    } else {
+      json[r'followers'] = null;
+    }
+    json[r'instagramConnected'] = this.instagramConnected;
     if (this.instagramHandle != null) {
       json[r'instagramHandle'] = this.instagramHandle;
     } else {
@@ -108,6 +126,12 @@ class CreatorProfileModel {
             'Required key "CreatorProfileModel[displayName]" is missing from JSON.');
         assert(json[r'displayName'] != null,
             'Required key "CreatorProfileModel[displayName]" has a null value in JSON.');
+        assert(json.containsKey(r'followers'),
+            'Required key "CreatorProfileModel[followers]" is missing from JSON.');
+        assert(json.containsKey(r'instagramConnected'),
+            'Required key "CreatorProfileModel[instagramConnected]" is missing from JSON.');
+        assert(json[r'instagramConnected'] != null,
+            'Required key "CreatorProfileModel[instagramConnected]" has a null value in JSON.');
         assert(json.containsKey(r'instagramHandle'),
             'Required key "CreatorProfileModel[instagramHandle]" is missing from JSON.');
         assert(json.containsKey(r'photoUrl'),
@@ -128,6 +152,8 @@ class CreatorProfileModel {
       return CreatorProfileModel(
         contentFocus: mapValueOfType<String>(json, r'contentFocus'),
         displayName: mapValueOfType<String>(json, r'displayName')!,
+        followers: mapValueOfType<int>(json, r'followers'),
+        instagramConnected: mapValueOfType<bool>(json, r'instagramConnected')!,
         instagramHandle: mapValueOfType<String>(json, r'instagramHandle'),
         photoUrl: mapValueOfType<String>(json, r'photoUrl'),
         regionSido: mapValueOfType<String>(json, r'regionSido')!,
@@ -191,6 +217,8 @@ class CreatorProfileModel {
   static const requiredKeys = <String>{
     'contentFocus',
     'displayName',
+    'followers',
+    'instagramConnected',
     'instagramHandle',
     'photoUrl',
     'regionSido',

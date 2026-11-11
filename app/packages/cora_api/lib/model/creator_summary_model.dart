@@ -15,6 +15,8 @@ class CreatorSummaryModel {
   CreatorSummaryModel({
     required this.contentFocus,
     required this.displayName,
+    required this.followers,
+    required this.instagramConnected,
     required this.photoUrl,
     required this.regionSido,
     required this.regionSigungu,
@@ -24,6 +26,12 @@ class CreatorSummaryModel {
   String? contentFocus;
 
   String displayName;
+
+  /// 연결한 계정의 팔로워 수. 연결이 없거나 읽지 못했으면 null.
+  int? followers;
+
+  /// 인스타그램 계정을 연결했으면 true.
+  bool instagramConnected;
 
   String? photoUrl;
 
@@ -39,6 +47,8 @@ class CreatorSummaryModel {
       other is CreatorSummaryModel &&
           other.contentFocus == contentFocus &&
           other.displayName == displayName &&
+          other.followers == followers &&
+          other.instagramConnected == instagramConnected &&
           other.photoUrl == photoUrl &&
           other.regionSido == regionSido &&
           other.regionSigungu == regionSigungu &&
@@ -49,6 +59,8 @@ class CreatorSummaryModel {
       // ignore: unnecessary_parenthesis
       (contentFocus == null ? 0 : contentFocus!.hashCode) +
       (displayName.hashCode) +
+      (followers == null ? 0 : followers!.hashCode) +
+      (instagramConnected.hashCode) +
       (photoUrl == null ? 0 : photoUrl!.hashCode) +
       (regionSido.hashCode) +
       (regionSigungu == null ? 0 : regionSigungu!.hashCode) +
@@ -56,7 +68,7 @@ class CreatorSummaryModel {
 
   @override
   String toString() =>
-      'CreatorSummaryModel[contentFocus=$contentFocus, displayName=$displayName, photoUrl=$photoUrl, regionSido=$regionSido, regionSigungu=$regionSigungu, userId=$userId]';
+      'CreatorSummaryModel[contentFocus=$contentFocus, displayName=$displayName, followers=$followers, instagramConnected=$instagramConnected, photoUrl=$photoUrl, regionSido=$regionSido, regionSigungu=$regionSigungu, userId=$userId]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -66,6 +78,12 @@ class CreatorSummaryModel {
       json[r'contentFocus'] = null;
     }
     json[r'displayName'] = this.displayName;
+    if (this.followers != null) {
+      json[r'followers'] = this.followers;
+    } else {
+      json[r'followers'] = null;
+    }
+    json[r'instagramConnected'] = this.instagramConnected;
     if (this.photoUrl != null) {
       json[r'photoUrl'] = this.photoUrl;
     } else {
@@ -98,6 +116,12 @@ class CreatorSummaryModel {
             'Required key "CreatorSummaryModel[displayName]" is missing from JSON.');
         assert(json[r'displayName'] != null,
             'Required key "CreatorSummaryModel[displayName]" has a null value in JSON.');
+        assert(json.containsKey(r'followers'),
+            'Required key "CreatorSummaryModel[followers]" is missing from JSON.');
+        assert(json.containsKey(r'instagramConnected'),
+            'Required key "CreatorSummaryModel[instagramConnected]" is missing from JSON.');
+        assert(json[r'instagramConnected'] != null,
+            'Required key "CreatorSummaryModel[instagramConnected]" has a null value in JSON.');
         assert(json.containsKey(r'photoUrl'),
             'Required key "CreatorSummaryModel[photoUrl]" is missing from JSON.');
         assert(json.containsKey(r'regionSido'),
@@ -116,6 +140,8 @@ class CreatorSummaryModel {
       return CreatorSummaryModel(
         contentFocus: mapValueOfType<String>(json, r'contentFocus'),
         displayName: mapValueOfType<String>(json, r'displayName')!,
+        followers: mapValueOfType<int>(json, r'followers'),
+        instagramConnected: mapValueOfType<bool>(json, r'instagramConnected')!,
         photoUrl: mapValueOfType<String>(json, r'photoUrl'),
         regionSido: mapValueOfType<String>(json, r'regionSido')!,
         regionSigungu: mapValueOfType<String>(json, r'regionSigungu'),
@@ -178,6 +204,8 @@ class CreatorSummaryModel {
   static const requiredKeys = <String>{
     'contentFocus',
     'displayName',
+    'followers',
+    'instagramConnected',
     'photoUrl',
     'regionSido',
     'regionSigungu',

@@ -63,6 +63,7 @@ interface ReceivedBody {
   view: string;
   receivedAt: string;
   canUndoDecline: boolean;
+  needsInstagram: boolean;
 }
 interface SummaryBody {
   newApplications: number;
@@ -95,6 +96,13 @@ describe('offers', () => {
     request(server).post(`/offers/${id}/decline`).set(auth).send();
   const undo = (id: string) =>
     request(server).post(`/offers/${id}/undo-decline`).set(auth).send();
+  // 크리에이터(user-a)가 인스타그램을 연결한다. 연결할 계정 아이디가 곧 코드다.
+  const connectInstagram = (handle = 'haru_cafe') =>
+    request(server)
+      .post('/instagram/connect/complete')
+      .set(auth)
+      .send({ code: handle })
+      .expect(200);
   const summary = () => request(server).get('/stores/me/summary').set(auth);
   const codeOf = (res: request.Response) =>
     (res.body as { error: { code: string } }).error.code;
@@ -994,7 +1002,68 @@ describe('offers', () => {
       await request(server).get('/offers/received').set(auth).expect(400);
     });
 
+    it('marks a per-view reels offer as needing instagram', async () => {
+      const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
+      const list = (await received('new').expect(200)).body as ReceivedBody[];
+      expect(list.map((o) => [o.id, o.needsInstagram])).toEqual([
+        [offer.id, true],
+      ]);
+    });
+
+    it('refuses to accept a per-view reels offer without a connection', async () => {
+      const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
+      const res = await accept(offer.id).expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect((res.body as { error: { message: string } }).error.message).toBe(
+        '인스타그램을 연동하면 수락할 수 있어요.',
+      );
+      expect(
+        (await prisma.offer.findUniqueOrThrow({ where: { id: offer.id } }))
+          .status,
+      ).toBe('SENT');
+      expect(await prisma.collaboration.count()).toBe(0);
+    });
+
+    it('accepts the same offer after connecting', async () => {
+      const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
+      await connectInstagram();
+      const list = (await received('new').expect(200)).body as ReceivedBody[];
+      expect(list[0].needsInstagram).toBe(false);
+      const res = await accept(offer.id).expect(200);
+      expect(res.body as ReceivedBody).toMatchObject({
+        view: 'ACCEPTED',
+        needsInstagram: false,
+      });
+    });
+
+    it('does not require instagram for a voucher-only offer or a shorts offer', async () => {
+      const voucher = await seedOffer(store.id, USER_A);
+      const other = await seedStore();
+      const shorts = await seedOffer(other.id, USER_A, {
+        ...PER_VIEW_TERMS,
+        format: 'SHORTS',
+      });
+      const list = (await received('new').expect(200)).body as ReceivedBody[];
+      expect(list.map((o) => o.needsInstagram)).toEqual([false, false]);
+      await accept(voucher.id).expect(200);
+      await accept(shorts.id).expect(200);
+    });
+
+    it('requires instagram for a card-news offer with both rewards', async () => {
+      const offer = await seedOffer(store.id, USER_A, {
+        ...PER_VIEW_TERMS,
+        format: 'CARD_NEWS',
+        rewardType: 'BOTH',
+        voucherName: '2인 식사권',
+        voucherValue: 40000,
+      });
+      await accept(offer.id).expect(409);
+      await connectInstagram();
+      await accept(offer.id).expect(200);
+    });
+
     it('accepts an offer and sets a 3 day payment deadline', async () => {
+      await connectInstagram();
       const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
       clock.advance(DAY);
       const res = await accept(offer.id).expect(200);
@@ -1014,6 +1083,7 @@ describe('offers', () => {
     });
 
     it('creates an AWAITING_PAYMENT collaboration when a per-view offer is accepted', async () => {
+      await connectInstagram();
       const offer = await seedOffer(store.id, USER_A, {
         ...PER_VIEW_TERMS,
         rewardType: 'BOTH',
@@ -1114,6 +1184,7 @@ describe('offers', () => {
     });
 
     it('sends the store owner to payment when the accepted offer awaits payment', async () => {
+      await connectInstagram();
       const offer = await seedOffer(store.id, USER_A, {
         rewardType: 'PER_VIEW',
         voucherName: null,
@@ -1330,6 +1401,7 @@ describe('offers', () => {
       });
 
       it('expires an unpaid accepted offer and cancels its collaboration at the due time', async () => {
+        await connectInstagram();
         const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
         await accept(offer.id).expect(200);
         const due = new Date(T0.getTime() + 3 * DAY);
@@ -1357,6 +1429,7 @@ describe('offers', () => {
       });
 
       it('does nothing when the offer was paid before the due time', async () => {
+        await connectInstagram();
         const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
         await accept(offer.id).expect(200);
         // 결제가 승인되면 협업은 FUNDED가 되고 오퍼의 결제 기한이 지워진다.
@@ -1381,6 +1454,7 @@ describe('offers', () => {
       });
 
       it('does nothing when run twice', async () => {
+        await connectInstagram();
         const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
         await accept(offer.id).expect(200);
         clock.advance(3 * DAY);

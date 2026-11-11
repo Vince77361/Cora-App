@@ -113,4 +113,16 @@ export class CollaborationsRepository {
       where: { storeId, stage: { in: stages }, deletedAt: null },
     });
   }
+
+  // 크리에이터의 협업 가운데 정산 방식이 맞는 것의 종류와 단계. 인스타그램 연결 해제처럼
+  // "보관 중인 돈이 있는가"를 단계 규칙(isMoneyHeld)으로 판단하는 쪽이 쓴다.
+  listForCreator(
+    creatorId: string,
+    settlementMethod: SettlementMethod,
+  ): Promise<Pick<Collaboration, 'kind' | 'stage'>[]> {
+    return this.prisma.collaboration.findMany({
+      where: { creatorId, settlementMethod, deletedAt: null },
+      select: { kind: true, stage: true },
+    });
+  }
 }

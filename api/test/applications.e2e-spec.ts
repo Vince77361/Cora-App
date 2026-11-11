@@ -352,6 +352,8 @@ describe('applications', () => {
           photoUrl: null,
           regionSido: '서울특별시',
           regionSigungu: '성동구',
+          instagramConnected: false,
+          followers: null,
         },
         appliedAt: expect.stringMatching(/^\d{4}-\d\d-\d\dT/) as string,
       });

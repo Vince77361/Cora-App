@@ -10,6 +10,8 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **contentFocus** | **String** |  | 
 **displayName** | **String** |  | 
+**followers** | **int** | 연결한 계정의 팔로워 수. 연결이 없거나 읽지 못했으면 null. | 
+**instagramConnected** | **bool** | 인스타그램 계정을 연결했으면 true. | 
 **instagramHandle** | **String** |  | 
 **photoUrl** | **String** |  | 
 **regionSido** | **String** |  | 

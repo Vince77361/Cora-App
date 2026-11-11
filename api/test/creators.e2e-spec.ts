@@ -64,6 +64,8 @@ describe('creators', () => {
       photoUrl: `https://fake-storage.test/public/${PHOTO}`,
       regionSido: '서울특별시',
       regionSigungu: '마포구',
+      instagramConnected: false,
+      followers: null,
     });
     // 전체 교체라서 빠진 선택 항목은 null이 된다.
     const updated = await put({
@@ -78,6 +80,8 @@ describe('creators', () => {
       photoUrl: null,
       regionSido: '부산광역시',
       regionSigungu: null,
+      instagramConnected: false,
+      followers: null,
     });
     const got = await request(server).get('/creators/me').set(auth).expect(200);
     expect(got.body).toEqual(updated.body);

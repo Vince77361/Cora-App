@@ -1,4 +1,4 @@
-import { CreatorProfile, UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { AppError } from '../common/errors/app-error';
 import { UploadRateLimiter } from '../uploads/upload-rate-limiter';
 import { UploadsService } from '../uploads/uploads.service';
@@ -7,7 +7,10 @@ import { FakeClock } from '../../test/support/fake-clock';
 import { FakeStoragePort } from '../../test/support/fake-storage.port';
 import type { UpsertCreatorProfileDto } from './dto/upsert-creator-profile.dto';
 import { CreatorsRepository } from './creators.repository';
-import type { CreatorProfileData } from './creators.repository';
+import type {
+  CreatorProfileData,
+  CreatorProfileRow,
+} from './creators.repository';
 import { CreatorsService } from './creators.service';
 
 const USER = '11111111-1111-4111-8111-111111111111';
@@ -16,29 +19,42 @@ const PHOTO = `creators/${USER}/33333333-3333-4333-8333-333333333333.jpg`;
 
 // 서비스 규칙만 보려고 메모리에 저장하는 손 구현.
 class FakeCreatorsRepository extends CreatorsRepository {
-  readonly rows = new Map<string, CreatorProfile>();
+  readonly rows = new Map<string, CreatorProfileRow>();
+  // 연결 정보는 프로필 행 밖(instagram_connections)에 있어 따로 둔다.
+  readonly connections = new Map<string, { followers: number | null }>();
 
   constructor() {
     super(null as never);
   }
 
-  findActiveByUserId(userId: string): Promise<CreatorProfile | null> {
+  findActiveByUserId(userId: string): Promise<CreatorProfileRow | null> {
     const row = this.rows.get(userId);
-    return Promise.resolve(row && !row.deletedAt ? row : null);
+    return Promise.resolve(
+      row && !row.deletedAt
+        ? { ...row, instagram: this.connections.get(userId) ?? null }
+        : null,
+    );
   }
 
-  upsert(userId: string, data: CreatorProfileData): Promise<CreatorProfile> {
+  upsert(userId: string, data: CreatorProfileData): Promise<CreatorProfileRow> {
     const now = new Date();
-    const row: CreatorProfile = {
+    const row: CreatorProfileRow = {
       id: this.rows.get(userId)?.id ?? `id-${userId}`,
       userId,
       ...data,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
+      instagram: null,
     };
     this.rows.set(userId, row);
-    return Promise.resolve(row);
+    return this.findActiveByUserId(userId) as Promise<CreatorProfileRow>;
+  }
+
+  updateInstagramHandle(userId: string, handle: string): Promise<void> {
+    const row = this.rows.get(userId);
+    if (row) this.rows.set(userId, { ...row, instagramHandle: handle });
+    return Promise.resolve();
   }
 }
 
@@ -116,6 +132,8 @@ describe('CreatorsService', () => {
       photoUrl: null,
       regionSido: '서울특별시',
       regionSigungu: null,
+      instagramConnected: false,
+      followers: null,
     });
   });
 
@@ -164,11 +182,46 @@ describe('CreatorsService', () => {
     expect(Object.keys((await service.getSummary(USER))!).sort()).toEqual([
       'contentFocus',
       'displayName',
+      'followers',
+      'instagramConnected',
       'photoUrl',
       'regionSido',
       'regionSigungu',
       'userId',
     ]);
+  });
+
+  it('shows the connection and followers in the summary and the profile', async () => {
+    await service.upsertMine(USER, input);
+    expect(await service.getSummary(USER)).toMatchObject({
+      instagramConnected: false,
+      followers: null,
+    });
+    repo.connections.set(USER, { followers: 2100 });
+    expect(await service.getSummary(USER)).toMatchObject({
+      instagramConnected: true,
+      followers: 2100,
+    });
+    // 연결한 크리에이터가 프로필을 고쳐도 연결 표시는 그대로다.
+    expect(await service.upsertMine(USER, input)).toMatchObject({
+      instagramConnected: true,
+      followers: 2100,
+    });
+    repo.connections.set(USER, { followers: null });
+    expect(await service.getMine(USER)).toMatchObject({
+      instagramConnected: true,
+      followers: null,
+    });
+  });
+
+  it('overwrites the profile handle with the connected one and ignores a missing profile', async () => {
+    await service.upsertMine(USER, { ...input, instagramHandle: 'typed' });
+    await service.overwriteInstagramHandle(USER, 'connected');
+    expect((await service.getMine(USER)).instagramHandle).toBe('connected');
+    await expect(
+      service.overwriteInstagramHandle(OTHER, 'connected'),
+    ).resolves.toBeUndefined();
+    expect(repo.rows.has(OTHER)).toBe(false);
   });
 
   it('requireProfile returns the profile or throws CONFLICT', async () => {

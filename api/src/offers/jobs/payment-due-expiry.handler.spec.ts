@@ -15,6 +15,7 @@ class FakeOffersService extends OffersService {
       null as never,
       null as never,
       null as never,
+      null as never,
     );
   }
   expireUnpaid(offerId: string): Promise<void> {

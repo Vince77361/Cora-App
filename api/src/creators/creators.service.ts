@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { CreatorProfile } from '@prisma/client';
 import { AppError } from '../common/errors/app-error';
 import { StoragePort } from '../integrations/storage/storage.port';
 import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
-import { CreatorsRepository } from './creators.repository';
+import { CreatorProfileRow, CreatorsRepository } from './creators.repository';
 import {
   CreatorProfileModel,
   CreatorSummaryModel,
@@ -56,6 +55,14 @@ export class CreatorsService {
     return this.toProfile(row);
   }
 
+  // 인스타그램 연결 모듈이 연결 직후 부른다. 연결된 계정이 직접 적은 값보다 우선한다.
+  async overwriteInstagramHandle(
+    userId: string,
+    handle: string,
+  ): Promise<void> {
+    await this.creators.updateInstagramHandle(userId, handle);
+  }
+
   // 지원자·오퍼 목록이 붙이는 요약. 프로필이 없거나 지워졌으면 null.
   async getSummary(userId: string): Promise<CreatorSummaryModel | null> {
     const row = await this.creators.findActiveByUserId(userId);
@@ -89,7 +96,7 @@ export class CreatorsService {
     }
   }
 
-  private toSummary(row: CreatorProfile): CreatorSummaryModel {
+  private toSummary(row: CreatorProfileRow): CreatorSummaryModel {
     return {
       userId: row.userId,
       displayName: row.displayName,
@@ -97,10 +104,12 @@ export class CreatorsService {
       photoUrl: row.photoPath ? this.storage.publicUrl(row.photoPath) : null,
       regionSido: row.regionSido,
       regionSigungu: row.regionSigungu,
+      instagramConnected: row.instagram !== null,
+      followers: row.instagram?.followers ?? null,
     };
   }
 
-  private toProfile(row: CreatorProfile): CreatorProfileModel {
+  private toProfile(row: CreatorProfileRow): CreatorProfileModel {
     return { ...this.toSummary(row), instagramHandle: row.instagramHandle };
   }
 }

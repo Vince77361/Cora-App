@@ -5,6 +5,7 @@ import { ApplicationsService } from '../applications/applications.service';
 import { AppError } from '../common/errors/app-error';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { CreatorsService } from '../creators/creators.service';
+import { InstagramService } from '../instagram/instagram.service';
 import type { CreatorSummaryModel } from '../creators/dto/creator-profile.model';
 import {
   NotifyInput,
@@ -335,8 +336,31 @@ class FakeCreators extends CreatorsService {
             photoUrl: null,
             regionSido: '서울특별시',
             regionSigungu: null,
+            instagramConnected: false,
+            followers: null,
           }
         : null,
+    );
+  }
+}
+
+// 연결 여부만 필요하다. 연결 자체는 인스타그램 서비스 spec이 확인한다.
+class FakeInstagram extends InstagramService {
+  connected = false;
+  constructor() {
+    super(
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+    );
+  }
+  getConnection(): ReturnType<InstagramService['getConnection']> {
+    return Promise.resolve(
+      this.connected ? { handle: 'haru', followers: 2100 } : null,
     );
   }
 }
@@ -372,6 +396,8 @@ describe('OffersService', () => {
   let stores: FakeStores;
   let applications: FakeApplications;
   let push: FakeNotifications;
+  let instagram: FakeInstagram;
+  let creators: FakeCreators;
   let clock: FakeClock;
   let jobs: FakeJobScheduler;
   let service: OffersService;
@@ -388,6 +414,8 @@ describe('OffersService', () => {
     stores = new FakeStores(makeStore());
     applications = new FakeApplications();
     push = new FakeNotifications();
+    instagram = new FakeInstagram();
+    creators = new FakeCreators();
     clock = new FakeClock(T0);
     jobs = new FakeJobScheduler(new JobHandlerRegistry());
     service = new OffersService(
@@ -395,8 +423,9 @@ describe('OffersService', () => {
       users,
       stores,
       applications,
-      new FakeCreators(),
+      creators,
       collaborations,
+      instagram,
       push,
       jobs,
       clock,
@@ -556,6 +585,62 @@ describe('OffersService', () => {
       ]);
     });
 
+    // 보낸 오퍼를 크리에이터가 받은 상태로 돌려준다. id의 식사권 오퍼는 먼저 취소해 열린 오퍼 중복을 피한다.
+    async function sendAs(
+      format: 'REELS' | 'SHORTS' | 'CARD_NEWS',
+      reward: 'PER_VIEW' | 'VOUCHER',
+    ) {
+      users.role = 'STORE';
+      await service.cancel(OWNER, id);
+      const sent = await service.send(OWNER, {
+        creatorId: CREATOR,
+        format,
+        rewardType: reward,
+      });
+      users.role = 'CREATOR';
+      return sent.id;
+    }
+
+    it('marks a per-view reels offer as needing instagram and refuses to accept it', async () => {
+      const perView = await sendAs('REELS', 'PER_VIEW');
+      const [card] = await service.listReceived(CREATOR, 'new');
+      expect(card.needsInstagram).toBe(true);
+      await expect(service.accept(CREATOR, perView)).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: '인스타그램을 연동하면 수락할 수 있어요.',
+      });
+      expect(collaborations.rows).toEqual([]);
+      expect(repo.rows.find((r) => r.id === perView)?.status).toBe('SENT');
+      expect(push.sent.filter((n) => n.kind === 'OFFER_ACCEPTED')).toEqual([]);
+    });
+
+    it('accepts the same offer after connecting', async () => {
+      const perView = await sendAs('CARD_NEWS', 'PER_VIEW');
+      instagram.connected = true;
+      const [card] = await service.listReceived(CREATOR, 'new');
+      expect(card.needsInstagram).toBe(false);
+      const accepted = await service.accept(CREATOR, perView);
+      expect(accepted.view).toBe('ACCEPTED');
+      expect(accepted.needsInstagram).toBe(false);
+    });
+
+    it('does not require instagram for a voucher-only offer or a shorts offer', async () => {
+      const [voucher] = await service.listReceived(CREATOR, 'new');
+      expect(voucher.needsInstagram).toBe(false);
+      await expect(service.accept(CREATOR, id)).resolves.toMatchObject({
+        view: 'ACCEPTED',
+      });
+    });
+
+    it('does not require instagram for a per-view shorts offer', async () => {
+      const shorts = await sendAs('SHORTS', 'PER_VIEW');
+      const [card] = await service.listReceived(CREATOR, 'new');
+      expect(card.needsInstagram).toBe(false);
+      await expect(service.accept(CREATOR, shorts)).resolves.toMatchObject({
+        view: 'ACCEPTED',
+      });
+    });
+
     it('points the accepted notification at payment while the collaboration awaits payment', async () => {
       users.role = 'STORE';
       await service.cancel(OWNER, id);
@@ -566,6 +651,7 @@ describe('OffersService', () => {
       });
       push.sent.length = 0;
       users.role = 'CREATOR';
+      instagram.connected = true;
       await service.accept(CREATOR, perView.id);
       expect(collaborations.rows[0].stage).toBe('AWAITING_PAYMENT');
       expect(push.sent).toHaveLength(1);
@@ -573,6 +659,25 @@ describe('OffersService', () => {
         kind: 'PAYMENT',
         id: collaborations.rows[0].id,
       });
+    });
+
+    it('still accepts and notifies with a default name when the actor cannot be read', async () => {
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      jest
+        .spyOn(creators, 'getActor')
+        .mockRejectedValueOnce(new Error('actor read down'));
+      const accepted = await service.accept(CREATOR, id);
+      expect(accepted.view).toBe('ACCEPTED');
+      expect(push.sent).toHaveLength(1);
+      expect(push.sent[0].actor).toEqual({
+        userId: CREATOR,
+        name: '크리에이터',
+        photoPath: null,
+      });
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('actor read down');
+      warn.mockRestore();
     });
 
     it('creates the collaboration in the accept transaction with a copy of the terms', async () => {
@@ -640,6 +745,8 @@ describe('OffersService', () => {
       id = (await service.send(OWNER, { ...REELS })).id;
       push.sent.length = 0;
       users.role = 'CREATOR';
+      // 이 묶음은 조회수 보상 오퍼를 수락하므로 연결된 크리에이터로 둔다(수락 조건은 위에서 시험한다).
+      instagram.connected = true;
     });
 
     // 조회수 보상만 있는 오퍼를 수락해 결제 대기 협업을 만든다.

@@ -43,4 +43,10 @@ export class ReceivedOfferModel {
     description: '방금 거절해 30초 안에 되돌릴 수 있으면 true.',
   })
   canUndoDecline!: boolean;
+
+  @ApiProperty({
+    description:
+      '릴스·카드뉴스의 조회수 보상을 받으려면 인스타그램 연동이 필요한데 아직 연동하지 않았으면 true. true인 오퍼는 수락할 수 없다.',
+  })
+  needsInstagram!: boolean;
 }

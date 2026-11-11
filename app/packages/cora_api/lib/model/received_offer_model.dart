@@ -17,6 +17,7 @@ class ReceivedOfferModel {
     required this.canUndoDecline,
     required this.collaborationId,
     required this.id,
+    required this.needsInstagram,
     required this.receivedAt,
     required this.store,
     required this.storeIntro,
@@ -33,6 +34,9 @@ class ReceivedOfferModel {
   String? collaborationId;
 
   String id;
+
+  /// 릴스·카드뉴스의 조회수 보상을 받으려면 인스타그램 연동이 필요한데 아직 연동하지 않았으면 true. true인 오퍼는 수락할 수 없다.
+  bool needsInstagram;
 
   /// 도착한 시각(ISO 8601).
   DateTime receivedAt;
@@ -54,6 +58,7 @@ class ReceivedOfferModel {
           other.canUndoDecline == canUndoDecline &&
           other.collaborationId == collaborationId &&
           other.id == id &&
+          other.needsInstagram == needsInstagram &&
           other.receivedAt == receivedAt &&
           other.store == store &&
           other.storeIntro == storeIntro &&
@@ -67,6 +72,7 @@ class ReceivedOfferModel {
       (canUndoDecline.hashCode) +
       (collaborationId == null ? 0 : collaborationId!.hashCode) +
       (id.hashCode) +
+      (needsInstagram.hashCode) +
       (receivedAt.hashCode) +
       (store.hashCode) +
       (storeIntro == null ? 0 : storeIntro!.hashCode) +
@@ -75,7 +81,7 @@ class ReceivedOfferModel {
 
   @override
   String toString() =>
-      'ReceivedOfferModel[bestShootingTime=$bestShootingTime, canUndoDecline=$canUndoDecline, collaborationId=$collaborationId, id=$id, receivedAt=$receivedAt, store=$store, storeIntro=$storeIntro, terms=$terms, view=$view]';
+      'ReceivedOfferModel[bestShootingTime=$bestShootingTime, canUndoDecline=$canUndoDecline, collaborationId=$collaborationId, id=$id, needsInstagram=$needsInstagram, receivedAt=$receivedAt, store=$store, storeIntro=$storeIntro, terms=$terms, view=$view]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -91,6 +97,7 @@ class ReceivedOfferModel {
       json[r'collaborationId'] = null;
     }
     json[r'id'] = this.id;
+    json[r'needsInstagram'] = this.needsInstagram;
     json[r'receivedAt'] = this.receivedAt.toUtc().toIso8601String();
     json[r'store'] = this.store;
     if (this.storeIntro != null) {
@@ -126,6 +133,10 @@ class ReceivedOfferModel {
             'Required key "ReceivedOfferModel[id]" is missing from JSON.');
         assert(json[r'id'] != null,
             'Required key "ReceivedOfferModel[id]" has a null value in JSON.');
+        assert(json.containsKey(r'needsInstagram'),
+            'Required key "ReceivedOfferModel[needsInstagram]" is missing from JSON.');
+        assert(json[r'needsInstagram'] != null,
+            'Required key "ReceivedOfferModel[needsInstagram]" has a null value in JSON.');
         assert(json.containsKey(r'receivedAt'),
             'Required key "ReceivedOfferModel[receivedAt]" is missing from JSON.');
         assert(json[r'receivedAt'] != null,
@@ -152,6 +163,7 @@ class ReceivedOfferModel {
         canUndoDecline: mapValueOfType<bool>(json, r'canUndoDecline')!,
         collaborationId: mapValueOfType<String>(json, r'collaborationId'),
         id: mapValueOfType<String>(json, r'id')!,
+        needsInstagram: mapValueOfType<bool>(json, r'needsInstagram')!,
         receivedAt: mapDateTime(json, r'receivedAt', r'')!,
         store: StoreSummaryModel.fromJson(json[r'store'])!,
         storeIntro: mapValueOfType<String>(json, r'storeIntro'),
@@ -217,6 +229,7 @@ class ReceivedOfferModel {
     'canUndoDecline',
     'collaborationId',
     'id',
+    'needsInstagram',
     'receivedAt',
     'store',
     'storeIntro',
