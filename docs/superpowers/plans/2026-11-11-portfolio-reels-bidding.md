@@ -60,8 +60,8 @@ app/lib/
 ### Task 1: 스키마와 마이그레이션
 
 **Files:**
-- Modify: `api/prisma/schema.prisma`, `supabase/config.toml`(`[storage] file_size_limit = "100MiB"`)
-- Create: 마이그레이션, `supabase/migrations/<timestamp>_portfolio_bucket.sql`
+- Modify: `api/prisma/schema.prisma`
+- Create: 마이그레이션, `api/scripts/setup-supabase.ts`에 추가(포트폴리오용 공개 버킷, 파일 한도 100MiB. 이름은 이 작업의 Interfaces를 따른다)
 - Test: `api/test/db/portfolio-schema.db-spec.ts`
 
 **Interfaces:**
@@ -87,7 +87,7 @@ it('defaults offers to the STANDARD kind', ...);
 
 기존 `rls.db-spec.ts`가 새 테이블 7개(`reports`를 5번이 만들었으면 6개)에서도 통과해야 한다.
 
-- [ ] **Step 2~4: 실패 확인 → 스키마, 마이그레이션(RLS 포함), 버킷 SQL → 통과 확인** — Run: `npx supabase db reset && cd api && yarn prisma migrate dev && yarn test:db`
+- [ ] **Step 2~4: 실패 확인 → 스키마, 마이그레이션(RLS 포함), 버킷 SQL → 통과 확인** — Run: `cd api && yarn setup:supabase && yarn prisma migrate dev && yarn check:rls && yarn test:db`
 - [ ] **Step 5: Commit** — `feat: 포트폴리오·좋아요·피드·입찰 예산·신고 스키마 추가`
 
 ---

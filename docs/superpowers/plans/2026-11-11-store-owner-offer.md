@@ -130,7 +130,7 @@ it('allows only one store per owner', async () => { ... });
 ### Task 2: Storage 포트와 사진 업로드 주소
 
 **Files:**
-- Create: `api/src/integrations/storage/storage.port.ts`, `api/src/integrations/storage/supabase-storage.adapter.ts`, `api/src/uploads/uploads.module.ts`, `api/src/uploads/uploads.controller.ts`, `api/src/uploads/uploads.service.ts`, `api/src/uploads/dto/create-photo-upload.dto.ts`, `api/test/support/fake-storage.port.ts`, `supabase/migrations/<timestamp>_photos_bucket.sql`
+- Create: `api/src/integrations/storage/storage.port.ts`, `api/src/integrations/storage/supabase-storage.adapter.ts`, `api/src/uploads/uploads.module.ts`, `api/src/uploads/uploads.controller.ts`, `api/src/uploads/uploads.service.ts`, `api/src/uploads/dto/create-photo-upload.dto.ts`, `api/test/support/fake-storage.port.ts`, `api/scripts/setup-supabase.ts`(`yarn setup:supabase`: 버킷 `photos`를 공개로 만든다. 이미 있으면 아무것도 하지 않는다)
 - Modify: `api/src/config/env.ts`(`SUPABASE_SERVICE_ROLE_KEY` 추가), `api/.env.example`, `api/src/integrations/integrations.module.ts`
 - Test: `api/src/uploads/uploads.service.spec.ts`, `api/test/uploads.e2e-spec.ts`
 
@@ -153,7 +153,7 @@ it('assertOwnedPath rejects a path under another user id', ...);
 ```
 
 - [ ] **Step 2: 실패 확인** — Run: `cd api && yarn test uploads && yarn test:e2e uploads` · Expected: FAIL
-- [ ] **Step 3: 구현** — `SupabaseStorageAdapter`만 `@supabase/supabase-js`를 import한다. Storage는 가짜/실제 전환 대상이 아니므로 `_ADAPTER` 환경변수를 만들지 않는다(로컬 Supabase가 실제 Storage를 제공한다). 테스트는 `FakeStoragePort`로 override한다.
+- [ ] **Step 3: 구현** — `SupabaseStorageAdapter`만 `@supabase/supabase-js`를 import한다. Storage는 가짜/실제 전환 대상이 아니므로 `_ADAPTER` 환경변수를 만들지 않는다(개발용 원격 Supabase의 실제 Storage를 쓴다). 테스트는 `FakeStoragePort`로 override한다.
 - [ ] **Step 4: 통과 확인, 실제 Storage로 수동 확인** — Run: `cd api && yarn test && yarn test:e2e` · Expected: PASS. 발급된 `uploadUrl`에 `curl -X PUT`으로 작은 JPEG를 올리고 `publicUrl`로 내려받아 본다.
 - [ ] **Step 5: `./scripts/gen-api.sh` 실행, Commit** — `feat: 사진 업로드 주소 발급 추가`
 

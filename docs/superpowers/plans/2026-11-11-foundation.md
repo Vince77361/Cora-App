@@ -33,7 +33,10 @@
 ## Global Constraints
 
 - 지원 기기: 휴대폰만, 세로 방향만. 최소 iOS 16, Android 8(minSdk 26).
-- 로컬 도구: Flutter 3.44.5 / Dart 3.12.2, Node 23.5.0, yarn 1.22.22, Docker 27.3.1. Supabase CLI는 설치돼 있지 않으므로 `npx supabase`로 실행한다.
+- 로컬 도구: Flutter 3.44.5 / Dart 3.12.2, Node 23.5.0, yarn 1.22.22, Docker 27.3.1.
+- Supabase는 원격의 개발용 프로젝트를 쓴다. 로컬에 띄우지 않고 Supabase CLI도 쓰지 않는다. 로컬 Docker로 띄우는 것은 Redis뿐이다.
+- 자동 테스트는 같은 DB의 `cora_test` 스키마에서 돈다(`TEST_DATABASE_URL`, `TEST_DIRECT_URL`, 둘 다 `?schema=cora_test`). 마이그레이션의 직접 SQL에 `public.`을 쓰지 않는다. 테스트는 인터넷 연결이 필요하다.
+- 에이전트는 `api/.env`와 `app/config/dev.json`을 읽지 않는다. 값이 비어 실패하면 멈추고 소유자에게 어떤 키가 필요한지 알린다.
 - 앱은 데이터를 NestJS API로만 읽고 쓴다. Supabase의 자동 생성 데이터 API를 호출하지 않는다.
 - `public` 스키마의 모든 테이블에 RLS를 켜고 정책은 만들지 않는다.
 - DB 연결 주소는 두 개다: 실행용 `DATABASE_URL`(풀링), 마이그레이션용 `DIRECT_URL`(직접 연결).
@@ -72,7 +75,6 @@ Cora-App/
 ├── README.md
 ├── docker-compose.yml                  # Redis
 ├── scripts/gen-api.sh                  # OpenAPI → Dart 클라이언트
-├── supabase/config.toml                # 로컬 Supabase
 ├── api/
 │   ├── .env.example
 │   ├── prisma/schema.prisma
@@ -110,13 +112,16 @@ Cora-App/
 
 ---
 
-### Task 1: 레포 뼈대와 로컬 환경
+### Task 1: 레포 뼈대와 개발 환경
 
 **Files:**
-- Create: `.gitignore`, `README.md`, `docker-compose.yml`, `supabase/config.toml`
+- Create: `.gitignore`(이미 있으면 항목 추가), `README.md`, `docker-compose.yml`, `api/.env.example`, `app/config/dev.example.json`, `CLAUDE.md`(이미 있으면 그대로 둔다)
 
 **Interfaces:**
-- Produces: 로컬 Supabase(API `http://127.0.0.1:54321`, DB `postgresql://postgres:postgres@127.0.0.1:54322/postgres`), Redis `127.0.0.1:6379`
+- Produces:
+  - Redis `127.0.0.1:6379` (로컬 Docker)
+  - 원격 Supabase 개발용 프로젝트. 연결 값은 `api/.env`에 있다: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`(풀링 주소), `DIRECT_URL`(직접 연결), `TEST_DATABASE_URL`, `TEST_DIRECT_URL`(위 두 주소에 `?schema=cora_test`를 붙인 것)
+  - `app/config/dev.json`: `{ "CORA_ENV": "dev", "SUPABASE_URL": "…", "SUPABASE_ANON_KEY": "…", "API_BASE_URL": "http://127.0.0.1:3000" }`. `flutter run --dart-define-from-file=config/dev.json`으로 쓴다.
 
 - [ ] **Step 1: 시작 상태 확인**
 
@@ -127,34 +132,43 @@ Expected: 작업 트리 변경 없음, 문서 커밋이 보임
 
 - [ ] **Step 2: `.gitignore` 작성**
 
-포함할 항목: `.omc/`, `.env`, `.env.*`(단 `!.env.example`), `node_modules/`, `dist/`, `.DS_Store`, `supabase/.temp/`, `supabase/.branches/`.
+포함할 항목: `.omc/`, `.superpowers/`, `.env`, `.env.*`(단 `!.env.example`), `app/config/*.json`(단 `!app/config/*.example.json`), `node_modules/`, `dist/`, `.DS_Store`.
 
 - [ ] **Step 3: `docker-compose.yml` 작성**
 
 서비스 하나: `redis`, 이미지 `redis:7-alpine`, 포트 `6379:6379`.
 
-- [ ] **Step 4: 로컬 Supabase 초기화**
+- [ ] **Step 4: 설정 예시 파일 작성**
 
-Run: `npx supabase init`
-`supabase/config.toml`에서 `[auth.email]`의 `enable_confirmations = false`로 둔다(개발용 로그인에 메일 인증을 요구하지 않기 위해).
+`api/.env.example`: 위 여섯 키와 `NODE_ENV=development`, `PORT=3000`, `PUSH_ADAPTER=fake`를 값 없이(또는 형식을 보여 주는 가짜 값으로) 적고, 각 값을 Supabase 대시보드의 어디에서 찾는지 한국어 주석으로 단다.
+`app/config/dev.example.json`: 키 네 개와 가짜 값.
 
 - [ ] **Step 5: `README.md` 작성**
 
-담을 내용: 프로젝트 한 줄 설명, 폴더 구조, 로컬 실행 순서(`docker compose up -d`, `npx supabase start`), 설계 문서와 계획 문서 위치.
+담을 내용: 프로젝트 한 줄 설명, 폴더 구조, 설계 문서와 계획 문서 위치, 그리고 "개발 환경 준비":
+1. Supabase 대시보드에서 개발용 프로젝트를 만든다(지역: 서울).
+2. Authentication → 이메일 로그인의 "Confirm email"을 끈다(개발용 로그인에 메일 인증을 요구하지 않기 위해).
+3. `api/.env.example`을 `api/.env`로 복사해 값을 채운다. `app/config/dev.example.json`을 `app/config/dev.json`으로 복사해 값을 채운다.
+4. `docker compose up -d`.
+이 프로젝트는 로컬에 Supabase를 띄우지 않는다는 것과, 테스트가 `cora_test` 스키마에서 돈다는 것도 적는다.
 
-- [ ] **Step 6: 실행 확인**
+- [ ] **Step 6: 소유자 준비 확인 (멈추는 지점)**
+
+소유자에게 README의 1~3을 마쳤는지 묻는다. **마쳤다는 답을 받기 전에는 Task 2로 넘어가지 않는다.** 에이전트는 `api/.env`와 `app/config/dev.json`을 열지 않는다.
+
+- [ ] **Step 7: 실행 확인**
 
 Run: `docker compose up -d && docker compose exec redis redis-cli ping`
 Expected: `PONG`
 
-Run: `npx supabase start && npx supabase status`
-Expected: API URL `http://127.0.0.1:54321`, DB URL에 포트 `54322`
+Run: `test -f api/.env && test -f app/config/dev.json && echo ok`
+Expected: `ok` (파일이 있는지만 본다. 내용은 Task 3에서 DB 연결로 확인한다.)
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add .gitignore README.md docker-compose.yml supabase/config.toml
-git commit -m "chore: 레포 뼈대와 로컬 개발 환경 추가"
+git add .gitignore README.md docker-compose.yml api/.env.example app/config/dev.example.json
+git commit -m "chore: 레포 뼈대와 개발 환경 추가"
 ```
 
 ---
@@ -234,7 +248,7 @@ Expected: FAIL — `loadEnv`, `setupApp`이 없음
 - `loadEnv`: class-validator로 `Env` 클래스를 검증한다.
 - `setupApp`: `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })`. 검증 실패는 `AppError('VALIDATION_FAILED', ...)`로 바꾸고 `details`에 필드별 메시지 배열을 넣는다.
 - `AllExceptionsFilter`: `AppError`와 Nest `HttpException`을 오류 형식으로 바꾼다. 그 밖의 예외는 500 `INTERNAL`에 고정 문구 `"서버 오류가 발생했어요."`를 쓰고 원래 메시지는 서버 로그에만 남긴다. `details`가 없으면 `null`.
-- `api/.env.example`: `Env`의 모든 키와 로컬 Supabase 기본값.
+- `api/.env.example`: Task 1에서 만든 파일에 `Env`의 나머지 키를 더한다.
 
 - [ ] **Step 5: 통과 확인**
 
@@ -263,7 +277,8 @@ git commit -m "feat: API 뼈대와 오류 형식, Swagger, health 추가"
   - `enum UserRole { STORE, BRAND, CREATOR }`
   - `model User { id: String @id @db.Uuid; role: UserRole?; createdAt; updatedAt; deletedAt: DateTime? }` → 테이블 `users`, 컬럼 `created_at`, `updated_at`, `deleted_at`
   - `User.id`는 Supabase Auth 사용자 ID와 같은 값이다
-  - 스크립트 `yarn test:db` — `*.db-spec.ts`만 실행, 로컬 Supabase DB 필요
+  - 스크립트 `yarn test:db` — `*.db-spec.ts`만 실행. 실행 전에 `TEST_DIRECT_URL`로 `prisma migrate deploy`를 돌려 `cora_test` 스키마를 최신으로 맞추고, 테스트마다 그 스키마의 테이블을 비운다. `yarn test:e2e`도 같은 스키마를 쓴다.
+  - RLS 감시 테스트는 `current_schema()`의 테이블을 본다(`public`을 글자로 박지 않는다). 개발 DB의 `public`은 `yarn check:rls`(같은 쿼리를 `DATABASE_URL`로 실행하는 스크립트)로 확인한다. 마이그레이션을 개발 DB에 적용한 뒤 이 스크립트를 돌린다.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
@@ -382,9 +397,11 @@ it('still serves /health without a token', async () => {
 Run: `cd api && yarn test && yarn test:e2e && yarn test:db`
 Expected: FAIL — `/me`가 404
 
-- [ ] **Step 3: 로컬 Supabase의 토큰 서명 방식 확인**
+- [ ] **Step 3: 개발용 프로젝트의 토큰 서명 방식 확인**
 
-Run: `curl -s http://127.0.0.1:54321/auth/v1/.well-known/jwks.json`
+프로젝트 주소는 공개 값이므로 소유자에게 물어 받는다(`.env`를 열지 않는다).
+
+Run: `curl -s <SUPABASE_URL>/auth/v1/.well-known/jwks.json`
 - `keys` 배열에 키가 있으면: `SupabaseTokenVerifier`는 `jose`의 `createRemoteJWKSet`으로 `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`을 사용한다.
 - 비어 있거나 404이면: `jose`의 `jwtVerify`에 `SUPABASE_JWT_SECRET`(HS256)을 사용하고, 이 값이 없으면 시작 시 throw한다.
 
@@ -401,7 +418,7 @@ Expected: PASS
 
 - [ ] **Step 6: 실제 토큰으로 수동 확인**
 
-`npx supabase status`의 공개 키로 로컬 Supabase에 이메일 가입(`POST /auth/v1/signup`) 후 받은 `access_token`으로 `curl -H "Authorization: Bearer <token>" localhost:3000/me`.
+이 단계는 소유자가 한다(공개 키가 필요하다). README에 방법을 적는다: 개발용 프로젝트에 이메일로 가입(`POST <SUPABASE_URL>/auth/v1/signup`, 헤더 `apikey: <공개 키>`)해 받은 `access_token`으로 `curl -H "Authorization: Bearer <token>" localhost:3000/me`. 소유자가 결과를 알려 주면 다음으로 넘어간다.
 Expected: `{"id":"<uuid>","role":null}`
 
 - [ ] **Step 7: Commit**
@@ -842,12 +859,12 @@ Expected: PASS
 - [ ] **Step 5: 전체 흐름 수동 확인**
 
 ```bash
-docker compose up -d && npx supabase start
+docker compose up -d
 cd api && yarn start:dev
-cd app && flutter run --dart-define=CORA_ENV=dev --dart-define=SUPABASE_URL=http://127.0.0.1:54321 --dart-define=SUPABASE_ANON_KEY=<npx supabase status의 공개 키> --dart-define=API_BASE_URL=http://127.0.0.1:3000
+cd app && flutter run --dart-define-from-file=config/dev.json
 ```
 
-(Android 에뮬레이터에서는 `127.0.0.1` 대신 `10.0.2.2`.)
+(Android 에뮬레이터에서는 `config/dev.json`의 `API_BASE_URL`을 `http://10.0.2.2:3000`으로 둔다.)
 
 확인 순서, iOS와 Android 각각:
 1. 개발용 계정을 만들고 로그인 → 역할 선택 화면이 보인다.

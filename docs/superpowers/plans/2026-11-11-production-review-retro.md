@@ -64,7 +64,7 @@ app/lib/features/
 
 **Files:**
 - Modify: `api/prisma/schema.prisma`
-- Create: 마이그레이션, `supabase/migrations/<timestamp>_drafts_bucket.sql`
+- Create: 마이그레이션, `api/scripts/setup-supabase.ts`에 추가(초안용 비공개 버킷. 이름과 한도는 이 작업의 Interfaces를 따른다)
 - Test: `api/test/db/production-schema.db-spec.ts`
 
 **Interfaces:**
@@ -99,7 +99,7 @@ it('creates the drafts bucket as private', ...);                         // stor
 
 **Files:**
 - Modify: `api/src/integrations/content-draft/{content-draft.port.ts,fake-content-draft.adapter.ts}`, `api/src/integrations/storage/{storage.port.ts,supabase-storage.adapter.ts}`, `api/test/support/fake-storage.port.ts`, `api/src/jobs/job-names.ts`
-- Test: `api/src/integrations/content-draft/fake-content-draft.adapter.spec.ts`(추가), `api/test/support/fake-storage.port.spec.ts`, `api/test/storage.db-spec.ts`(로컬 Supabase로 실제 어댑터 확인)
+- Test: `api/src/integrations/content-draft/fake-content-draft.adapter.spec.ts`(추가), `api/test/support/fake-storage.port.spec.ts`, `api/test/storage.db-spec.ts`(개발용 원격 Supabase로 실제 어댑터 확인)
 
 **Interfaces:**
 - Produces:
@@ -256,7 +256,7 @@ it('returns null urls for purged files but keeps the comments', ...);
 it('hides the uploading version from the brand', ...);
 ```
 
-- [ ] **Step 2~4: 실패 확인 → 구현 → 통과 확인** — Run: `cd api && yarn lint && yarn test && yarn test:e2e`. 로컬 Supabase로 30MB 영상을 TUS로 올리고 `complete` → 서명 주소로 재생되는지 손으로 확인한다.
+- [ ] **Step 2~4: 실패 확인 → 구현 → 통과 확인** — Run: `cd api && yarn lint && yarn test && yarn test:e2e`. 개발용 원격 Supabase로 30MB 영상을 TUS로 올리고 `complete` → 서명 주소로 재생되는지 손으로 확인한다.
 - [ ] **Step 5: gen-api, Commit** — 커밋 두 개: `feat: 초안 버전 만들기와 이어 올리기 토큰 발급 추가`, `feat: 초안 제출 완료와 서명 주소로 보기 추가`
 
 ---

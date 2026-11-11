@@ -91,11 +91,10 @@ Cora는 가게 사장님·브랜드와 크리에이터를 이어 주는 한국 �
 Cora-App/
 ├── app/            # Flutter
 ├── api/            # NestJS (yarn)
-├── supabase/       # Supabase CLI 설정 (로컬 개발용)
 ├── docs/superpowers/
 │   ├── specs/      # 설계 문서
 │   └── plans/      # 실행 계획
-└── docker-compose.yml   # Redis
+└── docker-compose.yml   # Redis (로컬에서 띄우는 것은 이것뿐)
 ```
 
 git 규칙은 Wiki의 [Git and commit workflow]를 따른다: 한국어 conventional commit, 원자적 커밋. 단, 브랜치는 Wiki와 다르게 한다. **[결정]** 브랜치를 여러 개 두지 않고 `main`에 바로 커밋한다(2026-11-11).
@@ -120,7 +119,11 @@ Flutter 앱 ──(REST, WebSocket)──→ NestJS ──(Prisma)──→ Supa
 - **[합의]** 연결 주소는 두 개다. 서버 실행에는 풀링 주소, Prisma 마이그레이션에는 직접 연결 주소.
 - **[합의]** 스키마와 마이그레이션은 Prisma가 관리한다. Supabase 대시보드에서 테이블을 직접 고치지 않는다.
 - **[제안]** 서비스 역할 키는 NestJS 환경변수에만 둔다. 앱에는 공개 키만 넣는다.
-- **[제안]** Supabase 프로젝트는 개발용과 운영용 두 개로 나눈다. 로컬 개발은 Supabase CLI로 띄운다.
+- **[결정]** 개발에도 원격 Supabase 프로젝트를 쓴다. 로컬에 Supabase를 띄우지 않는다(디스크를 너무 많이 쓴다). Supabase CLI와 `supabase/` 폴더를 쓰지 않는다.
+- **[제안]** 프로젝트는 개발용 하나로 시작하고, 스테이징과 운영용은 9번 계획에서 만든다. 모두 서울 지역에 둔다.
+- **[제안]** 자동 테스트는 개발용 프로젝트의 같은 DB 안에 따로 둔 스키마 `cora_test`에서 돈다. 앱이 쓰는 데이터는 `public`에 있다. Supabase는 `public`만 자동 생성 API에 노출하므로 테스트 스키마는 밖에서 보이지 않는다. 테스트는 인터넷 연결이 있어야 돈다.
+- **[제안]** Storage 버킷은 SQL이 아니라 여러 번 실행해도 되는 설정 스크립트(`yarn setup:supabase`)로 만든다. 테스트가 올리는 파일은 `test/`로 시작하는 경로에 두고 끝나면 지운다.
+- **[제안]** 개발용 프로젝트를 만들고, 이메일 인증을 끄고, 연결 값을 `api/.env`와 앱의 개발 설정 파일에 넣는 것은 소유자가 한다. 에이전트는 이 값들을 읽지 않는다.
 
 ### 4.4 앱 (Flutter)
 
