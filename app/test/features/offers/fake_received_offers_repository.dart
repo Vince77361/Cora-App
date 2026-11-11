@@ -1,0 +1,102 @@
+import 'package:cora/features/offer_terms/domain/offer_terms.dart';
+import 'package:cora/features/offers/domain/offer_view.dart';
+import 'package:cora/features/offers/domain/received_offer.dart';
+import 'package:cora/features/offers/domain/received_offers_repository.dart';
+
+import '../store_browse/fake_store_browse_repository.dart';
+
+/// 받은 오퍼 한 건. 기본은 `한그릇 라멘`이 어제 보낸 릴스 오퍼다.
+ReceivedOffer receivedOffer({
+  String id = 'o1',
+  String storeName = '한그릇 라멘',
+  OfferView view = OfferView.waiting,
+  DateTime? receivedAt,
+  String? storeIntro = '김이 오르는 첫 숟가락 장면을 원해요.',
+  String? bestShootingTime = '오후 3시',
+  bool canUndoDecline = false,
+  OfferTerms? terms,
+}) => ReceivedOffer(
+  id: id,
+  store: ramenStore(id: 's-$id', name: storeName),
+  storeIntro: storeIntro,
+  bestShootingTime: bestShootingTime,
+  terms: terms ?? ramenStore().defaultTerms,
+  view: view,
+  receivedAt: receivedAt ?? DateTime.utc(2026, 11, 11, 3),
+  canUndoDecline: canUndoDecline,
+);
+
+/// 손으로 쓴 가짜 받은 오퍼 저장소. 서버의 새 오퍼·진행 중 목록과 거절 되돌리기를 흉내 낸다.
+class FakeReceivedOffersRepository implements ReceivedOffersRepository {
+  FakeReceivedOffersRepository({
+    List<ReceivedOffer>? newOffers,
+    List<ReceivedOffer>? activeOffers,
+  }) : newOffers = newOffers ?? [],
+       activeOffers = activeOffers ?? [];
+
+  List<ReceivedOffer> newOffers;
+  List<ReceivedOffer> activeOffers;
+
+  bool failFetch = false;
+
+  /// true이면 수락·거절·되돌리기가 서버에서 409를 받는다(그사이 [newOffers]는 그대로 둔다).
+  bool conflictOnAnswer = false;
+  bool failAnswer = false;
+
+  int fetchNewCalls = 0;
+  final List<String> accepted = [];
+  final List<String> declined = [];
+  final List<String> undone = [];
+
+  @override
+  Future<List<ReceivedOffer>> fetchNew() async {
+    fetchNewCalls++;
+    if (failFetch) throw const ReceivedOffersFailure();
+    return List.of(newOffers);
+  }
+
+  @override
+  Future<List<ReceivedOffer>> fetchActive() async {
+    if (failFetch) throw const ReceivedOffersFailure();
+    return List.of(activeOffers);
+  }
+
+  void _check() {
+    if (conflictOnAnswer) throw const ReceivedOffersFailure(conflict: true);
+    if (failAnswer) throw const ReceivedOffersFailure();
+  }
+
+  ReceivedOffer _find(String id) => newOffers.firstWhere((o) => o.id == id);
+
+  void _replace(String id, ReceivedOffer next) =>
+      newOffers = [for (final o in newOffers) o.id == id ? next : o];
+
+  @override
+  Future<void> accept(String id) async {
+    _check();
+    final offer = _find(id);
+    accepted.add(id);
+    newOffers = newOffers.where((o) => o.id != id).toList();
+    activeOffers = [...activeOffers, offer.copyWith(view: OfferView.accepted)];
+  }
+
+  @override
+  Future<void> decline(String id) async {
+    _check();
+    declined.add(id);
+    _replace(
+      id,
+      _find(id).copyWith(view: OfferView.declined, canUndoDecline: true),
+    );
+  }
+
+  @override
+  Future<void> undoDecline(String id) async {
+    _check();
+    undone.add(id);
+    _replace(
+      id,
+      _find(id).copyWith(view: OfferView.waiting, canUndoDecline: false),
+    );
+  }
+}

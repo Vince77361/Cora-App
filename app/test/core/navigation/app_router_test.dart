@@ -12,6 +12,8 @@ import 'package:cora/core/ui/cora_logo.dart';
 import 'package:cora/features/dev/presentation/pages/motion_gallery_page.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile_repository.dart';
+import 'package:cora/features/store_browse/domain/store_browse_repository.dart';
+import 'package:cora/features/store_browse/presentation/pages/store_list_page.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
@@ -25,6 +27,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/fake_auth_repository.dart';
 import '../../features/creator_profile/fake_creator_profile_repository.dart';
+import '../../features/store_browse/fake_store_browse_repository.dart';
 import '../../features/onboarding/fake_me_repository.dart';
 import '../../support/fake_http_client.dart';
 import '../../support/pump_cora_app.dart';
@@ -59,6 +62,11 @@ Override _creatorWithProfile() =>
         profile: const CreatorProfile(displayName: '서윤', regionSido: '서울특별시'),
       ),
     );
+
+/// 크리에이터 홈이 읽는 공개된 가게 목록.
+Override _publishedStores() => storeBrowseRepositoryProvider.overrideWithValue(
+  FakeStoreBrowseRepository(),
+);
 
 void main() {
   testWidgets('redirects to /login when there is no session', (tester) async {
@@ -171,13 +179,14 @@ void main() {
       tester,
       auth: auth,
       me: FakeMeRepository(role: UserRole.creator),
-      overrides: [_creatorWithProfile()],
+      overrides: [_creatorWithProfile(), _publishedStores()],
     );
 
     await tester.tap(find.text('카카오로 계속하기'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(CoraComingSoonPage), findsOneWidget);
+    // 프로필이 있는 크리에이터의 홈은 공개된 가게 목록이다.
+    expect(find.byType(StoreListPage), findsOneWidget);
     expect(currentPath(tester), AppRoutes.creator);
   });
 
@@ -607,16 +616,13 @@ void main() {
         tester,
         auth: FakeAuthRepository(),
         me: FakeMeRepository(role: UserRole.creator),
-        overrides: [_creatorWithProfile()],
+        overrides: [_creatorWithProfile(), _publishedStores()],
       );
 
       await tester.tap(find.text('카카오로 계속하기'));
       await tester.pumpAndSettle();
 
-      expect(
-        pushedDuration(tester, CoraComingSoonPage),
-        CoraMotion.fadeDuration,
-      );
+      expect(pushedDuration(tester, StoreListPage), CoraMotion.fadeDuration);
     });
 
     testWidgets('pushing an entry route with stacked slides it in', (

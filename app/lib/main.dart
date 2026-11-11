@@ -20,6 +20,10 @@ import 'features/creator_profile/data/api_creator_profile_repository.dart';
 import 'features/creator_profile/domain/creator_profile_repository.dart';
 import 'features/onboarding/data/api_me_repository.dart';
 import 'features/onboarding/domain/me_repository_provider.dart';
+import 'features/offers/data/api_received_offers_repository.dart';
+import 'features/offers/domain/received_offers_repository.dart';
+import 'features/store_browse/data/api_store_browse_repository.dart';
+import 'features/store_browse/domain/store_browse_repository.dart';
 import 'features/store_onboarding/data/api_content_draft_repository.dart';
 import 'features/store_onboarding/data/api_store_repository.dart';
 import 'features/store_onboarding/domain/content_draft_repository_provider.dart';
@@ -77,6 +81,12 @@ Future<void> main() async {
         ),
         creatorProfileRepositoryProvider.overrideWith(
           (ref) => ApiCreatorProfileRepository(ref.watch(apiClientProvider)),
+        ),
+        storeBrowseRepositoryProvider.overrideWith(
+          (ref) => ApiStoreBrowseRepository(ref.watch(apiClientProvider)),
+        ),
+        receivedOffersRepositoryProvider.overrideWith(
+          (ref) => ApiReceivedOffersRepository(ref.watch(apiClientProvider)),
         ),
         photoUploaderProvider.overrideWith(
           (ref) => ApiPhotoUploader(

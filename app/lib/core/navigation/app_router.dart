@@ -12,6 +12,10 @@ import '../../features/onboarding/domain/me.dart';
 import '../../features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
+import '../../features/store_browse/presentation/pages/store_detail_page.dart';
+import '../../features/store_browse/presentation/pages/store_list_page.dart';
+import '../../features/store_home/presentation/pages/store_home_page.dart';
+import '../../features/store_home/presentation/pages/store_me_page.dart';
 import '../../features/store_onboarding/presentation/pages/content_drafts_page.dart';
 import '../../features/store_onboarding/presentation/pages/default_terms_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_edit_page.dart';
@@ -84,8 +88,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             _entryPage(state, const RoleHomePlaceholderPage()),
       ),
-      // 가게 사장님 흐름. 9번 작업이 `준비 중이에요.` 자리를 실제 화면으로 바꾼다.
-      _roleRoute(AppRoutes.store, '사장님 홈', entry: true),
+      // 가게 사장님 흐름.
+      GoRoute(
+        path: AppRoutes.store,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const StoreHomePage()),
+      ),
       GoRoute(
         path: AppRoutes.storeOnboardingLinks,
         pageBuilder: (context, state) =>
@@ -117,7 +125,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             _entryPage(state, const DefaultTermsPage()),
       ),
-      _roleRoute(AppRoutes.storePage, '가게 페이지'),
+      GoRoute(
+        path: AppRoutes.storePage,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const StorePagePreviewPage(onboarding: false),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.storeMe,
+        pageBuilder: (context, state) =>
+            CoraTransitions.push(const StoreMePage(), key: state.pageKey),
+      ),
       GoRoute(
         path: AppRoutes.storeDrafts,
         pageBuilder: (context, state) => CoraTransitions.push(
@@ -134,13 +153,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       // 크리에이터 흐름. 10번 작업이 실제 화면으로 바꾼다.
-      _roleRoute(AppRoutes.creator, '가게 둘러보기', entry: true),
+      GoRoute(
+        path: AppRoutes.creator,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const StoreListPage()),
+      ),
       GoRoute(
         path: AppRoutes.creatorProfileSetup,
         pageBuilder: (context, state) =>
             _entryPage(state, const CreatorProfileSetupPage()),
       ),
-      _roleRoute('/creator/stores/:id', '가게'),
+      GoRoute(
+        path: '/creator/stores/:id',
+        pageBuilder: (context, state) => CoraTransitions.push(
+          StoreDetailPage(storeId: state.pathParameters['id']!),
+          key: state.pageKey,
+        ),
+      ),
       _roleRoute(AppRoutes.creatorOffers, '받은 오퍼'),
       GoRoute(
         path: '/creator/coming-soon/:title',

@@ -49,6 +49,44 @@ abstract final class CoraNavItems {
   ];
 }
 
+/// 크리에이터 화면의 하단 메뉴 항목 다섯 개(발견, 관심, 대화, 협업, 프로필). 캔버스 NOfferInbox의
+/// `<nav>`에서 가져왔다.
+abstract final class CoraCreatorNavItems {
+  static const discover = 0;
+  static const likes = 1;
+  static const chat = 2;
+  static const collab = 3;
+  static const profile = 4;
+
+  static const items = [
+    CoraNavItem(
+      icon: Icons.movie_outlined,
+      label: '발견',
+      iconPainter: _FindPainter.new,
+    ),
+    CoraNavItem(
+      icon: Icons.favorite_border,
+      label: '관심',
+      iconPainter: _HeartPainter.new,
+    ),
+    CoraNavItem(
+      icon: Icons.chat_bubble_outline,
+      label: '대화',
+      iconPainter: _ChatPainter.new,
+    ),
+    CoraNavItem(
+      icon: Icons.work_outline,
+      label: '협업',
+      iconPainter: _BriefcasePainter.new,
+    ),
+    CoraNavItem(
+      icon: Icons.person_outline,
+      label: '프로필',
+      iconPainter: _ProfilePainter.new,
+    ),
+  ];
+}
+
 /// 화면 아래에 떠 있는 알약 모양 메뉴(캔버스 NStoreHome `<nav>`). 높이 64, 모서리 32,
 /// 좌우 16·아래 20 띄움. 위젯 자체가 그 여백을 갖고 있으니 화면 맨 아래에 그대로 둔다
 /// (캔버스의 20은 화면 맨 아래에서 잰 값이라 안전 영역을 더하지 않는다).
@@ -278,6 +316,63 @@ class _SparklePainter extends _NavIconPainter {
         ..lineTo(5, 10)
         ..lineTo(10, 8)
         ..close(),
+      paint,
+    );
+  }
+}
+
+/// `M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z`
+class _HeartPainter extends _NavIconPainter {
+  const _HeartPainter(super.color);
+
+  @override
+  void draw(Canvas canvas, Paint paint) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(12, 20)
+        ..cubicTo(12, 20, 5, 15.6, 5, 10)
+        ..arcToPoint(const Offset(12, 7.4), radius: const Radius.circular(4))
+        ..arcToPoint(const Offset(19, 10), radius: const Radius.circular(4))
+        ..cubicTo(19, 15.6, 12, 20, 12, 20)
+        ..close(),
+      paint,
+    );
+  }
+}
+
+/// `<rect x=3 y=7 width=18 height=13 rx=2>` + `M8 7V4h8v3`
+class _BriefcasePainter extends _NavIconPainter {
+  const _BriefcasePainter(super.color);
+
+  @override
+  void draw(Canvas canvas, Paint paint) {
+    canvas.drawRRect(
+      RRect.fromLTRBR(3, 7, 21, 20, const Radius.circular(2)),
+      paint,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(8, 7)
+        ..lineTo(8, 4)
+        ..lineTo(16, 4)
+        ..lineTo(16, 7),
+      paint,
+    );
+  }
+}
+
+/// `<circle cx=12 cy=8 r=4>` + `M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6`
+class _ProfilePainter extends _NavIconPainter {
+  const _ProfilePainter(super.color);
+
+  @override
+  void draw(Canvas canvas, Paint paint) {
+    canvas.drawCircle(const Offset(12, 8), 4, paint);
+    canvas.drawPath(
+      Path()
+        ..moveTo(4, 21)
+        ..cubicTo(5.5, 17, 8.5, 15, 12, 15)
+        ..cubicTo(15.5, 15, 18.5, 17, 20, 21),
       paint,
     );
   }

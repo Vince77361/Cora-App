@@ -4,12 +4,13 @@ import 'dart:typed_data';
 import 'package:cora/core/media/photo_picker.dart';
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/network/photo_uploader.dart';
-import 'package:cora/core/ui/cora_coming_soon_page.dart';
 import 'package:cora/core/ui/cora_primary_button.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile_repository.dart';
 import 'package:cora/features/creator_profile/presentation/pages/creator_profile_setup_page.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
+import 'package:cora/features/store_browse/domain/store_browse_repository.dart';
+import 'package:cora/features/store_browse/presentation/pages/store_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -18,6 +19,7 @@ import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
 import '../auth/fake_auth_repository.dart';
 import '../onboarding/fake_me_repository.dart';
+import '../store_browse/fake_store_browse_repository.dart';
 import 'fake_creator_profile_repository.dart';
 
 /// 1 x 1 PNG. 사진 미리보기가 실제로 그려 볼 수 있는 가장 작은 그림.
@@ -39,6 +41,9 @@ Future<void> _pump(
     overrides: [
       creatorProfileRepositoryProvider.overrideWithValue(
         repo ?? FakeCreatorProfileRepository(),
+      ),
+      storeBrowseRepositoryProvider.overrideWithValue(
+        FakeStoreBrowseRepository(),
       ),
       photoPickerProvider.overrideWithValue(picker ?? FakePhotoPicker()),
       photoUploaderProvider.overrideWithValue(uploader ?? FakePhotoUploader()),
@@ -174,7 +179,7 @@ void main() {
     expect(repo.savedContentFocus, '맛집 릴스');
     expect(repo.savedInstagramHandle, 'seoyun.reels');
     expect(currentPath(tester), AppRoutes.creator);
-    expect(find.byType(CoraComingSoonPage), findsOneWidget);
+    expect(find.byType(StoreListPage), findsOneWidget);
   });
 
   testWidgets('shows an error and keeps the input when saving fails', (
