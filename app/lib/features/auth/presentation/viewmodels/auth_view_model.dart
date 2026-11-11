@@ -1,13 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../domain/auth_repository.dart';
+import '../../domain/auth_repository_provider.dart';
 import '../../domain/auth_session.dart';
-
-/// 인증 저장소. 기본값은 일부러 던진다. main.dart가 Supabase 구현으로, 테스트가 가짜로 바꿔 끼운다.
-final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) =>
-      throw UnimplementedError('authRepositoryProvider must be overridden'),
-);
 
 final authViewModelProvider =
     StreamNotifierProvider<AuthViewModel, AuthSession?>(AuthViewModel.new);

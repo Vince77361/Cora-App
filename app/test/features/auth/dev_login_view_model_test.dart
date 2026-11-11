@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:cora/features/auth/domain/auth_repository.dart';
-import 'package:cora/features/auth/presentation/viewmodels/auth_view_model.dart';
+import 'package:cora/features/auth/domain/auth_repository_provider.dart';
 import 'package:cora/features/auth/presentation/viewmodels/dev_login_view_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

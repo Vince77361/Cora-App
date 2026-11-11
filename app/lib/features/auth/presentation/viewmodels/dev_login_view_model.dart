@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/auth_repository.dart';
-import 'auth_view_model.dart';
+import '../../domain/auth_repository_provider.dart';
 
 /// 로그인 화면을 떠나면 오류 상태도 함께 버리도록 autoDispose로 둔다.
 final devLoginViewModelProvider =

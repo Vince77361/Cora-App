@@ -1,57 +1,25 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:cora/core/config/app_config.dart';
 import 'package:cora/core/config/app_config_provider.dart';
 import 'package:cora/core/network/api_client_provider.dart';
 import 'package:cora/features/auth/domain/auth_session.dart';
-import 'package:cora/features/auth/presentation/viewmodels/auth_view_model.dart';
+import 'package:cora/features/auth/domain/auth_repository_provider.dart';
 import 'package:cora_api/api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 
 import '../../features/auth/fake_auth_repository.dart';
-
-/// 손으로 쓴 가짜 HTTP 클라이언트. 받은 요청을 모으고 정해 둔 상태 코드로 답한다.
-class FakeHttpClient extends http.BaseClient {
-  int statusCode = 200;
-  String body = '{"id":"user-1","role":null}';
-
-  /// 설정하면 답하기 전에 이 Completer가 끝날 때까지 기다린다(동시 요청 흉내).
-  Completer<void>? gate;
-
-  /// 답하기 직전에 부른다(요청이 날아가는 사이 세션이 바뀌는 상황 흉내).
-  void Function()? beforeRespond;
-
-  final requests = <http.BaseRequest>[];
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    requests.add(request);
-    final wait = gate;
-    if (wait != null) await wait.future;
-    beforeRespond?.call();
-    return http.StreamedResponse(
-      Stream.value(utf8.encode(body)),
-      statusCode,
-      headers: {'content-type': 'application/json'},
-      request: request,
-    );
-  }
-}
-
-const _unauthenticated =
-    '{"error":{"code":"UNAUTHENTICATED","message":"로그인이 필요해요.","details":null}}';
+import '../../support/fake_http_client.dart';
 
 void main() {
   late FakeAuthRepository auth;
-  late FakeHttpClient http;
+  late FakeHttpClient fakeHttp;
   late ProviderContainer container;
 
   setUp(() {
     auth = FakeAuthRepository(session: FakeAuthRepository.signedInSession);
-    http = FakeHttpClient();
+    fakeHttp = FakeHttpClient();
     container = ProviderContainer.test(
       overrides: [
         authRepositoryProvider.overrideWithValue(auth),
@@ -63,7 +31,7 @@ void main() {
             apiBaseUrl: 'http://127.0.0.1:3000',
           ),
         ),
-        httpClientProvider.overrideWithValue(http),
+        httpClientProvider.overrideWithValue(fakeHttp),
       ],
     );
   });
@@ -73,7 +41,7 @@ void main() {
   test('sends requests to the configured API base URL', () async {
     await users().getMe();
 
-    expect(http.requests.single.url.toString(), 'http://127.0.0.1:3000/me');
+    expect(fakeHttp.requests.single.url.toString(), 'http://127.0.0.1:3000/me');
   });
 
   test(
@@ -85,7 +53,7 @@ void main() {
       );
       await users().getMe();
 
-      expect(http.requests.map((r) => r.headers['Authorization']), [
+      expect(fakeHttp.requests.map((r) => r.headers['Authorization']), [
         'Bearer token-1',
         'Bearer token-2',
       ]);
@@ -97,13 +65,16 @@ void main() {
 
     await users().getMe();
 
-    expect(http.requests.single.headers.containsKey('Authorization'), isFalse);
+    expect(
+      fakeHttp.requests.single.headers.containsKey('Authorization'),
+      isFalse,
+    );
   });
 
   test('signs out when the API answers 401', () async {
-    http
+    fakeHttp
       ..statusCode = 401
-      ..body = _unauthenticated;
+      ..body = unauthenticatedBody;
 
     await expectLater(
       users().getMe(),
@@ -115,9 +86,9 @@ void main() {
   });
 
   test('signs out once when several requests get 401 together', () async {
-    http
+    fakeHttp
       ..statusCode = 401
-      ..body = _unauthenticated
+      ..body = unauthenticatedBody
       ..gate = Completer<void>();
 
     final calls = [
@@ -128,7 +99,7 @@ void main() {
         ),
     ];
     await pumpEventQueue();
-    http.gate!.complete();
+    fakeHttp.gate!.complete();
     final results = await Future.wait(calls);
 
     expect(results, everyElement(isA<ApiException>()));
@@ -138,9 +109,9 @@ void main() {
   test(
     'does not sign out a newer session when an old token gets 401',
     () async {
-      http
+      fakeHttp
         ..statusCode = 401
-        ..body = _unauthenticated
+        ..body = unauthenticatedBody
         // 요청이 날아가는 사이 토큰이 갱신되었다.
         ..beforeRespond = () => auth.setSession(
           const AuthSession(userId: 'user-1', accessToken: 'token-2'),
@@ -153,9 +124,52 @@ void main() {
     },
   );
 
+  test(
+    'refreshes an expired token before sending and does not sign out',
+    () async {
+      auth.expired = true;
+      // 만료 토큰을 보내면 서버가 401로 답하는 상황. 갱신된 토큰을 보내면 200이다.
+      fakeHttp.respond = (request) =>
+          request.headers['Authorization'] == 'Bearer token-refreshed'
+          ? 200
+          : 401;
+      fakeHttp.body = '{"id":"user-1","role":null}';
+
+      await users().getMe();
+
+      expect(auth.refreshCalls, 1);
+      expect(
+        fakeHttp.requests.single.headers['Authorization'],
+        'Bearer token-refreshed',
+      );
+      expect(auth.signOutCalls, 0);
+      expect(auth.currentSession?.accessToken, 'token-refreshed');
+    },
+  );
+
+  test(
+    'concurrent requests with an expired token share one refresh and do not sign out',
+    () async {
+      auth.expired = true;
+      fakeHttp.respond = (request) =>
+          request.headers['Authorization'] == 'Bearer token-refreshed'
+          ? 200
+          : 401;
+
+      await Future.wait([users().getMe(), users().getMe(), users().getMe()]);
+
+      expect(auth.refreshCalls, 1);
+      expect(
+        fakeHttp.requests.map((r) => r.headers['Authorization']),
+        everyElement('Bearer token-refreshed'),
+      );
+      expect(auth.signOutCalls, 0);
+    },
+  );
+
   test('does not sign out on other errors', () async {
     for (final status in [400, 403, 404, 500]) {
-      http.statusCode = status;
+      fakeHttp.statusCode = status;
       await expectLater(users().getMe(), throwsA(isA<ApiException>()));
     }
 

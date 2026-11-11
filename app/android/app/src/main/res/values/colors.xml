@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 앱 배경색(core/theme의 background 토큰, 라이트). 첫 프레임이 그려지기 전의 창 배경과 같게 맞춘다. -->
+    <color name="cora_background">#FFFFFF</color>
+</resources>

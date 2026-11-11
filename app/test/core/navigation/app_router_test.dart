@@ -4,11 +4,14 @@ import 'package:cora/features/auth/presentation/pages/dev_login_page.dart';
 import 'package:cora/features/auth/presentation/pages/login_unavailable_page.dart';
 import 'package:cora/features/dev/presentation/pages/motion_gallery_page.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_select_placeholder_page.dart';
+import 'package:cora/core/network/api_client_provider.dart';
+import 'package:cora_api/api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/fake_auth_repository.dart';
+import '../../support/fake_http_client.dart';
 import '../../support/pump_cora_app.dart';
 
 List<String> _paths(List<RouteBase> routes) => [
@@ -83,6 +86,32 @@ void main() {
 
     expect(find.byType(DevLoginPage), findsNothing);
     expect(currentPath(tester), AppRoutes.role);
+  });
+
+  testWidgets('returns to /login when the API answers 401', (tester) async {
+    final fakeHttp = FakeHttpClient()
+      ..statusCode = 401
+      ..body = unauthenticatedBody;
+    final fake = FakeAuthRepository(
+      session: FakeAuthRepository.signedInSession,
+    );
+    await pumpCoraApp(
+      tester,
+      auth: fake,
+      overrides: [httpClientProvider.overrideWithValue(fakeHttp)],
+    );
+    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+
+    // 서버가 지금 세션의 토큰을 거부한다. 요청한 쪽은 오류를 받고, 앱은 로그인 화면으로 간다.
+    await expectLater(
+      UsersApi(containerOf(tester).read(apiClientProvider)).getMe(),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', 401)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(fake.signOutCalls, 1);
+    expect(find.byType(DevLoginPage), findsOneWidget);
+    expect(find.byType(RoleSelectPlaceholderPage), findsNothing);
   });
 
   testWidgets('returns to /login when the session ends', (tester) async {

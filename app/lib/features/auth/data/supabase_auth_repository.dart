@@ -16,6 +16,21 @@ class SupabaseAuthRepository implements AuthRepository {
   AuthSession? get currentSession => _toDomain(_auth.currentSession);
 
   @override
+  Future<String?> validAccessToken() async {
+    if (_auth.currentSession?.isExpired ?? false) {
+      try {
+        // SDK의 만료 판정은 여유 시간(30초)을 두고, 동시에 부른 갱신은 하나로 합쳐 준다.
+        await _auth.refreshSession();
+      } on AuthException catch (error) {
+        // 리프레시 토큰이 무효하면 SDK가 signedOut을 직접 보내 라우터가 로그인 화면으로
+        // 보낸다. 여기서는 던지지 않고 남은 토큰(없으면 null)으로 요청이 나가게 둔다.
+        _debugLog('요청 전 토큰 갱신 실패', error);
+      }
+    }
+    return _auth.currentSession?.accessToken;
+  }
+
+  @override
   Stream<AuthSession?> watchSession() {
     return Stream<AuthSession?>.multi((controller) {
       // 첫 값은 지금 세션이다. Supabase.initialize가 저장된 세션을 이미 올려 두었으므로

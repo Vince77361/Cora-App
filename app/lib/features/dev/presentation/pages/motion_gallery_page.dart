@@ -36,6 +36,10 @@ class _MotionGalleryPageState extends State<MotionGalleryPage> {
 
   late final GoRouter _router = GoRouter(
     navigatorKey: _navigatorKey,
+    // 앱 라우터가 /dev/motion으로 들어왔을 때 플랫폼이 알려 주는 초기 경로(`/dev/motion`)를
+    // 안쪽 라우터가 따라가면 갤러리 안에서 오류 화면이 뜬다. 항상 갤러리 첫 화면에서 시작한다.
+    initialLocation: '/',
+    overridePlatformDefaultLocation: true,
     routes: [
       GoRoute(
         path: '/',

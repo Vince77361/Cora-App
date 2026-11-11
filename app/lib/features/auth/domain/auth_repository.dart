@@ -11,8 +11,18 @@ abstract class AuthRepository {
   /// 잠깐 보이지 않게 하려는 것이다.
   Stream<AuthSession?> watchSession();
 
-  /// 지금 세션. API 요청마다 이 값에서 토큰을 읽는다.
+  /// 지금 세션. 화면 분기처럼 기다릴 수 없는 곳에서 쓴다. API 요청에 붙일 토큰은
+  /// [validAccessToken]으로 받는다.
   AuthSession? get currentSession;
+
+  /// 요청에 붙일 유효한 액세스 토큰. 세션이 없으면 null.
+  ///
+  /// 저장된 세션으로 앱을 켜거나 백그라운드에서 돌아온 직후에는 액세스 토큰이 이미 만료된
+  /// 채로 [currentSession]에 있고, 갱신은 뒤에서 늦게 끝난다. 그 토큰으로 요청하면 서버가
+  /// 401을 주고, 멀쩡한 세션이 로그아웃으로 끝난다. 그래서 만료됐으면 갱신이 끝날 때까지
+  /// 기다린 뒤 새 토큰을 돌려준다. 갱신이 실패해도 던지지 않는다(리프레시 토큰이 무효면
+  /// 세션 종료는 [watchSession]으로 알린다).
+  Future<String?> validAccessToken();
 
   Future<void> signInWithEmail({
     required String email,

@@ -1,3 +1,4 @@
+import 'package:cora/features/auth/domain/auth_repository_provider.dart';
 import 'package:cora/features/auth/domain/auth_session.dart';
 import 'package:cora/features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

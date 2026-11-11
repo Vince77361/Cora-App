@@ -2,10 +2,11 @@ import 'package:cora/app.dart';
 import 'package:cora/core/config/app_config.dart';
 import 'package:cora/core/config/app_config_provider.dart';
 import 'package:cora/core/navigation/app_router.dart';
-import 'package:cora/features/auth/presentation/viewmodels/auth_view_model.dart';
+import 'package:cora/features/auth/domain/auth_repository_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,11 +20,18 @@ AppConfig testConfig(CoraEnv env) => AppConfig(
 );
 
 /// 가짜 인증 저장소와 설정으로 실제 [CoraApp]을 띄운다.
-Widget coraAppWith(FakeAuthRepository auth, {CoraEnv env = CoraEnv.dev}) {
+///
+/// [overrides]로 다른 provider(예: 가짜 HTTP 클라이언트)도 바꿔 끼운다.
+Widget coraAppWith(
+  FakeAuthRepository auth, {
+  CoraEnv env = CoraEnv.dev,
+  List<Override> overrides = const [],
+}) {
   return ProviderScope(
     overrides: [
       authRepositoryProvider.overrideWithValue(auth),
       appConfigProvider.overrideWithValue(testConfig(env)),
+      ...overrides,
     ],
     child: const CoraApp(),
   );
@@ -33,8 +41,9 @@ Future<void> pumpCoraApp(
   WidgetTester tester, {
   required FakeAuthRepository auth,
   CoraEnv env = CoraEnv.dev,
+  List<Override> overrides = const [],
 }) async {
-  await tester.pumpWidget(coraAppWith(auth, env: env));
+  await tester.pumpWidget(coraAppWith(auth, env: env, overrides: overrides));
   await tester.pumpAndSettle();
 }
 

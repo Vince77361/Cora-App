@@ -25,6 +25,21 @@ class FakeAuthRepository implements AuthRepository {
   /// 설정하면 로그인·가입이 이 Completer가 끝날 때까지 기다린다(제출 중 상태 확인용).
   Completer<void>? holdSignIn;
 
+  /// true이면 지금 세션의 액세스 토큰이 만료된 것이다. [validAccessToken]이 갱신을 기다린 뒤
+  /// [sessionAfterRefresh]로 바꾸고 false로 돌린다(저장된 세션으로 켠 직후 흉내).
+  bool expired = false;
+
+  /// 갱신이 끝난 뒤의 세션.
+  AuthSession sessionAfterRefresh = const AuthSession(
+    userId: 'user-1',
+    accessToken: 'token-refreshed',
+  );
+
+  /// 실제로 갱신이 시작된 횟수. 동시에 부른 갱신은 SDK처럼 하나로 합쳐진다.
+  int refreshCalls = 0;
+
+  Future<void>? _refreshing;
+
   int signInCalls = 0;
   int signUpCalls = 0;
   int signOutCalls = 0;
@@ -33,6 +48,26 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   AuthSession? get currentSession => _session;
+
+  @override
+  Future<String?> validAccessToken() async {
+    if (expired) {
+      if (_refreshing == null) {
+        refreshCalls++;
+        _refreshing = _refresh();
+      }
+      await _refreshing;
+    }
+    return _session?.accessToken;
+  }
+
+  Future<void> _refresh() async {
+    // 갱신이 한 박자 걸리는 동안 다른 요청이 끼어들 수 있게 일부러 늦춘다.
+    await Future<void>.delayed(Duration.zero);
+    expired = false;
+    _refreshing = null;
+    if (_session != null) setSession(sessionAfterRefresh);
+  }
 
   @override
   Stream<AuthSession?> watchSession() => Stream.multi((controller) {
