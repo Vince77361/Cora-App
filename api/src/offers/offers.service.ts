@@ -71,16 +71,27 @@ export class OffersService {
       store.id,
       creator.userId,
     );
-    const created = await this.offers.create({
-      storeId: store.id,
-      creatorId: creator.userId,
-      applicationId,
-      ...terms,
-      // 보낸 시각을 DB 기본값이 아니라 Clock으로 정해, 만료 기한과 같은 기준을 쓴다.
-      createdAt: now,
-      expiresAt: new Date(now.getTime() + OFFER_RESPONSE_DAYS * DAY_MS),
-    });
-    if (!created) throw this.alreadySent();
+    let created: OfferRow | null;
+    try {
+      created = await this.offers.create({
+        storeId: store.id,
+        creatorId: creator.userId,
+        applicationId,
+        ...terms,
+        // 보낸 시각을 DB 기본값이 아니라 Clock으로 정해, 만료 기한과 같은 기준을 쓴다.
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + OFFER_RESPONSE_DAYS * DAY_MS),
+      });
+    } catch (error) {
+      await this.releaseApplication(applicationId);
+      throw error;
+    }
+    if (!created) {
+      // 동시에 보낸 다른 요청이 먼저 만들었다. 우리가 OFFERED로 바꾼 지원을 오퍼 없이 두면
+      // 크리에이터가 다시 지원하지 못하므로 APPLIED로 되돌린다.
+      await this.releaseApplication(applicationId);
+      throw this.alreadySent();
+    }
 
     await this.notify(
       creator.userId,
@@ -285,6 +296,12 @@ export class OffersService {
       row.status === 'ACCEPTED' ||
       canUndoDecline(row, now)
     );
+  }
+
+  private async releaseApplication(
+    applicationId: string | null,
+  ): Promise<void> {
+    if (applicationId) await this.applications.reopen(applicationId);
   }
 
   // 아직 오퍼 받음(OFFERED)인 지원만 닫는다. 이미 닫힌 지원은 부르지 않는다.

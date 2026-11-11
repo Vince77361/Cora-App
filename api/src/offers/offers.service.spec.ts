@@ -20,6 +20,8 @@ const DAY = 24 * 60 * 60 * 1000;
 // 서비스 규칙만 보려고 메모리에 저장하는 손 구현. 조건부 갱신(SQL)과 유니크 인덱스는 db-spec·e2e가 확인한다.
 class FakeOffersRepository extends OffersRepository {
   readonly rows: OfferRow[] = [];
+  // 읽을 때는 비어 있었는데 만들 때 다른 요청이 먼저 만든 경우(부분 유니크 위반)를 흉내 낸다.
+  loseCreateRace = false;
   appStatus = new Map<string, 'OFFERED' | 'CLOSED'>();
 
   constructor() {
@@ -75,6 +77,7 @@ class FakeOffersRepository extends OffersRepository {
     );
   }
   create(data: Parameters<OffersRepository['create']>[0]) {
+    if (this.loseCreateRace) return Promise.resolve(null);
     const open = this.rows.some(
       (r) =>
         r.storeId === data.storeId &&
@@ -209,6 +212,11 @@ class FakeApplications extends ApplicationsService {
   }
   closeFor(applicationId: string): Promise<void> {
     this.closed.push(applicationId);
+    return Promise.resolve();
+  }
+  readonly reopened: string[] = [];
+  reopen(applicationId: string): Promise<void> {
+    this.reopened.push(applicationId);
     return Promise.resolve();
   }
   countNew(): Promise<number> {
@@ -352,6 +360,31 @@ describe('OffersService', () => {
     clock.advance(7 * DAY);
     await service.listSent(OWNER);
     expect(applications.closed).toEqual([]);
+  });
+
+  it('puts the application back to APPLIED when the create loses a race', async () => {
+    applications.nextApplicationId = 'app-1';
+    repo.loseCreateRace = true;
+    await expect(service.send(OWNER, { ...REELS })).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+    expect(applications.reopened).toEqual(['app-1']);
+    expect(push.sent).toEqual([]);
+  });
+
+  it('puts the application back when the create fails for another reason', async () => {
+    applications.nextApplicationId = 'app-1';
+    jest.spyOn(repo, 'create').mockRejectedValueOnce(new Error('db down'));
+    await expect(service.send(OWNER, { ...REELS })).rejects.toThrow('db down');
+    expect(applications.reopened).toEqual(['app-1']);
+  });
+
+  it('does not touch applications when the offer was not linked to one', async () => {
+    repo.loseCreateRace = true;
+    await expect(service.send(OWNER, { ...REELS })).rejects.toMatchObject({
+      code: 'CONFLICT',
+    });
+    expect(applications.reopened).toEqual([]);
   });
 
   it('keeps the push failure from failing the send', async () => {

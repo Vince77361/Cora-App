@@ -88,6 +88,12 @@ class FakeApplicationsRepository extends ApplicationsRepository {
     return Promise.resolve();
   }
 
+  reopenOffered(applicationId: string): Promise<void> {
+    const row = this.rows.find((r) => r.id === applicationId);
+    if (row?.status === 'OFFERED') row.status = 'APPLIED';
+    return Promise.resolve();
+  }
+
   countApplied(storeId: string): Promise<number> {
     return Promise.resolve(
       this.rows.filter((r) => r.storeId === storeId && r.status === 'APPLIED')
@@ -406,6 +412,20 @@ describe('ApplicationsService', () => {
       await service.markOffered(store.id, CREATOR);
       await service.closeFor(created.id);
       await service.closeFor(created.id);
+      expect(repo.rows[0].status).toBe('CLOSED');
+    });
+
+    it('reopen moves OFFERED back to APPLIED and leaves other statuses alone', async () => {
+      const created = await service.apply(CREATOR, store.id);
+      await service.reopen(created.id);
+      expect(repo.rows[0].status).toBe('APPLIED');
+      await service.markOffered(store.id, CREATOR);
+      await service.reopen(created.id);
+      await service.reopen(created.id);
+      expect(repo.rows[0].status).toBe('APPLIED');
+      await service.markOffered(store.id, CREATOR);
+      await service.closeFor(created.id);
+      await service.reopen(created.id);
       expect(repo.rows[0].status).toBe('CLOSED');
     });
 

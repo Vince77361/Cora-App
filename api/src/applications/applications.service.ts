@@ -125,6 +125,12 @@ export class ApplicationsService {
     return this.applications.closeOffered(applicationId);
   }
 
+  // 오퍼를 만들지 못했을 때(동시 보내기에서 졌거나 저장 실패) markOffered를 되돌려 지원이 고아로 남지 않게 한다.
+  // OFFERED일 때만 바꾸므로 여러 번 불려도 안전하다.
+  reopen(applicationId: string): Promise<void> {
+    return this.applications.reopenOffered(applicationId);
+  }
+
   // 가게 홈의 "새 지원자" 수.
   countNew(storeId: string): Promise<number> {
     return this.applications.countApplied(storeId);

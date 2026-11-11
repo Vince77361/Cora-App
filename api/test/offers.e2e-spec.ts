@@ -4,6 +4,7 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
+import { OffersRepository } from '../src/offers/offers.repository';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
@@ -383,7 +384,37 @@ describe('offers', () => {
       expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
       expect(await prisma.offer.count()).toBe(1);
       const offer = await prisma.offer.findFirstOrThrow();
-      expect(offer.applicationId).toBe(applicationId);
+      const application = await prisma.application.findUniqueOrThrow({
+        where: { id: applicationId },
+      });
+      // 지원을 OFFERED로 바꾼 요청이 만들기에서 졌어도 지원이 오퍼 없이 OFFERED로 남지 않는다.
+      if (offer.applicationId === applicationId) {
+        expect(application.status).toBe('OFFERED');
+      } else {
+        expect(offer.applicationId).toBeNull();
+        expect(application.status).toBe('APPLIED');
+      }
+    });
+
+    it('puts the applicant back to APPLIED when the create loses the race', async () => {
+      const creatorId = await seedCreator();
+      const applicationId = await seedApplication(storeId, creatorId);
+      // 다른 요청이 먼저 오퍼를 만들어 부분 유니크 위반으로 졌을 때(저장소가 null을 돌려준다).
+      const create = jest
+        .spyOn(app.get(OffersRepository), 'create')
+        .mockResolvedValueOnce(null);
+      await send({ creatorId, ...REELS_VOUCHER }).expect(409);
+      create.mockRestore();
+
+      expect(
+        (
+          await prisma.application.findUniqueOrThrow({
+            where: { id: applicationId },
+          })
+        ).status,
+      ).toBe('APPLIED');
+      // 지원자는 다시 지원자 목록에 보이고 오퍼를 보낼 수 있다.
+      await send({ creatorId, ...REELS_VOUCHER }).expect(201);
     });
 
     it('notifies the creator on send', async () => {

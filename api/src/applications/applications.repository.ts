@@ -81,6 +81,14 @@ export class ApplicationsRepository {
     });
   }
 
+  // 오퍼 만들기가 진 뒤 markOffered를 되돌린다. OFFERED일 때만 바꾸므로 여러 번 불려도 안전하다.
+  async reopenOffered(applicationId: string): Promise<void> {
+    await this.prisma.application.updateMany({
+      where: { id: applicationId, status: 'OFFERED', deletedAt: null },
+      data: { status: 'APPLIED' },
+    });
+  }
+
   countApplied(storeId: string): Promise<number> {
     return this.prisma.application.count({
       where: { storeId, status: 'APPLIED', deletedAt: null },
