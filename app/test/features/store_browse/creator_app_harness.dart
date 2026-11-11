@@ -2,6 +2,7 @@ import 'package:cora/core/time/clock.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile_repository.dart';
 import 'package:cora/features/offers/domain/received_offers_repository.dart';
+import 'package:cora/features/offers/presentation/viewmodels/received_offers_view_model.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/store_browse/domain/store_browse_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,6 +22,7 @@ Future<void> pumpCreatorApp(
   FakeStoreBrowseRepository? stores,
   FakeReceivedOffersRepository? offers,
   String mySido = '서울특별시',
+  Duration undoWindow = const Duration(seconds: 30),
   bool profileFails = false,
   bool smallPhoneLargeText = false,
   FakeClock? clock,
@@ -46,6 +48,7 @@ Future<void> pumpCreatorApp(
       receivedOffersRepositoryProvider.overrideWithValue(
         offers ?? FakeReceivedOffersRepository(),
       ),
+      undoDeclineWindowProvider.overrideWithValue(undoWindow),
       clockProvider.overrideWithValue(clock ?? FakeClock()),
     ],
   );

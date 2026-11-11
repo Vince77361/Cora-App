@@ -12,6 +12,7 @@ import '../../features/onboarding/domain/me.dart';
 import '../../features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
+import '../../features/offers/presentation/pages/received_offers_page.dart';
 import '../../features/store_browse/presentation/pages/store_detail_page.dart';
 import '../../features/store_browse/presentation/pages/store_list_page.dart';
 import '../../features/store_home/presentation/pages/store_home_page.dart';
@@ -170,7 +171,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      _roleRoute(AppRoutes.creatorOffers, '받은 오퍼'),
+      // 하단 메뉴의 `협업` 탭이라 제자리에서 바뀐다. 가게 상세에서 `오퍼 보기`로 열 때만 밀려 들어온다.
+      GoRoute(
+        path: AppRoutes.creatorOffers,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const ReceivedOffersPage()),
+      ),
       GoRoute(
         path: '/creator/coming-soon/:title',
         pageBuilder: (context, state) => _entryPage(

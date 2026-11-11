@@ -61,4 +61,13 @@ abstract final class CoraShadows {
       blurRadius: blurRadiusFor(32),
     ),
   ];
+
+  /// A6 받은 오퍼 카드: 0 16px 40px, 알파 0.14. 라이트·다크가 같다.
+  static final offerCard = [
+    BoxShadow(
+      color: const Color.fromRGBO(23, 24, 28, 0.14),
+      offset: const Offset(0, 16),
+      blurRadius: blurRadiusFor(40),
+    ),
+  ];
 }
