@@ -1,7 +1,15 @@
-import { Body, Controller, Get, INestApplication, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  INestApplication,
+  Post,
+} from '@nestjs/common';
 import { IsInt } from 'class-validator';
 import request from 'supertest';
 import { Public } from '../src/auth/public.decorator';
+import { AppError } from '../src/common/errors/app-error';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 
 class SampleDto {
@@ -16,6 +24,21 @@ class TestController {
   @Get('boom')
   boom() {
     throw new Error('db password leaked');
+  }
+
+  @Get('throttled')
+  throttled() {
+    throw new HttpException('ThrottlerException: Too Many Requests', 429);
+  }
+
+  @Get('teapot')
+  teapot() {
+    throw new HttpException('매핑에 없는 4xx', 418);
+  }
+
+  @Get('rate-limited')
+  rateLimited() {
+    throw new AppError('RATE_LIMITED', '요청이 너무 많아요.');
   }
 
   @Post('validate')
@@ -67,5 +90,61 @@ describe('error envelope', () => {
         expect.objectContaining({ field: 'extra' }),
       ]),
     );
+  });
+
+  it('maps an HttpException 429 to RATE_LIMITED', async () => {
+    const res = await request(httpOf(app)).get('/__test/throttled').expect(429);
+    expect(res.body).toEqual({
+      error: {
+        code: 'RATE_LIMITED',
+        message: expect.any(String) as string,
+        details: null,
+      },
+    });
+  });
+
+  it('maps an AppError RATE_LIMITED to 429', async () => {
+    const res = await request(httpOf(app))
+      .get('/__test/rate-limited')
+      .expect(429);
+    expect((res.body as { error: { code: string } }).error.code).toBe(
+      'RATE_LIMITED',
+    );
+  });
+
+  it('returns 400 VALIDATION_FAILED for malformed JSON', async () => {
+    const res = await request(httpOf(app))
+      .post('/__test/validate')
+      .set('Content-Type', 'application/json')
+      .send('{"count": ')
+      .expect(400);
+    expect(res.body).toEqual({
+      error: {
+        code: 'VALIDATION_FAILED',
+        message: expect.any(String) as string,
+        details: null,
+      },
+    });
+  });
+
+  it('keeps the status of an exposed body-parser 413', async () => {
+    const res = await request(httpOf(app))
+      .post('/__test/validate')
+      .send({ count: 1, padding: 'x'.repeat(200 * 1024) })
+      .expect(413);
+    expect((res.body as { error: { code: string } }).error.code).toBe(
+      'VALIDATION_FAILED',
+    );
+  });
+
+  it('maps an unmapped HttpException 4xx without turning it into 500', async () => {
+    const res = await request(httpOf(app)).get('/__test/teapot').expect(418);
+    expect(res.body).toEqual({
+      error: {
+        code: 'VALIDATION_FAILED',
+        message: expect.any(String) as string,
+        details: null,
+      },
+    });
   });
 });

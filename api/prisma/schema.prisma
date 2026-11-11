@@ -25,5 +25,242 @@ model User {
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
 
+  store          Store?
+  creatorProfile CreatorProfile?
+  applications   Application[]
+  offers         Offer[]
+
   @@map("users")
+}
+
+enum StoreStatus {
+  DRAFT
+  PUBLISHED
+
+  @@map("store_status")
+}
+
+enum StoreOnboardingStep {
+  PAGE
+  DRAFTS
+  TERMS
+  DONE
+
+  @@map("store_onboarding_step")
+}
+
+enum SourceLinkKind {
+  NAVER_MAP
+  CATCHTABLE
+  INSTAGRAM
+
+  @@map("source_link_kind")
+}
+
+enum ContentDraftKind {
+  CARD_NEWS
+  REELS_SCRIPT
+  BLOG
+
+  @@map("content_draft_kind")
+}
+
+enum ContentFormat {
+  SHORTS
+  REELS
+  CARD_NEWS
+  BLOG
+
+  @@map("content_format")
+}
+
+enum RewardType {
+  VOUCHER
+  PER_VIEW
+  BOTH
+
+  @@map("reward_type")
+}
+
+enum ApplicationStatus {
+  APPLIED
+  CANCELLED
+  OFFERED
+  CLOSED
+
+  @@map("application_status")
+}
+
+enum OfferStatus {
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELLED
+
+  @@map("offer_status")
+}
+
+// 공통 모델 3장의 업종 분류. 앞 9개는 일반, 뒤 4개(ALCOHOL~DIET_SUPPLEMENT)는 크리에이터가 피할 수 있는 민감 업종이다.
+enum IndustryCategory {
+  FOOD_CAFE
+  BEAUTY
+  FASHION
+  ACCESSORY
+  LIVING
+  GROCERY
+  DIGITAL
+  HEALTH
+  OTHER
+  ALCOHOL
+  GAMBLING
+  LOAN
+  DIET_SUPPLEMENT
+
+  @@map("industry_category")
+}
+
+model Store {
+  id                  String              @id @default(uuid()) @db.Uuid
+  // 한 계정에 가게는 하나다.
+  ownerId             String              @unique @map("owner_id") @db.Uuid
+  status              StoreStatus         @default(DRAFT)
+  onboardingStep      StoreOnboardingStep @default(PAGE) @map("onboarding_step")
+  name                String?
+  // 표시용 자유 입력 업종(예: 라멘집). 분류는 industry다.
+  category            String?
+  industry            IndustryCategory    @default(FOOD_CAFE)
+  // 표시용 동네. 지역 정렬에는 regionSido, regionSigungu를 쓴다.
+  neighborhood        String?
+  regionSido          String?             @map("region_sido")
+  regionSigungu       String?             @map("region_sigungu")
+  coverPhotoPath      String?             @map("cover_photo_path")
+  signatureMenu       String?             @map("signature_menu")
+  hours               String?
+  seats               String?
+  bestShootingTime    String?             @map("best_shooting_time")
+  intro               String?
+  defaultFormat       ContentFormat?      @map("default_format")
+  defaultRewardType   RewardType?         @map("default_reward_type")
+  defaultVoucherName  String?             @map("default_voucher_name")
+  defaultVoucherValue Int?                @map("default_voucher_value")
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(3)
+
+  owner        User                @relation(fields: [ownerId], references: [id])
+  sourceLinks  StoreSourceLink[]
+  drafts       StoreContentDraft[]
+  applications Application[]
+  offers       Offer[]
+
+  @@map("stores")
+}
+
+model StoreSourceLink {
+  id        String         @id @default(uuid()) @db.Uuid
+  storeId   String         @map("store_id") @db.Uuid
+  kind      SourceLinkKind
+  url       String
+  summary   String?
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime?      @map("deleted_at") @db.Timestamptz(3)
+
+  store Store @relation(fields: [storeId], references: [id])
+
+  @@index([storeId])
+  @@map("store_source_links")
+}
+
+model StoreContentDraft {
+  id                 String           @id @default(uuid()) @db.Uuid
+  storeId            String           @map("store_id") @db.Uuid
+  kind               ContentDraftKind
+  bodyLabel          String           @map("body_label")
+  body               String
+  scenes             Json
+  // 다시 만들기마다 올라가는 번호. 가짜 구현이 견본 두 벌을 번갈아 주는 데 쓴다.
+  version            Int              @default(1)
+  // 하루 다시 만들기 횟수를 세려고 마지막으로 다시 만든 날(한국 날짜)과 그날의 횟수를 함께 둔다.
+  regeneratedOn      DateTime?        @map("regenerated_on") @db.Date
+  regenerationsOnDay Int              @default(0) @map("regenerations_on_day")
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt          DateTime?        @map("deleted_at") @db.Timestamptz(3)
+
+  store Store @relation(fields: [storeId], references: [id])
+
+  @@unique([storeId, kind])
+  @@map("store_content_drafts")
+}
+
+model CreatorProfile {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @unique @map("user_id") @db.Uuid
+  displayName     String    @map("display_name")
+  contentFocus    String?   @map("content_focus")
+  instagramHandle String?   @map("instagram_handle")
+  photoPath       String?   @map("photo_path")
+  regionSido      String    @map("region_sido")
+  regionSigungu   String?   @map("region_sigungu")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("creator_profiles")
+}
+
+// 같은 가게·크리에이터의 살아 있는 지원(APPLIED, OFFERED)은 하나뿐이다.
+// 이 제약은 부분 유니크 인덱스라 Prisma 스키마로 적을 수 없어 마이그레이션의 직접 SQL에 있다.
+model Application {
+  id        String            @id @default(uuid()) @db.Uuid
+  storeId   String            @map("store_id") @db.Uuid
+  creatorId String            @map("creator_id") @db.Uuid
+  status    ApplicationStatus
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime?         @map("deleted_at") @db.Timestamptz(3)
+
+  store   Store   @relation(fields: [storeId], references: [id])
+  creator User    @relation(fields: [creatorId], references: [id])
+  offers  Offer[]
+
+  @@index([storeId, status])
+  @@index([creatorId])
+  @@map("applications")
+}
+
+// 같은 가게·크리에이터의 열린 오퍼(SENT, ACCEPTED)는 하나뿐이다. 부분 유니크 인덱스는 마이그레이션의 직접 SQL에 있다.
+model Offer {
+  id            String        @id @default(uuid()) @db.Uuid
+  storeId       String        @map("store_id") @db.Uuid
+  creatorId     String        @map("creator_id") @db.Uuid
+  applicationId String?       @map("application_id") @db.Uuid
+  format        ContentFormat
+  rewardType    RewardType    @map("reward_type")
+  voucherName   String?       @map("voucher_name")
+  voucherValue  Int?          @map("voucher_value")
+  perViewAmount Int?          @map("per_view_amount")
+  perViewCap    Int?          @map("per_view_cap")
+  status        OfferStatus
+  expiresAt     DateTime      @map("expires_at") @db.Timestamptz(3)
+  acceptedAt    DateTime?     @map("accepted_at") @db.Timestamptz(3)
+  paymentDueAt  DateTime?     @map("payment_due_at") @db.Timestamptz(3)
+  declinedAt    DateTime?     @map("declined_at") @db.Timestamptz(3)
+  respondedAt   DateTime?     @map("responded_at") @db.Timestamptz(3)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt     DateTime?     @map("deleted_at") @db.Timestamptz(3)
+
+  store       Store        @relation(fields: [storeId], references: [id])
+  creator     User         @relation(fields: [creatorId], references: [id])
+  application Application? @relation(fields: [applicationId], references: [id])
+
+  @@index([storeId, status])
+  @@index([creatorId, status])
+  @@index([expiresAt])
+  @@map("offers")
 }

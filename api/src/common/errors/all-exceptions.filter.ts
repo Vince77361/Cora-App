@@ -22,9 +22,36 @@ function codeForStatus(status: number): ErrorCode {
       return 'NOT_FOUND';
     case 409:
       return 'CONFLICT';
+    case 429:
+      return 'RATE_LIMITED';
     default:
-      return 'INTERNAL';
+      // 매핑에 없는 4xx(405, 413, 415 등)는 호출자의 요청이 잘못된 것이므로 요청 값 오류로 묶는다.
+      // 상태 코드는 바꾸지 않는다. 5xx만 서버 오류다.
+      return status >= 400 && status < 500 ? 'VALIDATION_FAILED' : 'INTERNAL';
   }
+}
+
+export const RATE_LIMITED_MESSAGE =
+  '요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요.';
+export const MALFORMED_REQUEST_MESSAGE = '요청 형식이 올바르지 않아요.';
+export const PAYLOAD_TOO_LARGE_MESSAGE = '요청이 너무 커요.';
+export const BAD_REQUEST_MESSAGE = '요청을 처리할 수 없어요.';
+
+// body-parser(깨진 JSON, 너무 큰 본문)가 던지는 http-errors는 HttpException이 아니지만
+// status와 expose: true를 가진다. 호출자 잘못이므로 원래 4xx 상태를 지켜서 내보낸다.
+function exposedClientStatus(exception: unknown): number | null {
+  if (typeof exception !== 'object' || exception === null) return null;
+  const e = exception as { status?: unknown; expose?: unknown };
+  if (e.expose !== true) return null;
+  return typeof e.status === 'number' && e.status >= 400 && e.status < 500
+    ? e.status
+    : null;
+}
+
+function messageForExposed(status: number): string {
+  if (status === 400) return MALFORMED_REQUEST_MESSAGE;
+  if (status === 413) return PAYLOAD_TOO_LARGE_MESSAGE;
+  return BAD_REQUEST_MESSAGE;
 }
 
 function messageOf(exception: HttpException): string {
@@ -64,7 +91,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const code = codeForStatus(status);
-      // 4xx 중 매핑 밖의 상태(예: 429)나 5xx는 내부 메시지를 숨긴다.
+      // 5xx는 내부 메시지를 숨기고 로그에만 남긴다.
       if (code === 'INTERNAL') {
         this.logger.error(exception.message, exception.stack);
         this.send(
@@ -76,7 +103,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
         );
         return;
       }
-      this.send(res, status, code, messageOf(exception), null);
+      const message =
+        code === 'RATE_LIMITED' ? RATE_LIMITED_MESSAGE : messageOf(exception);
+      this.send(res, status, code, message, null);
+      return;
+    }
+
+    const exposedStatus = exposedClientStatus(exception);
+    if (exposedStatus !== null) {
+      this.send(
+        res,
+        exposedStatus,
+        codeForStatus(exposedStatus),
+        messageForExposed(exposedStatus),
+        null,
+      );
       return;
     }
 
