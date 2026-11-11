@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoPage;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,13 +16,13 @@ final GoRouter demoRouter = GoRouter(
   initialLocation: DemoPaths.index,
   routes: [
     GoRoute(path: DemoPaths.index, builder: (_, _) => const DemoIndexPage()),
-    ...g1Routes,
-    ...g2Routes,
-    ...g3Routes,
-    ...g4Routes,
-    ...g5Routes,
-    ...g6Routes,
-    ...g7Routes,
+    ..._swipeBack(g1Routes),
+    ..._swipeBack(g2Routes),
+    ..._swipeBack(g3Routes),
+    ..._swipeBack(g4Routes),
+    ..._swipeBack(g5Routes),
+    ..._swipeBack(g6Routes),
+    ..._swipeBack(g7Routes),
   ],
   errorBuilder: (context, state) => Scaffold(
     body: Center(
@@ -29,3 +30,17 @@ final GoRouter demoRouter = GoRouter(
     ),
   ),
 );
+
+/// go_router의 기본 페이지는 자기 전환을 써서 iOS 가장자리 밀기가 붙지 않는다.
+/// 시연 화면은 모두 CupertinoPage로 감싸 어느 화면에서든 밀어서 뒤로 가게 한다.
+List<RouteBase> _swipeBack(List<RouteBase> routes) => [
+      for (final r in routes)
+        if (r is GoRoute && r.builder != null)
+          GoRoute(
+            path: r.path,
+            pageBuilder: (context, state) =>
+                CupertinoPage(key: state.pageKey, child: r.builder!(context, state)),
+          )
+        else
+          r,
+    ];

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
+import 'package:flutter/gestures.dart' show GestureBinding;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/cora_theme.dart';
@@ -30,24 +33,64 @@ class DemoApp extends StatelessWidget {
         darkTheme: coraDarkTheme.copyWith(pageTransitionsTheme: _cupertino, inputDecorationTheme: const InputDecorationThemeData()),
         themeMode: mode,
         routerConfig: demoRouter,
-        // 시연 중 목록으로 돌아가는 숨은 길: 맨 위 상태 표시줄 자리(50pt)를 길게 누른다.
-        // 화면 모양을 바꾸지 않으려고 보이는 요소는 두지 않는다.
-        builder: (context, child) => Stack(
-          children: [
-            child!,
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 50,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onLongPress: () => demoRouter.go(DemoPaths.index),
-              ),
-            ),
-          ],
-        ),
+        // 시연 중 목록으로 돌아가는 숨은 길: 화면 어디서나 두 손가락으로 0.6초 누른다.
+        // 보이는 요소를 더하지 않고, 손짓 경쟁에 끼지 않는 Listener라 카드·스크롤과 겹치지 않는다.
+        builder: (context, child) => _TwoFingerHome(child: child!),
       ),
+    );
+  }
+}
+
+class _TwoFingerHome extends StatefulWidget {
+  const _TwoFingerHome({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_TwoFingerHome> createState() => _TwoFingerHomeState();
+}
+
+class _TwoFingerHomeState extends State<_TwoFingerHome> {
+  final Set<int> _down = {};
+  Timer? _timer;
+
+  void _update() {
+    _timer?.cancel();
+    if (_down.length == 2) {
+      _timer = Timer(const Duration(milliseconds: 600), () {
+        // 손가락이 떨어질 때 아래 화면의 누르기가 실행되지 않게 두 손가락의 손짓을 취소한다.
+        for (final p in _down.toList()) {
+          GestureBinding.instance.cancelPointer(p);
+        }
+        _down.clear();
+        demoRouter.go(DemoPaths.index);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (e) => setState(() {
+        _down.add(e.pointer);
+        _update();
+      }),
+      onPointerUp: (e) => setState(() {
+        _down.remove(e.pointer);
+        _update();
+      }),
+      onPointerCancel: (e) => setState(() {
+        _down.remove(e.pointer);
+        _update();
+      }),
+      child: widget.child,
     );
   }
 }
