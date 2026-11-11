@@ -1142,6 +1142,22 @@ describe('offers', () => {
         fundedAt: T0,
         submitDueAt: new Date(T0.getTime() + 14 * DAY),
       });
+      // 식사권만 있어 결제 사후 단계가 없으니 수락이 제출 기한 작업을 올린다: 환급 한 건과 기한 알림 두 건.
+      expect(
+        scheduler
+          .pending()
+          .map((j) => j.jobKey)
+          .sort(),
+      ).toEqual(
+        [
+          `refund-unsubmitted:${collaboration.id}`,
+          `submit-reminder:${collaboration.id}:1`,
+          `submit-reminder:${collaboration.id}:3`,
+        ].sort(),
+      );
+      expect(
+        scheduler.pending().find((j) => j.name === 'refund-unsubmitted')?.runAt,
+      ).toEqual(new Date(T0.getTime() + 14 * DAY));
       // 낼 돈이 없으므로 결제 기한이 없다. 며칠이 지나도 오퍼가 만료되지 않는다.
       expect(
         (await prisma.offer.findUniqueOrThrow({ where: { id: offer.id } }))

@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Collaboration, Payment, PaymentMethod } from '@prisma/client';
+import { scheduleSubmissionDeadlineJobs } from '../collaborations/collaboration-jobs';
 import { SUBMIT_DUE_DAYS } from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
-import { kstTimeOnDate } from '../common/kst';
 import { CreatorsService } from '../creators/creators.service';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import { PaymentPort } from '../integrations/payment/payment.port';
@@ -29,9 +29,6 @@ const DAY_MS = 24 * 60 * MINUTE_MS;
 // 결제창을 닫았거나 통지가 늦는 경우를 위해, 10분마다 최대 6번 PG에 직접 묻는다.
 export const RECHECK_INTERVAL_MINUTES = 10;
 export const RECHECK_MAX_ATTEMPTS = 6;
-// 제출 기한 알림: 기한 3일 전과 하루 전 날의 한국 시간 10:00.
-const REMINDER_DAYS_BEFORE = [3, 1] as const;
-const REMINDER_HOUR_KST = 10;
 
 // 협업이 이미 끝났거나(만료·취소), 같은 협업의 다른 결제가 이미 보관을 시작해서 이 승인을 반영하지 못한 경우 모두.
 export const LATE_APPROVAL_SUBJECT =
@@ -54,10 +51,6 @@ export interface ApplyResultOptions {
 
 type ApprovalOutcome = 'funded' | 'not-awaiting-payment' | 'already-handled';
 
-const refundJobKey = (collaborationId: string) =>
-  `refund-unsubmitted:${collaborationId}`;
-const reminderJobKey = (collaborationId: string, daysLeft: number) =>
-  `submit-reminder:${collaborationId}:${daysLeft}`;
 const recheckJobKey = (paymentId: string, attempt: number) =>
   `payment-recheck:${paymentId}:${attempt}`;
 
@@ -380,28 +373,13 @@ export class PaymentsService {
   ): Promise<void> {
     const dueAt = collaboration.submitDueAt;
     if (!dueAt) throw new Error('보관이 시작된 협업에 제출 기한이 없어요.');
-    const now = this.clock.now();
-    const payload = { collaborationId: collaboration.id };
-    await this.jobs.schedule(
-      'refund-unsubmitted',
-      payload,
+    // 미제출 환급과 기한 알림. 식사권만 있는 오퍼의 수락도 같은 도우미로 같은 키의 작업을 올린다.
+    await scheduleSubmissionDeadlineJobs(
+      this.jobs,
+      collaboration.id,
       dueAt,
-      refundJobKey(collaboration.id),
+      this.clock.now(),
     );
-    for (const daysLeft of REMINDER_DAYS_BEFORE) {
-      const runAt = kstTimeOnDate(
-        new Date(dueAt.getTime() - daysLeft * DAY_MS),
-        REMINDER_HOUR_KST,
-      );
-      // 늦게 고쳐져 시각이 이미 지났다면 "3일 남았어요"를 뒤늦게 보내지 않는다.
-      if (runAt.getTime() <= now.getTime()) continue;
-      await this.jobs.schedule(
-        'submit-reminder',
-        { ...payload, daysLeft },
-        runAt,
-        reminderJobKey(collaboration.id, daysLeft),
-      );
-    }
     if (collaboration.offerId) {
       await this.offers.cancelPaymentDueJob(collaboration.offerId);
     }

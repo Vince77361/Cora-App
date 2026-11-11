@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { ApplicationsService } from '../applications/applications.service';
+import { scheduleSubmissionDeadlineJobs } from '../collaborations/collaboration-jobs';
 import {
   initialStoreOfferState,
   storeInProgressStages,
@@ -302,6 +303,22 @@ export class OffersService {
       );
     }
     const collaboration = await this.collaborations.findByOfferId(row.id);
+    // 식사권만 있어 바로 FUNDED가 된 협업은 결제 사후 단계를 거치지 않으므로 제출 기한 작업(미제출 환급, 기한 알림)을 여기서 올린다.
+    // 올리지 못해도 이미 저장된 수락은 유효하다(결제 기한 작업과 같게 로그만 남긴다).
+    if (collaboration && initial.stage === 'FUNDED' && initial.submitDueAt) {
+      try {
+        await scheduleSubmissionDeadlineJobs(
+          this.jobs,
+          collaboration.id,
+          initial.submitDueAt,
+          now,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `제출 기한 작업을 올리지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        );
+      }
+    }
     // 이미 저장된 수락은 알림 때문에 500이 되면 안 된다. 상대 이름을 읽지 못해도 알림은 기본 이름으로 보낸다.
     await this.notify(async () => ({
       userId: card.ownerId,

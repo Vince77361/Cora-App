@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Collaboration, CollaborationKind } from '@prisma/client';
 import { CollaborationStage } from '@prisma/client';
+import { submissionDeadlineJobKeys } from '../collaborations/collaboration-jobs';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
@@ -21,13 +22,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function submittableStage(kind: CollaborationKind): CollaborationStage {
   return kind === 'STORE_OFFER' ? 'FUNDED' : 'APPROVED';
 }
-
-// 제출 뒤에 필요 없어지는 제출 기한 작업의 키(결제 사후 단계와 수락이 같은 키로 올린다).
-const unsubmittedJobKeys = (collaborationId: string): string[] => [
-  `refund-unsubmitted:${collaborationId}`,
-  `submit-reminder:${collaborationId}:3`,
-  `submit-reminder:${collaborationId}:1`,
-];
 
 @Injectable()
 export class SubmissionsService {
@@ -163,7 +157,7 @@ export class SubmissionsService {
 
   // 제출했으니 미제출 환급과 기한 알림은 필요 없다. 지우지 못해도 처리기가 단계를 보고 아무 일도 하지 않는다.
   private async cancelDeadlineJobs(collaborationId: string): Promise<void> {
-    for (const key of unsubmittedJobKeys(collaborationId)) {
+    for (const key of submissionDeadlineJobKeys(collaborationId)) {
       try {
         await this.jobs.cancel(key);
       } catch (error) {

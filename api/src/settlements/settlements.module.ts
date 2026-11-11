@@ -11,8 +11,11 @@ import { PaymentsModule } from '../payments/payments.module';
 import { PayoutAccountsModule } from '../payout-accounts/payout-accounts.module';
 import { UsersModule } from '../users/users.module';
 import { PayoutSendHandler } from './jobs/payout-send.handler';
+import { RefundUnsubmittedHandler } from './jobs/refund-unsubmitted.handler';
 import { SettleHandler } from './jobs/settle.handler';
+import { SubmitReminderHandler } from './jobs/submit-reminder.handler';
 import { ViewSnapshotHandler } from './jobs/view-snapshot.handler';
+import { DeadlinesService } from './deadlines.service';
 import { PayoutsService } from './payouts.service';
 import { RefundsService } from './refunds.service';
 import { SettlementsRepository } from './settlements.repository';
@@ -41,9 +44,12 @@ import { SubmissionsService } from './submissions.service';
     SubmissionsService,
     PayoutsService,
     RefundsService,
+    DeadlinesService,
     ViewSnapshotHandler,
     SettleHandler,
     PayoutSendHandler,
+    RefundUnsubmittedHandler,
+    SubmitReminderHandler,
   ],
   exports: [SettlementsService],
 })
@@ -53,11 +59,19 @@ export class SettlementsModule implements OnModuleInit {
     private readonly viewSnapshot: ViewSnapshotHandler,
     private readonly settle: SettleHandler,
     private readonly payoutSend: PayoutSendHandler,
+    private readonly refundUnsubmitted: RefundUnsubmittedHandler,
+    private readonly submitReminder: SubmitReminderHandler,
   ) {}
 
   onModuleInit(): void {
     this.registry.register('view-snapshot', (p) => this.viewSnapshot.run(p));
     this.registry.register('settle', (p) => this.settle.run(p));
     this.registry.register('payout-send', (p) => this.payoutSend.run(p));
+    this.registry.register('refund-unsubmitted', (p) =>
+      this.refundUnsubmitted.run(p),
+    );
+    this.registry.register('submit-reminder', (p) =>
+      this.submitReminder.run(p),
+    );
   }
 }

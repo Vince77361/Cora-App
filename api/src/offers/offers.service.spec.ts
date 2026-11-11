@@ -774,6 +774,55 @@ describe('OffersService', () => {
       return perView.id;
     }
 
+    it('schedules the submission deadline jobs when a voucher-only offer is accepted', async () => {
+      await service.accept(CREATOR, id);
+      const collaboration = collaborations.rows[0];
+      expect(collaboration.stage).toBe('FUNDED');
+      // 기한 2026-12-15 09:00 KST: 환급은 그 시각에, 알림은 3일 전(12-12)과 하루 전(12-14) 10:00 KST에.
+      expect(
+        jobs
+          .pending()
+          .map((j) => ({ name: j.name, jobKey: j.jobKey, runAt: j.runAt }))
+          .sort((a, b) => a.runAt.getTime() - b.runAt.getTime()),
+      ).toEqual([
+        {
+          name: 'submit-reminder',
+          jobKey: `submit-reminder:${collaboration.id}:3`,
+          runAt: new Date('2026-12-12T01:00:00.000Z'),
+        },
+        {
+          name: 'submit-reminder',
+          jobKey: `submit-reminder:${collaboration.id}:1`,
+          runAt: new Date('2026-12-14T01:00:00.000Z'),
+        },
+        {
+          name: 'refund-unsubmitted',
+          jobKey: `refund-unsubmitted:${collaboration.id}`,
+          runAt: new Date(T0.getTime() + 14 * DAY),
+        },
+      ]);
+    });
+
+    it('does not schedule submission deadline jobs for an offer that still needs a payment', async () => {
+      await acceptPerView();
+      expect(
+        jobs.pending().filter((j) => j.name !== 'payment-due-expiry'),
+      ).toEqual([]);
+    });
+
+    it('keeps a voucher-only accept saved when the deadline jobs cannot be scheduled', async () => {
+      jest.spyOn(jobs, 'schedule').mockRejectedValue(new Error('redis'));
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      await expect(service.accept(CREATOR, id)).resolves.toMatchObject({
+        view: 'ACCEPTED',
+      });
+      expect(collaborations.rows).toHaveLength(1);
+      expect(warn).toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
     it('schedules the decline notice 30 seconds after the decline', async () => {
       await service.decline(CREATOR, id);
       expect(jobs.pending()).toMatchObject([
@@ -952,7 +1001,10 @@ describe('OffersService', () => {
 
     it('schedules no payment due expiry for a voucher-only offer', async () => {
       await service.accept(CREATOR, id);
-      expect(jobs.pending()).toEqual([]);
+      // 낼 돈이 없으니 결제 기한 작업은 없다(제출 기한 작업은 따로 올라간다).
+      expect(
+        jobs.pending().filter((j) => j.name === 'payment-due-expiry'),
+      ).toEqual([]);
     });
 
     it('keeps the accept saved when scheduling the expiry fails', async () => {

@@ -7,6 +7,7 @@ import {
   RewardType,
 } from '@prisma/client';
 import request from 'supertest';
+import { scheduleSubmissionDeadlineJobs } from '../src/collaborations/collaboration-jobs';
 import { Clock } from '../src/common/clock';
 import { AppError } from '../src/common/errors/app-error';
 import { FakePaymentAdapter } from '../src/integrations/payment/fake-payment.adapter';
@@ -240,22 +241,13 @@ describe('settlements', () => {
         })),
       });
     }
-    // 결제 뒤 사후 단계가 올려 둔 제출 기한 작업.
-    const due = new Date(T0.getTime() + 14 * DAY);
-    await scheduler.schedule(
-      'refund-unsubmitted',
-      { collaborationId: collaboration.id },
-      due,
-      `refund-unsubmitted:${collaboration.id}`,
+    // 결제 뒤(또는 식사권만 있는 오퍼를 수락한 뒤)의 사후 단계가 올려 둔 제출 기한 작업.
+    await scheduleSubmissionDeadlineJobs(
+      scheduler,
+      collaboration.id,
+      new Date(T0.getTime() + 14 * DAY),
+      T0,
     );
-    for (const daysLeft of [3, 1]) {
-      await scheduler.schedule(
-        'submit-reminder',
-        { collaborationId: collaboration.id, daysLeft },
-        new Date(due.getTime() - daysLeft * DAY),
-        `submit-reminder:${collaboration.id}:${daysLeft}`,
-      );
-    }
     return {
       ownerId,
       storeId: store.id,
@@ -1036,6 +1028,233 @@ describe('settlements', () => {
       );
       expect(jobKeys().filter((k) => k.startsWith('payout:'))).toHaveLength(1);
       expect(s.ownerId).toBeTruthy();
+    });
+  });
+  describe('unsubmitted refund', () => {
+    const DUE = new Date(T0.getTime() + 14 * DAY);
+
+    it('refunds cap and fee 14 days after funding when nothing was submitted', async () => {
+      const s = await seed();
+      clock.set(DUE);
+      await scheduler.runDue(clock.now());
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('REFUNDED');
+      // 장부: 에스크로와 수수료 수익이 모두 환급 계정으로 간다.
+      expect(await accountOf(s.collaborationId, 'STORE_REFUND')).toBe(110000);
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(0);
+      expect(await accountOf(s.collaborationId, 'FEE_REVENUE')).toBe(0);
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { amount: 110000, status: 'DONE' },
+      ]);
+      expect(pg.refunds).toHaveLength(1);
+      expect(pg.refunds[0]).toMatchObject({
+        pgTransactionId: `tx-${s.collaborationId}`,
+        amount: 110000,
+      });
+      expect(await prisma.payout.count()).toBe(0);
+      // 사장님에게는 환급 문구, 크리에이터에게는 종료 문구.
+      expect(pushTo(s.ownerId).map((p) => p.body)).toEqual([
+        '기한 안에 콘텐츠가 올라오지 않아 110,000원을 돌려드려요.',
+      ]);
+      expect(pushTo(s.creatorId).map((p) => p.body)).toContain(
+        '제출 기한이 지나 협업이 종료됐어요.',
+      );
+      const rows = await prisma.notification.findMany({
+        where: { kind: { in: ['UNSUBMITTED_REFUNDED', 'UNSUBMITTED_ENDED'] } },
+      });
+      expect(rows.map((r) => r.dedupeKey)).toEqual([
+        `unsubmitted:${s.collaborationId}`,
+        `unsubmitted:${s.collaborationId}`,
+      ]);
+    });
+
+    it('does not refund when a link was submitted on day 13', async () => {
+      const s = await seed();
+      clock.set(new Date(T0.getTime() + 13 * DAY));
+      await submit(s.collaborationId, `${REELS_URL}?views=100`).expect(200);
+      clock.set(DUE);
+      await scheduler.runDue(clock.now());
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
+      expect(await prisma.refund.count()).toBe(0);
+      expect(pg.refunds).toHaveLength(0);
+      expect(await accountOf(s.collaborationId, 'STORE_REFUND')).toBe(0);
+      // 취소가 실패해 작업이 남아 있어도 처리기가 단계를 보고 아무 일도 하지 않는다.
+      await scheduler.registry.run('refund-unsubmitted', {
+        collaborationId: s.collaborationId,
+      });
+      expect(await prisma.refund.count()).toBe(0);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
+    });
+
+    it('does not refund twice when the job runs twice', async () => {
+      const s = await seed();
+      clock.set(DUE);
+      await scheduler.runDue(clock.now());
+      const entries = (await ledgerOf(s.collaborationId)).length;
+      const payload = { collaborationId: s.collaborationId };
+      await scheduler.registry.run('refund-unsubmitted', payload);
+      await scheduler.registry.run('refund-unsubmitted', payload);
+      expect(await prisma.refund.count()).toBe(1);
+      expect(pg.refunds).toHaveLength(1);
+      expect((await ledgerOf(s.collaborationId)).length).toBe(entries);
+      expect(
+        await prisma.notification.count({
+          where: {
+            kind: { in: ['UNSUBMITTED_REFUNDED', 'UNSUBMITTED_ENDED'] },
+          },
+        }),
+      ).toBe(2);
+    });
+
+    it('finishes the refund and the notices when the job died after the stage moved', async () => {
+      const s = await seed();
+      jest
+        .spyOn(app.get(RefundsService), 'execute')
+        .mockRejectedValueOnce(new Error('process died'));
+      clock.set(DUE);
+      await scheduler.runDue(clock.now(), { allowFailures: true });
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('REFUNDED');
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { amount: 110000, status: 'PENDING' },
+      ]);
+      expect(pg.refunds).toHaveLength(0);
+
+      await scheduler.registry.run('refund-unsubmitted', {
+        collaborationId: s.collaborationId,
+      });
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { status: 'DONE' },
+      ]);
+      expect(pg.refunds).toHaveLength(1);
+      expect(
+        await prisma.notification.count({
+          where: {
+            kind: { in: ['UNSUBMITTED_REFUNDED', 'UNSUBMITTED_ENDED'] },
+          },
+        }),
+      ).toBe(2);
+      expect(await accountOf(s.collaborationId, 'STORE_REFUND')).toBe(110000);
+    });
+
+    it('ends a voucher-only collaboration without money', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      clock.set(DUE);
+      await scheduler.runDue(clock.now());
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('REFUNDED');
+      expect(await prisma.ledgerEntry.count()).toBe(0);
+      expect(await prisma.refund.count()).toBe(0);
+      expect(pg.refunds).toHaveLength(0);
+      // 양쪽 모두 종료 문구뿐이고 금액 문구는 없다. 크리에이터는 기한 전에 도는 기한 알림 둘도 받았다.
+      expect(pushTo(s.ownerId).map((p) => p.body)).toEqual([
+        '제출 기한이 지나 협업이 종료됐어요.',
+      ]);
+      expect(pushTo(s.creatorId).map((p) => p.body)).toEqual([
+        '콘텐츠 제출 기한이 3일 남았어요.',
+        '콘텐츠 제출 기한이 1일 남았어요.',
+        '제출 기한이 지나 협업이 종료됐어요.',
+      ]);
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'UNSUBMITTED_REFUNDED' },
+        }),
+      ).toBe(0);
+      // 다시 돌아도 알림은 그대로다(종료 둘, 기한 알림 둘 + 제출 알림 없음).
+      await scheduler.registry.run('refund-unsubmitted', {
+        collaborationId: s.collaborationId,
+      });
+      expect(await prisma.notification.count()).toBe(4);
+    });
+
+    it('leaves a halted or settled collaboration alone', async () => {
+      const s = await seed();
+      await prisma.collaboration.update({
+        where: { id: s.collaborationId },
+        data: { stage: 'HALTED', stageBeforeHalt: 'FUNDED' },
+      });
+      clock.set(DUE);
+      await scheduler.runDue(clock.now());
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('HALTED');
+      expect(await prisma.refund.count()).toBe(0);
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(100000);
+    });
+
+    it('does not touch a collaboration that an operator already refunded', async () => {
+      const s = await seed();
+      await prisma.collaboration.update({
+        where: { id: s.collaborationId },
+        data: { stage: 'REFUNDED' },
+      });
+      await scheduler.registry.run('refund-unsubmitted', {
+        collaborationId: s.collaborationId,
+      });
+      expect(await prisma.refund.count()).toBe(0);
+      expect(pg.refunds).toHaveLength(0);
+    });
+  });
+
+  describe('submit reminders', () => {
+    // 제출 기한은 2026-12-15 12:00 KST다. 알림은 3일 전(12-12)과 하루 전(12-14) 날의 10:00 KST에 간다.
+    const THREE_DAYS = new Date('2026-12-12T01:00:00.000Z');
+    const ONE_DAY = new Date('2026-12-14T01:00:00.000Z');
+
+    it('reminds the creator 3 days and 1 day before the due date', async () => {
+      const s = await seed();
+      clock.set(new Date(THREE_DAYS.getTime() - MINUTE));
+      await scheduler.runDue(clock.now());
+      expect(pushTo(s.creatorId)).toHaveLength(0);
+
+      clock.set(THREE_DAYS);
+      await scheduler.runDue(clock.now());
+      expect(pushTo(s.creatorId).map((p) => p.body)).toEqual([
+        '콘텐츠 제출 기한이 3일 남았어요.',
+      ]);
+
+      clock.set(ONE_DAY);
+      await scheduler.runDue(clock.now());
+      expect(pushTo(s.creatorId).map((p) => p.body)).toEqual([
+        '콘텐츠 제출 기한이 3일 남았어요.',
+        '콘텐츠 제출 기한이 1일 남았어요.',
+      ]);
+      const rows = await prisma.notification.findMany({
+        where: { kind: 'SUBMIT_REMINDER' },
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(rows.map((r) => r.dedupeKey)).toEqual([
+        `reminder:${s.collaborationId}:3`,
+        `reminder:${s.collaborationId}:1`,
+      ]);
+      expect(rows[0]).toMatchObject({
+        userId: s.creatorId,
+        targetKind: 'COLLABORATION',
+        targetId: s.collaborationId,
+      });
+    });
+
+    it('sends one reminder when the job runs twice', async () => {
+      const s = await seed();
+      clock.set(THREE_DAYS);
+      await scheduler.runDue(clock.now());
+      await scheduler.registry.run('submit-reminder', {
+        collaborationId: s.collaborationId,
+        daysLeft: 3,
+      });
+      expect(
+        await prisma.notification.count({ where: { kind: 'SUBMIT_REMINDER' } }),
+      ).toBe(1);
+    });
+
+    it('does not remind a creator who already submitted', async () => {
+      const s = await seed();
+      await submit(s.collaborationId, `${REELS_URL}?views=100`).expect(200);
+      clock.set(ONE_DAY);
+      await scheduler.runDue(clock.now());
+      // 작업이 남아 있어도 단계가 FUNDED가 아니면 보내지 않는다.
+      await scheduler.registry.run('submit-reminder', {
+        collaborationId: s.collaborationId,
+        daysLeft: 1,
+      });
+      expect(
+        await prisma.notification.count({ where: { kind: 'SUBMIT_REMINDER' } }),
+      ).toBe(0);
     });
   });
 });
