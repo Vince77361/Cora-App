@@ -452,6 +452,9 @@ class _Shortcut extends StatelessWidget {
   }
 }
 
+/// 캔버스 NStoreHome 목록 사진의 `object-position: 50% 25%`(사람 사진은 얼굴이 위쪽에 있다).
+const _faceAlignment = Alignment(0, -0.5);
+
 class _Applicants extends StatelessWidget {
   const _Applicants({required this.state, required this.now});
 
@@ -468,6 +471,7 @@ class _Applicants extends StatelessWidget {
         for (final applicant in state.applicants)
           CoraListRow(
             photoUrl: applicant.creator.photoUrl,
+            photoAlignment: _faceAlignment,
             title: applicant.creator.displayName,
             subtitle: applicantMeta(applicant, now),
             actionLabel: StoreHomePage.sendOffer,
@@ -503,6 +507,7 @@ class _SentOffers extends StatelessWidget {
         for (final offer in state.sentOffers)
           CoraListRow(
             photoUrl: offer.creator.photoUrl,
+            photoAlignment: _faceAlignment,
             title: offer.creator.displayName,
             subtitle: sentOfferMeta(offer),
             actionLabel: sentOfferAction(offer),

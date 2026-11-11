@@ -15,6 +15,7 @@ class CoraListRow extends StatelessWidget {
   const CoraListRow({
     super.key,
     this.photoUrl,
+    this.photoAlignment = Alignment.center,
     required this.title,
     this.subtitle,
     this.actionLabel,
@@ -24,6 +25,9 @@ class CoraListRow extends StatelessWidget {
   });
 
   final String? photoUrl;
+
+  /// 캔버스 `object-position`(예: 50% 25%는 `Alignment(0, -0.5)`). 얼굴이 위쪽에 있는 사진용.
+  final Alignment photoAlignment;
   final String title;
   final String? subtitle;
   final String? actionLabel;
@@ -45,7 +49,11 @@ class CoraListRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          _Avatar(photoUrl: photoUrl, title: title),
+          _Avatar(
+            photoUrl: photoUrl,
+            photoAlignment: photoAlignment,
+            title: title,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -93,9 +101,14 @@ class CoraListRow extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.photoUrl, required this.title});
+  const _Avatar({
+    required this.photoUrl,
+    required this.photoAlignment,
+    required this.title,
+  });
 
   final String? photoUrl;
+  final Alignment photoAlignment;
   final String title;
 
   @override
@@ -107,7 +120,7 @@ class _Avatar extends StatelessWidget {
         dimension: CoraListRow.photoSize,
         child: ClipOval(
           child: hasPhoto
-              ? CoraNetworkPhoto(url: photoUrl)
+              ? CoraNetworkPhoto(url: photoUrl, alignment: photoAlignment)
               : ColoredBox(
                   color: c.surface,
                   child: Center(
