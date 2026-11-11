@@ -1338,7 +1338,10 @@ describe('offers', () => {
         const offer = await seedOffer(store.id, USER_A, { applicationId });
         await decline(offer.id).expect(200);
         expect(scheduler.pending()).toMatchObject([
-          { name: 'decline-notice', jobKey: `decline:${offer.id}` },
+          {
+            name: 'decline-notice',
+            jobKey: `decline:${offer.id}:${T0.getTime()}`,
+          },
         ]);
 
         await scheduler.runDue(new Date(clock.now().getTime() + 29 * SECOND));
@@ -1375,7 +1378,7 @@ describe('offers', () => {
         // 취소가 실패해 작업이 남은 경우를 흉내 낸다: 처리기가 오퍼의 현재 상태를 보고 아무것도 하지 않는다.
         await scheduler.schedule(
           'decline-notice',
-          { offerId: offer.id },
+          { offerId: offer.id, declinedAt: T0.toISOString() },
           clock.now(),
           'stale',
         );
@@ -1385,6 +1388,27 @@ describe('offers', () => {
         expect((await offerRow(offer.id)).status).toBe('SENT');
       });
 
+      it('notifies once at the second deadline when the undo could not cancel the first job', async () => {
+        const offer = await seedOffer(store.id, USER_A);
+        await decline(offer.id).expect(200);
+        clock.advance(10 * SECOND);
+        jest
+          .spyOn(scheduler, 'cancel')
+          .mockRejectedValueOnce(new Error('redis'));
+        await undo(offer.id).expect(200);
+        clock.advance(10 * SECOND);
+        await decline(offer.id).expect(200);
+        expect(scheduler.pending()).toHaveLength(2);
+
+        clock.set(new Date(T0.getTime() + 30 * SECOND));
+        await scheduler.runDue(clock.now());
+        expect(await prisma.notification.count()).toBe(0);
+
+        clock.set(new Date(T0.getTime() + 50 * SECOND));
+        await scheduler.runDue(clock.now());
+        expect(await prisma.notification.count()).toBe(1);
+      });
+
       it('sends one notice when the decline notice job runs twice', async () => {
         const offer = await seedOffer(store.id, USER_A);
         await decline(offer.id).expect(200);
@@ -1392,7 +1416,7 @@ describe('offers', () => {
         await scheduler.runDue(clock.now());
         await scheduler.schedule(
           'decline-notice',
-          { offerId: offer.id },
+          { offerId: offer.id, declinedAt: T0.toISOString() },
           clock.now(),
           'again',
         );

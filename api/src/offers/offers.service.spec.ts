@@ -14,6 +14,7 @@ import {
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { JobHandlerRegistry } from '../jobs/job-handler-registry';
+import { DeclineNoticeHandler } from './jobs/decline-notice.handler';
 import { FakeClock } from '../../test/support/fake-clock';
 import { FakeJobScheduler } from '../../test/support/fake-job-scheduler';
 import {
@@ -768,9 +769,9 @@ describe('OffersService', () => {
       expect(jobs.pending()).toMatchObject([
         {
           name: 'decline-notice',
-          payload: { offerId: id },
+          payload: { offerId: id, declinedAt: T0.toISOString() },
           runAt: new Date(T0.getTime() + 30 * SECOND),
-          jobKey: `decline:${id}`,
+          jobKey: `decline:${id}:${T0.getTime()}`,
         },
       ]);
     });
@@ -785,7 +786,7 @@ describe('OffersService', () => {
       await service.decline(CREATOR, id);
       expect(jobs.pending()).toMatchObject([
         {
-          jobKey: `decline:${id}`,
+          jobKey: `decline:${id}:${clock.now().getTime()}`,
           runAt: new Date(clock.now().getTime() + 30 * SECOND),
         },
       ]);
@@ -806,7 +807,7 @@ describe('OffersService', () => {
     it('notifies the owner 30 seconds after a decline', async () => {
       await service.decline(CREATOR, id);
       clock.advance(30 * SECOND);
-      await service.sendDeclineNotice(id);
+      await service.sendDeclineNotice(id, T0);
       expect(push.sent).toEqual([
         {
           userId: OWNER,
@@ -829,7 +830,7 @@ describe('OffersService', () => {
       repo.appStatus.set('app-1', 'OFFERED');
       await service.decline(CREATOR, id);
       clock.advance(30 * SECOND);
-      await service.sendDeclineNotice(id);
+      await service.sendDeclineNotice(id, T0);
       expect(applications.closed).toEqual(['app-1']);
     });
 
@@ -837,7 +838,7 @@ describe('OffersService', () => {
       await service.decline(CREATOR, id);
       await service.undoDecline(CREATOR, id);
       clock.advance(30 * SECOND);
-      await service.sendDeclineNotice(id);
+      await service.sendDeclineNotice(id, T0);
       expect(push.sent).toEqual([]);
     });
 
@@ -849,15 +850,63 @@ describe('OffersService', () => {
       await service.decline(CREATOR, id);
       // 처음 거절의 30초 뒤에 오래된 작업이 돌아도, 지금 거절의 30초는 끝나지 않았다.
       clock.advance(15 * SECOND);
-      await service.sendDeclineNotice(id);
+      await service.sendDeclineNotice(id, T0);
       expect(push.sent).toEqual([]);
+    });
+
+    it('skips a job of an earlier decline even after the current decline is final', async () => {
+      await service.decline(CREATOR, id);
+      clock.advance(10 * SECOND);
+      await service.undoDecline(CREATOR, id);
+      clock.advance(10 * SECOND);
+      await service.decline(CREATOR, id);
+      clock.advance(30 * SECOND);
+      await service.sendDeclineNotice(id, T0);
+      expect(push.sent).toEqual([]);
+      await service.sendDeclineNotice(id, new Date(T0.getTime() + 20 * SECOND));
+      expect(push.sent).toHaveLength(1);
+    });
+
+    it('notifies exactly once, at the second deadline, when the undo could not cancel the first job', async () => {
+      jobs.registry.register('decline-notice', (p) =>
+        new DeclineNoticeHandler(service).run(p),
+      );
+      await service.decline(CREATOR, id);
+      clock.advance(10 * SECOND);
+      jest.spyOn(jobs, 'cancel').mockRejectedValueOnce(new Error('redis'));
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      await service.undoDecline(CREATOR, id);
+      warn.mockRestore();
+      clock.advance(10 * SECOND);
+      await service.decline(CREATOR, id);
+      // 취소가 실패해 첫 작업이 남았어도, 키가 달라 두 번째 작업이 막히지 않고 둘 다 올라가 있다.
+      expect(jobs.pending().map((j) => j.runAt)).toEqual([
+        new Date(T0.getTime() + 30 * SECOND),
+        new Date(T0.getTime() + 50 * SECOND),
+      ]);
+
+      // 첫 마감: 옛 작업은 지금 거절의 것이 아니라 아무것도 하지 않는다.
+      clock.set(new Date(T0.getTime() + 30 * SECOND));
+      await jobs.runDue(clock.now());
+      expect(push.sent).toEqual([]);
+
+      // 두 번째 마감: 지금 거절의 작업이 알린다.
+      clock.set(new Date(T0.getTime() + 50 * SECOND));
+      await jobs.runDue(clock.now());
+      expect(push.sent).toHaveLength(1);
+      expect(push.sent[0]).toMatchObject({
+        kind: 'OFFER_DECLINED',
+        dedupeKey: `decline:${id}`,
+      });
     });
 
     it('sends the decline notice with the same dedupe key when run twice', async () => {
       await service.decline(CREATOR, id);
       clock.advance(30 * SECOND);
-      await service.sendDeclineNotice(id);
-      await service.sendDeclineNotice(id);
+      await service.sendDeclineNotice(id, T0);
+      await service.sendDeclineNotice(id, T0);
       expect(push.sent.map((n) => n.dedupeKey)).toEqual([
         `decline:${id}`,
         `decline:${id}`,
@@ -868,13 +917,13 @@ describe('OffersService', () => {
       await service.decline(CREATOR, id);
       clock.advance(30 * SECOND);
       push.fail = true;
-      await expect(service.sendDeclineNotice(id)).rejects.toThrow(
+      await expect(service.sendDeclineNotice(id, T0)).rejects.toThrow(
         'notify down',
       );
     });
 
     it('does nothing for a missing offer', async () => {
-      await service.sendDeclineNotice(randomUUID());
+      await service.sendDeclineNotice(randomUUID(), T0);
       await service.expireUnpaid(randomUUID());
       expect(push.sent).toEqual([]);
     });

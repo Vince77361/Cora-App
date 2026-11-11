@@ -7,3 +7,12 @@ export function offerIdOf(payload: JobPayload): string {
   }
   throw new Error('작업에 offerId가 없어요.');
 }
+
+// 거절 알림 작업의 거절 시각. 없거나 날짜가 아니면 던진다.
+export function declinedAtOf(payload: JobPayload): Date {
+  if ('declinedAt' in payload && typeof payload.declinedAt === 'string') {
+    const at = new Date(payload.declinedAt);
+    if (!Number.isNaN(at.getTime())) return at;
+  }
+  throw new Error('작업에 declinedAt이 없어요.');
+}

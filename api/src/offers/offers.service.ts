@@ -10,7 +10,7 @@ import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
 import { InstagramService } from '../instagram/instagram.service';
-import { JobScheduler } from '../jobs/job-scheduler';
+import { JobScheduler, OfferJobPayload } from '../jobs/job-scheduler';
 import {
   NotificationsService,
   NotifyInput,
@@ -41,6 +41,10 @@ import {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// 거절마다 다른 키: 같은 오퍼를 되돌렸다 다시 거절해도 옛 작업과 새 작업이 서로 가리지 않는다.
+const declineJobKey = (offerId: string, declinedAt: Date): string =>
+  `decline:${offerId}:${declinedAt.getTime()}`;
 
 // 서비스는 규칙을 복제하지 않는다. 상태·보임·남은 날은 offer-rules의 순수 함수만 쓴다.
 @Injectable()
@@ -292,7 +296,7 @@ export class OffersService {
     if (initial.paymentDueAt) {
       await this.schedule(
         'payment-due-expiry',
-        row.id,
+        { offerId: row.id },
         initial.paymentDueAt,
         `payment-due:${row.id}`,
       );
@@ -331,12 +335,13 @@ export class OffersService {
       await this.settleLatest(row.id, now);
       throw this.alreadyHandled();
     }
-    // 30초 안에 되돌리지 않으면 사장님에게 알린다. 되돌리면 취소하고, 다시 거절하면 다시 올린다.
+    // 30초 안에 되돌리지 않으면 사장님에게 알린다. 키에 거절 시각을 넣어, 되돌리기의 취소가 실패해 옛 작업이
+    // 남아 있어도 다시 거절한 작업이 그 키에 막히지 않게 한다.
     await this.schedule(
       'decline-notice',
-      row.id,
+      { offerId: row.id, declinedAt: now.toISOString() },
       new Date(now.getTime() + DECLINE_UNDO_SECONDS * 1000),
-      `decline:${row.id}`,
+      declineJobKey(row.id, now),
     );
     return this.reload(userId, row.id, card, now);
   }
@@ -355,18 +360,20 @@ export class OffersService {
     if (!(await this.offers.undoDecline(row.id, userId, now))) {
       throw this.alreadyHandled();
     }
-    // 취소하지 못해 작업이 남아도 처리기가 오퍼의 현재 상태를 보고 아무것도 하지 않는다.
-    await this.cancelJob(`decline:${row.id}`);
+    // 취소하지 못해 작업이 남아도 처리기가 거절 시각이 다른 옛 작업은 건너뛴다.
+    if (row.declinedAt)
+      await this.cancelJob(declineJobKey(row.id, row.declinedAt));
     return this.reload(userId, row.id, card, now);
   }
 
-  // 작업 큐가 거절 30초 뒤에 부른다. 지금도 거절 상태이고 지금 거절의 되돌리기 시간이 지났을 때만 알린다
-  // (되돌렸다가 다시 거절했으면 오래된 작업은 아무것도 하지 않는다). 알림이 실패하면 던져서 큐가 다시 시도하게
-  // 하고, 중복 방지 키가 두 번째 알림을 막는다.
-  async sendDeclineNotice(offerId: string): Promise<void> {
+  // 작업 큐가 거절 30초 뒤에 부른다. 작업이 올라갈 때의 거절 시각(declinedAt)이 오퍼의 지금 거절 시각과 같고,
+  // 여전히 거절 상태이며 그 거절의 되돌리기 시간이 지났을 때만 알린다(되돌렸다가 다시 거절했으면 옛 작업은 건너뛴다).
+  // 알림이 실패하면 던져서 큐가 다시 시도하게 하고, 중복 방지 키가 두 번째 알림을 막는다.
+  async sendDeclineNotice(offerId: string, declinedAt: Date): Promise<void> {
     const row = await this.offers.findById(offerId);
     const now = this.clock.now();
     if (!row || row.status !== 'DECLINED' || canUndoDecline(row, now)) return;
+    if (row.declinedAt?.getTime() !== declinedAt.getTime()) return;
     // 연결된 지원은 거절이 확정된 지금 닫는다(목록을 읽을 때 닫는 것과 같은 길).
     await this.settle(row, now);
     const card = await this.stores.getOfferCard(row.storeId);
@@ -541,12 +548,12 @@ export class OffersService {
   // 작업을 올리거나 지우지 못해도 이미 저장된 변경은 유효하다. 화면은 읽을 때 계산으로 맞고, 처리기는 오퍼의 현재 상태를 본다.
   private async schedule(
     name: 'decline-notice' | 'payment-due-expiry',
-    offerId: string,
+    payload: OfferJobPayload,
     runAt: Date,
     jobKey: string,
   ): Promise<void> {
     try {
-      await this.jobs.schedule(name, { offerId }, runAt, jobKey);
+      await this.jobs.schedule(name, payload, runAt, jobKey);
     } catch (error) {
       this.logger.warn(
         `오퍼 작업을 올리지 못했어요(${name}): ${error instanceof Error ? error.name : 'unknown'}`,

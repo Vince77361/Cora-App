@@ -2,7 +2,8 @@ import type { JobName } from './job-names';
 
 // 작업은 협업에 붙거나(결제 이후의 작업) 오퍼에 붙는다(오퍼가 협업을 만들기 전·없이 도는 작업: 거절 알림, 결제 기한 만료).
 export type CollaborationJobPayload = { collaborationId: string };
-export type OfferJobPayload = { offerId: string };
+// declinedAt(ISO 시각)은 거절 알림 작업만 싣는다: 어느 거절에 대한 작업인지 처리기가 알아야 옛 작업을 건너뛴다.
+export type OfferJobPayload = { offerId: string; declinedAt?: string };
 export type JobPayload = CollaborationJobPayload | OfferJobPayload;
 
 // 작업 처리기. 다시 실행돼도 같은 결과를 내야 하고, 시각은 Clock에서 읽는다.
