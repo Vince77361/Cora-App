@@ -27,16 +27,18 @@ void main() {
         tester.view.devicePixelRatio = 3;
         addTearDown(tester.view.reset);
         final key = GlobalKey();
-        await tester.pumpWidget(RepaintBoundary(
-          key: key,
-          child: MaterialApp.router(
-            debugShowCheckedModeBanner: false,
-            theme: coraLightTheme,
-            darkTheme: coraDarkTheme,
-            themeMode: mode,
-            routerConfig: demoRouter,
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: key,
+            child: MaterialApp.router(
+              debugShowCheckedModeBanner: false,
+              theme: coraLightTheme,
+              darkTheme: coraDarkTheme,
+              themeMode: mode,
+              routerConfig: demoRouter,
+            ),
           ),
-        ));
+        );
         demoRouter.go(s.path);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 600));
@@ -50,7 +52,10 @@ void main() {
           });
           await tester.pump();
           final name = '${mode.name}${s.path.replaceAll('/', '_')}';
-          await expectLater(find.byKey(key), matchesGoldenFile('../../build/demo_shots/$name.png'));
+          await expectLater(
+            find.byKey(key),
+            matchesGoldenFile('../../build/demo_shots/$name.png'),
+          );
         }
       });
     }

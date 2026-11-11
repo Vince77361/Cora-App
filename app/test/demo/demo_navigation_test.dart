@@ -14,27 +14,55 @@ void main() {
     demoRouter.go(DemoPaths.index);
     await tester.pumpAndSettle();
     demoRouter.push(path);
-    await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 5));
+    await tester.pumpAndSettle(
+      const Duration(milliseconds: 100),
+      EnginePhase.sendSemanticsUpdate,
+      const Duration(seconds: 5),
+    );
     expect(find.text('Cora 시연'), findsNothing);
   }
 
-  for (final path in [DemoPaths.brandDiscover, DemoPaths.compare, DemoPaths.settings]) {
-    testWidgets('edge swipe from $path pops back to the list', (tester) async {
-      await open(tester, path);
-      await tester.timedDragFrom(const Offset(5, 400), const Offset(300, 0), const Duration(milliseconds: 300));
-      await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 5));
-      expect(find.text('Cora 시연'), findsOneWidget);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+  for (final path in [
+    DemoPaths.brandDiscover,
+    DemoPaths.compare,
+    DemoPaths.settings,
+  ]) {
+    testWidgets(
+      'edge swipe from $path pops back to the list',
+      (tester) async {
+        await open(tester, path);
+        await tester.timedDragFrom(
+          const Offset(5, 400),
+          const Offset(300, 0),
+          const Duration(milliseconds: 300),
+        );
+        await tester.pumpAndSettle(
+          const Duration(milliseconds: 100),
+          EnginePhase.sendSemanticsUpdate,
+          const Duration(seconds: 5),
+        );
+        expect(find.text('Cora 시연'), findsOneWidget);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
 
-    testWidgets('two finger long press on $path goes to the list', (tester) async {
-      await open(tester, path);
-      final a = await tester.startGesture(const Offset(150, 400), pointer: 7);
-      final b = await tester.startGesture(const Offset(250, 400), pointer: 8);
-      await tester.pump(const Duration(milliseconds: 700));
-      await a.up();
-      await b.up();
-      await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 5));
-      expect(find.text('Cora 시연'), findsOneWidget);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+    testWidgets(
+      'two finger long press on $path goes to the list',
+      (tester) async {
+        await open(tester, path);
+        final a = await tester.startGesture(const Offset(150, 400), pointer: 7);
+        final b = await tester.startGesture(const Offset(250, 400), pointer: 8);
+        await tester.pump(const Duration(milliseconds: 700));
+        await a.up();
+        await b.up();
+        await tester.pumpAndSettle(
+          const Duration(milliseconds: 100),
+          EnginePhase.sendSemanticsUpdate,
+          const Duration(seconds: 5),
+        );
+        expect(find.text('Cora 시연'), findsOneWidget);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
   }
 }

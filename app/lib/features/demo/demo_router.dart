@@ -34,13 +34,15 @@ final GoRouter demoRouter = GoRouter(
 /// go_router의 기본 페이지는 자기 전환을 써서 iOS 가장자리 밀기가 붙지 않는다.
 /// 시연 화면은 모두 CupertinoPage로 감싸 어느 화면에서든 밀어서 뒤로 가게 한다.
 List<RouteBase> _swipeBack(List<RouteBase> routes) => [
-      for (final r in routes)
-        if (r is GoRoute && r.builder != null)
-          GoRoute(
-            path: r.path,
-            pageBuilder: (context, state) =>
-                CupertinoPage(key: state.pageKey, child: r.builder!(context, state)),
-          )
-        else
-          r,
-    ];
+  for (final r in routes)
+    if (r is GoRoute && r.builder != null)
+      GoRoute(
+        path: r.path,
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: r.builder!(context, state),
+        ),
+      )
+    else
+      r,
+];

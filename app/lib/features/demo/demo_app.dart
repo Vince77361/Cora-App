@@ -29,8 +29,14 @@ class DemoApp extends StatelessWidget {
       builder: (context, mode, _) => MaterialApp.router(
         title: 'Cora 시연',
         debugShowCheckedModeBanner: false,
-        theme: coraLightTheme.copyWith(pageTransitionsTheme: _cupertino, inputDecorationTheme: const InputDecorationThemeData()),
-        darkTheme: coraDarkTheme.copyWith(pageTransitionsTheme: _cupertino, inputDecorationTheme: const InputDecorationThemeData()),
+        theme: coraLightTheme.copyWith(
+          pageTransitionsTheme: _cupertino,
+          inputDecorationTheme: const InputDecorationThemeData(),
+        ),
+        darkTheme: coraDarkTheme.copyWith(
+          pageTransitionsTheme: _cupertino,
+          inputDecorationTheme: const InputDecorationThemeData(),
+        ),
         themeMode: mode,
         routerConfig: demoRouter,
         // 시연 중 목록으로 돌아가는 숨은 길: 화면 어디서나 두 손가락으로 0.6초 누른다.
