@@ -9,6 +9,8 @@ import 'package:cora/features/auth/presentation/pages/login_page.dart';
 import 'package:cora/features/auth/presentation/pages/phone_verify_page.dart';
 import 'package:cora/core/ui/cora_logo.dart';
 import 'package:cora/features/dev/presentation/pages/motion_gallery_page.dart';
+import 'package:cora/features/creator_profile/domain/creator_profile.dart';
+import 'package:cora/features/creator_profile/domain/creator_profile_repository.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
@@ -21,6 +23,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/fake_auth_repository.dart';
+import '../../features/creator_profile/fake_creator_profile_repository.dart';
 import '../../features/onboarding/fake_me_repository.dart';
 import '../../support/fake_http_client.dart';
 import '../../support/pump_cora_app.dart';
@@ -47,6 +50,14 @@ Future<void> _openDemo(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
   expect(find.text('닫기'), findsOneWidget, reason: label);
 }
+
+/// 프로필이 이미 있는 크리에이터(진입 경로가 `/creator`).
+Override _creatorWithProfile() =>
+    creatorProfileRepositoryProvider.overrideWithValue(
+      FakeCreatorProfileRepository(
+        profile: const CreatorProfile(displayName: '서윤', regionSido: '서울특별시'),
+      ),
+    );
 
 void main() {
   testWidgets('redirects to /login when there is no session', (tester) async {
@@ -159,13 +170,14 @@ void main() {
       tester,
       auth: auth,
       me: FakeMeRepository(role: UserRole.creator),
+      overrides: [_creatorWithProfile()],
     );
 
     await tester.tap(find.text('카카오로 계속하기'));
     await tester.pumpAndSettle();
 
     expect(find.byType(CoraComingSoonPage), findsOneWidget);
-    expect(currentPath(tester), AppRoutes.creatorComingSoon('크리에이터 홈'));
+    expect(currentPath(tester), AppRoutes.creator);
   });
 
   testWidgets('keeps /role reachable when a role exists', (tester) async {
@@ -363,22 +375,70 @@ void main() {
       return route.transitionDuration;
     }
 
-    testWidgets('the default resolver sends store and creator to coming soon', (
-      tester,
-    ) async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      final ref = container.read(Provider((ref) => ref));
-      expect(
-        await defaultRoleEntryResolver(ref, UserRole.store),
-        '/store/coming-soon/${Uri.encodeComponent('가게 홈')}',
-      );
-      expect(
-        await defaultRoleEntryResolver(ref, UserRole.creator),
-        startsWith('/creator/coming-soon/'),
-      );
-      expect(await defaultRoleEntryResolver(ref, UserRole.brand), '/brand');
-    });
+    testWidgets(
+      'the default resolver sends the store to coming soon and the brand home',
+      (tester) async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final ref = container.read(Provider((ref) => ref));
+        expect(
+          await defaultRoleEntryResolver(ref, UserRole.store),
+          '/store/coming-soon/${Uri.encodeComponent('가게 홈')}',
+        );
+        expect(await defaultRoleEntryResolver(ref, UserRole.brand), '/brand');
+      },
+    );
+
+    testWidgets(
+      'the default resolver sends a creator by whether a profile exists',
+      (tester) async {
+        Future<String> resolve(FakeCreatorProfileRepository repo) async {
+          final container = ProviderContainer(
+            overrides: [
+              creatorProfileRepositoryProvider.overrideWithValue(repo),
+            ],
+          );
+          addTearDown(container.dispose);
+          final ref = container.read(Provider((ref) => ref));
+          return defaultRoleEntryResolver(ref, UserRole.creator);
+        }
+
+        expect(
+          await resolve(FakeCreatorProfileRepository()),
+          AppRoutes.creatorProfileSetup,
+        );
+        expect(
+          await resolve(
+            FakeCreatorProfileRepository(
+              profile: const CreatorProfile(
+                displayName: '서윤',
+                regionSido: '서울특별시',
+              ),
+            ),
+          ),
+          AppRoutes.creator,
+        );
+      },
+    );
+
+    testWidgets(
+      'a creator whose profile lookup fails goes to the role screen',
+      (tester) async {
+        usePhone(tester);
+        await pumpCoraApp(
+          tester,
+          auth: signedIn(),
+          me: FakeMeRepository(role: UserRole.creator),
+          overrides: [
+            creatorProfileRepositoryProvider.overrideWithValue(
+              FakeCreatorProfileRepository()..failFetch = true,
+            ),
+          ],
+        );
+
+        expect(currentPath(tester), AppRoutes.role);
+      },
+    );
 
     testWidgets('a Korean title survives the path encoding', (tester) async {
       usePhone(tester);
@@ -551,6 +611,7 @@ void main() {
         tester,
         auth: FakeAuthRepository(),
         me: FakeMeRepository(role: UserRole.creator),
+        overrides: [_creatorWithProfile()],
       );
 
       await tester.tap(find.text('카카오로 계속하기'));

@@ -6,6 +6,7 @@ import '../../features/auth/domain/auth_session.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/phone_verify_page.dart';
 import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
+import '../../features/creator_profile/presentation/pages/creator_profile_setup_page.dart';
 import '../../features/dev/presentation/pages/motion_gallery_page.dart';
 import '../../features/onboarding/domain/me.dart';
 import '../../features/onboarding/presentation/pages/role_home_placeholder_page.dart';
@@ -97,7 +98,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       // 크리에이터 흐름. 10번 작업이 실제 화면으로 바꾼다.
       _roleRoute(AppRoutes.creator, '가게 둘러보기', entry: true),
-      _roleRoute(AppRoutes.creatorProfileSetup, '프로필 만들기', entry: true),
+      GoRoute(
+        path: AppRoutes.creatorProfileSetup,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const CreatorProfileSetupPage()),
+      ),
       _roleRoute('/creator/stores/:id', '가게'),
       _roleRoute(AppRoutes.creatorOffers, '받은 오퍼'),
       GoRoute(

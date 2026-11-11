@@ -7,13 +7,17 @@ import 'app.dart';
 import 'core/config/app_config.dart';
 import 'core/config/app_config_provider.dart';
 import 'core/network/api_client_provider.dart';
+import 'core/network/photo_uploader.dart';
 import 'core/network/timeout_http_client.dart';
+import 'package:cora_api/api.dart' as api;
 import 'features/auth/data/secure_key_value_store.dart';
 import 'features/auth/data/fake_sign_in_adapter.dart';
 import 'features/auth/data/secure_session_storage.dart';
 import 'features/auth/data/sign_in_adapter.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/domain/auth_repository_provider.dart';
+import 'features/creator_profile/data/api_creator_profile_repository.dart';
+import 'features/creator_profile/domain/creator_profile_repository.dart';
 import 'features/onboarding/data/api_me_repository.dart';
 import 'features/onboarding/domain/me_repository_provider.dart';
 
@@ -60,6 +64,15 @@ Future<void> main() async {
         appConfigProvider.overrideWithValue(config),
         meRepositoryProvider.overrideWith(
           (ref) => ApiMeRepository(ref.watch(apiClientProvider)),
+        ),
+        creatorProfileRepositoryProvider.overrideWith(
+          (ref) => ApiCreatorProfileRepository(ref.watch(apiClientProvider)),
+        ),
+        photoUploaderProvider.overrideWith(
+          (ref) => ApiPhotoUploader(
+            uploads: api.UploadsApi(ref.watch(apiClientProvider)),
+            httpClient: ref.watch(httpClientProvider),
+          ),
         ),
       ],
       child: const CoraApp(),

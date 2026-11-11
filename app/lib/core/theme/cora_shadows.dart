@@ -44,6 +44,15 @@ abstract final class CoraShadows {
     ),
   ];
 
+  /// 프로필 사진 위 `사진 바꾸기` 버튼: 0 2px 8px. 색은 테마의 `avatarEditShadow`.
+  static List<BoxShadow> avatarEdit(Color color) => [
+    BoxShadow(
+      color: color,
+      offset: const Offset(0, 2),
+      blurRadius: blurRadiusFor(8),
+    ),
+  ];
+
   /// 하단 메뉴: 0 12px 32px. 색은 테마의 `navShadow`(라이트 알파 0.12, 다크 0.28).
   static List<BoxShadow> bottomNav(Color color) => [
     BoxShadow(

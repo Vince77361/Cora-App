@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/creator_profile/domain/creator_entry.dart';
 import '../../features/onboarding/domain/user_role.dart';
 import 'app_routes.dart';
 
@@ -18,11 +19,12 @@ import 'app_routes.dart';
 /// 던진 오류를 역할 선택 화면으로 보낸다.
 typedef RoleEntryResolver = Future<String> Function(Ref ref, UserRole role);
 
-/// 지금은 조회가 없으므로 가게와 크리에이터는 `준비 중이에요.` 화면으로 보낸다.
+/// 크리에이터는 프로필 조회로 정한다(`creatorEntryPath`). 가게는 아직 조회가 없어 `준비 중이에요.`
+/// 화면으로 보낸다.
 Future<String> defaultRoleEntryResolver(Ref ref, UserRole role) async =>
     switch (role) {
       UserRole.store => AppRoutes.storeComingSoon('가게 홈'),
-      UserRole.creator => AppRoutes.creatorComingSoon('크리에이터 홈'),
+      UserRole.creator => creatorEntryPath(ref),
       UserRole.brand => AppRoutes.brand,
     };
 

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:cora/core/navigation/app_routes.dart';
-import 'package:cora/core/ui/cora_coming_soon_page.dart';
 import 'package:cora/core/network/api_client_provider.dart';
 import 'package:cora/core/network/timeout_http_client.dart';
 import 'package:cora/core/theme/cora_colors.dart';
@@ -9,6 +8,8 @@ import 'package:cora/core/ui/cora_logo.dart';
 import 'package:cora/core/ui/cora_primary_button.dart';
 import 'package:cora/core/ui/cora_select_card.dart';
 import 'package:cora/features/auth/presentation/pages/login_page.dart';
+import 'package:cora/features/creator_profile/domain/creator_profile_repository.dart';
+import 'package:cora/features/creator_profile/presentation/pages/creator_profile_setup_page.dart';
 import 'package:cora/features/onboarding/data/api_me_repository.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
@@ -22,6 +23,7 @@ import '../../support/fake_http_client.dart';
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
 import '../auth/fake_auth_repository.dart';
+import '../creator_profile/fake_creator_profile_repository.dart';
 import 'fake_me_repository.dart';
 
 const _storeTitle = '가게를 알리고 싶어요';
@@ -38,7 +40,17 @@ Future<void> _pumpA1(
   FakeAuthRepository? auth,
 }) async {
   usePhone(tester);
-  await pumpCoraApp(tester, auth: auth ?? _signedIn(), me: me);
+  await pumpCoraApp(
+    tester,
+    auth: auth ?? _signedIn(),
+    me: me,
+    // 크리에이터를 고르면 프로필 유무를 조회한다.
+    overrides: [
+      creatorProfileRepositoryProvider.overrideWithValue(
+        FakeCreatorProfileRepository(),
+      ),
+    ],
+  );
 }
 
 Finder _card(String title) =>
@@ -148,11 +160,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(me.savedRole, UserRole.creator);
-    // 기본 진입 규칙은 크리에이터를 `준비 중이에요.` 화면으로 보낸다(10번 작업이 바꾼다).
-    expect(find.byType(CoraComingSoonPage), findsOneWidget);
-    expect(find.text('크리에이터 홈'), findsOneWidget);
+    // 프로필이 아직 없는 크리에이터는 프로필 만들기 화면으로 간다.
+    expect(find.byType(CreatorProfileSetupPage), findsOneWidget);
     expect(find.byType(RoleSelectPage), findsNothing);
-    expect(currentPath(tester), AppRoutes.creatorComingSoon('크리에이터 홈'));
+    expect(currentPath(tester), AppRoutes.creatorProfileSetup);
   });
 
   testWidgets('the button is off while saving and a second tap saves once', (

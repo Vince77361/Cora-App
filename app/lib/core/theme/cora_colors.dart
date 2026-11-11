@@ -40,6 +40,18 @@ class CoraColors extends ThemeExtension<CoraColors> {
     required this.navShadow,
     required this.highlightAction,
     required this.onHighlightAction,
+    required this.avatarPlaceholder,
+    required this.avatarEditButton,
+    required this.avatarEditShadow,
+    required this.coverPlaceholder,
+    required this.onPhotoSecondary,
+    required this.softAction,
+    required this.onSoftAction,
+    required this.slideTint,
+    required this.onSlideTint,
+    required this.slideNeutral,
+    required this.onSlideNeutral,
+    required this.onSlidePhoto,
   });
 
   final Color background;
@@ -110,6 +122,29 @@ class CoraColors extends ThemeExtension<CoraColors> {
   final Color highlightAction;
   final Color onHighlightAction;
 
+  /// A3 대표 사진 상자와 A4 사진 장면의 바탕(사진이 뜨기 전, 사진이 없을 때). 라이트·다크가 같다.
+  final Color coverPlaceholder;
+
+  /// 사진 위의 보조 글자(NStorePage `라멘집, 성수동`). 사진은 모드와 상관없이 같아서 라이트·다크가 같다.
+  final Color onPhotoSecondary;
+
+  /// 카드 안의 작은 알약 버튼(NStorePage `고치기`)의 채움 rgba(31,42,0,0.08)과 글자. 다크에서도 채움이 같고 글자만 밝은 라임(#E4FFB0)이다.
+  final Color softAction;
+  final Color onSoftAction;
+
+  /// A4 사진 없는 슬라이드의 두 톤(NStoreAI `tones`). 첫 톤은 라이트·다크가 같고, 둘째 톤은 라이트가 연한 회색, 다크가 밝은 회색이다. 사진 위 글자(`onSlidePhoto`)는 다크에서 #0F1012다(캔버스 그대로).
+  final Color slideTint;
+  final Color onSlideTint;
+  final Color slideNeutral;
+  final Color onSlideNeutral;
+  final Color onSlidePhoto;
+
+  /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
+  /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
+  final Color avatarPlaceholder;
+  final Color avatarEditButton;
+  final Color avatarEditShadow;
+
   static const light = CoraColors(
     background: Color(0xFFFFFFFF),
     text: Color(0xFF17181C),
@@ -154,6 +189,19 @@ class CoraColors extends ThemeExtension<CoraColors> {
     // NStoreHome `오퍼 보내기` #C6FF3D/#1F2A00
     highlightAction: Color(0xFFC6FF3D),
     onHighlightAction: Color(0xFF1F2A00),
+    avatarPlaceholder: Color(0xFFD9DCE6),
+    avatarEditButton: Color(0xFFFFFFFF),
+    avatarEditShadow: Color(0x2917181C),
+    // NStorePage·NStoreAI 라이트
+    coverPlaceholder: Color(0xFFF6E3C8),
+    onPhotoSecondary: Color(0xFFE4E6EA),
+    softAction: Color(0x141F2A00),
+    onSoftAction: Color(0xFF1F2A00),
+    slideTint: Color(0xFFF3FFD6),
+    onSlideTint: Color(0xFF1F2A00),
+    slideNeutral: Color(0xFFF8F9FA),
+    onSlideNeutral: Color(0xFF17181C),
+    onSlidePhoto: Color(0xFFFFFFFF),
   );
 
   // 다크의 surface, surfaceMuted, onAccent는 DarkPrinciples/DarkNEscrow/DarkNStoreHome에서
@@ -206,6 +254,19 @@ class CoraColors extends ThemeExtension<CoraColors> {
     // DarkNStoreHome `오퍼 보내기` #F2F3F5/#0F1012
     highlightAction: Color(0xFFF2F3F5),
     onHighlightAction: Color(0xFF0F1012),
+    avatarPlaceholder: Color(0xFFD9DCE6),
+    avatarEditButton: Color(0xFF2A2D33),
+    avatarEditShadow: Color(0x66000000),
+    // DarkNStorePage·DarkNStoreAI
+    coverPlaceholder: Color(0xFFF6E3C8),
+    onPhotoSecondary: Color(0xFFE4E6EA),
+    softAction: Color(0x141F2A00),
+    onSoftAction: Color(0xFFE4FFB0),
+    slideTint: Color(0xFFF3FFD6),
+    onSlideTint: Color(0xFF1F2A00),
+    slideNeutral: Color(0xFFF2F3F5),
+    onSlideNeutral: Color(0xFF0F1012),
+    onSlidePhoto: Color(0xFF0F1012),
   );
 
   @override
@@ -246,6 +307,18 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? navShadow,
     Color? highlightAction,
     Color? onHighlightAction,
+    Color? avatarPlaceholder,
+    Color? avatarEditButton,
+    Color? avatarEditShadow,
+    Color? coverPlaceholder,
+    Color? onPhotoSecondary,
+    Color? softAction,
+    Color? onSoftAction,
+    Color? slideTint,
+    Color? onSlideTint,
+    Color? slideNeutral,
+    Color? onSlideNeutral,
+    Color? onSlidePhoto,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -284,6 +357,18 @@ class CoraColors extends ThemeExtension<CoraColors> {
       navShadow: navShadow ?? this.navShadow,
       highlightAction: highlightAction ?? this.highlightAction,
       onHighlightAction: onHighlightAction ?? this.onHighlightAction,
+      avatarPlaceholder: avatarPlaceholder ?? this.avatarPlaceholder,
+      avatarEditButton: avatarEditButton ?? this.avatarEditButton,
+      avatarEditShadow: avatarEditShadow ?? this.avatarEditShadow,
+      coverPlaceholder: coverPlaceholder ?? this.coverPlaceholder,
+      onPhotoSecondary: onPhotoSecondary ?? this.onPhotoSecondary,
+      softAction: softAction ?? this.softAction,
+      onSoftAction: onSoftAction ?? this.onSoftAction,
+      slideTint: slideTint ?? this.slideTint,
+      onSlideTint: onSlideTint ?? this.onSlideTint,
+      slideNeutral: slideNeutral ?? this.slideNeutral,
+      onSlideNeutral: onSlideNeutral ?? this.onSlideNeutral,
+      onSlidePhoto: onSlidePhoto ?? this.onSlidePhoto,
     );
   }
 
@@ -328,6 +413,18 @@ class CoraColors extends ThemeExtension<CoraColors> {
       navShadow: mix(navShadow, other.navShadow),
       highlightAction: mix(highlightAction, other.highlightAction),
       onHighlightAction: mix(onHighlightAction, other.onHighlightAction),
+      avatarPlaceholder: mix(avatarPlaceholder, other.avatarPlaceholder),
+      avatarEditButton: mix(avatarEditButton, other.avatarEditButton),
+      avatarEditShadow: mix(avatarEditShadow, other.avatarEditShadow),
+      coverPlaceholder: mix(coverPlaceholder, other.coverPlaceholder),
+      onPhotoSecondary: mix(onPhotoSecondary, other.onPhotoSecondary),
+      softAction: mix(softAction, other.softAction),
+      onSoftAction: mix(onSoftAction, other.onSoftAction),
+      slideTint: mix(slideTint, other.slideTint),
+      onSlideTint: mix(onSlideTint, other.onSlideTint),
+      slideNeutral: mix(slideNeutral, other.slideNeutral),
+      onSlideNeutral: mix(onSlideNeutral, other.onSlideNeutral),
+      onSlidePhoto: mix(onSlidePhoto, other.onSlidePhoto),
     );
   }
 }
