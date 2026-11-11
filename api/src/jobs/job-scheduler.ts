@@ -13,8 +13,13 @@ export type CollaborationJobPayload = {
 export type PaymentJobPayload = { paymentId: string; attempt: number };
 // declinedAt(ISO 시각)은 거절 알림 작업만 싣는다: 어느 거절에 대한 작업인지 처리기가 알아야 옛 작업을 건너뛴다.
 export type OfferJobPayload = { offerId: string; declinedAt?: string };
+// 지급 송금 작업은 지급 행에 붙는다.
+export type PayoutJobPayload = { payoutId: string };
 export type JobPayload =
-  CollaborationJobPayload | OfferJobPayload | PaymentJobPayload;
+  | CollaborationJobPayload
+  | OfferJobPayload
+  | PaymentJobPayload
+  | PayoutJobPayload;
 
 // 작업 처리기. 다시 실행돼도 같은 결과를 내야 하고, 시각은 Clock에서 읽는다.
 export type JobHandler = (payload: JobPayload) => Promise<void>;

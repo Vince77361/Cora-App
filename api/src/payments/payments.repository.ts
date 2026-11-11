@@ -28,6 +28,20 @@ export class PaymentsRepository {
     return this.prisma.payment.findFirst({ where: { id, deletedAt: null } });
   }
 
+  // 협업의 보관을 시작시킨 결제: 승인된 결제 가운데 가장 먼저 승인된 것이다.
+  // 뒤늦게 승인돼 협업에 반영되지 못한 결제(끝난 협업, 이중 결제)는 항상 그 뒤에 승인된다.
+  findFundingPayment(collaborationId: string): Promise<Payment | null> {
+    return this.prisma.payment.findFirst({
+      where: {
+        collaborationId,
+        status: 'APPROVED',
+        pgTransactionId: { not: null },
+        deletedAt: null,
+      },
+      orderBy: [{ approvedAt: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
   // 같은 협업의 대기 중 결제를 취소로 바꾸고 새 결제를 만든다. 호출한 쪽의 트랜잭션 안에서 하므로 대기 결제가 둘이 되지 않는다.
   // 협업 행은 잠그지 않는다: 승인 트랜잭션이 오퍼 → 결제 → 협업 순으로 잡으므로 여기서 협업을 먼저 잡으면 교착이 난다.
   // 호출한 쪽이 먼저 오퍼 행을 잠가(오퍼 → 결제) 동시에 만드는 요청을 한 줄로 세운다.

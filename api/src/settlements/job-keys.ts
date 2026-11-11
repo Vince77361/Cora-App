@@ -16,3 +16,11 @@ export const VIEW_COUNT_HALT_REASON = 'VIEW_COUNT_UNAVAILABLE';
 
 // 최근 이만큼 연속으로 읽지 못하면 멈춘다.
 export const HALT_AFTER_UNREADABLE_DAYS = 3;
+
+// 돈 행(지급·환급)의 중복 방지 키. 같은 정산을 다시 처리해도 행이 하나뿐이도록 협업 id로 정한다.
+export const settlePayoutKey = (collaborationId: string): string =>
+  `settle-payout:${collaborationId}`;
+export const settleRefundKey = (collaborationId: string): string =>
+  `settle-refund:${collaborationId}`;
+export const unsubmittedRefundKey = (collaborationId: string): string =>
+  `unsubmitted-refund:${collaborationId}`;

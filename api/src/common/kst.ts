@@ -25,3 +25,17 @@ export function kstTimeOnDate(onDate: Date, hour: number, minute = 0): Date {
     startOfKstDay(onDate).getTime() + hour * HOUR_MS + minute * MINUTE_MS,
   );
 }
+
+// 그 순간이 속한 한국 날짜의 요일을 월요일 0, 화요일 1, … 일요일 6으로 센다(주는 월요일 0시에 시작한다).
+export function kstWeekdayFromMonday(at: Date): number {
+  // 한국 날짜 0시에 9시간을 더하면 UTC 달력으로 같은 날짜의 0시라 getUTCDay가 한국 요일이 된다.
+  const sameDateInUtc = new Date(startOfKstDay(at).getTime() + KST_OFFSET_MS);
+  return (sameDateInUtc.getUTCDay() + 6) % 7;
+}
+
+// 그 순간이 속한 한국 시간의 주가 시작하는 월요일 0시(UTC 시각).
+export function startOfKstWeek(at: Date): Date {
+  return new Date(
+    startOfKstDay(at).getTime() - kstWeekdayFromMonday(at) * DAY_MS,
+  );
+}

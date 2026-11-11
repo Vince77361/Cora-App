@@ -8,6 +8,14 @@ import {
 } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
+import { AppError } from '../src/common/errors/app-error';
+import { FakePaymentAdapter } from '../src/integrations/payment/fake-payment.adapter';
+import { PaymentPort } from '../src/integrations/payment/payment.port';
+import { FakePayoutAdapter } from '../src/integrations/payout/fake-payout.adapter';
+import { PayoutPort } from '../src/integrations/payout/payout.port';
+import { assertBalanced } from '../src/ledger/ledger-postings';
+import { PayoutAccountsService } from '../src/payout-accounts/payout-accounts.service';
+import { RefundsService } from '../src/settlements/refunds.service';
 import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
 import {
   ViewCountPort,
@@ -38,6 +46,9 @@ interface Seeded {
   collaborationId: string;
 }
 
+// 협업 하나를 제출·정산까지 돌리는 시나리오가 원격 DB에 여러 번 쓰므로 기본 5초로는 모자란다.
+jest.setTimeout(30000);
+
 describe('settlements', () => {
   let app: INestApplication;
   let prisma: PrismaClient;
@@ -46,6 +57,8 @@ describe('settlements', () => {
   let scheduler: FakeJobScheduler;
   let push: FakePushPort;
   let alert: jest.SpyInstance;
+  let pg: FakePaymentAdapter;
+  let payoutPort: FakePayoutAdapter;
 
   const submit = (collaborationId: string, url: string) =>
     request(server)
@@ -64,6 +77,49 @@ describe('settlements', () => {
       orderBy: { dayIndex: 'asc' },
     });
   const jobKeys = () => scheduler.pending().map((j) => j.jobKey);
+  const ledgerOf = (id: string) =>
+    prisma.ledgerEntry.findMany({
+      where: { collaborationId: id },
+      orderBy: { createdAt: 'asc' },
+    });
+  async function expectEveryLedgerBalanced(): Promise<void> {
+    const rows = await prisma.ledgerEntry.findMany();
+    const byCollaboration = new Map<string, typeof rows>();
+    for (const row of rows) {
+      byCollaboration.set(row.collaborationId, [
+        ...(byCollaboration.get(row.collaborationId) ?? []),
+        row,
+      ]);
+    }
+    for (const entries of byCollaboration.values()) assertBalanced(entries);
+  }
+  const accountOf = (collaborationId: string, account: string) =>
+    ledgerOf(collaborationId).then((rows) =>
+      rows.reduce(
+        (sum, r) =>
+          sum +
+          (r.creditAccount === account ? r.amount : 0) -
+          (r.debitAccount === account ? r.amount : 0),
+        0,
+      ),
+    );
+  const registerAccount = (holderName = '김민지') =>
+    request(server)
+      .put('/payout-account')
+      .set(auth)
+      .send({ bankCode: '004', accountNumber: '110123456789', holderName })
+      .expect(200);
+  // 제출하고 7일을 지나 정산까지 돌린다.
+  async function submitAndSettle(
+    s: Seeded,
+    views: number | string,
+  ): Promise<void> {
+    await submit(s.collaborationId, `${REELS_URL}?views=${views}`).expect(200);
+    clock.set(new Date(T0.getTime() + 7 * DAY));
+    await scheduler.runDue(clock.now());
+  }
+  const settleJob = (id: string) =>
+    ({ name: 'settle', payload: { collaborationId: id } }) as const;
   const pushTo = (userId: string) =>
     push.sent.filter((p) => p.userId === userId);
 
@@ -216,6 +272,8 @@ describe('settlements', () => {
     clock = app.get<FakeClock>(Clock);
     scheduler = app.get<FakeJobScheduler>(JobScheduler);
     push = app.get<FakePushPort>(PushPort);
+    pg = app.get<FakePaymentAdapter>(PaymentPort);
+    payoutPort = app.get<FakePayoutAdapter>(PayoutPort);
     alert = jest
       .spyOn(app.get(OperatorAlertPort), 'alert')
       .mockResolvedValue(undefined);
@@ -224,10 +282,14 @@ describe('settlements', () => {
     await truncateTestDb(prisma);
     scheduler.jobs.length = 0;
     push.sent.length = 0;
+    pg.refunds.length = 0;
+    payoutPort.sent.length = 0;
     alert.mockClear();
     clock.set(T0);
   });
-  afterEach(() => {
+  afterEach(async () => {
+    // 어떤 시나리오가 끝나도 모든 협업의 장부는 불변식을 지킨다.
+    await expectEveryLedgerBalanced();
     jest.restoreAllMocks();
     alert = jest
       .spyOn(app.get(OperatorAlertPort), 'alert')
@@ -554,6 +616,426 @@ describe('settlements', () => {
       });
       await scheduler.runDue(T0);
       expect(await snapshotsOf(s.collaborationId)).toHaveLength(0);
+    });
+  });
+  describe('settlement', () => {
+    // 제출 7일 뒤 = 2026-12-08(화) 12:00 KST. 지급일은 다음 주 수요일 2026-12-16 10:00 KST다.
+    const PAYDAY = new Date('2026-12-16T01:00:00.000Z');
+
+    it('settles 4320 views as 43200 paid and 56800 refunded', async () => {
+      const s = await seed();
+      await submitAndSettle(s, 4320);
+      const row = await collaborationOf(s.collaborationId);
+      expect(row.stage).toBe('SETTLED');
+      const settlement = await prisma.settlement.findUniqueOrThrow({
+        where: { collaborationId: s.collaborationId },
+      });
+      expect(settlement).toMatchObject({
+        finalViews: 4320,
+        payoutAmount: 43200,
+        refundAmount: 56800,
+        settledAt: new Date(T0.getTime() + 7 * DAY),
+      });
+      // 장부: 에스크로가 지급 예정분과 환급분으로 나뉘어 비고, 수수료는 그대로 남는다.
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(0);
+      expect(await accountOf(s.collaborationId, 'CREATOR_PAYABLE')).toBe(43200);
+      expect(await accountOf(s.collaborationId, 'STORE_REFUND')).toBe(56800);
+      expect(await accountOf(s.collaborationId, 'FEE_REVENUE')).toBe(10000);
+      // 지급은 바로 보내지 않고 지급일에 보낸다. 환급은 바로 나간다.
+      const payouts = await prisma.payout.findMany();
+      expect(payouts).toHaveLength(1);
+      expect(payouts[0]).toMatchObject({
+        collaborationId: s.collaborationId,
+        amount: 43200,
+        status: 'PENDING',
+        scheduledFor: PAYDAY,
+      });
+      expect(payoutPort.sent).toHaveLength(0);
+      const refunds = await prisma.refund.findMany();
+      expect(refunds).toHaveLength(1);
+      expect(refunds[0]).toMatchObject({ amount: 56800, status: 'DONE' });
+      expect(pg.refunds).toHaveLength(1);
+      expect(pg.refunds[0]).toMatchObject({
+        pgTransactionId: `tx-${s.collaborationId}`,
+        amount: 56800,
+      });
+      const job = jobKeys().filter((k) => k.startsWith('payout:'));
+      expect(job).toEqual([`payout:${payouts[0].id}`]);
+    });
+
+    it('notifies the settlement once with the canvas text', async () => {
+      const s = await seed();
+      await submitAndSettle(s, 4320);
+      expect(pushTo(s.creatorId).map((p) => p.body)).toEqual([
+        '정산 43,200원이 다음 주 수요일에 들어와요.',
+      ]);
+      expect(
+        pushTo(s.ownerId)
+          .map((p) => p.body)
+          .filter((b) => b.startsWith('조회수 집계')),
+      ).toEqual(['조회수 집계가 끝났어요. 56,800원을 돌려드려요.']);
+      const rows = await prisma.notification.findMany({
+        where: {
+          kind: { in: ['SETTLEMENT_CONFIRMED', 'SETTLEMENT_REFUNDED'] },
+        },
+      });
+      expect(rows.map((r) => r.dedupeKey).sort()).toEqual([
+        `settle-refund:${s.collaborationId}`,
+        `settled:${s.collaborationId}`,
+      ]);
+    });
+
+    it('pays nothing and refunds the full cap for zero views', async () => {
+      const s = await seed();
+      await submitAndSettle(s, 0);
+      expect(await prisma.settlement.findMany()).toMatchObject([
+        { finalViews: 0, payoutAmount: 0, refundAmount: 100000 },
+      ]);
+      expect(await prisma.payout.count()).toBe(0);
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { amount: 100000, status: 'DONE' },
+      ]);
+      expect(await accountOf(s.collaborationId, 'CREATOR_PAYABLE')).toBe(0);
+      expect(await accountOf(s.collaborationId, 'STORE_REFUND')).toBe(100000);
+      // 0원 지급의 정산 알림은 보내지 않는다.
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'SETTLEMENT_CONFIRMED' },
+        }),
+      ).toBe(0);
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'SETTLEMENT_REFUNDED' },
+        }),
+      ).toBe(1);
+    });
+
+    it('caps the payout at the cap', async () => {
+      const s = await seed();
+      await submitAndSettle(s, 5000000);
+      expect(await prisma.settlement.findMany()).toMatchObject([
+        { finalViews: 5000000, payoutAmount: 100000, refundAmount: 0 },
+      ]);
+      expect(await prisma.refund.count()).toBe(0);
+      expect(pg.refunds).toHaveLength(0);
+      expect(await prisma.payout.findMany()).toMatchObject([
+        { amount: 100000, status: 'PENDING' },
+      ]);
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'SETTLEMENT_REFUNDED' },
+        }),
+      ).toBe(0);
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(0);
+    });
+
+    it('does not pay or refund twice when the settle job runs twice', async () => {
+      const s = await seed();
+      await submitAndSettle(s, 4320);
+      const entries = (await ledgerOf(s.collaborationId)).length;
+      const job = settleJob(s.collaborationId);
+      await scheduler.registry.run(job.name, job.payload);
+      await scheduler.registry.run(job.name, job.payload);
+      expect(await prisma.settlement.count()).toBe(1);
+      expect(await prisma.payout.count()).toBe(1);
+      expect(await prisma.refund.count()).toBe(1);
+      expect(pg.refunds).toHaveLength(1);
+      expect((await ledgerOf(s.collaborationId)).length).toBe(entries);
+      expect(
+        await prisma.notification.count({
+          where: {
+            kind: { in: ['SETTLEMENT_CONFIRMED', 'SETTLEMENT_REFUNDED'] },
+          },
+        }),
+      ).toBe(2);
+      expect(jobKeys().filter((k) => k.startsWith('payout:'))).toHaveLength(1);
+    });
+
+    it('finishes the refund and the notices when the job died after the settlement committed', async () => {
+      const s = await seed();
+      const refunds = app.get(RefundsService);
+      jest
+        .spyOn(refunds, 'execute')
+        .mockRejectedValueOnce(new Error('process died'));
+      await submit(s.collaborationId, `${REELS_URL}?views=4320`).expect(200);
+      clock.set(new Date(T0.getTime() + 7 * DAY));
+      await scheduler.runDue(clock.now(), { allowFailures: true });
+      // 정산은 커밋됐고 환급은 아직 나가지 않았다.
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('SETTLED');
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { amount: 56800, status: 'PENDING' },
+      ]);
+      expect(pg.refunds).toHaveLength(0);
+
+      // 큐가 같은 작업을 다시 돌린다.
+      const job = settleJob(s.collaborationId);
+      await scheduler.registry.run(job.name, job.payload);
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { status: 'DONE' },
+      ]);
+      expect(pg.refunds).toHaveLength(1);
+      expect(await prisma.payout.count()).toBe(1);
+      expect(await prisma.settlement.count()).toBe(1);
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'SETTLEMENT_CONFIRMED' },
+        }),
+      ).toBe(1);
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'SETTLEMENT_REFUNDED' },
+        }),
+      ).toBe(1);
+    });
+
+    it('does nothing when the collaboration is not counting', async () => {
+      const s = await seed();
+      const job = settleJob(s.collaborationId);
+      await scheduler.registry.run(job.name, job.payload);
+      expect(await prisma.settlement.count()).toBe(0);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('FUNDED');
+      expect(
+        await prisma.ledgerEntry.count({
+          where: { creditAccount: 'CREATOR_PAYABLE' },
+        }),
+      ).toBe(0);
+    });
+
+    it('uses the last readable snapshot when day 7 cannot be read', async () => {
+      const s = await seed();
+      jest
+        .spyOn(app.get(ViewCountPort), 'read')
+        .mockResolvedValueOnce(100)
+        .mockResolvedValueOnce(200)
+        .mockResolvedValueOnce(300)
+        .mockResolvedValueOnce(400)
+        .mockResolvedValueOnce(500)
+        .mockResolvedValueOnce(600)
+        .mockResolvedValueOnce(700)
+        .mockRejectedValue(new ViewCountUnavailableError());
+      await submit(s.collaborationId, REELS_URL).expect(200);
+      for (let day = 0; day <= 7; day += 1) {
+        clock.set(new Date(T0.getTime() + day * DAY));
+        await scheduler.runDue(clock.now());
+      }
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('SETTLED');
+      expect(await prisma.settlement.findMany()).toMatchObject([
+        { finalViews: 700, payoutAmount: 7000, refundAmount: 93000 },
+      ]);
+    });
+
+    it('takes the day 7 snapshot itself when its own job has not run yet', async () => {
+      const s = await seed();
+      await submit(s.collaborationId, `${REELS_URL}?views=4320`).expect(200);
+      await scheduler.cancel(`view-snapshot:${s.collaborationId}:7`);
+      clock.set(new Date(T0.getTime() + 7 * DAY));
+      await scheduler.runDue(clock.now());
+      const days = (await snapshotsOf(s.collaborationId)).map(
+        (r) => r.dayIndex,
+      );
+      expect(days).toContain(7);
+      expect(await prisma.settlement.findMany()).toMatchObject([
+        { finalViews: 4320, payoutAmount: 43200 },
+      ]);
+    });
+
+    it('halts instead of settling when no snapshot is readable at settlement time', async () => {
+      const s = await seed();
+      await submit(s.collaborationId, `${REELS_URL}?views=unavailable`).expect(
+        200,
+      );
+      const job = settleJob(s.collaborationId);
+      await scheduler.registry.run(job.name, job.payload);
+      const row = await collaborationOf(s.collaborationId);
+      expect(row).toMatchObject({
+        stage: 'HALTED',
+        stageBeforeHalt: 'COUNTING',
+        haltedReason: 'VIEW_COUNT_UNAVAILABLE',
+      });
+      expect(await prisma.settlement.count()).toBe(0);
+      expect(await prisma.payout.count()).toBe(0);
+      expect(await prisma.refund.count()).toBe(0);
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(100000);
+    });
+
+    it('keeps every collaboration ledger balanced after each scenario', async () => {
+      for (const views of [0, 4320, 9999999]) {
+        const s = await seed();
+        await submitAndSettle(s, views);
+        const entries = await ledgerOf(s.collaborationId);
+        assertBalanced(entries);
+        expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(0);
+        // 낸 돈 전부(상한 + 수수료)가 지급 예정, 환급, 수수료로 남김없이 나뉜다.
+        const total =
+          (await accountOf(s.collaborationId, 'CREATOR_PAYABLE')) +
+          (await accountOf(s.collaborationId, 'STORE_REFUND')) +
+          (await accountOf(s.collaborationId, 'FEE_REVENUE'));
+        expect(total).toBe(110000);
+        scheduler.jobs.length = 0;
+        clock.set(T0);
+      }
+    });
+  });
+
+  describe('payout', () => {
+    const PAYDAY = new Date('2026-12-16T01:00:00.000Z');
+
+    it('sends the payout on the payday and not before', async () => {
+      const s = await seed();
+      await registerAccount();
+      await submitAndSettle(s, 4320);
+      expect(payoutPort.sent).toHaveLength(0);
+
+      // 지급일 10시 1분 전까지는 보내지 않는다.
+      clock.set(new Date(PAYDAY.getTime() - MINUTE));
+      await scheduler.runDue(clock.now());
+      expect(payoutPort.sent).toHaveLength(0);
+      expect((await prisma.payout.findFirstOrThrow()).status).toBe('PENDING');
+
+      clock.set(PAYDAY);
+      await scheduler.runDue(clock.now());
+      expect(payoutPort.sent).toHaveLength(1);
+      expect(payoutPort.sent[0]).toMatchObject({
+        bankCode: '004',
+        accountNumber: '110123456789',
+        holderName: '김민지',
+        amount: 43200,
+      });
+      const payout = await prisma.payout.findFirstOrThrow();
+      expect(payout.status).toBe('DONE');
+      expect(payout.externalId).toBe(`fake-payout-payout:${payout.id}`);
+      expect(pushTo(s.creatorId).map((p) => p.body)).toContain(
+        '43,200원이 지급됐어요.',
+      );
+      expect(
+        await prisma.notification.findMany({ where: { kind: 'PAYOUT_DONE' } }),
+      ).toMatchObject([{ dedupeKey: `payout-done:${payout.id}` }]);
+    });
+
+    it('does not send twice when the payout job runs twice', async () => {
+      const s = await seed();
+      await registerAccount();
+      await submitAndSettle(s, 4320);
+      clock.set(PAYDAY);
+      await scheduler.runDue(clock.now());
+      const payout = await prisma.payout.findFirstOrThrow();
+      await scheduler.registry.run('payout-send', { payoutId: payout.id });
+      await scheduler.registry.run('payout-send', { payoutId: payout.id });
+      expect(payoutPort.sent).toHaveLength(1);
+      expect(
+        await prisma.notification.count({ where: { kind: 'PAYOUT_DONE' } }),
+      ).toBe(1);
+      expect(s.creatorId).toBe(USER_A);
+    });
+
+    it('sends the payout with the same key when the job died after sending', async () => {
+      const s = await seed();
+      await registerAccount();
+      await submitAndSettle(s, 4320);
+      const payout = await prisma.payout.findFirstOrThrow();
+      // 송금은 나갔는데 DONE으로 바꾸기 전에 죽었다: 단계는 PENDING 그대로, 포트에는 기록이 있다.
+      await payoutPort.send({
+        bankCode: '004',
+        accountNumber: '110123456789',
+        holderName: '김민지',
+        amount: 43200,
+        idempotencyKey: `payout:${payout.id}`,
+      });
+      clock.set(PAYDAY);
+      await scheduler.runDue(clock.now());
+      expect(payoutPort.sent).toHaveLength(1);
+      expect((await prisma.payout.findFirstOrThrow()).status).toBe('DONE');
+    });
+
+    it('waits without an account and sends on the next payday after registration', async () => {
+      const s = await seed();
+      await submitAndSettle(s, 4320);
+      // 지급일이 왔지만 계좌가 없다: 그대로 두고 작업은 오류 없이 끝난다.
+      clock.set(PAYDAY);
+      await scheduler.runDue(clock.now());
+      expect(payoutPort.sent).toHaveLength(0);
+      expect((await prisma.payout.findFirstOrThrow()).status).toBe('PENDING');
+      expect(alert).not.toHaveBeenCalled();
+
+      // 목요일 12:00 KST에 계좌를 등록해도 바로 보내지 않는다. 그다음 수요일(12-23 10:00 KST)에 보낸다.
+      clock.set(new Date('2026-12-17T03:00:00.000Z'));
+      await registerAccount();
+      expect(payoutPort.sent).toHaveLength(0);
+      const moved = await prisma.payout.findFirstOrThrow();
+      expect(moved.scheduledFor).toEqual(new Date('2026-12-23T01:00:00.000Z'));
+      expect(moved.status).toBe('PENDING');
+
+      clock.set(new Date('2026-12-23T00:59:00.000Z'));
+      await scheduler.runDue(clock.now());
+      expect(payoutPort.sent).toHaveLength(0);
+      clock.set(new Date('2026-12-23T01:00:00.000Z'));
+      await scheduler.runDue(clock.now());
+      expect(payoutPort.sent).toHaveLength(1);
+      expect((await prisma.payout.findFirstOrThrow()).status).toBe('DONE');
+      expect(
+        await prisma.notification.count({ where: { kind: 'PAYOUT_DONE' } }),
+      ).toBe(1);
+    });
+
+    it('keeps the payday when the account is registered before it', async () => {
+      const s = await seed();
+      await submitAndSettle(s, 4320);
+      clock.set(new Date('2026-12-09T03:00:00.000Z'));
+      await registerAccount();
+      const row = await prisma.payout.findFirstOrThrow();
+      expect(row.scheduledFor).toEqual(PAYDAY);
+      expect(payoutPort.sent).toHaveLength(0);
+      clock.set(PAYDAY);
+      await scheduler.runDue(clock.now());
+      expect(payoutPort.sent).toHaveLength(1);
+      expect(s.collaborationId).toBe(row.collaborationId);
+    });
+
+    it('leaves the payout pending and does not fail the job when the account key is unreadable', async () => {
+      const s = await seed();
+      await registerAccount();
+      await submitAndSettle(s, 4320);
+      jest
+        .spyOn(app.get(PayoutAccountsService), 'getForPayout')
+        .mockRejectedValue(
+          new AppError(
+            'INTERNAL',
+            'PAYOUT_ACCOUNT_KEY가 없거나 올바르지 않아요.',
+          ),
+        );
+      clock.set(PAYDAY);
+      const ran = await scheduler.runDue(clock.now());
+      expect(ran.filter((j) => j.status === 'failed')).toEqual([]);
+      expect(payoutPort.sent).toHaveLength(0);
+      expect((await prisma.payout.findFirstOrThrow()).status).toBe('PENDING');
+      expect(s.collaborationId).toBeTruthy();
+    });
+
+    it('marks the payout failed and alerts the operator when the transfer fails', async () => {
+      const s = await seed();
+      await registerAccount('fail 김민지');
+      await submitAndSettle(s, 4320);
+      clock.set(PAYDAY);
+      await scheduler.runDue(clock.now());
+      expect((await prisma.payout.findFirstOrThrow()).status).toBe('FAILED');
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(
+        await prisma.notification.count({ where: { kind: 'PAYOUT_DONE' } }),
+      ).toBe(0);
+      expect(s.creatorId).toBe(USER_A);
+    });
+
+    it('does not move payouts that are not yet due when an account is registered', async () => {
+      const s = await seed();
+      await submitAndSettle(s, 4320);
+      clock.set(new Date('2026-12-10T03:00:00.000Z'));
+      await registerAccount();
+      expect((await prisma.payout.findFirstOrThrow()).scheduledFor).toEqual(
+        PAYDAY,
+      );
+      expect(jobKeys().filter((k) => k.startsWith('payout:'))).toHaveLength(1);
+      expect(s.ownerId).toBeTruthy();
     });
   });
 });

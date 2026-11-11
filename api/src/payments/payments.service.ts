@@ -143,6 +143,23 @@ export class PaymentsService {
     return { paymentId: payment.id, checkoutUrl };
   }
 
+  // 환급이 PG에 돌려보낼 결제. 정산·미제출 환급 같은 돈 처리가 쓴다(결제한 사람의 권한 확인 없음 — 서버 안의 호출 전용).
+  async findFundingPayment(collaborationId: string): Promise<{
+    id: string;
+    pgTransactionId: string;
+    amountEscrow: number;
+    amountFee: number;
+  } | null> {
+    const payment = await this.payments.findFundingPayment(collaborationId);
+    if (!payment?.pgTransactionId) return null;
+    return {
+      id: payment.id,
+      pgTransactionId: payment.pgTransactionId,
+      amountEscrow: payment.amountEscrow,
+      amountFee: payment.amountFee,
+    };
+  }
+
   async getStatus(
     userId: string,
     paymentId: string,

@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, ViewSnapshot } from '@prisma/client';
+import {
+  Payout,
+  Prisma,
+  Refund,
+  Settlement,
+  ViewSnapshot,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface NewSnapshot {
@@ -8,6 +14,36 @@ export interface NewSnapshot {
   views: number | null;
   takenAt: Date;
 }
+
+// 되돌리기 신호. 값(result)을 실어 transaction이 그 값을 돌려주게 한다(결제 저장소와 같은 방식).
+class Rollback<R> extends Error {
+  constructor(readonly result: R) {
+    super('rollback');
+  }
+}
+
+export interface NewSettlement {
+  collaborationId: string;
+  finalViews: number | null;
+  payoutAmount: number;
+  refundAmount: number;
+  settledAt: Date;
+}
+
+export interface NewPayout {
+  collaborationId: string;
+  amount: number;
+  idempotencyKey: string;
+  scheduledFor: Date;
+}
+
+export interface NewRefund {
+  collaborationId: string;
+  amount: number;
+  idempotencyKey: string;
+}
+
+export type PayoutWithCreator = Payout & { creatorId: string };
 
 // 정산·지급·환급과 조회수 스냅샷의 저장소. Prisma는 여기서만 쓴다.
 @Injectable()
@@ -41,6 +77,153 @@ export class SettlementsRepository {
     const { count } = await this.prisma.viewSnapshot.createMany({
       data: row,
       skipDuplicates: true,
+    });
+    return count === 1;
+  }
+
+  // run 안에서 rollback(값)을 부르면 트랜잭션 전체를 되돌리고 그 값을 돌려준다. 던지면 되돌리고 그대로 던진다.
+  async transaction<T, R>(
+    run: (
+      tx: Prisma.TransactionClient,
+      rollback: (result: R) => never,
+    ) => Promise<T>,
+  ): Promise<T | R> {
+    try {
+      return await this.prisma.$transaction((tx) =>
+        run(tx, (result: R): never => {
+          throw new Rollback(result);
+        }),
+      );
+    } catch (error) {
+      if (error instanceof Rollback) return error.result as R;
+      throw error;
+    }
+  }
+
+  listSnapshots(collaborationId: string): Promise<ViewSnapshot[]> {
+    return this.prisma.viewSnapshot.findMany({
+      where: { collaborationId, deletedAt: null },
+      orderBy: { dayIndex: 'asc' },
+    });
+  }
+
+  findSettlement(collaborationId: string): Promise<Settlement | null> {
+    return this.prisma.settlement.findFirst({
+      where: { collaborationId, deletedAt: null },
+    });
+  }
+
+  // 협업당 한 줄(유일 제약). 이미 있으면 예외 없이 false다(호출한 쪽 트랜잭션이 중단되지 않는다).
+  async createSettlement(
+    row: NewSettlement,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const { count } = await tx.settlement.createMany({
+      data: row,
+      skipDuplicates: true,
+    });
+    return count === 1;
+  }
+
+  // 중복 방지 키(유일 제약)가 같은 지급·환급의 두 번째 줄을 막는다. 이미 있으면 그대로 둔다.
+  async createPayoutIfAbsent(
+    row: NewPayout,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    await (tx ?? this.prisma).payout.createMany({
+      data: row,
+      skipDuplicates: true,
+    });
+  }
+
+  async createRefundIfAbsent(
+    row: NewRefund,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    await (tx ?? this.prisma).refund.createMany({
+      data: row,
+      skipDuplicates: true,
+    });
+  }
+
+  findPayoutByKey(
+    idempotencyKey: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Payout | null> {
+    return (tx ?? this.prisma).payout.findFirst({
+      where: { idempotencyKey, deletedAt: null },
+    });
+  }
+
+  async findPayoutWithCreator(id: string): Promise<PayoutWithCreator | null> {
+    const row = await this.prisma.payout.findFirst({
+      where: { id, deletedAt: null },
+      include: { collaboration: { select: { creatorId: true } } },
+    });
+    if (!row) return null;
+    const { collaboration, ...payout } = row;
+    return { ...payout, creatorId: collaboration.creatorId };
+  }
+
+  // 그 크리에이터의 대기 중 지급 가운데 지급일이 before보다 이른 것.
+  listOverduePendingPayouts(
+    creatorId: string,
+    before: Date,
+  ): Promise<Payout[]> {
+    return this.prisma.payout.findMany({
+      where: {
+        status: 'PENDING',
+        scheduledFor: { lt: before },
+        deletedAt: null,
+        collaboration: { creatorId },
+      },
+      orderBy: { scheduledFor: 'asc' },
+    });
+  }
+
+  // 대기 중인 지급의 지급일만 옮긴다. 그사이 보내졌다면 0행이라 false다.
+  async reschedulePayout(id: string, scheduledFor: Date): Promise<boolean> {
+    const { count } = await this.prisma.payout.updateMany({
+      where: { id, status: 'PENDING', deletedAt: null },
+      data: { scheduledFor },
+    });
+    return count === 1;
+  }
+
+  // PENDING일 때만 바꾼다. 같은 작업이 두 번 돌아도 한 번만 바뀌고, 바뀐 행이 0이면 false다.
+  async markPayoutDone(id: string, externalId: string): Promise<boolean> {
+    const { count } = await this.prisma.payout.updateMany({
+      where: { id, status: 'PENDING', deletedAt: null },
+      data: { status: 'DONE', externalId },
+    });
+    return count === 1;
+  }
+
+  async markPayoutFailed(id: string): Promise<boolean> {
+    const { count } = await this.prisma.payout.updateMany({
+      where: { id, status: 'PENDING', deletedAt: null },
+      data: { status: 'FAILED' },
+    });
+    return count === 1;
+  }
+
+  findRefundByKey(
+    idempotencyKey: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Refund | null> {
+    return (tx ?? this.prisma).refund.findFirst({
+      where: { idempotencyKey, deletedAt: null },
+    });
+  }
+
+  findRefundById(id: string): Promise<Refund | null> {
+    return this.prisma.refund.findFirst({ where: { id, deletedAt: null } });
+  }
+
+  async markRefundDone(id: string, externalId: string): Promise<boolean> {
+    const { count } = await this.prisma.refund.updateMany({
+      where: { id, status: 'PENDING', deletedAt: null },
+      data: { status: 'DONE', externalId },
     });
     return count === 1;
   }

@@ -59,18 +59,22 @@ export class LedgerRepository {
     });
   }
 
-  async escrowBalance(collaborationId: string): Promise<number> {
+  // tx를 주면 그 트랜잭션 안에서 읽는다. 돈을 얼마나 움직일지 이 값으로 정하는 호출(정산)은 같은 트랜잭션에서 읽어야
+  // 읽은 뒤 다른 줄이 끼어들지 못한다. 한 연결에서 차례로 읽으므로 풀 연결을 둘 잡지 않는다.
+  async escrowBalance(
+    collaborationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<number> {
+    const client = tx ?? this.prisma;
     const sum = async (side: 'creditAccount' | 'debitAccount') => {
-      const { _sum } = await this.prisma.ledgerEntry.aggregate({
+      const { _sum } = await client.ledgerEntry.aggregate({
         where: { collaborationId, deletedAt: null, [side]: 'ESCROW' },
         _sum: { amount: true },
       });
       return _sum.amount ?? 0;
     };
-    const [into, out] = await Promise.all([
-      sum('creditAccount'),
-      sum('debitAccount'),
-    ]);
+    const into = await sum('creditAccount');
+    const out = await sum('debitAccount');
     return into - out;
   }
 }

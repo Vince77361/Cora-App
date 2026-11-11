@@ -55,8 +55,12 @@ export class LedgerService {
     return tx ? run(tx) : this.repository.transaction(run);
   }
 
-  escrowBalance(collaborationId: string): Promise<number> {
-    return this.repository.escrowBalance(collaborationId);
+  // 돈을 얼마나 움직일지 이 값으로 정하는 호출은 자기 트랜잭션(tx)을 넘겨 같은 트랜잭션에서 읽는다.
+  escrowBalance(
+    collaborationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<number> {
+    return this.repository.escrowBalance(collaborationId, tx);
   }
 }
 
