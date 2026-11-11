@@ -537,6 +537,12 @@
             "description": "방금 거절해 30초 안에 되돌릴 수 있으면 true.",
             "type": "boolean"
           },
+          "collaborationId": {
+            "description": "수락돼 만들어진 협업의 id. 수락 전이면 null.",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "type": "string"
@@ -567,6 +573,7 @@
         },
         "required": [
           "id",
+          "collaborationId",
           "store",
           "storeIntro",
           "bestShootingTime",
@@ -635,6 +642,12 @@
       },
       "SentOfferModel": {
         "properties": {
+          "collaborationId": {
+            "description": "수락돼 만들어진 협업의 id. 수락 전이면 null.",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
           "creator": {
             "$ref": "#/components/schemas/CreatorSummaryModel"
           },
@@ -666,6 +679,7 @@
         },
         "required": [
           "id",
+          "collaborationId",
           "creator",
           "terms",
           "view",
@@ -828,7 +842,7 @@
       "StoreHomeSummaryModel": {
         "properties": {
           "inProgress": {
-            "description": "수락된 오퍼.",
+            "description": "진행 중인 협업(결제 대기, 결제함, 조회수 집계 중).",
             "type": "integer"
           },
           "newApplications": {

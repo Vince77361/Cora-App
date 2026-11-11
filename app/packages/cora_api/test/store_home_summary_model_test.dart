@@ -16,7 +16,7 @@ void main() {
   // final instance = StoreHomeSummaryModel();
 
   group('test StoreHomeSummaryModel', () {
-    // 수락된 오퍼.
+    // 진행 중인 협업(결제 대기, 결제함, 조회수 집계 중).
     // int inProgress
     test('to test the property `inProgress`', () async {
       // TODO

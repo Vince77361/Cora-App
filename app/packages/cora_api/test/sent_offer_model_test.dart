@@ -16,6 +16,12 @@ void main() {
   // final instance = SentOfferModel();
 
   group('test SentOfferModel', () {
+    // 수락돼 만들어진 협업의 id. 수락 전이면 null.
+    // String collaborationId
+    test('to test the property `collaborationId`', () async {
+      // TODO
+    });
+
     // CreatorSummaryModel creator
     test('to test the property `creator`', () async {
       // TODO

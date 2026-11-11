@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ApplicationsModule } from '../applications/applications.module';
+import { CollaborationsModule } from '../collaborations/collaborations.module';
 import { CreatorsModule } from '../creators/creators.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { StoresModule } from '../stores/stores.module';
@@ -15,6 +16,7 @@ import { OffersService } from './offers.service';
     StoresModule,
     CreatorsModule,
     ApplicationsModule,
+    CollaborationsModule,
   ],
   controllers: [OffersController],
   providers: [OffersService, OffersRepository],

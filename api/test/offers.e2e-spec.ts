@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { CollaborationStage, Prisma, PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
@@ -25,6 +25,14 @@ const PROFILE = {
   ...REGION,
 };
 const REELS_VOUCHER = { format: 'REELS', rewardType: 'VOUCHER' };
+// 조회수 보상만 있는 오퍼를 DB에 바로 만들 때 쓰는 값.
+const PER_VIEW_TERMS = {
+  rewardType: 'PER_VIEW',
+  voucherName: null,
+  voucherValue: null,
+  perViewAmount: 10,
+  perViewCap: 100000,
+} as const;
 
 interface TermsBody {
   format: string;
@@ -36,6 +44,7 @@ interface TermsBody {
 }
 interface SentBody {
   id: string;
+  collaborationId: string | null;
   creator: { userId: string; displayName: string };
   terms: TermsBody;
   view: string;
@@ -44,6 +53,7 @@ interface SentBody {
 }
 interface ReceivedBody {
   id: string;
+  collaborationId: string | null;
   store: { id: string; name: string };
   storeIntro: string | null;
   bestShootingTime: string | null;
@@ -176,6 +186,31 @@ describe('offers', () => {
         expiresAt: new Date(clock.now().getTime() + 7 * DAY),
         createdAt: clock.now(),
         ...over,
+      },
+    });
+  }
+
+  // 오퍼에 연결된 협업을 DB에 바로 만든다. 가게 사장님이 USER_A인 경우가 기본이다.
+  async function seedCollaboration(
+    offer: {
+      id: string;
+      storeId: string;
+      creatorId: string;
+      rewardType: string;
+    },
+    ownerId: string,
+    stage: CollaborationStage,
+  ) {
+    return prisma.collaboration.create({
+      data: {
+        kind: 'STORE_OFFER',
+        stage,
+        commissionerId: ownerId,
+        creatorId: offer.creatorId,
+        offerId: offer.id,
+        storeId: offer.storeId,
+        terms: { format: 'REELS', rewardType: offer.rewardType },
+        settlementMethod: offer.rewardType === 'VOUCHER' ? 'NONE' : 'PER_VIEW',
       },
     });
   }
@@ -562,6 +597,108 @@ describe('offers', () => {
       ).toBe('CANCELLED');
     });
 
+    it('cancels the collaboration when the owner cancels an accepted offer', async () => {
+      const creatorId = await seedCreator();
+      const offer = await seedOffer(storeId, creatorId, {
+        rewardType: 'PER_VIEW',
+        perViewAmount: 10,
+        perViewCap: 100000,
+        voucherName: null,
+        voucherValue: null,
+        status: 'ACCEPTED',
+        acceptedAt: T0,
+        paymentDueAt: new Date(T0.getTime() + 3 * DAY),
+      });
+      const collaboration = await seedCollaboration(
+        offer,
+        USER_A,
+        'AWAITING_PAYMENT',
+      );
+      const res = await cancel(offer.id).expect(200);
+      expect((res.body as SentBody).view).toBe('CANCELLED');
+      expect(
+        (
+          await prisma.collaboration.findUniqueOrThrow({
+            where: { id: collaboration.id },
+          })
+        ).stage,
+      ).toBe('CANCELLED');
+    });
+
+    it('refuses to cancel an accepted offer whose collaboration is already funded', async () => {
+      const creatorId = await seedCreator();
+      const offer = await seedOffer(storeId, creatorId, {
+        status: 'ACCEPTED',
+        acceptedAt: T0,
+        paymentDueAt: null,
+      });
+      const collaboration = await seedCollaboration(offer, USER_A, 'FUNDED');
+      const res = await cancel(offer.id).expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect((res.body as { error: { message: string } }).error.message).toBe(
+        '결제한 뒤에는 취소 요청을 보내 주세요.',
+      );
+      expect(
+        (await prisma.offer.findUniqueOrThrow({ where: { id: offer.id } }))
+          .status,
+      ).toBe('ACCEPTED');
+      expect(
+        (
+          await prisma.collaboration.findUniqueOrThrow({
+            where: { id: collaboration.id },
+          })
+        ).stage,
+      ).toBe('FUNDED');
+    });
+
+    it('cancels the collaboration when an accepted offer passes its payment due date', async () => {
+      const creatorId = await seedCreator();
+      const offer = await seedOffer(storeId, creatorId, {
+        rewardType: 'PER_VIEW',
+        perViewAmount: 10,
+        perViewCap: 100000,
+        voucherName: null,
+        voucherValue: null,
+        status: 'ACCEPTED',
+        acceptedAt: T0,
+        paymentDueAt: new Date(T0.getTime() + 3 * DAY),
+      });
+      const collaboration = await seedCollaboration(
+        offer,
+        USER_A,
+        'AWAITING_PAYMENT',
+      );
+      clock.advance(3 * DAY);
+      const list = (await sentList().expect(200)).body as SentBody[];
+      expect(list[0]).toMatchObject({
+        view: 'EXPIRED',
+        collaborationId: collaboration.id,
+      });
+      expect(
+        (
+          await prisma.collaboration.findUniqueOrThrow({
+            where: { id: collaboration.id },
+          })
+        ).stage,
+      ).toBe('CANCELLED');
+    });
+
+    it('shows the collaboration id on sent offers', async () => {
+      const creatorId = await seedCreator();
+      const offer = await seedOffer(storeId, creatorId, {
+        status: 'ACCEPTED',
+        acceptedAt: T0,
+        paymentDueAt: null,
+      });
+      const collaboration = await seedCollaboration(offer, USER_A, 'FUNDED');
+      const other = await seedCreator('아직 답 없음');
+      await seedOffer(storeId, other);
+      const list = (await sentList().expect(200)).body as SentBody[];
+      const byId = Object.fromEntries(list.map((o) => [o.id, o]));
+      expect(byId[offer.id].collaborationId).toBe(collaboration.id);
+      expect(list.filter((o) => o.collaborationId === null)).toHaveLength(1);
+    });
+
     it('refuses to cancel an expired offer and stores EXPIRED', async () => {
       const creatorId = await seedCreator();
       const offer = await seedOffer(storeId, creatorId, {
@@ -589,7 +726,7 @@ describe('offers', () => {
       ).toBe('SENT');
     });
 
-    it('counts new applications, waiting offers and accepted offers', async () => {
+    it('counts new applications, waiting offers and in-progress collaborations', async () => {
       const applicant = await seedCreator('지원자');
       await seedApplication(storeId, applicant);
       const waiting = await seedCreator('기다림');
@@ -597,11 +734,12 @@ describe('offers', () => {
       const expired = await seedCreator('만료');
       const declined = await seedCreator('거절');
       await seedOffer(storeId, waiting);
-      await seedOffer(storeId, accepted, {
+      const acceptedOffer = await seedOffer(storeId, accepted, {
         status: 'ACCEPTED',
         acceptedAt: T0,
         paymentDueAt: new Date(T0.getTime() + 3 * DAY),
       });
+      await seedCollaboration(acceptedOffer, USER_A, 'AWAITING_PAYMENT');
       await seedOffer(storeId, expired, {
         expiresAt: new Date(T0.getTime() - SECOND),
       });
@@ -614,6 +752,37 @@ describe('offers', () => {
         newApplications: 1,
         sentOffers: 1,
         inProgress: 1,
+      });
+    });
+
+    it('counts AWAITING_PAYMENT, FUNDED and COUNTING as in progress', async () => {
+      const stages: CollaborationStage[] = [
+        'AWAITING_PAYMENT',
+        'FUNDED',
+        'COUNTING',
+        'SETTLED',
+        'REFUNDED',
+        'CANCELLED',
+        'HALTED',
+      ];
+      for (const stage of stages) {
+        const creatorId = await seedCreator(`협업 ${stage}`);
+        const offer = await seedOffer(storeId, creatorId, {
+          status: 'ACCEPTED',
+          acceptedAt: T0,
+        });
+        await seedCollaboration(offer, USER_A, stage);
+      }
+      // 남의 가게의 진행 중 협업은 세지 않는다.
+      const other = await seedStore();
+      const otherCreator = await seedCreator('남의 협업');
+      const otherOffer = await seedOffer(other.id, otherCreator, {
+        status: 'ACCEPTED',
+        acceptedAt: T0,
+      });
+      await seedCollaboration(otherOffer, other.ownerId, 'FUNDED');
+      expect((await summary().expect(200)).body).toMatchObject({
+        inProgress: 3,
       });
     });
 
@@ -764,7 +933,7 @@ describe('offers', () => {
     });
 
     it('accepts an offer and sets a 3 day payment deadline', async () => {
-      const offer = await seedOffer(store.id, USER_A);
+      const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
       clock.advance(DAY);
       const res = await accept(offer.id).expect(200);
       expect(res.body as ReceivedBody).toMatchObject({
@@ -780,6 +949,75 @@ describe('offers', () => {
         acceptedAt: clock.now(),
         paymentDueAt: new Date(clock.now().getTime() + 3 * DAY),
       });
+    });
+
+    it('creates an AWAITING_PAYMENT collaboration when a per-view offer is accepted', async () => {
+      const offer = await seedOffer(store.id, USER_A, {
+        ...PER_VIEW_TERMS,
+        rewardType: 'BOTH',
+        voucherName: '2인 식사권',
+        voucherValue: 40000,
+      });
+      const res = await accept(offer.id).expect(200);
+      const collaboration = await prisma.collaboration.findUniqueOrThrow({
+        where: { offerId: offer.id },
+      });
+      expect(collaboration).toMatchObject({
+        kind: 'STORE_OFFER',
+        stage: 'AWAITING_PAYMENT',
+        settlementMethod: 'PER_VIEW',
+        commissionerId: store.ownerId,
+        creatorId: USER_A,
+        storeId: store.id,
+        fundedAt: null,
+        submitDueAt: null,
+      });
+      expect(collaboration.terms).toMatchObject({
+        format: 'REELS',
+        rewardType: 'BOTH',
+        perViewAmount: 10,
+        perViewCap: 100000,
+        voucherName: '2인 식사권',
+      });
+      expect((res.body as ReceivedBody).collaborationId).toBe(collaboration.id);
+      const list = (await received('active').expect(200))
+        .body as ReceivedBody[];
+      expect(list[0].collaborationId).toBe(collaboration.id);
+    });
+
+    it('creates a FUNDED collaboration with a 14 day due date when a voucher-only offer is accepted', async () => {
+      const offer = await seedOffer(store.id, USER_A);
+      await accept(offer.id).expect(200);
+      const collaboration = await prisma.collaboration.findUniqueOrThrow({
+        where: { offerId: offer.id },
+      });
+      expect(collaboration).toMatchObject({
+        stage: 'FUNDED',
+        settlementMethod: 'NONE',
+        fundedAt: T0,
+        submitDueAt: new Date(T0.getTime() + 14 * DAY),
+      });
+      // 낼 돈이 없으므로 결제 기한이 없다. 며칠이 지나도 오퍼가 만료되지 않는다.
+      expect(
+        (await prisma.offer.findUniqueOrThrow({ where: { id: offer.id } }))
+          .paymentDueAt,
+      ).toBeNull();
+      clock.advance(5 * DAY);
+      const active = (await received('active').expect(200))
+        .body as ReceivedBody[];
+      expect(active.map((o) => o.id)).toEqual([offer.id]);
+      expect(
+        (await prisma.offer.findUniqueOrThrow({ where: { id: offer.id } }))
+          .status,
+      ).toBe('ACCEPTED');
+    });
+
+    it('creates no collaboration when the accept loses the race', async () => {
+      const offer = await seedOffer(store.id, USER_A);
+      await Promise.all([accept(offer.id), accept(offer.id)]);
+      expect(
+        await prisma.collaboration.count({ where: { offerId: offer.id } }),
+      ).toBe(1);
     });
 
     it('notifies the store owner on accept', async () => {

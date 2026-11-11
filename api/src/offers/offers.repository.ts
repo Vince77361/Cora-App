@@ -26,6 +26,13 @@ export interface NewOffer {
   expiresAt: Date;
 }
 
+// 오퍼 갱신과 같은 트랜잭션에서 할 일(연결된 협업 만들기·옮기기). false를 돌려주면 오퍼 갱신까지 되돌린다.
+export type InSameTransaction = (
+  tx: Prisma.TransactionClient,
+) => Promise<boolean | void>;
+
+class Rollback extends Error {}
+
 // 오퍼 조회와 상태 변경은 모두 여기를 거친다. 상태 변경은 모두 조건부 갱신(UPDATE ... WHERE status = 기대 상태)이라
 // 동시에 와도 한 번만 바뀌고, 바뀐 행이 0이면 false를 돌려 서비스가 409로 바꾸게 한다.
 @Injectable()
@@ -107,28 +114,33 @@ export class OffersRepository {
   }
 
   // 수락은 기한 전(expiresAt > now)일 때만. 기한과 갱신 사이에 시간이 지나도 늦게 수락되지 않는다.
-  async accept(
+  // paymentDueAt이 null이면 낼 돈이 없는 오퍼다. 협업 만들기는 같은 트랜잭션에서 한다.
+  accept(
     id: string,
     creatorId: string,
     now: Date,
-    paymentDueAt: Date,
+    paymentDueAt: Date | null,
+    alongWith?: InSameTransaction,
   ): Promise<boolean> {
-    const { count } = await this.prisma.offer.updateMany({
-      where: {
-        id,
-        creatorId,
-        status: 'SENT',
-        expiresAt: { gt: now },
-        deletedAt: null,
-      },
-      data: {
-        status: 'ACCEPTED',
-        acceptedAt: now,
-        respondedAt: now,
-        paymentDueAt,
-      },
-    });
-    return count === 1;
+    return this.updateWith(
+      (tx) =>
+        tx.offer.updateMany({
+          where: {
+            id,
+            creatorId,
+            status: 'SENT',
+            expiresAt: { gt: now },
+            deletedAt: null,
+          },
+          data: {
+            status: 'ACCEPTED',
+            acceptedAt: now,
+            respondedAt: now,
+            paymentDueAt,
+          },
+        }),
+      alongWith,
+    );
   }
 
   async decline(id: string, creatorId: string, now: Date): Promise<boolean> {
@@ -171,30 +183,60 @@ export class OffersRepository {
   }
 
   // 취소는 읽은 상태(SENT 또는 ACCEPTED)에서만, 그 상태의 기한 전일 때만.
-  async cancel(
+  // 낼 돈이 없는 ACCEPTED(paymentDueAt null)는 서비스가 먼저 거르므로 여기까지 오지 않는다.
+  cancel(
     id: string,
     storeId: string,
     from: 'SENT' | 'ACCEPTED',
     now: Date,
+    alongWith?: InSameTransaction,
   ): Promise<boolean> {
     const alive =
       from === 'SENT'
         ? { expiresAt: { gt: now } }
         : { paymentDueAt: { gt: now } };
-    const { count } = await this.prisma.offer.updateMany({
-      where: { id, storeId, status: from, deletedAt: null, ...alive },
-      data: { status: 'CANCELLED' },
-    });
-    return count === 1;
+    return this.updateWith(
+      (tx) =>
+        tx.offer.updateMany({
+          where: { id, storeId, status: from, deletedAt: null, ...alive },
+          data: { status: 'CANCELLED' },
+        }),
+      alongWith,
+    );
   }
 
   // 기한이 지나 만료로 저장한다. 읽은 상태가 그대로일 때만.
-  async expire(id: string, from: OfferStatus): Promise<boolean> {
-    const { count } = await this.prisma.offer.updateMany({
-      where: { id, status: from, deletedAt: null },
-      data: { status: 'EXPIRED' },
-    });
-    return count === 1;
+  expire(
+    id: string,
+    from: OfferStatus,
+    alongWith?: InSameTransaction,
+  ): Promise<boolean> {
+    return this.updateWith(
+      (tx) =>
+        tx.offer.updateMany({
+          where: { id, status: from, deletedAt: null },
+          data: { status: 'EXPIRED' },
+        }),
+      alongWith,
+    );
+  }
+
+  // 오퍼 갱신(조건부)과 alongWith를 한 트랜잭션으로 묶는다. 갱신이 0행이면 alongWith는 부르지 않는다.
+  private async updateWith(
+    update: (tx: Prisma.TransactionClient) => Promise<{ count: number }>,
+    alongWith?: InSameTransaction,
+  ): Promise<boolean> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const { count } = await update(tx);
+        if (count !== 1) return false;
+        if (alongWith && (await alongWith(tx)) === false) throw new Rollback();
+        return true;
+      });
+    } catch (error) {
+      if (error instanceof Rollback) return false;
+      throw error;
+    }
   }
 }
 

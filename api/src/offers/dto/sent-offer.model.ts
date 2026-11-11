@@ -9,6 +9,14 @@ export class SentOfferModel {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description: '수락돼 만들어진 협업의 id. 수락 전이면 null.',
+  })
+  collaborationId!: string | null;
+
   @ApiProperty({ type: CreatorSummaryModel })
   creator!: CreatorSummaryModel;
 

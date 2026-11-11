@@ -30,6 +30,12 @@ model User {
   applications   Application[]
   offers         Offer[]
 
+  commissionedCollaborations Collaboration[]      @relation("CollaborationCommissioner")
+  creatorCollaborations      Collaboration[]      @relation("CollaborationCreator")
+  payoutAccount              PayoutAccount?
+  instagramConnection        InstagramConnection?
+  cancelRequests             CancelRequest[]
+
   @@map("users")
 }
 
@@ -150,11 +156,12 @@ model Store {
   updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(3)
 
-  owner        User                @relation(fields: [ownerId], references: [id])
-  sourceLinks  StoreSourceLink[]
-  drafts       StoreContentDraft[]
-  applications Application[]
-  offers       Offer[]
+  owner          User                @relation(fields: [ownerId], references: [id])
+  sourceLinks    StoreSourceLink[]
+  drafts         StoreContentDraft[]
+  applications   Application[]
+  offers         Offer[]
+  collaborations Collaboration[]
 
   @@map("stores")
 }
@@ -257,12 +264,330 @@ model Offer {
   updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt     DateTime?     @map("deleted_at") @db.Timestamptz(3)
 
-  store       Store        @relation(fields: [storeId], references: [id])
-  creator     User         @relation(fields: [creatorId], references: [id])
-  application Application? @relation(fields: [applicationId], references: [id])
+  store         Store          @relation(fields: [storeId], references: [id])
+  creator       User           @relation(fields: [creatorId], references: [id])
+  application   Application?   @relation(fields: [applicationId], references: [id])
+  collaboration Collaboration?
 
   @@index([storeId, status])
   @@index([creatorId, status])
   @@index([expiresAt])
   @@map("offers")
+}
+
+// ---- 협업·결제·장부 (3번 계획) ----
+// 모든 금액은 원 단위 정수다. 장부·스냅샷·감사 기록은 만들기만 하고 고치거나 지우지 않는다(열은 공통 규칙대로 둔다).
+
+enum CollaborationKind {
+  STORE_OFFER
+  BRAND_CONTRACT
+
+  @@map("collaboration_kind")
+}
+
+// 단계 규칙(허용 전이)은 src/collaborations/collaboration-stage.ts의 canTransition이 정한다.
+enum CollaborationStage {
+  AWAITING_PAYMENT
+  FUNDED
+  COUNTING
+  SETTLED
+  REFUNDED
+  CANCELLED
+  INQUIRY
+  MATCHED
+  NEGOTIATING
+  AGREED
+  CONTRACTED
+  GUIDED
+  REVIEWING
+  APPROVED
+  PUBLISHED
+  DROPPED
+  HALTED
+
+  @@map("collaboration_stage")
+}
+
+// NONE은 식사권만 있는 오퍼로, 낼 돈과 줄 돈이 없다.
+enum SettlementMethod {
+  PER_VIEW
+  FIXED
+  NONE
+
+  @@map("settlement_method")
+}
+
+enum LedgerAccount {
+  PG_IN
+  ESCROW
+  CREATOR_PAYABLE
+  STORE_REFUND
+  FEE_REVENUE
+
+  @@map("ledger_account")
+}
+
+enum PaymentMethod {
+  CARD
+  TRANSFER
+  EASY_PAY
+
+  @@map("payment_method")
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  FAILED
+  CANCELLED
+
+  @@map("payment_status")
+}
+
+// 지급(payouts)과 환급(refunds)이 같이 쓴다.
+enum TransferStatus {
+  PENDING
+  DONE
+  FAILED
+
+  @@map("transfer_status")
+}
+
+enum CancelRequestStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+
+  @@map("cancel_request_status")
+}
+
+// 협업 한 건. "이 협업이 지금 어디인가"는 stage 하나로 답한다.
+// commissionerId는 맡기는 쪽(가게 사장님 또는 브랜드) 사용자다.
+model Collaboration {
+  id               String              @id @default(uuid()) @db.Uuid
+  kind             CollaborationKind
+  stage            CollaborationStage
+  commissionerId   String              @map("commissioner_id") @db.Uuid
+  creatorId        String              @map("creator_id") @db.Uuid
+  // 오퍼 하나에 협업 하나. null은 브랜드 계약처럼 오퍼 없이 생기는 협업이다.
+  offerId          String?             @unique @map("offer_id") @db.Uuid
+  storeId          String?             @map("store_id") @db.Uuid
+  // 수락할 때의 조건(OfferTermsModel) 사본. 이후 가게 기본 조건이 바뀌어도 이 협업은 그대로다.
+  terms            Json
+  settlementMethod SettlementMethod    @map("settlement_method")
+  fundedAt         DateTime?           @map("funded_at") @db.Timestamptz(3)
+  submitDueAt      DateTime?           @map("submit_due_at") @db.Timestamptz(3)
+  submittedUrl     String?             @map("submitted_url")
+  submittedAt      DateTime?           @map("submitted_at") @db.Timestamptz(3)
+  countingEndsAt   DateTime?           @map("counting_ends_at") @db.Timestamptz(3)
+  haltedReason     String?             @map("halted_reason")
+  stageBeforeHalt  CollaborationStage? @map("stage_before_halt")
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt        DateTime?           @map("deleted_at") @db.Timestamptz(3)
+
+  commissioner User   @relation("CollaborationCommissioner", fields: [commissionerId], references: [id])
+  creator      User   @relation("CollaborationCreator", fields: [creatorId], references: [id])
+  offer        Offer? @relation(fields: [offerId], references: [id])
+  store        Store? @relation(fields: [storeId], references: [id])
+
+  payments       Payment[]
+  ledgerEntries  LedgerEntry[]
+  viewSnapshots  ViewSnapshot[]
+  settlement     Settlement?
+  payouts        Payout[]
+  refunds        Refund[]
+  cancelRequests CancelRequest[]
+  opsAuditLogs   OpsAuditLog[]
+
+  @@index([storeId, stage])
+  @@index([creatorId, stage])
+  @@index([commissionerId, stage])
+  @@index([stage, countingEndsAt])
+  @@map("collaborations")
+}
+
+model Payment {
+  id              String        @id @default(uuid()) @db.Uuid
+  collaborationId String        @map("collaboration_id") @db.Uuid
+  amountEscrow    Int           @map("amount_escrow")
+  amountFee       Int           @map("amount_fee")
+  // 결제할 때의 수수료율(%) 사본. 설정이 바뀌어도 이 결제의 수수료는 그대로다.
+  feeRate         Int           @map("fee_rate")
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  pgTransactionId String?       @unique @map("pg_transaction_id")
+  requestedAt     DateTime      @map("requested_at") @db.Timestamptz(3)
+  approvedAt      DateTime?     @map("approved_at") @db.Timestamptz(3)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+
+  @@index([collaborationId, status])
+  @@map("payments")
+}
+
+// 복식 장부 한 줄. 만들기만 하고 고치거나 지우지 않는다. 정정은 반대 줄을 더한다.
+// 같은 동작이 두 번 실행돼도 (idempotencyKey, debitAccount, creditAccount) 유일 제약이 두 번째를 막는다.
+model LedgerEntry {
+  id              String        @id @default(uuid()) @db.Uuid
+  collaborationId String        @map("collaboration_id") @db.Uuid
+  // 한 동작이 만든 줄들을 묶는 값.
+  batchId         String        @map("batch_id") @db.Uuid
+  debitAccount    LedgerAccount @map("debit_account")
+  creditAccount   LedgerAccount @map("credit_account")
+  amount          Int
+  reason          String
+  idempotencyKey  String        @map("idempotency_key")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+
+  @@unique([idempotencyKey, debitAccount, creditAccount])
+  @@index([collaborationId])
+  @@index([batchId])
+  @@map("ledger_entries")
+}
+
+// 조회수 스냅샷. views가 null이면 그날 읽지 못한 것이다(0이 아니다).
+// dayIndex 0~7의 범위는 마이그레이션의 CHECK 제약이 지킨다.
+model ViewSnapshot {
+  id              String    @id @default(uuid()) @db.Uuid
+  collaborationId String    @map("collaboration_id") @db.Uuid
+  takenAt         DateTime  @map("taken_at") @db.Timestamptz(3)
+  views           Int?
+  dayIndex        Int       @map("day_index")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+
+  @@unique([collaborationId, dayIndex])
+  @@map("view_snapshots")
+}
+
+model Settlement {
+  id              String    @id @default(uuid()) @db.Uuid
+  collaborationId String    @unique @map("collaboration_id") @db.Uuid
+  finalViews      Int?      @map("final_views")
+  payoutAmount    Int       @map("payout_amount")
+  refundAmount    Int       @map("refund_amount")
+  settledAt       DateTime  @map("settled_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+
+  @@map("settlements")
+}
+
+model Payout {
+  id              String         @id @default(uuid()) @db.Uuid
+  collaborationId String         @map("collaboration_id") @db.Uuid
+  amount          Int
+  status          TransferStatus @default(PENDING)
+  externalId      String?        @map("external_id")
+  idempotencyKey  String         @unique @map("idempotency_key")
+  // 송금할 수요일 10:00(한국 시간).
+  scheduledFor    DateTime       @map("scheduled_for") @db.Timestamptz(3)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?      @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+
+  @@index([status, scheduledFor])
+  @@index([collaborationId])
+  @@map("payouts")
+}
+
+model Refund {
+  id              String         @id @default(uuid()) @db.Uuid
+  collaborationId String         @map("collaboration_id") @db.Uuid
+  amount          Int
+  status          TransferStatus @default(PENDING)
+  externalId      String?        @map("external_id")
+  idempotencyKey  String         @unique @map("idempotency_key")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?      @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+
+  @@index([collaborationId])
+  @@map("refunds")
+}
+
+// 계좌번호는 AES-256-GCM으로 암호화해 저장한다. 응답과 로그에는 뒤 4자리만 낸다.
+model PayoutAccount {
+  id               String    @id @default(uuid()) @db.Uuid
+  creatorId        String    @unique @map("creator_id") @db.Uuid
+  bankCode         String    @map("bank_code")
+  accountNumberEnc String    @map("account_number_enc")
+  accountLast4     String    @map("account_last4")
+  holderName       String    @map("holder_name")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  creator User @relation(fields: [creatorId], references: [id])
+
+  @@map("payout_accounts")
+}
+
+model InstagramConnection {
+  id          String    @id @default(uuid()) @db.Uuid
+  creatorId   String    @unique @map("creator_id") @db.Uuid
+  handle      String    @unique
+  followers   Int?
+  tokenEnc    String?   @map("token_enc")
+  refreshedAt DateTime  @map("refreshed_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  creator User @relation(fields: [creatorId], references: [id])
+
+  @@map("instagram_connections")
+}
+
+model CancelRequest {
+  id              String              @id @default(uuid()) @db.Uuid
+  collaborationId String              @map("collaboration_id") @db.Uuid
+  requestedById   String              @map("requested_by_id") @db.Uuid
+  status          CancelRequestStatus @default(PENDING)
+  expiresAt       DateTime            @map("expires_at") @db.Timestamptz(3)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?           @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+  requestedBy   User          @relation(fields: [requestedById], references: [id])
+
+  @@index([collaborationId, status])
+  @@map("cancel_requests")
+}
+
+// 운영 명령의 기록. 운영자는 DB를 직접 고치지 않고 이 계획의 운영 명령만 쓴다.
+model OpsAuditLog {
+  id              String    @id @default(uuid()) @db.Uuid
+  command         String
+  collaborationId String?   @map("collaboration_id") @db.Uuid
+  operator        String
+  reason          String
+  detail          Json
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration? @relation(fields: [collaborationId], references: [id])
+
+  @@index([collaborationId])
+  @@map("ops_audit_logs")
 }

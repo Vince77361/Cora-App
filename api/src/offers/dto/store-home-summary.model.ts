@@ -11,6 +11,9 @@ export class StoreHomeSummaryModel {
   @ApiProperty({ type: 'integer', description: '답을 기다리는 보낸 오퍼.' })
   sentOffers!: number;
 
-  @ApiProperty({ type: 'integer', description: '수락된 오퍼.' })
+  @ApiProperty({
+    type: 'integer',
+    description: '진행 중인 협업(결제 대기, 결제함, 조회수 집계 중).',
+  })
   inProgress!: number;
 }

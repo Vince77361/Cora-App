@@ -1,5 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { ApplicationsService } from '../applications/applications.service';
+import {
+  initialStoreOfferState,
+  storeInProgressStages,
+} from '../collaborations/collaboration-stage';
+import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
@@ -16,7 +22,6 @@ import {
   canUndoDecline,
   DECLINE_UNDO_SECONDS,
   OFFER_RESPONSE_DAYS,
-  PAYMENT_DUE_DAYS,
   paymentDaysLeft,
   storedStatusAt,
   viewForCreator,
@@ -38,6 +43,7 @@ export class OffersService {
     private readonly stores: StoresService,
     private readonly applications: ApplicationsService,
     private readonly creators: CreatorsService,
+    private readonly collaborations: CollaborationsRepository,
     private readonly push: PushPort,
     private readonly clock: Clock,
   ) {}
@@ -97,7 +103,7 @@ export class OffersService {
       creator.userId,
       `${store.name ?? '가게'}에서 오퍼가 왔어요.`,
     );
-    return this.toSent(created, creator, now);
+    return this.toSent(created, creator, now, null);
   }
 
   async listSent(userId: string): Promise<SentOfferModel[]> {
@@ -111,11 +117,16 @@ export class OffersService {
     const summaries = await Promise.all(
       rows.map((row) => this.creators.getSummary(row.creatorId)),
     );
+    const collaborationIds = await this.collaborationIds(rows);
     const items: SentOfferModel[] = [];
     rows.forEach((row, index) => {
       const creator = summaries[index];
       // 프로필이 지워진 크리에이터는 보여 줄 것이 없어 뺀다.
-      if (creator) items.push(this.toSent(row, creator, now));
+      if (creator) {
+        items.push(
+          this.toSent(row, creator, now, collaborationIds.get(row.id) ?? null),
+        );
+      }
     });
     return items;
   }
@@ -135,7 +146,29 @@ export class OffersService {
       throw this.expired();
     }
     if (stored !== 'SENT' && stored !== 'ACCEPTED') throw this.alreadyHandled();
-    if (!(await this.offers.cancel(row.id, store.id, stored, now))) {
+
+    // 결제한 뒤(협업이 AWAITING_PAYMENT를 지난 뒤)에는 사장님 혼자 취소할 수 없고 취소 요청을 보내야 한다.
+    // 협업이 아직 없는 수락(3번 계획 이전에 수락된 오퍼)은 낼 돈이 없으므로 기존대로 취소된다.
+    const collaboration =
+      stored === 'ACCEPTED'
+        ? await this.collaborations.findByOfferId(row.id)
+        : null;
+    if (collaboration && collaboration.stage !== 'AWAITING_PAYMENT') {
+      throw new AppError('CONFLICT', '결제한 뒤에는 취소 요청을 보내 주세요.');
+    }
+    // 오퍼 취소와 협업 AWAITING_PAYMENT → CANCELLED를 한 트랜잭션으로 한다.
+    // 그사이 결제가 승인돼 협업이 FUNDED가 되었으면 이동이 0행이라 오퍼 취소까지 되돌린다.
+    const alongWith = collaboration
+      ? (tx: Prisma.TransactionClient) =>
+          this.collaborations.advanceByOffer(
+            row.id,
+            'AWAITING_PAYMENT',
+            'CANCELLED',
+            {},
+            tx,
+          )
+      : undefined;
+    if (!(await this.offers.cancel(row.id, store.id, stored, now, alongWith))) {
       await this.settleLatest(row.id, now);
       throw this.alreadyHandled();
     }
@@ -144,7 +177,7 @@ export class OffersService {
     const fresh = await this.offers.findForStore(row.id, store.id);
     const creator = await this.creators.getSummary(row.creatorId);
     if (!fresh || !creator) throw this.notFound();
-    return this.toSent(fresh, creator, now);
+    return this.toSent(fresh, creator, now, collaboration?.id ?? null);
   }
 
   async listReceived(
@@ -162,6 +195,7 @@ export class OffersService {
         ? viewForCreator(row, now) === 'WAITING' || canUndoDecline(row, now)
         : viewForCreator(row, now) === 'ACCEPTED',
     );
+    const collaborationIds = await this.collaborationIds(shown);
     const cards = new Map<string, Awaited<ReturnType<typeof this.card>>>();
     const items: ReceivedOfferModel[] = [];
     for (const row of shown) {
@@ -169,7 +203,11 @@ export class OffersService {
         cards.set(row.storeId, await this.card(row.storeId));
       }
       const card = cards.get(row.storeId);
-      if (card) items.push(this.toReceived(row, card, now));
+      if (card) {
+        items.push(
+          this.toReceived(row, card, now, collaborationIds.get(row.id) ?? null),
+        );
+      }
     }
     return items;
   }
@@ -185,11 +223,30 @@ export class OffersService {
     }
     if (stored !== 'SENT') throw this.alreadyHandled();
     const card = await this.requireCard(row.storeId);
+    // 수락과 협업 만들기는 한 트랜잭션이다. 식사권만 있는 오퍼는 낼 돈이 없어 결제 기한 없이 바로 FUNDED로 시작한다.
+    const initial = initialStoreOfferState(row.rewardType, now);
     const accepted = await this.offers.accept(
       row.id,
       userId,
       now,
-      new Date(now.getTime() + PAYMENT_DUE_DAYS * DAY_MS),
+      initial.paymentDueAt,
+      async (tx) => {
+        await this.collaborations.create(
+          {
+            kind: 'STORE_OFFER',
+            stage: initial.stage,
+            commissionerId: card.ownerId,
+            creatorId: userId,
+            offerId: row.id,
+            storeId: row.storeId,
+            terms: this.termsOf(row),
+            settlementMethod: initial.settlementMethod,
+            fundedAt: initial.fundedAt,
+            submitDueAt: initial.submitDueAt,
+          },
+          tx,
+        );
+      },
     );
     if (!accepted) {
       await this.settleLatest(row.id, now);
@@ -253,7 +310,11 @@ export class OffersService {
     return {
       newApplications: await this.applications.countNew(store.id),
       sentOffers: views.filter((view) => view === 'WAITING').length,
-      inProgress: views.filter((view) => view === 'ACCEPTED').length,
+      // 오퍼가 아니라 협업의 단계로 센다: 결제 대기, 결제함, 조회수 집계 중.
+      inProgress: await this.collaborations.countForStore(
+        store.id,
+        storeInProgressStages,
+      ),
     };
   }
 
@@ -263,7 +324,20 @@ export class OffersService {
     let current: OfferRow | null = row;
     const target = storedStatusAt(row, now);
     if (target !== row.status) {
-      current = (await this.offers.expire(row.id, row.status))
+      // 결제를 기다리던 수락 오퍼가 기한을 넘겨 만료되면 연결된 협업도 같은 트랜잭션에서 취소한다.
+      const alongWith =
+        row.status === 'ACCEPTED' && target === 'EXPIRED'
+          ? async (tx: Prisma.TransactionClient) => {
+              await this.collaborations.advanceByOffer(
+                row.id,
+                'AWAITING_PAYMENT',
+                'CANCELLED',
+                {},
+                tx,
+              );
+            }
+          : undefined;
+      current = (await this.offers.expire(row.id, row.status, alongWith))
         ? { ...row, status: target }
         : await this.offers.findById(row.id);
     }
@@ -327,7 +401,18 @@ export class OffersService {
   ): Promise<ReceivedOfferModel> {
     const fresh = await this.offers.findForCreator(id, userId);
     if (!fresh) throw this.notFound();
-    return this.toReceived(fresh, card, now);
+    const collaboration = await this.collaborations.findByOfferId(fresh.id);
+    return this.toReceived(fresh, card, now, collaboration?.id ?? null);
+  }
+
+  // 오퍼 id → 연결된 협업 id. 협업이 아직 없는(수락 전) 오퍼는 들어 있지 않다.
+  private async collaborationIds(
+    rows: OfferRow[],
+  ): Promise<Map<string, string>> {
+    const found = await this.collaborations.mapByOfferIds(
+      rows.map((row) => row.id),
+    );
+    return new Map([...found].map(([offerId, c]) => [offerId, c.id]));
   }
 
   private card(storeId: string) {
@@ -366,9 +451,11 @@ export class OffersService {
     row: OfferRow,
     creator: NonNullable<Awaited<ReturnType<CreatorsService['getSummary']>>>,
     now: Date,
+    collaborationId: string | null,
   ): SentOfferModel {
     return {
       id: row.id,
+      collaborationId,
       creator,
       terms: this.termsOf(row),
       view: viewForStore(row, now),
@@ -381,9 +468,11 @@ export class OffersService {
     row: OfferRow,
     card: NonNullable<Awaited<ReturnType<typeof this.card>>>,
     now: Date,
+    collaborationId: string | null,
   ): ReceivedOfferModel {
     return {
       id: row.id,
+      collaborationId,
       store: card.summary,
       storeIntro: card.intro,
       bestShootingTime: card.bestShootingTime,

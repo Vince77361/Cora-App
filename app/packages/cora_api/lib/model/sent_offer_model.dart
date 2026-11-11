@@ -13,6 +13,7 @@ part of cora_api;
 class SentOfferModel {
   /// Returns a new [SentOfferModel] instance.
   SentOfferModel({
+    required this.collaborationId,
     required this.creator,
     required this.id,
     required this.paymentDaysLeft,
@@ -20,6 +21,9 @@ class SentOfferModel {
     required this.terms,
     required this.view,
   });
+
+  /// 수락돼 만들어진 협업의 id. 수락 전이면 null.
+  String? collaborationId;
 
   CreatorSummaryModel creator;
 
@@ -40,6 +44,7 @@ class SentOfferModel {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is SentOfferModel &&
+          other.collaborationId == collaborationId &&
           other.creator == creator &&
           other.id == id &&
           other.paymentDaysLeft == paymentDaysLeft &&
@@ -50,6 +55,7 @@ class SentOfferModel {
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
+      (collaborationId == null ? 0 : collaborationId!.hashCode) +
       (creator.hashCode) +
       (id.hashCode) +
       (paymentDaysLeft == null ? 0 : paymentDaysLeft!.hashCode) +
@@ -59,10 +65,15 @@ class SentOfferModel {
 
   @override
   String toString() =>
-      'SentOfferModel[creator=$creator, id=$id, paymentDaysLeft=$paymentDaysLeft, sentAt=$sentAt, terms=$terms, view=$view]';
+      'SentOfferModel[collaborationId=$collaborationId, creator=$creator, id=$id, paymentDaysLeft=$paymentDaysLeft, sentAt=$sentAt, terms=$terms, view=$view]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    if (this.collaborationId != null) {
+      json[r'collaborationId'] = this.collaborationId;
+    } else {
+      json[r'collaborationId'] = null;
+    }
     json[r'creator'] = this.creator;
     json[r'id'] = this.id;
     if (this.paymentDaysLeft != null) {
@@ -87,6 +98,8 @@ class SentOfferModel {
       // Note 1: the values aren't checked for validity beyond being non-null.
       // Note 2: this code is stripped in release mode!
       assert(() {
+        assert(json.containsKey(r'collaborationId'),
+            'Required key "SentOfferModel[collaborationId]" is missing from JSON.');
         assert(json.containsKey(r'creator'),
             'Required key "SentOfferModel[creator]" is missing from JSON.');
         assert(json[r'creator'] != null,
@@ -113,6 +126,7 @@ class SentOfferModel {
       }());
 
       return SentOfferModel(
+        collaborationId: mapValueOfType<String>(json, r'collaborationId'),
         creator: CreatorSummaryModel.fromJson(json[r'creator'])!,
         id: mapValueOfType<String>(json, r'id')!,
         paymentDaysLeft: mapValueOfType<int>(json, r'paymentDaysLeft'),
@@ -175,6 +189,7 @@ class SentOfferModel {
 
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
+    'collaborationId',
     'creator',
     'id',
     'paymentDaysLeft',

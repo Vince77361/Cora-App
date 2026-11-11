@@ -8,6 +8,7 @@ import 'package:cora_api/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**collaborationId** | **String** | 수락돼 만들어진 협업의 id. 수락 전이면 null. | 
 **creator** | [**CreatorSummaryModel**](CreatorSummaryModel.md) |  | 
 **id** | **String** |  | 
 **paymentDaysLeft** | **int** | 수락됐고 아직 결제 기한 전일 때 남은 날(올림). 아니면 null. | 

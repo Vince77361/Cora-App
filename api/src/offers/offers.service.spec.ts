@@ -1,15 +1,20 @@
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
-import { Store, UserRole } from '@prisma/client';
+import { Collaboration, Store, UserRole } from '@prisma/client';
 import { ApplicationsService } from '../applications/applications.service';
 import { AppError } from '../common/errors/app-error';
+import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { CreatorsService } from '../creators/creators.service';
 import type { CreatorSummaryModel } from '../creators/dto/creator-profile.model';
 import { PushPort } from '../integrations/push/push.port';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { FakeClock } from '../../test/support/fake-clock';
-import { OfferRow, OffersRepository } from './offers.repository';
+import {
+  InSameTransaction,
+  OfferRow,
+  OffersRepository,
+} from './offers.repository';
 import { OffersService } from './offers.service';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
@@ -99,14 +104,20 @@ class FakeOffersRepository extends OffersRepository {
     this.rows.push(row);
     return Promise.resolve(this.withApp(row));
   }
-  accept(id: string, creatorId: string, now: Date, paymentDueAt: Date) {
+  async accept(
+    id: string,
+    creatorId: string,
+    now: Date,
+    paymentDueAt: Date | null,
+    alongWith?: InSameTransaction,
+  ) {
     const row = this.rows.find((r) => r.id === id);
-    if (row?.creatorId !== creatorId || row.status !== 'SENT') {
-      return Promise.resolve(false);
-    }
-    if (row.expiresAt.getTime() <= now.getTime()) return Promise.resolve(false);
+    if (row?.creatorId !== creatorId || row.status !== 'SENT') return false;
+    if (row.expiresAt.getTime() <= now.getTime()) return false;
     Object.assign(row, { status: 'ACCEPTED', acceptedAt: now, paymentDueAt });
-    return Promise.resolve(true);
+    // 메모리 저장소에는 트랜잭션이 없다. 같은 트랜잭션에서 할 일을 그냥 이어서 부른다.
+    await alongWith?.(null as never);
+    return true;
   }
   decline(id: string, creatorId: string, now: Date) {
     const row = this.rows.find((r) => r.id === id);
@@ -124,19 +135,88 @@ class FakeOffersRepository extends OffersRepository {
     Object.assign(row, { status: 'SENT', declinedAt: null });
     return Promise.resolve(true);
   }
-  cancel(id: string, storeId: string, from: 'SENT' | 'ACCEPTED') {
+  async cancel(
+    id: string,
+    storeId: string,
+    from: 'SENT' | 'ACCEPTED',
+    _now?: Date,
+    alongWith?: InSameTransaction,
+  ) {
     const row = this.rows.find((r) => r.id === id);
-    if (row?.storeId !== storeId || row.status !== from) {
-      return Promise.resolve(false);
-    }
+    if (row?.storeId !== storeId || row.status !== from) return false;
     row.status = 'CANCELLED';
+    if ((await alongWith?.(null as never)) === false) {
+      row.status = from;
+      return false;
+    }
+    return true;
+  }
+  async expire(
+    id: string,
+    from: OfferRow['status'],
+    alongWith?: InSameTransaction,
+  ) {
+    const row = this.rows.find((r) => r.id === id);
+    if (row?.status !== from) return false;
+    row.status = 'EXPIRED';
+    await alongWith?.(null as never);
+    return true;
+  }
+}
+
+// 서비스 규칙만 보려고 메모리에 저장하는 손 구현. 조건부 갱신(SQL)과 유일 제약은 db-spec·e2e가 확인한다.
+class FakeCollaborations extends CollaborationsRepository {
+  readonly rows: Collaboration[] = [];
+
+  constructor() {
+    super(null as never);
+  }
+
+  create(data: Parameters<CollaborationsRepository['create']>[0]) {
+    const row = {
+      id: randomUUID(),
+      ...data,
+      submittedUrl: null,
+      submittedAt: null,
+      countingEndsAt: null,
+      haltedReason: null,
+      stageBeforeHalt: null,
+      createdAt: T0,
+      updatedAt: T0,
+      deletedAt: null,
+    } as Collaboration;
+    this.rows.push(row);
+    return Promise.resolve(row);
+  }
+  findByOfferId(offerId: string) {
+    return Promise.resolve(
+      this.rows.find((r) => r.offerId === offerId) ?? null,
+    );
+  }
+  mapByOfferIds(offerIds: string[]) {
+    return Promise.resolve(
+      new Map(
+        this.rows
+          .filter((r) => r.offerId && offerIds.includes(r.offerId))
+          .map((r) => [r.offerId as string, r]),
+      ),
+    );
+  }
+  advanceByOffer(
+    offerId: string,
+    from: Collaboration['stage'],
+    to: Collaboration['stage'],
+  ) {
+    const row = this.rows.find((r) => r.offerId === offerId);
+    if (row?.stage !== from) return Promise.resolve(false);
+    row.stage = to;
     return Promise.resolve(true);
   }
-  expire(id: string, from: OfferRow['status']) {
-    const row = this.rows.find((r) => r.id === id);
-    if (row?.status !== from) return Promise.resolve(false);
-    row.status = 'EXPIRED';
-    return Promise.resolve(true);
+  countForStore(storeId: string, stages: Collaboration['stage'][]) {
+    return Promise.resolve(
+      this.rows.filter((r) => r.storeId === storeId && stages.includes(r.stage))
+        .length,
+    );
   }
 }
 
@@ -265,6 +345,7 @@ function makeStore(): Store {
 
 describe('OffersService', () => {
   let repo: FakeOffersRepository;
+  let collaborations: FakeCollaborations;
   let users: FakeUsers;
   let stores: FakeStores;
   let applications: FakeApplications;
@@ -279,6 +360,7 @@ describe('OffersService', () => {
 
   beforeEach(() => {
     repo = new FakeOffersRepository();
+    collaborations = new FakeCollaborations();
     users = new FakeUsers();
     stores = new FakeStores(makeStore());
     applications = new FakeApplications();
@@ -290,6 +372,7 @@ describe('OffersService', () => {
       stores,
       applications,
       new FakeCreators(),
+      collaborations,
       push,
       clock,
     );
@@ -430,6 +513,28 @@ describe('OffersService', () => {
           body: '하루 한 컵님이 오퍼를 수락했어요.',
         },
       ]);
+    });
+
+    it('creates the collaboration in the accept transaction with a copy of the terms', async () => {
+      await service.accept(CREATOR, id);
+      expect(collaborations.rows).toHaveLength(1);
+      expect(collaborations.rows[0]).toMatchObject({
+        kind: 'STORE_OFFER',
+        stage: 'FUNDED',
+        settlementMethod: 'NONE',
+        commissionerId: OWNER,
+        creatorId: CREATOR,
+        offerId: id,
+        terms: { format: 'REELS', rewardType: 'VOUCHER' },
+      });
+    });
+
+    it('creates no collaboration when the conditional update is lost', async () => {
+      jest.spyOn(repo, 'accept').mockResolvedValueOnce(false);
+      await expect(service.accept(CREATOR, id)).rejects.toBeInstanceOf(
+        AppError,
+      );
+      expect(collaborations.rows).toEqual([]);
     });
 
     it('maps a lost conditional update to 409 CONFLICT', async () => {

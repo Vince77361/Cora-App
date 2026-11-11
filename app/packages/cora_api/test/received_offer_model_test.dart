@@ -27,6 +27,12 @@ void main() {
       // TODO
     });
 
+    // 수락돼 만들어진 협업의 id. 수락 전이면 null.
+    // String collaborationId
+    test('to test the property `collaborationId`', () async {
+      // TODO
+    });
+
     // String id
     test('to test the property `id`', () async {
       // TODO
