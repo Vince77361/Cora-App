@@ -4,6 +4,7 @@ import 'package:cora/core/config/app_config_provider.dart';
 import 'package:cora/core/navigation/app_router.dart';
 import 'package:cora/features/auth/domain/auth_repository_provider.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
+import 'package:cora/features/store_home/domain/store_home_repository.dart';
 import 'package:cora/features/store_onboarding/domain/content_draft_repository_provider.dart';
 import 'package:cora/features/store_onboarding/domain/store_repository_provider.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +16,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/fake_auth_repository.dart';
 import '../features/onboarding/fake_me_repository.dart';
+import '../features/store_home/fake_store_home_repository.dart';
 import '../features/store_onboarding/fake_content_draft_repository.dart';
 import '../features/store_onboarding/fake_store_repository.dart';
 
@@ -52,6 +54,10 @@ Widget coraAppWith(
       // provider를 직접 바꿔 끼우면 그쪽을 쓴다(같은 provider를 두 번 바꿀 수 없다).
       if (!_overrides(overrides, storeRepositoryProvider))
         storeRepositoryProvider.overrideWithValue(FakeStoreRepository()),
+      if (!_overrides(overrides, storeHomeRepositoryProvider))
+        storeHomeRepositoryProvider.overrideWithValue(
+          FakeStoreHomeRepository(),
+        ),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(
           FakeContentDraftRepository(),

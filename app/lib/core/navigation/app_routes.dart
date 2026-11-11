@@ -30,6 +30,9 @@ abstract final class AppRoutes {
   static const storePage = '/store/page';
   static const storeDrafts = '/store/drafts';
 
+  /// 내 가게(가게 페이지, 보관함, 설정, 로그아웃). 홈 머리의 가게 사진을 누르면 열린다.
+  static const storeMe = '/store/me';
+
   /// 크리에이터 [creatorId]에게 보내는 오퍼 작성(NOffer).
   static String storeOfferNew(String creatorId) =>
       '/store/offers/new/${Uri.encodeComponent(creatorId)}';

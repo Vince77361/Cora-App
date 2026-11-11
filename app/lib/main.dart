@@ -24,6 +24,8 @@ import 'features/offers/data/api_received_offers_repository.dart';
 import 'features/offers/domain/received_offers_repository.dart';
 import 'features/store_browse/data/api_store_browse_repository.dart';
 import 'features/store_browse/domain/store_browse_repository.dart';
+import 'features/store_home/data/api_store_home_repository.dart';
+import 'features/store_home/domain/store_home_repository.dart';
 import 'features/store_onboarding/data/api_content_draft_repository.dart';
 import 'features/store_onboarding/data/api_store_repository.dart';
 import 'features/store_onboarding/domain/content_draft_repository_provider.dart';
@@ -84,6 +86,9 @@ Future<void> main() async {
         ),
         storeBrowseRepositoryProvider.overrideWith(
           (ref) => ApiStoreBrowseRepository(ref.watch(apiClientProvider)),
+        ),
+        storeHomeRepositoryProvider.overrideWith(
+          (ref) => ApiStoreHomeRepository(ref.watch(apiClientProvider)),
         ),
         receivedOffersRepositoryProvider.overrideWith(
           (ref) => ApiReceivedOffersRepository(ref.watch(apiClientProvider)),

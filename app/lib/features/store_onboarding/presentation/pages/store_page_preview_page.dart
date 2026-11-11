@@ -23,9 +23,13 @@ import 'store_edit_page.dart';
 /// A3 자동 생성된 가게 페이지(NStorePage / DarkNStorePage), 등록 2/3.
 ///
 /// 링크에서 만든 가게를 크리에이터에게 보이는 모양으로 보여 주고, 고치거나 이대로 다음으로 간다.
-/// `이대로 다음`은 가게 이름과 시·도가 있어야 켜진다.
+/// `이대로 다음`은 가게 이름과 시·도가 있어야 켜진다. [onboarding]이 false이면 등록이 끝난 뒤
+/// 사장님 홈에서 연 `가게 페이지`라 단계 머리글(`2 / 3`·진행 막대)과 `이대로 다음`이 없고
+/// `정보 고치기` 버튼 하나만 있다.
 class StorePagePreviewPage extends ConsumerStatefulWidget {
-  const StorePagePreviewPage({super.key});
+  const StorePagePreviewPage({super.key, this.onboarding = true});
+
+  final bool onboarding;
 
   static const autoFilledChip = '링크에서 자동으로 만들었어요';
   static const introTitle = '크리에이터에게 보여줄 소개';
@@ -49,7 +53,9 @@ class _StorePagePreviewPageState extends ConsumerState<StorePagePreviewPage> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go(AppRoutes.storeOnboardingLinks);
+      context.go(
+        widget.onboarding ? AppRoutes.storeOnboardingLinks : AppRoutes.store,
+      );
     }
   }
 
@@ -96,9 +102,10 @@ class _StorePagePreviewPageState extends ConsumerState<StorePagePreviewPage> {
             : Column(
                 children: [
                   CoraStepHeader(
-                    title: '가게 등록',
+                    title: widget.onboarding ? '가게 등록' : '가게 페이지',
                     step: 2,
                     total: 3,
+                    showProgress: widget.onboarding,
                     onBack: _back,
                   ),
                   Expanded(
@@ -112,32 +119,40 @@ class _StorePagePreviewPageState extends ConsumerState<StorePagePreviewPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _warning(store, c),
-                        Row(
-                          spacing: 8,
-                          children: [
-                            Expanded(
-                              flex: 10,
-                              child: CoraSecondaryButton(
-                                label: StorePagePreviewPage.fixInfo,
-                                onPressed: _edit,
+                        if (!widget.onboarding)
+                          CoraPrimaryButton(
+                            label: StorePagePreviewPage.fixInfo,
+                            look: CoraPrimaryButtonLook.accent,
+                            onPressed: _edit,
+                          )
+                        else ...[
+                          _warning(store, c),
+                          Row(
+                            spacing: 8,
+                            children: [
+                              Expanded(
+                                flex: 10,
+                                child: CoraSecondaryButton(
+                                  label: StorePagePreviewPage.fixInfo,
+                                  onPressed: _edit,
+                                ),
                               ),
-                            ),
-                            Expanded(
-                              flex: 16,
-                              child: CoraPrimaryButton(
-                                label: StorePagePreviewPage.next,
-                                look: CoraPrimaryButtonLook.accent,
-                                onPressed:
-                                    store.hasName &&
-                                        store.hasRegion &&
-                                        !_advancing
-                                    ? _next
-                                    : null,
+                              Expanded(
+                                flex: 16,
+                                child: CoraPrimaryButton(
+                                  label: StorePagePreviewPage.next,
+                                  look: CoraPrimaryButtonLook.accent,
+                                  onPressed:
+                                      store.hasName &&
+                                          store.hasRegion &&
+                                          !_advancing
+                                      ? _next
+                                      : null,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
