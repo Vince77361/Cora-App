@@ -1,0 +1,389 @@
+# cora_api.api.OffersApi
+
+## Load the API package
+```dart
+import 'package:cora_api/api.dart';
+```
+
+All URIs are relative to *http://localhost*
+
+Method | HTTP request | Description
+------------- | ------------- | -------------
+[**acceptOffer**](OffersApi.md#acceptoffer) | **POST** /offers/{id}/accept | 
+[**cancelOffer**](OffersApi.md#canceloffer) | **POST** /offers/{id}/cancel | 
+[**declineOffer**](OffersApi.md#declineoffer) | **POST** /offers/{id}/decline | 
+[**getMyStoreSummary**](OffersApi.md#getmystoresummary) | **GET** /stores/me/summary | 
+[**listReceivedOffers**](OffersApi.md#listreceivedoffers) | **GET** /offers/received | 
+[**listSentOffers**](OffersApi.md#listsentoffers) | **GET** /offers/sent | 
+[**sendOffer**](OffersApi.md#sendoffer) | **POST** /offers | 
+[**undoDeclineOffer**](OffersApi.md#undodeclineoffer) | **POST** /offers/{id}/undo-decline | 
+
+
+# **acceptOffer**
+> ReceivedOfferModel acceptOffer(id)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = OffersApi();
+final id = id_example; // String | 
+
+try {
+    final result = api_instance.acceptOffer(id);
+    print(result);
+} catch (e) {
+    print('Exception when calling OffersApi->acceptOffer: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**ReceivedOfferModel**](ReceivedOfferModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **cancelOffer**
+> SentOfferModel cancelOffer(id)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = OffersApi();
+final id = id_example; // String | 
+
+try {
+    final result = api_instance.cancelOffer(id);
+    print(result);
+} catch (e) {
+    print('Exception when calling OffersApi->cancelOffer: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**SentOfferModel**](SentOfferModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **declineOffer**
+> ReceivedOfferModel declineOffer(id)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = OffersApi();
+final id = id_example; // String | 
+
+try {
+    final result = api_instance.declineOffer(id);
+    print(result);
+} catch (e) {
+    print('Exception when calling OffersApi->declineOffer: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**ReceivedOfferModel**](ReceivedOfferModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getMyStoreSummary**
+> StoreHomeSummaryModel getMyStoreSummary()
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = OffersApi();
+
+try {
+    final result = api_instance.getMyStoreSummary();
+    print(result);
+} catch (e) {
+    print('Exception when calling OffersApi->getMyStoreSummary: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**StoreHomeSummaryModel**](StoreHomeSummaryModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **listReceivedOffers**
+> List<ReceivedOfferModel> listReceivedOffers(tab)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = OffersApi();
+final tab = ; // ReceivedOfferTab | new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼. active: 수락한 오퍼.
+
+try {
+    final result = api_instance.listReceivedOffers(tab);
+    print(result);
+} catch (e) {
+    print('Exception when calling OffersApi->listReceivedOffers: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **tab** | [**ReceivedOfferTab**](.md)| new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼. active: 수락한 오퍼. | 
+
+### Return type
+
+[**List<ReceivedOfferModel>**](ReceivedOfferModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **listSentOffers**
+> List<SentOfferModel> listSentOffers()
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = OffersApi();
+
+try {
+    final result = api_instance.listSentOffers();
+    print(result);
+} catch (e) {
+    print('Exception when calling OffersApi->listSentOffers: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**List<SentOfferModel>**](SentOfferModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **sendOffer**
+> SentOfferModel sendOffer(sendOfferDto)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = OffersApi();
+final sendOfferDto = SendOfferDto(); // SendOfferDto | 
+
+try {
+    final result = api_instance.sendOffer(sendOfferDto);
+    print(result);
+} catch (e) {
+    print('Exception when calling OffersApi->sendOffer: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **sendOfferDto** | [**SendOfferDto**](SendOfferDto.md)|  | 
+
+### Return type
+
+[**SentOfferModel**](SentOfferModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **undoDeclineOffer**
+> ReceivedOfferModel undoDeclineOffer(id)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = OffersApi();
+final id = id_example; // String | 
+
+try {
+    final result = api_instance.undoDeclineOffer(id);
+    print(result);
+} catch (e) {
+    print('Exception when calling OffersApi->undoDeclineOffer: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**ReceivedOfferModel**](ReceivedOfferModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+

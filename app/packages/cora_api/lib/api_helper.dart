@@ -83,6 +83,12 @@ String parameterToString(dynamic value) {
   if (value is MyApplicationStatus) {
     return MyApplicationStatusTypeTransformer().encode(value).toString();
   }
+  if (value is OfferView) {
+    return OfferViewTypeTransformer().encode(value).toString();
+  }
+  if (value is ReceivedOfferTab) {
+    return ReceivedOfferTabTypeTransformer().encode(value).toString();
+  }
   if (value is RewardType) {
     return RewardTypeTypeTransformer().encode(value).toString();
   }

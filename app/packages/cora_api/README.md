@@ -73,6 +73,14 @@ Class | Method | HTTP request | Description
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
 *CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
 *HealthApi* | [**getHealth**](doc//HealthApi.md#gethealth) | **GET** /health | 
+*OffersApi* | [**acceptOffer**](doc//OffersApi.md#acceptoffer) | **POST** /offers/{id}/accept | 
+*OffersApi* | [**cancelOffer**](doc//OffersApi.md#canceloffer) | **POST** /offers/{id}/cancel | 
+*OffersApi* | [**declineOffer**](doc//OffersApi.md#declineoffer) | **POST** /offers/{id}/decline | 
+*OffersApi* | [**getMyStoreSummary**](doc//OffersApi.md#getmystoresummary) | **GET** /stores/me/summary | 
+*OffersApi* | [**listReceivedOffers**](doc//OffersApi.md#listreceivedoffers) | **GET** /offers/received | 
+*OffersApi* | [**listSentOffers**](doc//OffersApi.md#listsentoffers) | **GET** /offers/sent | 
+*OffersApi* | [**sendOffer**](doc//OffersApi.md#sendoffer) | **POST** /offers | 
+*OffersApi* | [**undoDeclineOffer**](doc//OffersApi.md#undodeclineoffer) | **POST** /offers/{id}/undo-decline | 
 *StoresApi* | [**advanceMyStoreOnboarding**](doc//StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
 *StoresApi* | [**analyzeMyStoreLinks**](doc//StoresApi.md#analyzemystorelinks) | **POST** /stores/me/analyze | 
 *StoresApi* | [**getMyStore**](doc//StoresApi.md#getmystore) | **GET** /stores/me | 
@@ -108,12 +116,18 @@ Class | Method | HTTP request | Description
  - [MyApplicationStatus](doc//MyApplicationStatus.md)
  - [MyStoreModel](doc//MyStoreModel.md)
  - [OfferTermsModel](doc//OfferTermsModel.md)
+ - [OfferView](doc//OfferView.md)
  - [PhotoUploadModel](doc//PhotoUploadModel.md)
+ - [ReceivedOfferModel](doc//ReceivedOfferModel.md)
+ - [ReceivedOfferTab](doc//ReceivedOfferTab.md)
  - [RewardType](doc//RewardType.md)
+ - [SendOfferDto](doc//SendOfferDto.md)
+ - [SentOfferModel](doc//SentOfferModel.md)
  - [SetDefaultTermsDto](doc//SetDefaultTermsDto.md)
  - [SourceLinkInputDto](doc//SourceLinkInputDto.md)
  - [SourceLinkKind](doc//SourceLinkKind.md)
  - [StoreDetailModel](doc//StoreDetailModel.md)
+ - [StoreHomeSummaryModel](doc//StoreHomeSummaryModel.md)
  - [StoreOnboardingStep](doc//StoreOnboardingStep.md)
  - [StoreSourceLinkModel](doc//StoreSourceLinkModel.md)
  - [StoreStatus](doc//StoreStatus.md)

@@ -501,6 +501,17 @@
         ],
         "type": "object"
       },
+      "OfferView": {
+        "description": "사장님에게 보이는 상태. 거절은 30초가 지나야 DECLINED로 보이고 그전에는 WAITING이다.",
+        "enum": [
+          "WAITING",
+          "ACCEPTED",
+          "DECLINED",
+          "EXPIRED",
+          "CANCELLED"
+        ],
+        "type": "string"
+      },
       "PhotoUploadModel": {
         "properties": {
           "path": {
@@ -516,6 +527,63 @@
         ],
         "type": "object"
       },
+      "ReceivedOfferModel": {
+        "properties": {
+          "bestShootingTime": {
+            "nullable": true,
+            "type": "string"
+          },
+          "canUndoDecline": {
+            "description": "방금 거절해 30초 안에 되돌릴 수 있으면 true.",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "receivedAt": {
+            "description": "도착한 시각(ISO 8601).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "store": {
+            "$ref": "#/components/schemas/StoreSummaryModel"
+          },
+          "storeIntro": {
+            "nullable": true,
+            "type": "string"
+          },
+          "terms": {
+            "$ref": "#/components/schemas/OfferTermsModel"
+          },
+          "view": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferView"
+              }
+            ],
+            "description": "크리에이터에게 보이는 상태. 거절은 바로 DECLINED로 보인다."
+          }
+        },
+        "required": [
+          "id",
+          "store",
+          "storeIntro",
+          "bestShootingTime",
+          "terms",
+          "view",
+          "receivedAt",
+          "canUndoDecline"
+        ],
+        "type": "object"
+      },
+      "ReceivedOfferTab": {
+        "enum": [
+          "new",
+          "active"
+        ],
+        "type": "string"
+      },
       "RewardType": {
         "enum": [
           "VOUCHER",
@@ -523,6 +591,88 @@
           "BOTH"
         ],
         "type": "string"
+      },
+      "SendOfferDto": {
+        "properties": {
+          "creatorId": {
+            "description": "오퍼를 받을 크리에이터의 ID.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "rewardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RewardType"
+              }
+            ]
+          },
+          "voucherName": {
+            "description": "식사권이 보상에 들어갈 때만 쓴다. 없으면 \"2인 식사권\".",
+            "maxLength": 20,
+            "minLength": 1,
+            "type": "string"
+          },
+          "voucherValue": {
+            "description": "식사권이 보상에 들어갈 때만 쓴다. 없으면 40000.",
+            "maximum": 1000000,
+            "minimum": 1000,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "creatorId",
+          "format",
+          "rewardType"
+        ],
+        "type": "object"
+      },
+      "SentOfferModel": {
+        "properties": {
+          "creator": {
+            "$ref": "#/components/schemas/CreatorSummaryModel"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "paymentDaysLeft": {
+            "description": "수락됐고 아직 결제 기한 전일 때 남은 날(올림). 아니면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "sentAt": {
+            "description": "보낸 시각(ISO 8601).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "terms": {
+            "$ref": "#/components/schemas/OfferTermsModel"
+          },
+          "view": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferView"
+              }
+            ],
+            "description": "사장님에게 보이는 상태. 거절은 30초가 지나야 DECLINED로 보이고 그전에는 WAITING이다."
+          }
+        },
+        "required": [
+          "id",
+          "creator",
+          "terms",
+          "view",
+          "paymentDaysLeft",
+          "sentAt"
+        ],
+        "type": "object"
       },
       "SetDefaultTermsDto": {
         "properties": {
@@ -672,6 +822,28 @@
           "bestShootingTime",
           "intro",
           "myApplicationStatus"
+        ],
+        "type": "object"
+      },
+      "StoreHomeSummaryModel": {
+        "properties": {
+          "inProgress": {
+            "description": "수락된 오퍼.",
+            "type": "integer"
+          },
+          "newApplications": {
+            "description": "아직 오퍼를 보내지 않은 지원.",
+            "type": "integer"
+          },
+          "sentOffers": {
+            "description": "답을 기다리는 보낸 오퍼.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "newApplications",
+          "sentOffers",
+          "inProgress"
         ],
         "type": "object"
       },
@@ -1049,6 +1221,257 @@
         ]
       }
     },
+    "/offers": {
+      "post": {
+        "operationId": "sendOffer",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendOfferDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SentOfferModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Offers"
+        ]
+      }
+    },
+    "/offers/received": {
+      "get": {
+        "operationId": "listReceivedOffers",
+        "parameters": [
+          {
+            "description": "new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼. active: 수락한 오퍼.",
+            "in": "query",
+            "name": "tab",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReceivedOfferTab"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReceivedOfferModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Offers"
+        ]
+      }
+    },
+    "/offers/sent": {
+      "get": {
+        "operationId": "listSentOffers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SentOfferModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Offers"
+        ]
+      }
+    },
+    "/offers/{id}/accept": {
+      "post": {
+        "operationId": "acceptOffer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivedOfferModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Offers"
+        ]
+      }
+    },
+    "/offers/{id}/cancel": {
+      "post": {
+        "operationId": "cancelOffer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SentOfferModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Offers"
+        ]
+      }
+    },
+    "/offers/{id}/decline": {
+      "post": {
+        "operationId": "declineOffer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivedOfferModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Offers"
+        ]
+      }
+    },
+    "/offers/{id}/undo-decline": {
+      "post": {
+        "operationId": "undoDeclineOffer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivedOfferModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Offers"
+        ]
+      }
+    },
     "/stores": {
       "get": {
         "operationId": "listPublishedStores",
@@ -1372,6 +1795,33 @@
         "summary": "",
         "tags": [
           "Stores"
+        ]
+      }
+    },
+    "/stores/me/summary": {
+      "get": {
+        "operationId": "getMyStoreSummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreHomeSummaryModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Offers"
         ]
       }
     },

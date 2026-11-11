@@ -244,10 +244,20 @@ class ApiClient {
           return MyStoreModel.fromJson(value);
         case 'OfferTermsModel':
           return OfferTermsModel.fromJson(value);
+        case 'OfferView':
+          return OfferViewTypeTransformer().decode(value);
         case 'PhotoUploadModel':
           return PhotoUploadModel.fromJson(value);
+        case 'ReceivedOfferModel':
+          return ReceivedOfferModel.fromJson(value);
+        case 'ReceivedOfferTab':
+          return ReceivedOfferTabTypeTransformer().decode(value);
         case 'RewardType':
           return RewardTypeTypeTransformer().decode(value);
+        case 'SendOfferDto':
+          return SendOfferDto.fromJson(value);
+        case 'SentOfferModel':
+          return SentOfferModel.fromJson(value);
         case 'SetDefaultTermsDto':
           return SetDefaultTermsDto.fromJson(value);
         case 'SourceLinkInputDto':
@@ -256,6 +266,8 @@ class ApiClient {
           return SourceLinkKindTypeTransformer().decode(value);
         case 'StoreDetailModel':
           return StoreDetailModel.fromJson(value);
+        case 'StoreHomeSummaryModel':
+          return StoreHomeSummaryModel.fromJson(value);
         case 'StoreOnboardingStep':
           return StoreOnboardingStepTypeTransformer().decode(value);
         case 'StoreSourceLinkModel':

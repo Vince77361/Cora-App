@@ -254,6 +254,25 @@ export class StoresService {
     return store;
   }
 
+  // 오퍼 모듈이 받은 오퍼 카드와 알림 대상을 만들 때 쓴다. 공개된 가게가 아니면 null.
+  async getOfferCard(storeId: string): Promise<{
+    ownerId: string;
+    summary: StoreSummaryModel;
+    intro: string | null;
+    bestShootingTime: string | null;
+  } | null> {
+    const store = UUID.test(storeId)
+      ? await this.stores.findPublishedById(storeId)
+      : null;
+    if (!store) return null;
+    return {
+      ownerId: store.ownerId,
+      summary: this.toSummary(store),
+      intro: store.intro,
+      bestShootingTime: store.bestShootingTime,
+    };
+  }
+
   private async requireMine(userId: string): Promise<StoreWithLinks> {
     const store = await this.stores.findActiveByOwnerId(userId);
     if (!store) throw new AppError('NOT_FOUND', '가게를 먼저 만들어 주세요.');

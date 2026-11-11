@@ -8,6 +8,7 @@ import { CreatorsModule } from './creators/creators.module';
 import { loadEnv } from './config/env';
 import { HealthModule } from './health/health.module';
 import { IntegrationsModule } from './integrations/integrations.module';
+import { OffersModule } from './offers/offers.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StoresModule } from './stores/stores.module';
 import { UploadsModule } from './uploads/uploads.module';
@@ -27,6 +28,7 @@ import { UsersModule } from './users/users.module';
     StoresModule,
     ContentDraftsModule,
     ApplicationsModule,
+    OffersModule,
   ],
 })
 export class AppModule {}

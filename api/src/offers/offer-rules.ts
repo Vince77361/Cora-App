@@ -8,8 +8,14 @@ export const DECLINE_UNDO_SECONDS = 30;
 const SECOND_MS = 1000;
 const DAY_MS = 24 * 60 * 60 * SECOND_MS;
 
-export type OfferView =
-  'WAITING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'CANCELLED';
+export const OFFER_VIEWS = [
+  'WAITING',
+  'ACCEPTED',
+  'DECLINED',
+  'EXPIRED',
+  'CANCELLED',
+] as const;
+export type OfferView = (typeof OFFER_VIEWS)[number];
 
 // 규칙이 보는 오퍼의 필드만. Prisma Offer 행이 그대로 들어간다.
 export interface OfferTimes {
