@@ -12,7 +12,9 @@ import {
 } from '../notifications/notifications.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
+import { JobHandlerRegistry } from '../jobs/job-handler-registry';
 import { FakeClock } from '../../test/support/fake-clock';
+import { FakeJobScheduler } from '../../test/support/fake-job-scheduler';
 import {
   InSameTransaction,
   OfferRow,
@@ -162,7 +164,11 @@ class FakeOffersRepository extends OffersRepository {
     const row = this.rows.find((r) => r.id === id);
     if (row?.status !== from) return false;
     row.status = 'EXPIRED';
-    await alongWith?.(null as never);
+    // 실제 저장소처럼 같은 트랜잭션의 할 일이 false면 만료까지 되돌린다.
+    if ((await alongWith?.(null as never)) === false) {
+      row.status = from;
+      return false;
+    }
     return true;
   }
 }
@@ -367,6 +373,7 @@ describe('OffersService', () => {
   let applications: FakeApplications;
   let push: FakeNotifications;
   let clock: FakeClock;
+  let jobs: FakeJobScheduler;
   let service: OffersService;
   const REELS = {
     creatorId: CREATOR,
@@ -382,6 +389,7 @@ describe('OffersService', () => {
     applications = new FakeApplications();
     push = new FakeNotifications();
     clock = new FakeClock(T0);
+    jobs = new FakeJobScheduler(new JobHandlerRegistry());
     service = new OffersService(
       repo,
       users,
@@ -390,6 +398,7 @@ describe('OffersService', () => {
       new FakeCreators(),
       collaborations,
       push,
+      jobs,
       clock,
     );
   });
@@ -621,6 +630,231 @@ describe('OffersService', () => {
         rewardType: 'VOUCHER',
       });
       expect(list[0].receivedAt).toBe(T0.toISOString());
+    });
+  });
+
+  describe('scheduled jobs', () => {
+    const SECOND = 1000;
+    let id: string;
+    beforeEach(async () => {
+      id = (await service.send(OWNER, { ...REELS })).id;
+      push.sent.length = 0;
+      users.role = 'CREATOR';
+    });
+
+    // 조회수 보상만 있는 오퍼를 수락해 결제 대기 협업을 만든다.
+    async function acceptPerView(): Promise<string> {
+      users.role = 'STORE';
+      await service.cancel(OWNER, id);
+      const perView = await service.send(OWNER, {
+        creatorId: CREATOR,
+        format: 'REELS',
+        rewardType: 'PER_VIEW',
+      });
+      users.role = 'CREATOR';
+      await service.accept(CREATOR, perView.id);
+      return perView.id;
+    }
+
+    it('schedules the decline notice 30 seconds after the decline', async () => {
+      await service.decline(CREATOR, id);
+      expect(jobs.pending()).toMatchObject([
+        {
+          name: 'decline-notice',
+          payload: { offerId: id },
+          runAt: new Date(T0.getTime() + 30 * SECOND),
+          jobKey: `decline:${id}`,
+        },
+      ]);
+    });
+
+    it('cancels the decline notice on undo and schedules it again on a new decline', async () => {
+      await service.decline(CREATOR, id);
+      clock.advance(10 * SECOND);
+      await service.undoDecline(CREATOR, id);
+      expect(jobs.pending()).toEqual([]);
+
+      clock.advance(10 * SECOND);
+      await service.decline(CREATOR, id);
+      expect(jobs.pending()).toMatchObject([
+        {
+          jobKey: `decline:${id}`,
+          runAt: new Date(clock.now().getTime() + 30 * SECOND),
+        },
+      ]);
+    });
+
+    it('keeps the decline saved when scheduling fails', async () => {
+      jest.spyOn(jobs, 'schedule').mockRejectedValueOnce(new Error('redis'));
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      await expect(service.decline(CREATOR, id)).resolves.toMatchObject({
+        view: 'DECLINED',
+      });
+      expect(warn).toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it('notifies the owner 30 seconds after a decline', async () => {
+      await service.decline(CREATOR, id);
+      clock.advance(30 * SECOND);
+      await service.sendDeclineNotice(id);
+      expect(push.sent).toEqual([
+        {
+          userId: OWNER,
+          role: 'STORE',
+          kind: 'OFFER_DECLINED',
+          actor: {
+            userId: CREATOR,
+            name: '하루 한 컵',
+            photoPath: 'creators/haru.jpg',
+          },
+          target: { kind: 'STORE_SENT_OFFERS', id: null },
+          dedupeKey: `decline:${id}`,
+        },
+      ]);
+    });
+
+    it('closes the linked application when the decline notice runs', async () => {
+      const linked = repo.rows.find((r) => r.id === id);
+      Object.assign(linked as OfferRow, { applicationId: 'app-1' });
+      repo.appStatus.set('app-1', 'OFFERED');
+      await service.decline(CREATOR, id);
+      clock.advance(30 * SECOND);
+      await service.sendDeclineNotice(id);
+      expect(applications.closed).toEqual(['app-1']);
+    });
+
+    it('does not notify when the decline was undone', async () => {
+      await service.decline(CREATOR, id);
+      await service.undoDecline(CREATOR, id);
+      clock.advance(30 * SECOND);
+      await service.sendDeclineNotice(id);
+      expect(push.sent).toEqual([]);
+    });
+
+    it('does not notify while the undo window of the current decline is still open', async () => {
+      await service.decline(CREATOR, id);
+      clock.advance(10 * SECOND);
+      await service.undoDecline(CREATOR, id);
+      clock.advance(10 * SECOND);
+      await service.decline(CREATOR, id);
+      // 처음 거절의 30초 뒤에 오래된 작업이 돌아도, 지금 거절의 30초는 끝나지 않았다.
+      clock.advance(15 * SECOND);
+      await service.sendDeclineNotice(id);
+      expect(push.sent).toEqual([]);
+    });
+
+    it('sends the decline notice with the same dedupe key when run twice', async () => {
+      await service.decline(CREATOR, id);
+      clock.advance(30 * SECOND);
+      await service.sendDeclineNotice(id);
+      await service.sendDeclineNotice(id);
+      expect(push.sent.map((n) => n.dedupeKey)).toEqual([
+        `decline:${id}`,
+        `decline:${id}`,
+      ]);
+    });
+
+    it('lets a failing notification fail the decline notice so the queue retries', async () => {
+      await service.decline(CREATOR, id);
+      clock.advance(30 * SECOND);
+      push.fail = true;
+      await expect(service.sendDeclineNotice(id)).rejects.toThrow(
+        'notify down',
+      );
+    });
+
+    it('does nothing for a missing offer', async () => {
+      await service.sendDeclineNotice(randomUUID());
+      await service.expireUnpaid(randomUUID());
+      expect(push.sent).toEqual([]);
+    });
+
+    it('schedules the payment due expiry at the due time for a per-view offer', async () => {
+      const offerId = await acceptPerView();
+      expect(jobs.pending()).toMatchObject([
+        {
+          name: 'payment-due-expiry',
+          payload: { offerId },
+          runAt: new Date(T0.getTime() + 3 * DAY),
+          jobKey: `payment-due:${offerId}`,
+        },
+      ]);
+    });
+
+    it('schedules no payment due expiry for a voucher-only offer', async () => {
+      await service.accept(CREATOR, id);
+      expect(jobs.pending()).toEqual([]);
+    });
+
+    it('keeps the accept saved when scheduling the expiry fails', async () => {
+      users.role = 'STORE';
+      await service.cancel(OWNER, id);
+      const perView = await service.send(OWNER, {
+        creatorId: CREATOR,
+        format: 'REELS',
+        rewardType: 'PER_VIEW',
+      });
+      users.role = 'CREATOR';
+      jest.spyOn(jobs, 'schedule').mockRejectedValueOnce(new Error('redis'));
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      await expect(service.accept(CREATOR, perView.id)).resolves.toMatchObject({
+        view: 'ACCEPTED',
+      });
+      expect(collaborations.rows[0].stage).toBe('AWAITING_PAYMENT');
+      warn.mockRestore();
+    });
+
+    it('expires an unpaid accepted offer and cancels its collaboration at the due time', async () => {
+      const offerId = await acceptPerView();
+      clock.advance(3 * DAY);
+      await service.expireUnpaid(offerId);
+      expect(repo.rows.find((r) => r.id === offerId)?.status).toBe('EXPIRED');
+      expect(collaborations.rows[0].stage).toBe('CANCELLED');
+    });
+
+    it('does nothing before the due time', async () => {
+      const offerId = await acceptPerView();
+      clock.advance(3 * DAY - SECOND);
+      await service.expireUnpaid(offerId);
+      expect(repo.rows.find((r) => r.id === offerId)?.status).toBe('ACCEPTED');
+      expect(collaborations.rows[0].stage).toBe('AWAITING_PAYMENT');
+    });
+
+    it('does nothing when the offer was paid before the due time', async () => {
+      const offerId = await acceptPerView();
+      // 결제가 승인되면 협업은 FUNDED가 되고 오퍼의 결제 기한은 지워진다(오퍼는 ACCEPTED 그대로).
+      collaborations.rows[0].stage = 'FUNDED';
+      const offer = repo.rows.find((r) => r.id === offerId) as OfferRow;
+      offer.paymentDueAt = null;
+      clock.advance(3 * DAY);
+      await service.expireUnpaid(offerId);
+      expect(offer.status).toBe('ACCEPTED');
+      expect(collaborations.rows[0].stage).toBe('FUNDED');
+    });
+
+    it('keeps an offer whose collaboration was funded even if the due time was not cleared', async () => {
+      const offerId = await acceptPerView();
+      collaborations.rows[0].stage = 'FUNDED';
+      clock.advance(3 * DAY);
+      await service.expireUnpaid(offerId);
+      expect(repo.rows.find((r) => r.id === offerId)?.status).toBe('ACCEPTED');
+      expect(collaborations.rows[0].stage).toBe('FUNDED');
+    });
+
+    it('does nothing when run twice', async () => {
+      const offerId = await acceptPerView();
+      clock.advance(3 * DAY);
+      const advance = jest.spyOn(collaborations, 'advanceByOffer');
+      await service.expireUnpaid(offerId);
+      await service.expireUnpaid(offerId);
+      expect(advance).toHaveBeenCalledTimes(1);
+      expect(repo.rows.find((r) => r.id === offerId)?.status).toBe('EXPIRED');
+      expect(collaborations.rows[0].stage).toBe('CANCELLED');
     });
   });
 });

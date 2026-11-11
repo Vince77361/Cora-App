@@ -1,6 +1,9 @@
 import { INestApplication } from '@nestjs/common';
 import { JobHandlerRegistry } from '../src/jobs/job-handler-registry';
-import { JobScheduler } from '../src/jobs/job-scheduler';
+import {
+  CollaborationJobPayload,
+  JobScheduler,
+} from '../src/jobs/job-scheduler';
 import { PaymentPort } from '../src/integrations/payment/payment.port';
 import { createTestApp } from './helpers/create-test-app';
 import { FakeJobScheduler } from './support/fake-job-scheduler';
@@ -26,7 +29,7 @@ describe('job queue in the test app', () => {
     const fake = new FakeJobScheduler(isolated);
     const ran: string[] = [];
     isolated.register('decline-notice', (p) => {
-      ran.push(p.collaborationId);
+      ran.push((p as CollaborationJobPayload).collaborationId);
       return Promise.resolve();
     });
     const at = new Date('2026-11-12T00:00:00.000Z');

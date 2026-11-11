@@ -9,6 +9,7 @@ import { CollaborationsRepository } from '../collaborations/collaborations.repos
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
+import { JobScheduler } from '../jobs/job-scheduler';
 import {
   NotificationsService,
   NotifyInput,
@@ -30,7 +31,11 @@ import {
   viewForCreator,
   viewForStore,
 } from './offer-rules';
-import { OfferRow, OffersRepository } from './offers.repository';
+import {
+  InSameTransaction,
+  OfferRow,
+  OffersRepository,
+} from './offers.repository';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -48,6 +53,7 @@ export class OffersService {
     private readonly creators: CreatorsService,
     private readonly collaborations: CollaborationsRepository,
     private readonly notifications: NotificationsService,
+    private readonly jobs: JobScheduler,
     private readonly clock: Clock,
   ) {}
 
@@ -267,6 +273,15 @@ export class OffersService {
       throw this.alreadyHandled();
     }
 
+    // 결제할 것이 있으면 기한에 만료 작업을 올린다. 올리지 못해도 화면은 읽을 때 만료로 맞는다.
+    if (initial.paymentDueAt) {
+      await this.schedule(
+        'payment-due-expiry',
+        row.id,
+        initial.paymentDueAt,
+        `payment-due:${row.id}`,
+      );
+    }
     const collaboration = await this.collaborations.findByOfferId(row.id);
     const actor = (await this.creators.getActor(userId)) ?? {
       userId,
@@ -305,6 +320,13 @@ export class OffersService {
       await this.settleLatest(row.id, now);
       throw this.alreadyHandled();
     }
+    // 30초 안에 되돌리지 않으면 사장님에게 알린다. 되돌리면 취소하고, 다시 거절하면 다시 올린다.
+    await this.schedule(
+      'decline-notice',
+      row.id,
+      new Date(now.getTime() + DECLINE_UNDO_SECONDS * 1000),
+      `decline:${row.id}`,
+    );
     return this.reload(userId, row.id, card, now);
   }
 
@@ -322,7 +344,43 @@ export class OffersService {
     if (!(await this.offers.undoDecline(row.id, userId, now))) {
       throw this.alreadyHandled();
     }
+    // 취소하지 못해 작업이 남아도 처리기가 오퍼의 현재 상태를 보고 아무것도 하지 않는다.
+    await this.cancelJob(`decline:${row.id}`);
     return this.reload(userId, row.id, card, now);
+  }
+
+  // 작업 큐가 거절 30초 뒤에 부른다. 지금도 거절 상태이고 지금 거절의 되돌리기 시간이 지났을 때만 알린다
+  // (되돌렸다가 다시 거절했으면 오래된 작업은 아무것도 하지 않는다). 알림이 실패하면 던져서 큐가 다시 시도하게
+  // 하고, 중복 방지 키가 두 번째 알림을 막는다.
+  async sendDeclineNotice(offerId: string): Promise<void> {
+    const row = await this.offers.findById(offerId);
+    const now = this.clock.now();
+    if (!row || row.status !== 'DECLINED' || canUndoDecline(row, now)) return;
+    // 연결된 지원은 거절이 확정된 지금 닫는다(목록을 읽을 때 닫는 것과 같은 길).
+    await this.settle(row, now);
+    const card = await this.stores.getOfferCard(row.storeId);
+    if (!card) return;
+    const actor = (await this.creators.getActor(row.creatorId)) ?? {
+      userId: row.creatorId,
+      name: '크리에이터',
+      photoPath: null,
+    };
+    await this.notifications.notify({
+      userId: card.ownerId,
+      role: 'STORE',
+      kind: 'OFFER_DECLINED',
+      actor,
+      target: { kind: 'STORE_SENT_OFFERS', id: null },
+      dedupeKey: `decline:${row.id}`,
+    });
+  }
+
+  // 작업 큐가 결제 기한에 부른다. 읽을 때 만료와 같은 길(settle)을 쓰므로, 결제를 기다리는 협업이 아니면
+  // (결제 승인으로 기한이 지워졌거나 협업이 이미 넘어갔으면) 아무것도 하지 않고, 두 번 돌아도 같다.
+  async expireUnpaid(offerId: string): Promise<void> {
+    const row = await this.offers.findById(offerId);
+    if (row?.status !== 'ACCEPTED') return;
+    await this.settle(row, this.clock.now());
   }
 
   // 사장님 홈의 숫자 세 개. 목록과 같은 정리를 거친 뒤 센다.
@@ -352,19 +410,26 @@ export class OffersService {
     let current: OfferRow | null = row;
     const target = storedStatusAt(row, now);
     if (target !== row.status) {
-      // 결제를 기다리던 수락 오퍼가 기한을 넘겨 만료되면 연결된 협업도 같은 트랜잭션에서 취소한다.
-      const alongWith =
-        row.status === 'ACCEPTED' && target === 'EXPIRED'
-          ? async (tx: Prisma.TransactionClient) => {
-              await this.collaborations.advanceByOffer(
-                row.id,
-                'AWAITING_PAYMENT',
-                'CANCELLED',
-                {},
-                tx,
-              );
-            }
-          : undefined;
+      // 결제를 기다리던 수락 오퍼가 기한을 넘겨 만료되면 연결된 협업도 같은 트랜잭션에서 취소한다(오퍼 → 협업 순).
+      // 협업이 이미 결제 대기를 지났으면(결제 승인) 오퍼를 만료하지 않는다. 읽은 뒤 결제가 승인돼
+      // 협업 이동이 0행이면 오퍼 만료까지 되돌린다. 협업이 아직 없는 옛 수락은 오퍼만 만료한다.
+      let alongWith: InSameTransaction | undefined;
+      if (row.status === 'ACCEPTED' && target === 'EXPIRED') {
+        const collaboration = await this.collaborations.findByOfferId(row.id);
+        if (collaboration && collaboration.stage !== 'AWAITING_PAYMENT') {
+          return current;
+        }
+        if (collaboration) {
+          alongWith = (tx) =>
+            this.collaborations.advanceByOffer(
+              row.id,
+              'AWAITING_PAYMENT',
+              'CANCELLED',
+              {},
+              tx,
+            );
+        }
+      }
       current = (await this.offers.expire(row.id, row.status, alongWith))
         ? { ...row, status: target }
         : await this.offers.findById(row.id);
@@ -454,6 +519,32 @@ export class OffersService {
     const card = await this.card(storeId);
     if (!card) throw this.notFound();
     return card;
+  }
+
+  // 작업을 올리거나 지우지 못해도 이미 저장된 변경은 유효하다. 화면은 읽을 때 계산으로 맞고, 처리기는 오퍼의 현재 상태를 본다.
+  private async schedule(
+    name: 'decline-notice' | 'payment-due-expiry',
+    offerId: string,
+    runAt: Date,
+    jobKey: string,
+  ): Promise<void> {
+    try {
+      await this.jobs.schedule(name, { offerId }, runAt, jobKey);
+    } catch (error) {
+      this.logger.warn(
+        `오퍼 작업을 올리지 못했어요(${name}): ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
+  }
+
+  private async cancelJob(jobKey: string): Promise<void> {
+    try {
+      await this.jobs.cancel(jobKey);
+    } catch (error) {
+      this.logger.warn(
+        `오퍼 작업을 지우지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
   }
 
   // 알림이 실패해도 이미 저장된 변경은 유효하다. 목록에서 볼 수 있다.

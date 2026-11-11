@@ -4,10 +4,12 @@ import { CollaborationStage, Prisma, PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
+import { JobScheduler } from '../src/jobs/job-scheduler';
 import { OffersRepository } from '../src/offers/offers.repository';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
+import { FakeJobScheduler } from './support/fake-job-scheduler';
 import { FakePushPort } from './support/fake-push.port';
 import { USER_A } from './support/fake-token-verifier';
 
@@ -74,6 +76,7 @@ describe('offers', () => {
   let server: ReturnType<typeof httpOf>;
   let push: FakePushPort;
   let clock: FakeClock;
+  let scheduler: FakeJobScheduler;
 
   const setRole = (role: 'STORE' | 'CREATOR' | 'BRAND') =>
     request(server).patch('/me/role').set(auth).send({ role }).expect(200);
@@ -221,10 +224,12 @@ describe('offers', () => {
     server = httpOf(app);
     push = app.get<FakePushPort>(PushPort);
     clock = app.get<FakeClock>(Clock);
+    scheduler = app.get<FakeJobScheduler>(JobScheduler);
   });
   beforeEach(async () => {
     await truncateTestDb(prisma);
     push.sent.length = 0;
+    scheduler.jobs.length = 0;
     clock.set(T0);
   });
   afterAll(async () => {
@@ -1247,6 +1252,155 @@ describe('offers', () => {
 
     it('forbids store-only actions', async () => {
       await send({ creatorId: randomUUID(), ...REELS_VOUCHER }).expect(403);
+    });
+
+    describe('scheduled jobs', () => {
+      const offerRow = (id: string) =>
+        prisma.offer.findUniqueOrThrow({ where: { id } });
+
+      it('notifies the owner 30 seconds after a decline and closes the linked application', async () => {
+        const applicationId = await seedApplication(
+          store.id,
+          USER_A,
+          'OFFERED',
+        );
+        const offer = await seedOffer(store.id, USER_A, { applicationId });
+        await decline(offer.id).expect(200);
+        expect(scheduler.pending()).toMatchObject([
+          { name: 'decline-notice', jobKey: `decline:${offer.id}` },
+        ]);
+
+        await scheduler.runDue(new Date(clock.now().getTime() + 29 * SECOND));
+        expect(await prisma.notification.count()).toBe(0);
+
+        clock.advance(30 * SECOND);
+        await scheduler.runDue(clock.now());
+        expect(await prisma.notification.findFirstOrThrow()).toMatchObject({
+          userId: store.ownerId,
+          role: 'STORE',
+          kind: 'OFFER_DECLINED',
+          actorUserId: USER_A,
+          actorName: PROFILE.displayName,
+          targetKind: 'STORE_SENT_OFFERS',
+          targetId: null,
+          dedupeKey: `decline:${offer.id}`,
+        });
+        expect(
+          (
+            await prisma.application.findUniqueOrThrow({
+              where: { id: applicationId },
+            })
+          ).status,
+        ).toBe('CLOSED');
+      });
+
+      it('does not notify when the decline was undone, even if the job runs', async () => {
+        const offer = await seedOffer(store.id, USER_A);
+        await decline(offer.id).expect(200);
+        clock.advance(10 * SECOND);
+        await undo(offer.id).expect(200);
+        expect(scheduler.pending()).toEqual([]);
+
+        // 취소가 실패해 작업이 남은 경우를 흉내 낸다: 처리기가 오퍼의 현재 상태를 보고 아무것도 하지 않는다.
+        await scheduler.schedule(
+          'decline-notice',
+          { offerId: offer.id },
+          clock.now(),
+          'stale',
+        );
+        clock.advance(30 * SECOND);
+        await scheduler.runDue(clock.now());
+        expect(await prisma.notification.count()).toBe(0);
+        expect((await offerRow(offer.id)).status).toBe('SENT');
+      });
+
+      it('sends one notice when the decline notice job runs twice', async () => {
+        const offer = await seedOffer(store.id, USER_A);
+        await decline(offer.id).expect(200);
+        clock.advance(30 * SECOND);
+        await scheduler.runDue(clock.now());
+        await scheduler.schedule(
+          'decline-notice',
+          { offerId: offer.id },
+          clock.now(),
+          'again',
+        );
+        await scheduler.runDue(clock.now());
+        expect(await prisma.notification.count()).toBe(1);
+      });
+
+      it('expires an unpaid accepted offer and cancels its collaboration at the due time', async () => {
+        const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
+        await accept(offer.id).expect(200);
+        const due = new Date(T0.getTime() + 3 * DAY);
+        expect(scheduler.pending()).toMatchObject([
+          {
+            name: 'payment-due-expiry',
+            runAt: due,
+            jobKey: `payment-due:${offer.id}`,
+          },
+        ]);
+
+        await scheduler.runDue(new Date(due.getTime() - SECOND));
+        expect((await offerRow(offer.id)).status).toBe('ACCEPTED');
+
+        clock.set(due);
+        await scheduler.runDue(clock.now());
+        expect((await offerRow(offer.id)).status).toBe('EXPIRED');
+        expect(
+          (
+            await prisma.collaboration.findUniqueOrThrow({
+              where: { offerId: offer.id },
+            })
+          ).stage,
+        ).toBe('CANCELLED');
+      });
+
+      it('does nothing when the offer was paid before the due time', async () => {
+        const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
+        await accept(offer.id).expect(200);
+        // 결제가 승인되면 협업은 FUNDED가 되고 오퍼의 결제 기한이 지워진다.
+        await prisma.collaboration.update({
+          where: { offerId: offer.id },
+          data: { stage: 'FUNDED', fundedAt: clock.now() },
+        });
+        await prisma.offer.update({
+          where: { id: offer.id },
+          data: { paymentDueAt: null },
+        });
+        clock.advance(3 * DAY);
+        await scheduler.runDue(clock.now());
+        expect((await offerRow(offer.id)).status).toBe('ACCEPTED');
+        expect(
+          (
+            await prisma.collaboration.findUniqueOrThrow({
+              where: { offerId: offer.id },
+            })
+          ).stage,
+        ).toBe('FUNDED');
+      });
+
+      it('does nothing when run twice', async () => {
+        const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
+        await accept(offer.id).expect(200);
+        clock.advance(3 * DAY);
+        await scheduler.runDue(clock.now());
+        await scheduler.schedule(
+          'payment-due-expiry',
+          { offerId: offer.id },
+          clock.now(),
+          'again',
+        );
+        await scheduler.runDue(clock.now());
+        expect((await offerRow(offer.id)).status).toBe('EXPIRED');
+        expect(
+          (
+            await prisma.collaboration.findUniqueOrThrow({
+              where: { offerId: offer.id },
+            })
+          ).stage,
+        ).toBe('CANCELLED');
+      });
     });
   });
 });

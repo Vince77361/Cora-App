@@ -4,6 +4,7 @@ import { FakeClock } from '../../test/support/fake-clock';
 import { FakeJobScheduler } from '../../test/support/fake-job-scheduler';
 import { BullMqJobScheduler, toBullJobId } from './bullmq-job-scheduler';
 import type { JobLike, JobQueue } from './bullmq-job-scheduler';
+import type { CollaborationJobPayload } from './job-scheduler';
 import { JobHandlerRegistry, NoJobHandlerError } from './job-handler-registry';
 
 const T0 = new Date('2026-11-11T00:00:00.000Z');
@@ -45,11 +46,11 @@ describe('FakeJobScheduler', () => {
     const registry = new JobHandlerRegistry();
     const ran: string[] = [];
     registry.register('decline-notice', (p) => {
-      ran.push(`decline:${p.collaborationId}`);
+      ran.push(`decline:${(p as CollaborationJobPayload).collaborationId}`);
       return Promise.resolve();
     });
     registry.register('settle', (p) => {
-      ran.push(`settle:${p.collaborationId}`);
+      ran.push(`settle:${(p as CollaborationJobPayload).collaborationId}`);
       return Promise.resolve();
     });
     return { scheduler: new FakeJobScheduler(registry), registry, ran };

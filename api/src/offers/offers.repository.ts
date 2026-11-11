@@ -222,15 +222,20 @@ export class OffersRepository {
   }
 
   // 오퍼 갱신(조건부)과 alongWith를 한 트랜잭션으로 묶는다. 갱신이 0행이면 alongWith는 부르지 않는다.
+  // alongWith가 없으면 문장 하나짜리 갱신이라 트랜잭션을 열지 않는다: 목록을 읽을 때 여러 오퍼를
+  // 동시에 정리하므로, 불필요한 대화형 트랜잭션이 연결을 붙잡아 풀이 마르는 것을 막는다.
   private async updateWith(
-    update: (tx: Prisma.TransactionClient) => Promise<{ count: number }>,
+    update: (client: Pick<Prisma.TransactionClient, 'offer'>) => Promise<{
+      count: number;
+    }>,
     alongWith?: InSameTransaction,
   ): Promise<boolean> {
+    if (!alongWith) return (await update(this.prisma)).count === 1;
     try {
       return await this.prisma.$transaction(async (tx) => {
         const { count } = await update(tx);
         if (count !== 1) return false;
-        if (alongWith && (await alongWith(tx)) === false) throw new Rollback();
+        if ((await alongWith(tx)) === false) throw new Rollback();
         return true;
       });
     } catch (error) {

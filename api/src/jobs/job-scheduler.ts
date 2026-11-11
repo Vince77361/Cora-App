@@ -1,6 +1,9 @@
 import type { JobName } from './job-names';
 
-export type JobPayload = { collaborationId: string; [k: string]: unknown };
+// 작업은 협업에 붙거나(결제 이후의 작업) 오퍼에 붙는다(오퍼가 협업을 만들기 전·없이 도는 작업: 거절 알림, 결제 기한 만료).
+export type CollaborationJobPayload = { collaborationId: string };
+export type OfferJobPayload = { offerId: string };
+export type JobPayload = CollaborationJobPayload | OfferJobPayload;
 
 // 작업 처리기. 다시 실행돼도 같은 결과를 내야 하고, 시각은 Clock에서 읽는다.
 export type JobHandler = (payload: JobPayload) => Promise<void>;
