@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/auth_repository.dart';
 import '../../domain/auth_repository_provider.dart';
+import '../auth_messages.dart';
 
 /// 로그인 화면을 떠나면 실패 상태도 함께 버리도록 autoDispose로 둔다.
 final loginViewModelProvider =
@@ -14,8 +15,19 @@ final loginViewModelProvider =
 ///
 /// 성공하면 세션이 바뀌고 라우터가 화면을 옮기므로 여기서 이동하지 않는다.
 class LoginViewModel extends AsyncNotifier<void> {
+  Timer? _failureTimer;
+
   @override
-  FutureOr<void> build() {}
+  FutureOr<void> build() {
+    ref.onDispose(() => _failureTimer?.cancel());
+  }
+
+  /// 실패 안내를 치운다. E2로 넘어갈 때 부른다(돌아왔을 때 옛 실패가 남지 않게).
+  void clearFailure() {
+    _failureTimer?.cancel();
+    _failureTimer = null;
+    if (state.hasError) state = const AsyncData(null);
+  }
 
   Future<void> signInWithKakao() => _submit((repo) => repo.signInWithKakao());
 
@@ -26,6 +38,7 @@ class LoginViewModel extends AsyncNotifier<void> {
   ) async {
     // 버튼을 두 번 눌러도 요청은 하나만 간다.
     if (state.isLoading) return;
+    _failureTimer?.cancel();
     final repo = ref.read(authRepositoryProvider);
     state = const AsyncLoading();
     try {
@@ -34,7 +47,10 @@ class LoginViewModel extends AsyncNotifier<void> {
       if (ref.mounted) state = const AsyncData(null);
     } catch (error, stackTrace) {
       // 실패의 종류는 저장소가 디버그 로그로 남긴다. 화면에는 정해진 문구를 보여 준다.
-      if (ref.mounted) state = AsyncError(error, stackTrace);
+      if (!ref.mounted) return;
+      state = AsyncError(error, stackTrace);
+      // 약관 줄을 자리에서 오래 치워 두지 않도록 잠깐만 보여 준다(E2의 안내와 같은 규칙).
+      _failureTimer = Timer(AuthMessages.noticeDuration, clearFailure);
     }
   }
 }

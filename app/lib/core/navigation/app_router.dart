@@ -8,6 +8,7 @@ import '../../features/auth/presentation/pages/phone_verify_page.dart';
 import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import '../../features/dev/presentation/pages/motion_gallery_page.dart';
 import '../../features/onboarding/presentation/pages/role_select_placeholder_page.dart';
+import '../config/app_config.dart';
 import '../config/app_config_provider.dart';
 import 'app_routes.dart';
 import 'cora_transitions.dart';
@@ -18,8 +19,8 @@ import 'cora_transitions.dart';
 /// 쌓여 있던 화면과 이동 기록이 모두 사라진다.
 final appRouterProvider = Provider<GoRouter>((ref) {
   final config = ref.watch(appConfigProvider);
-  // 운영으로 컴파일하면 컴파일 시점에 false라 개발 화면 코드가 앱 바이너리에서 빠진다.
-  final devScreens = config.devScreensEnabled;
+  // 개발 화면(`/dev/…`)은 운영으로 컴파일하면 상수 false로 막혀 앱 바이너리에서 빠진다.
+  final devScreens = kDevScreensCompiledIn && config.isDev;
 
   final auth = ValueNotifier<AsyncValue<AuthSession?>>(const AsyncLoading());
   ref.listen(
@@ -63,7 +64,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      if (devScreens)
+      if (kDevScreensCompiledIn && config.isDev)
         GoRoute(
           path: AppRoutes.devMotion,
           pageBuilder: (context, state) => CoraTransitions.push(
@@ -87,7 +88,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 ///   화면을 먼저 띄우면 저장된 세션이 있는 사람에게 로그인 화면이 깜빡인다.
 /// - 세션이 없으면 로그인(`/login`, `/login/verify`) 말고는 어디서든 `/login`.
 /// - 세션이 있는데 로그인 화면(또는 첫 화면)이면 `/role`.
-/// - 개발 환경의 `/dev/…`는 로그인과 상관없이 연다(로그인 화면의 "모션 갤러리"에서 들어간다).
+/// - 개발 환경의 `/dev/…`는 로그인과 상관없이 연다(E1의 로고를 길게 눌러 모션 갤러리로 들어간다).
 String? _authRedirect(
   AsyncValue<AuthSession?> auth,
   String path, {

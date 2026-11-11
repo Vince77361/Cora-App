@@ -136,9 +136,24 @@ void main() {
     expect(title.center.dx, closeTo(195, 0.5));
     final back = tester.getRect(find.byKey(PhoneVerifyPage.backKey));
     expect(back, const Rect.fromLTWH(8, 10, 44, 44));
+    // 세로 위치(캔버스 좌표): 머리글 64 + 16 → 제목 80, 제목 두 줄 72.8 + 8 → 설명 160.8,
+    // 설명 한 줄 20.3 + 28 → 휴대폰 칸 209.1, 칸 높이 74 + 10 → 인증번호 칸 293.1,
+    // 칸 60 + 10 + 위 여백 4 → `다시 보내기` 367.1.
+    final headline = tester.getRect(find.text('문자로 받은\n인증번호를 넣어주세요.'));
+    expect(headline.left, 24);
+    expect(headline.top, closeTo(80, 1));
+    expect(headline.height, closeTo(72.8, 1));
+    final description = tester.getRect(
+      find.byWidgetPredicate(
+        (w) => w is Text && w.style?.fontSize == 14 && w.data == '',
+      ),
+    );
+    expect(description.top, closeTo(160.8, 1));
     final phone = tester.getRect(find.byKey(PhoneVerifyPage.phoneFieldKey));
     expect(phone.left, 16);
     expect(phone.right, 374);
+    expect(phone.top, closeTo(209.1, 1));
+    expect(phone.height, closeTo(74, 1));
     final boxes = [
       for (var i = 0; i < 6; i++)
         tester.getRect(find.byKey(PhoneVerifyPage.codeBoxKey(i))),
@@ -147,12 +162,24 @@ void main() {
       expect(box.height, 60);
       expect(box.width, closeTo((358 - 5 * 8) / 6, 0.01));
     }
+    // 글자 줄 높이가 칸마다 1px 안팎으로 반올림되어 아래로 갈수록 오차가 조금 쌓인다.
+    expect(boxes.first.top, closeTo(293.1, 2));
     expect(boxes[1].left - boxes[0].right, closeTo(8, 0.01));
+    final resend = tester.getRect(find.byKey(PhoneVerifyPage.resendKey));
+    expect(resend.top, closeTo(367.1, 2));
+    expect(resend.height, 40);
+    expect(resend.right, 374 - 4);
     expect(boxes.first.top - phone.bottom, closeTo(10, 0.5));
     final keypad = tester.getRect(find.byKey(PhoneVerifyPage.keypadKey));
     expect(keypad.left, 16);
     expect(keypad.right, 374);
-    expect(tester.getSize(_key('5')).height, lessThanOrEqualTo(50));
+    // 키 한 칸(글자가 아니라 눌리는 상자)은 높이 50, 키패드는 4줄 + 간격 6 세 개 = 218.
+    final keyBox = find.ancestor(
+      of: _key('5'),
+      matching: find.byType(SizedBox),
+    );
+    expect(tester.getSize(keyBox.first).height, 50);
+    expect(keypad.height, 218);
     // 키패드 아래 14, 버튼 58, 버튼 아래 32.
     final button = tester.getRect(find.text(_notReady));
     expect(button.bottom, lessThan(844 - 32));
@@ -402,6 +429,29 @@ void main() {
     expect(_phoneValue(tester), '');
     expect(find.textContaining('보냈어요'), findsNothing);
   });
+
+  testWidgets(
+    'the delete key and the back arrow are single screen reader buttons',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _openVerify(tester);
+
+      expect(
+        tester.getSemantics(_labeled('지우기')),
+        matchesSemantics(
+          label: '지우기',
+          isButton: true,
+          hasTapAction: true,
+          hasEnabledState: false,
+        ),
+      );
+      expect(
+        tester.getSemantics(_labeled('뒤로')),
+        matchesSemantics(label: '뒤로', isButton: true, hasTapAction: true),
+      );
+      semantics.dispose();
+    },
+  );
 
   testWidgets('system back returns to E1', (tester) async {
     await _openVerify(tester);

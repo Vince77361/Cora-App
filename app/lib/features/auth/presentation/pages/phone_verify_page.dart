@@ -139,6 +139,7 @@ class _Header extends StatelessWidget {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Semantics(
+                  container: true,
                   button: true,
                   label: '뒤로',
                   excludeSemantics: true,
@@ -477,6 +478,7 @@ class _KeypadKey extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Semantics(
+      container: true,
       button: true,
       label: semanticLabel,
       excludeSemantics: true,

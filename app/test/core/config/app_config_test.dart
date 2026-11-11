@@ -16,9 +16,10 @@ void main() {
     expect(_config(CoraEnv.prod).isDev, isFalse);
   });
 
-  test('dev screens are enabled only in the dev environment', () {
-    expect(_config(CoraEnv.dev).devScreensEnabled, isTrue);
-    expect(_config(CoraEnv.prod).devScreensEnabled, isFalse);
+  test('dev screens are compiled in for test and dev builds', () {
+    // 테스트는 CORA_ENV=prod 없이 컴파일되므로 상수가 켜져 있다. 운영 빌드에서 이 상수가
+    // false가 되어 개발 화면이 빠지는지는 운영 AOT 빌드로 따로 확인한다(수정 라운드 1).
+    expect(kDevScreensCompiledIn, isTrue);
   });
 
   test('fromEnvironment rejects a missing CORA_ENV', () {

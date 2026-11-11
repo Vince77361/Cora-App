@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../core/config/app_config_provider.dart';
 import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
@@ -48,7 +49,7 @@ class LoginPage extends ConsumerWidget {
     final submit = ref.watch(loginViewModelProvider);
     final busy = submit.isLoading;
     final failed = submit.hasError && !busy;
-    final devScreens = ref.watch(appConfigProvider).devScreensEnabled;
+    final isDev = ref.watch(appConfigProvider).isDev;
     final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
     final vm = ref.read(loginViewModelProvider.notifier);
 
@@ -89,7 +90,7 @@ class LoginPage extends ConsumerWidget {
                           // 캔버스 그대로 두려고 따로 버튼을 두지 않았다.
                           GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onLongPress: devScreens
+                            onLongPress: kDevScreensCompiledIn && isDev
                                 ? () => context.push(AppRoutes.devMotion)
                                 : null,
                             child: const CoraLogo.hero(),
@@ -117,7 +118,11 @@ class LoginPage extends ConsumerWidget {
                     label: '휴대폰 번호로 시작하기',
                     onPressed: busy
                         ? null
-                        : () => context.push(AppRoutes.loginVerify),
+                        : () {
+                            // 돌아왔을 때 옛 실패 안내가 남아 약관 줄을 가리지 않게 치운다.
+                            vm.clearFailure();
+                            context.push(AppRoutes.loginVerify);
+                          },
                   ),
                   const SizedBox(height: 8),
                   _SocialButton(
@@ -133,8 +138,9 @@ class LoginPage extends ConsumerWidget {
                     label: '네이버로 계속하기',
                     onTap: busy ? null : vm.signInWithNaver,
                   ),
-                  const SizedBox(height: 6),
-                  // 실패하면 약관 줄 자리에 안내가 대신 보인다(캔버스에 없는 상태).
+                  // 캔버스: 컬럼 간격 8 + 약관 문구의 위 여백 6(둘은 겹치지 않고 더해진다).
+                  const SizedBox(height: 14),
+                  // 실패하면 3초 동안 약관 줄 자리에 안내가 대신 보인다(캔버스에 없는 상태).
                   failed
                       ? Semantics(
                           liveRegion: true,

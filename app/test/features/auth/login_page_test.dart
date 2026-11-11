@@ -81,9 +81,13 @@ void main() {
     expect(naver.height, 56);
     expect(kakao.top - phone.bottom, 8);
     expect(naver.top - kakao.bottom, 8);
+    // 캔버스 위치: 휴대폰 592.8, 카카오 658.8, 네이버 722.8(컬럼 간격 8 + 약관 위 여백 6 = 14).
+    expect(phone.top, closeTo(592.8, 1));
+    expect(kakao.top, closeTo(658.8, 1));
+    expect(naver.top, closeTo(722.8, 1));
     final terms = tester.getRect(find.text(_terms, findRichText: true));
     expect(terms.bottom, closeTo(844 - 32, 0.5));
-    expect(terms.top - naver.bottom, closeTo(6, 0.5));
+    expect(terms.top - naver.bottom, closeTo(14, 0.5));
   });
 
   testWidgets('the photo box shrinks on a short screen but stays under 420', (
@@ -259,6 +263,47 @@ void main() {
 
     expect(auth.naverCalls, 2);
     expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+  });
+
+  testWidgets(
+    'the failure message goes away after 3 seconds and the terms return',
+    (tester) async {
+      final auth = FakeAuthRepository()
+        ..signInError = const AuthFailure.network();
+      await _pumpLogin(tester, auth: auth);
+
+      await tester.tap(find.text('카카오로 계속하기'));
+      await tester.pumpAndSettle();
+      expect(find.text(_tryLater), findsOneWidget);
+      expect(find.text(_terms, findRichText: true), findsNothing);
+
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text(_tryLater), findsOneWidget);
+      await tester.pump(const Duration(seconds: 2));
+
+      expect(find.text(_tryLater), findsNothing);
+      expect(find.text(_terms, findRichText: true), findsOneWidget);
+    },
+  );
+
+  testWidgets('going to E2 and back leaves the terms line, not the failure', (
+    tester,
+  ) async {
+    final auth = FakeAuthRepository()
+      ..signInError = const AuthFailure.network();
+    await _pumpLogin(tester, auth: auth);
+    await tester.tap(find.text('네이버로 계속하기'));
+    await tester.pumpAndSettle();
+    expect(find.text(_tryLater), findsOneWidget);
+
+    await tester.tap(find.text('휴대폰 번호로 시작하기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(PhoneVerifyPage.backKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginPage), findsOneWidget);
+    expect(find.text(_tryLater), findsNothing);
+    expect(find.text(_terms, findRichText: true), findsOneWidget);
   });
 
   testWidgets('long pressing the logo opens the gallery in dev only', (

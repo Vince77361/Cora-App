@@ -49,7 +49,7 @@ class SecureSessionStorage extends LocalStorage {
 
 /// PKCE 로그인 중간값(code verifier)을 보안 저장소에 두는 [GotrueAsyncStorage].
 ///
-/// 지금은 이메일 로그인만 쓰지만 카카오·애플 OAuth가 붙으면 이 값이 생긴다. 그때 기본
+/// 지금은 가짜 인증(이메일 로그인)만 쓰지만 카카오·네이버 OAuth가 붙으면 이 값이 생긴다. 그때 기본
 /// 저장소(평문 설정)로 새지 않도록 미리 같은 곳에 둔다.
 class SecureGotrueAsyncStorage extends GotrueAsyncStorage {
   const SecureGotrueAsyncStorage({required this._store});

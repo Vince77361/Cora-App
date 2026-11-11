@@ -7,9 +7,10 @@ enum CoraEnv { dev, prod }
 enum AuthAdapter { fake, real }
 
 /// 운영 빌드(`CORA_ENV=prod`로 컴파일)에서는 컴파일 시점에 false다. 개발용 화면을 쓰는
-/// 자리마다 이 상수로 먼저 막아 두면 컴파일러가 그 화면 코드를 앱 바이너리에서 뺀다.
-/// 실행 중의 판단은 [AppConfig.devScreensEnabled]가 한다.
-const _devScreensCompiledIn = String.fromEnvironment('CORA_ENV') != 'prod';
+/// 자리마다 `if (kDevScreensCompiledIn && config.isDev)`처럼 이 상수를 식 안에 직접 써서
+/// 막아 두면 컴파일러가 그 화면 코드를 앱 바이너리에서 뺀다(getter나 지역 변수를 거치면
+/// 이 보장이 약해진다). 실행 중의 판단은 `config.isDev`가 한다.
+const kDevScreensCompiledIn = String.fromEnvironment('CORA_ENV') != 'prod';
 
 /// 빌드 시점에 `--dart-define`(또는 `--dart-define-from-file`)으로 받는 앱 설정.
 class AppConfig {
@@ -44,9 +45,6 @@ class AppConfig {
   final AuthAdapter authAdapter;
 
   bool get isDev => env == CoraEnv.dev;
-
-  /// 모션 갤러리 같은 개발용 화면을 쓸 수 있는지. 운영으로 컴파일하면 항상 false다.
-  bool get devScreensEnabled => _devScreensCompiledIn && isDev;
 
   /// `AUTH_ADAPTER` 값을 읽는다. 개발에서는 비어 있으면 가짜 인증이다. 운영에서 비어 있으면
   /// 조용히 하나로 흘러가지 않도록 던진다.

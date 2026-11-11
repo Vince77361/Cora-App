@@ -5,4 +5,7 @@ abstract final class AuthMessages {
 
   /// 네트워크 등 그 밖의 실패. E1은 약관 줄 자리에, E2는 남은 시간 줄 자리에 보인다.
   static const tryLater = '잠시 후 다시 시도해 주세요.';
+
+  /// 실패 안내를 보여 주는 시간. 지나면 원래 문구(E1은 약관, E2는 남은 시간)로 돌아간다.
+  static const noticeDuration = Duration(seconds: 3);
 }

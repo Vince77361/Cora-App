@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/time/clock.dart';
 import '../../domain/auth_repository.dart';
 import '../../domain/auth_repository_provider.dart';
+import '../auth_messages.dart';
 
 /// E2를 떠나면(뒤로 가기) 입력과 타이머를 함께 버리도록 autoDispose로 둔다.
 final phoneVerifyViewModelProvider =
@@ -79,9 +80,6 @@ class PhoneVerifyState {
 class PhoneVerifyViewModel extends AsyncNotifier<PhoneVerifyState> {
   /// 인증번호 유효 시간.
   static const codeLifetime = Duration(minutes: 3);
-
-  /// 안내 문구를 보여 주는 시간.
-  static const noticeDuration = Duration(seconds: 3);
 
   static const _prefix = '010';
 
@@ -234,7 +232,7 @@ class PhoneVerifyViewModel extends AsyncNotifier<PhoneVerifyState> {
   void _showNotice(PhoneVerifyNotice notice) {
     _noticeTimer?.cancel();
     _emit(_current.copyWith(notice: notice));
-    _noticeTimer = Timer(noticeDuration, () {
+    _noticeTimer = Timer(AuthMessages.noticeDuration, () {
       if (ref.mounted) _emit(_current.copyWith(clearNotice: true));
     });
   }
