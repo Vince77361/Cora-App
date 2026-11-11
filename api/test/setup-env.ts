@@ -1,6 +1,5 @@
-// e2e는 api/.env 없이도 돌아야 하므로 필요한 값을 명백히 가짜인 값으로 채운다.
+// DATABASE_URL/DIRECT_URL은 여기서 정하지 않는다. scripts/with-test-db.js가
+// api/.env의 TEST_* 값을 옮겨 주므로 e2e도 cora_test 스키마를 쓴다.
 process.env.NODE_ENV = 'test';
-process.env.DATABASE_URL = 'postgresql://fake:fake@localhost:6543/fake';
-process.env.DIRECT_URL = 'postgresql://fake:fake@localhost:5432/fake';
 process.env.SUPABASE_URL = 'https://fake.supabase.co';
 process.env.PUSH_ADAPTER = 'fake';

@@ -20,3 +20,9 @@
 2. Authentication → 이메일 로그인의 "Confirm email"을 끈다(개발용 로그인에 메일 인증을 요구하지 않기 위해).
 3. `api/.env.example`을 `api/.env`로 복사해 값을 채운다. `app/config/dev.example.json`을 `app/config/dev.json`으로 복사해 값을 채운다.
 4. `docker compose up -d`
+
+## DB 규칙
+
+테이블을 추가하는 마이그레이션에는 `ENABLE ROW LEVEL SECURITY`를 반드시 넣는다. 빠뜨리면 `yarn test:db`가 실패한다.
+
+`yarn test:db`와 `yarn test:e2e`는 원격 개발 DB의 `cora_test` 스키마에서 돌기 때문에 인터넷 연결이 필요하다. 개발 DB(`public`)의 RLS 상태는 `yarn check:rls`로 확인한다.

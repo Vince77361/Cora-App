@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// DATABASE_URL은 Supavisor 풀링 연결(런타임), DIRECT_URL은 마이그레이션처럼 풀러를 거치면 안 되는 작업용이다.
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  STORE
+  BRAND
+  CREATOR
+
+  @@map("user_role")
+}
+
+model User {
+  // Supabase Auth 사용자 ID와 같은 값을 쓰므로 기본값을 만들지 않는다.
+  id        String    @id @db.Uuid
+  role      UserRole?
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  @@map("users")
+}
