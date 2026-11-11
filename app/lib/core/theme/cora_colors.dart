@@ -21,6 +21,14 @@ class CoraColors extends ThemeExtension<CoraColors> {
     required this.onSelectionDot,
     required this.glass,
     required this.scrim,
+    required this.photoPlaceholder,
+    required this.onPhoto,
+    required this.photoChip,
+    required this.onPhotoChip,
+    required this.photoScrim,
+    required this.subtleAction,
+    required this.onSubtleAction,
+    required this.focusRing,
   });
 
   final Color background;
@@ -46,6 +54,28 @@ class CoraColors extends ThemeExtension<CoraColors> {
   /// 다크에서 `text`(#F2F3F5)를 쓰면 오히려 밝아지므로 따로 둔다.
   final Color scrim;
 
+  /// 사진이 뜨기 전 사진 상자의 바탕(NLogin). 라이트·다크가 같다.
+  final Color photoPlaceholder;
+
+  /// 사진 위에 얹는 글자(NLogin 사진 아래 문구). 사진은 모드와 상관없이 같으므로 늘 흰색이다.
+  final Color onPhoto;
+
+  /// 사진 위의 알약 바탕(NLogin `#민의옷장기록 · 릴스 0:30`)과 그 위 글자.
+  final Color photoChip;
+  final Color onPhotoChip;
+
+  /// 사진 아래쪽을 어둡게 눕히는 그라데이션의 끝 색(NLogin). 시작은 같은 색의 투명이다.
+  final Color photoScrim;
+
+  /// 작은 보조 버튼의 채움과 그 위 글자(NVerify `다시 보내기`). `surfaceMuted`와 달리
+  /// 다크에서는 어두운 채움(#2A2D33)에 밝은 글자다.
+  final Color subtleAction;
+  final Color onSubtleAction;
+
+  /// 지금 입력할 칸의 안쪽 테두리(NVerify 인증번호 칸). 캔버스가 다크에서도 #17181C를 그대로
+  /// 써서 다크에서는 거의 보이지 않는다. 캔버스를 그대로 옮긴 값이다.
+  final Color focusRing;
+
   static const light = CoraColors(
     background: Color(0xFFFFFFFF),
     text: Color(0xFF17181C),
@@ -66,6 +96,16 @@ class CoraColors extends ThemeExtension<CoraColors> {
     glass: Color(0xBFFFFFFF),
     // 캔버스의 그림자·사진 덮개 잉크 rgba(23,24,28)
     scrim: Color(0xFF17181C),
+    // NLogin: 사진 상자 #E8DDCB, 알약 rgba(255,255,255,0.92), 그라데이션 끝 rgba(23,24,28,0.6)
+    photoPlaceholder: Color(0xFFE8DDCB),
+    onPhoto: Color(0xFFFFFFFF),
+    photoChip: Color(0xEBFFFFFF),
+    onPhotoChip: Color(0xFF17181C),
+    photoScrim: Color(0x9917181C),
+    // NVerify `다시 보내기` #F2F3F5 / #17181C, 입력 칸 테두리 #17181C
+    subtleAction: Color(0xFFF2F3F5),
+    onSubtleAction: Color(0xFF17181C),
+    focusRing: Color(0xFF17181C),
   );
 
   // 다크의 surface, surfaceMuted, onAccent는 DarkPrinciples/DarkNEscrow/DarkNStoreHome에서
@@ -94,6 +134,16 @@ class CoraColors extends ThemeExtension<CoraColors> {
     glass: Color(0xD91C1E22),
     // 다크 배경(#0F1012)보다 어두워야 덮었을 때 어두워진다. 캔버스의 rgba(0,0,0,…) 그림자와 같은 검정.
     scrim: Color(0xFF000000),
+    // DarkNLogin의 사진 상자·알약·그라데이션은 라이트와 같다.
+    photoPlaceholder: Color(0xFFE8DDCB),
+    onPhoto: Color(0xFFFFFFFF),
+    photoChip: Color(0xEBFFFFFF),
+    onPhotoChip: Color(0xFF17181C),
+    photoScrim: Color(0x9917181C),
+    // DarkNVerify `다시 보내기` #2A2D33 / #F2F3F5. 입력 칸 테두리는 캔버스 그대로 #17181C.
+    subtleAction: Color(0xFF2A2D33),
+    onSubtleAction: Color(0xFFF2F3F5),
+    focusRing: Color(0xFF17181C),
   );
 
   @override
@@ -115,6 +165,14 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? onSelectionDot,
     Color? glass,
     Color? scrim,
+    Color? photoPlaceholder,
+    Color? onPhoto,
+    Color? photoChip,
+    Color? onPhotoChip,
+    Color? photoScrim,
+    Color? subtleAction,
+    Color? onSubtleAction,
+    Color? focusRing,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -134,6 +192,14 @@ class CoraColors extends ThemeExtension<CoraColors> {
       onSelectionDot: onSelectionDot ?? this.onSelectionDot,
       glass: glass ?? this.glass,
       scrim: scrim ?? this.scrim,
+      photoPlaceholder: photoPlaceholder ?? this.photoPlaceholder,
+      onPhoto: onPhoto ?? this.onPhoto,
+      photoChip: photoChip ?? this.photoChip,
+      onPhotoChip: onPhotoChip ?? this.onPhotoChip,
+      photoScrim: photoScrim ?? this.photoScrim,
+      subtleAction: subtleAction ?? this.subtleAction,
+      onSubtleAction: onSubtleAction ?? this.onSubtleAction,
+      focusRing: focusRing ?? this.focusRing,
     );
   }
 
@@ -159,6 +225,14 @@ class CoraColors extends ThemeExtension<CoraColors> {
       onSelectionDot: mix(onSelectionDot, other.onSelectionDot),
       glass: mix(glass, other.glass),
       scrim: mix(scrim, other.scrim),
+      photoPlaceholder: mix(photoPlaceholder, other.photoPlaceholder),
+      onPhoto: mix(onPhoto, other.onPhoto),
+      photoChip: mix(photoChip, other.photoChip),
+      onPhotoChip: mix(onPhotoChip, other.onPhotoChip),
+      photoScrim: mix(photoScrim, other.photoScrim),
+      subtleAction: mix(subtleAction, other.subtleAction),
+      onSubtleAction: mix(onSubtleAction, other.onSubtleAction),
+      focusRing: mix(focusRing, other.focusRing),
     );
   }
 }

@@ -208,4 +208,55 @@ void main() {
     expect(_scale(tester), 1);
     await gesture.up();
   });
+
+  group('accent look (E1, E2)', () {
+    testWidgets('is the lime accent in light and dark', (tester) async {
+      for (final (theme, c) in [
+        (coraLightTheme, CoraColors.light),
+        (coraDarkTheme, CoraColors.dark),
+      ]) {
+        await tester.pumpWidget(
+          coraTestApp(
+            CoraPrimaryButton(
+              label: '확인',
+              onPressed: () {},
+              look: CoraPrimaryButtonLook.accent,
+            ),
+            theme: theme,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(_decoration(tester).color, c.accent);
+        final style = _labelStyle(tester, '확인');
+        expect(style.color, c.onAccent);
+        expect(style.fontWeight, FontWeight.w700);
+      }
+    });
+
+    testWidgets('disabled is surface with a medium textSecondary label', (
+      tester,
+    ) async {
+      for (final (theme, c) in [
+        (coraLightTheme, CoraColors.light),
+        (coraDarkTheme, CoraColors.dark),
+      ]) {
+        await tester.pumpWidget(
+          coraTestApp(
+            const CoraPrimaryButton(
+              label: '6자리를 모두 넣어주세요',
+              onPressed: null,
+              look: CoraPrimaryButtonLook.accent,
+            ),
+            theme: theme,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(_decoration(tester).color, c.surface);
+        final style = _labelStyle(tester, '6자리를 모두 넣어주세요');
+        expect(style.color, c.textSecondary);
+        expect(style.fontSize, 16);
+        expect(style.fontWeight, FontWeight.w500);
+      }
+    });
+  });
 }

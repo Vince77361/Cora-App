@@ -1,7 +1,8 @@
 import 'package:cora/core/config/app_config.dart';
 import 'package:cora/core/navigation/app_routes.dart';
-import 'package:cora/features/auth/presentation/pages/dev_login_page.dart';
-import 'package:cora/features/auth/presentation/pages/login_unavailable_page.dart';
+import 'package:cora/features/auth/presentation/pages/login_page.dart';
+import 'package:cora/features/auth/presentation/pages/phone_verify_page.dart';
+import 'package:cora/core/ui/cora_logo.dart';
 import 'package:cora/features/dev/presentation/pages/motion_gallery_page.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_select_placeholder_page.dart';
 import 'package:cora/core/network/api_client_provider.dart';
@@ -22,7 +23,8 @@ List<String> _paths(List<RouteBase> routes) => [
 ];
 
 Future<void> _openGallery(WidgetTester tester) async {
-  await tester.tap(find.text('모션 갤러리'));
+  // 개발 빌드에서 E1의 로고를 길게 누르면 열린다(E1 모양은 바뀌지 않는다).
+  await tester.longPress(find.byType(CoraLogo));
   await tester.pumpAndSettle();
   expect(find.byType(MotionGalleryPage), findsOneWidget);
 }
@@ -40,7 +42,7 @@ void main() {
   testWidgets('redirects to /login when there is no session', (tester) async {
     await pumpCoraApp(tester, auth: FakeAuthRepository());
 
-    expect(find.byType(DevLoginPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsOneWidget);
     expect(currentPath(tester), AppRoutes.login);
   });
 
@@ -53,24 +55,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(RoleSelectPlaceholderPage), findsNothing);
-    expect(find.byType(DevLoginPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsOneWidget);
   });
 
   testWidgets('redirects from /login to /role once signed in', (tester) async {
     final auth = FakeAuthRepository();
     await pumpCoraApp(tester, auth: auth);
 
-    await tester.enterText(
-      find.widgetWithText(TextField, '이메일'),
-      ' dev@example.com ',
-    );
-    await tester.enterText(find.widgetWithText(TextField, '비밀번호'), 'secret1');
-    await tester.tap(find.text('로그인'));
+    await tester.tap(find.text('카카오로 계속하기'));
     await tester.pumpAndSettle();
 
-    expect(auth.signInCalls, 1);
-    expect(auth.lastEmail, 'dev@example.com');
-    expect(find.byType(DevLoginPage), findsNothing);
+    expect(auth.kakaoCalls, 1);
+    expect(find.byType(LoginPage), findsNothing);
     expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
     expect(currentPath(tester), AppRoutes.role);
   });
@@ -84,7 +80,7 @@ void main() {
     routerOf(tester).go(AppRoutes.login);
     await tester.pumpAndSettle();
 
-    expect(find.byType(DevLoginPage), findsNothing);
+    expect(find.byType(LoginPage), findsNothing);
     expect(currentPath(tester), AppRoutes.role);
   });
 
@@ -110,7 +106,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fake.signOutCalls, 1);
-    expect(find.byType(DevLoginPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsOneWidget);
     expect(find.byType(RoleSelectPlaceholderPage), findsNothing);
   });
 
@@ -124,7 +120,7 @@ void main() {
     fake.endSession();
     await tester.pumpAndSettle();
 
-    expect(find.byType(DevLoginPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsOneWidget);
     expect(find.byType(RoleSelectPlaceholderPage), findsNothing);
   });
 
@@ -140,7 +136,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fake.signOutCalls, 1);
-    expect(find.byType(DevLoginPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsOneWidget);
   });
 
   testWidgets('a cold start with a stored session never shows /login', (
@@ -152,8 +148,7 @@ void main() {
       ),
     );
     for (var frame = 0; frame < 30; frame++) {
-      expect(find.byType(DevLoginPage), findsNothing, reason: 'frame $frame');
-      expect(find.byType(LoginUnavailablePage), findsNothing);
+      expect(find.byType(LoginPage), findsNothing, reason: 'frame $frame');
       await tester.pump(const Duration(milliseconds: 16));
     }
     await tester.pumpAndSettle();
@@ -174,13 +169,38 @@ void main() {
     expect(identical(routerOf(tester), before), isTrue);
   });
 
-  testWidgets('prod build has no email login form', (tester) async {
+  testWidgets('prod build still shows E1 without the dev entry point', (
+    tester,
+  ) async {
     await pumpCoraApp(tester, auth: FakeAuthRepository(), env: CoraEnv.prod);
 
-    expect(find.byType(DevLoginPage), findsNothing);
+    expect(find.byType(LoginPage), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
-    expect(find.text('로그인 준비 중이에요.'), findsOneWidget);
-    expect(find.text('모션 갤러리'), findsNothing);
+    expect(find.textContaining('모션'), findsNothing);
+  });
+
+  testWidgets('/login/verify is open without a session', (tester) async {
+    usePhone(tester);
+    await pumpCoraApp(tester, auth: FakeAuthRepository());
+
+    routerOf(tester).go(AppRoutes.loginVerify);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PhoneVerifyPage), findsOneWidget);
+    expect(currentPath(tester), AppRoutes.loginVerify);
+  });
+
+  testWidgets('sends a signed-in user away from /login/verify', (tester) async {
+    await pumpCoraApp(
+      tester,
+      auth: FakeAuthRepository(session: FakeAuthRepository.signedInSession),
+    );
+
+    routerOf(tester).go(AppRoutes.loginVerify);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PhoneVerifyPage), findsNothing);
+    expect(currentPath(tester), AppRoutes.role);
   });
 
   testWidgets('prod build does not register /dev/motion', (tester) async {
@@ -208,7 +228,7 @@ void main() {
     );
   });
 
-  testWidgets('dev login page opens the motion gallery without a session', (
+  testWidgets('E1 logo long press opens the motion gallery without a session', (
     tester,
   ) async {
     usePhone(tester);
@@ -234,6 +254,6 @@ void main() {
     await systemBack(tester);
 
     expect(find.byType(MotionGalleryPage), findsNothing);
-    expect(find.byType(DevLoginPage), findsOneWidget);
+    expect(find.byType(LoginPage), findsOneWidget);
   });
 }

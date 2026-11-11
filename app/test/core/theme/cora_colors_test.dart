@@ -22,6 +22,14 @@ Map<String, Color> _fields(CoraColors c) => {
   'onSelectionDot': c.onSelectionDot,
   'glass': c.glass,
   'scrim': c.scrim,
+  'photoPlaceholder': c.photoPlaceholder,
+  'onPhoto': c.onPhoto,
+  'photoChip': c.photoChip,
+  'onPhotoChip': c.onPhotoChip,
+  'photoScrim': c.photoScrim,
+  'subtleAction': c.subtleAction,
+  'onSubtleAction': c.onSubtleAction,
+  'focusRing': c.focusRing,
 };
 
 /// 이름으로 필드 하나만 [color]로 바꾼 사본을 만든다.
@@ -61,6 +69,22 @@ CoraColors _copyWithField(CoraColors c, String name, Color color) {
       return c.copyWith(glass: color);
     case 'scrim':
       return c.copyWith(scrim: color);
+    case 'photoPlaceholder':
+      return c.copyWith(photoPlaceholder: color);
+    case 'onPhoto':
+      return c.copyWith(onPhoto: color);
+    case 'photoChip':
+      return c.copyWith(photoChip: color);
+    case 'onPhotoChip':
+      return c.copyWith(onPhotoChip: color);
+    case 'photoScrim':
+      return c.copyWith(photoScrim: color);
+    case 'subtleAction':
+      return c.copyWith(subtleAction: color);
+    case 'onSubtleAction':
+      return c.copyWith(onSubtleAction: color);
+    case 'focusRing':
+      return c.copyWith(focusRing: color);
   }
   throw ArgumentError(name);
 }
@@ -95,6 +119,17 @@ void main() {
     expect(c.glass, const Color(0xBFFFFFFF));
     // 캔버스 그림자 잉크 rgba(23,24,28)
     expect(c.scrim, const Color(0xFF17181C));
+    // NLogin 사진 상자 바탕, 사진 위 글자와 알약, 아래 그라데이션 끝
+    expect(c.photoPlaceholder, const Color(0xFFE8DDCB));
+    expect(c.onPhoto, const Color(0xFFFFFFFF));
+    expect(c.photoChip, const Color(0xEBFFFFFF)); // rgba(255,255,255,0.92)
+    expect(c.onPhotoChip, const Color(0xFF17181C));
+    expect(c.photoScrim, const Color(0x9917181C)); // rgba(23,24,28,0.6)
+    // NVerify `다시 보내기`
+    expect(c.subtleAction, const Color(0xFFF2F3F5));
+    expect(c.onSubtleAction, const Color(0xFF17181C));
+    // NVerify 지금 입력할 칸의 안쪽 테두리
+    expect(c.focusRing, const Color(0xFF17181C));
   });
 
   test('dark palette matches the design canvas', () {
@@ -119,6 +154,17 @@ void main() {
     expect(c.glass, const Color(0xD91C1E22));
     // 다크 배경(#0F1012)보다 어두워야 덮었을 때 화면이 어두워진다.
     expect(c.scrim, const Color(0xFF000000));
+    // DarkNLogin의 사진 상자·알약·그라데이션은 라이트와 같다.
+    expect(c.photoPlaceholder, const Color(0xFFE8DDCB));
+    expect(c.onPhoto, const Color(0xFFFFFFFF));
+    expect(c.photoChip, const Color(0xEBFFFFFF));
+    expect(c.onPhotoChip, const Color(0xFF17181C));
+    expect(c.photoScrim, const Color(0x9917181C));
+    // DarkNVerify `다시 보내기` 바탕 #2A2D33, 글자 #F2F3F5
+    expect(c.subtleAction, const Color(0xFF2A2D33));
+    expect(c.onSubtleAction, const Color(0xFFF2F3F5));
+    // 캔버스가 다크에서도 #17181C를 그대로 쓴다(어두운 바탕에서 거의 안 보인다).
+    expect(c.focusRing, const Color(0xFF17181C));
   });
 
   test('copyWith with no arguments keeps every field', () {

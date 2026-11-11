@@ -90,4 +90,106 @@ abstract final class CoraTextStyles {
     height: _normal,
     leadingDistribution: _even,
   );
+
+  // 아래는 NLogin(E1)·NVerify(E2)에서 새로 쓰인 크기다.
+
+  /// E2 제목. 28px, 900, -0.05em.
+  static const headline = TextStyle(
+    fontFamily: _family,
+    fontSize: 28,
+    fontWeight: FontWeight.w900,
+    letterSpacing: -1.4,
+    height: 1.3,
+    leadingDistribution: _even,
+  );
+
+  /// 입력 칸에 들어간 값(휴대폰 번호). 17px.
+  static const fieldValue = TextStyle(
+    fontFamily: _family,
+    fontSize: 17,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
+
+  /// 입력 칸 위의 이름. 12px, 보통 굵기(`caption`은 500).
+  static const fieldLabel = TextStyle(
+    fontFamily: _family,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
+
+  /// 인증번호 한 칸의 숫자. 24px, 700.
+  static const digit = TextStyle(
+    fontFamily: _family,
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
+
+  /// 숫자 키패드의 키. 22px, 500.
+  static const keypad = TextStyle(
+    fontFamily: _family,
+    fontSize: 22,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
+
+  /// 제목 아래 설명. 14px.
+  static const bodySmall = TextStyle(
+    fontFamily: _family,
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
+
+  /// 남은 시간처럼 곁들이는 작은 글자. 13px, 보통 굵기(`label`은 500).
+  static const meta = TextStyle(
+    fontFamily: _family,
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
+
+  /// 카카오·네이버 버튼. 15px, 500.
+  static const buttonMedium = TextStyle(
+    fontFamily: _family,
+    fontSize: 15,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
+
+  /// 약관 문구. 12px, 줄 높이 1.6.
+  static const legal = TextStyle(
+    fontFamily: _family,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: 1.6,
+    leadingDistribution: _even,
+  );
+
+  /// 사진 위 문구. 15px, 줄 높이 1.5.
+  static const photoCaption = TextStyle(
+    fontFamily: _family,
+    fontSize: 15,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: 1.5,
+    leadingDistribution: _even,
+  );
 }

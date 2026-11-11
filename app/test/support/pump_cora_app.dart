@@ -17,6 +17,7 @@ AppConfig testConfig(CoraEnv env) => AppConfig(
   supabaseUrl: 'https://example.supabase.co',
   supabaseAnonKey: 'anon',
   apiBaseUrl: 'http://127.0.0.1:3000',
+  authAdapter: AuthAdapter.fake,
 );
 
 /// 가짜 인증 저장소와 설정으로 실제 [CoraApp]을 띄운다.
@@ -59,6 +60,13 @@ String currentPath(WidgetTester tester) =>
 /// iPhone 15 Pro 크기(390 x 844)로 띄운다.
 void usePhone(WidgetTester tester) {
   tester.view.physicalSize = const Size(1179, 2556);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+}
+
+/// 기획 캔버스와 같은 390 x 844(캔버스 좌표를 그대로 비교할 때).
+void useCanvasPhone(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
 }

@@ -29,6 +29,7 @@ void main() {
             supabaseUrl: 'https://example.supabase.co',
             supabaseAnonKey: 'anon',
             apiBaseUrl: 'http://127.0.0.1:3000',
+            authAdapter: AuthAdapter.fake,
           ),
         ),
         httpClientProvider.overrideWithValue(fakeHttp),

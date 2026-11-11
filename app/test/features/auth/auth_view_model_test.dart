@@ -27,7 +27,7 @@ void main() {
 
     expect(await container.read(authViewModelProvider.future), isNull);
 
-    await fake.signInWithEmail(email: 'dev@example.com', password: 'secret1');
+    await fake.signInWithKakao();
     await pumpEventQueue();
 
     expect(values, [null, FakeAuthRepository.signedInSession]);

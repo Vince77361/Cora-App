@@ -2,5 +2,6 @@
   "CORA_ENV": "dev",
   "SUPABASE_URL": "https://<project-ref>.supabase.co",
   "SUPABASE_ANON_KEY": "<anon-key>",
-  "API_BASE_URL": "http://127.0.0.1:3000"
+  "API_BASE_URL": "http://127.0.0.1:3000",
+  "AUTH_ADAPTER": "fake"
 }

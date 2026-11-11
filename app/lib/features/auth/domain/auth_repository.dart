@@ -2,7 +2,7 @@ import 'auth_session.dart';
 
 /// 로그인과 세션을 다루는 포트. 실제 구현은 `data`의 Supabase 구현이고, 테스트는 가짜를 쓴다.
 ///
-/// 로그인·가입이 실패하면 [AuthFailure]를 던진다. 외부 SDK의 오류 타입은 이 경계 밖으로
+/// 로그인이 실패하면 [AuthFailure]를 던진다. 외부 SDK의 오류 타입은 이 경계 밖으로
 /// 나가지 않는다.
 abstract class AuthRepository {
   /// 세션이 바뀔 때마다 알린다(로그인, 로그아웃, 토큰 갱신).
@@ -24,28 +24,52 @@ abstract class AuthRepository {
   /// 세션 종료는 [watchSession]으로 알린다).
   Future<String?> validAccessToken();
 
-  Future<void> signInWithEmail({
-    required String email,
-    required String password,
+  /// 휴대폰 번호로 인증번호 문자를 보낸다. [phoneDigits]는 하이픈 없는 숫자(`01012342841`).
+  Future<void> requestPhoneCode(String phoneDigits);
+
+  /// 문자로 받은 인증번호를 확인하고 로그인한다. 틀리면 [AuthFailure.invalidCode].
+  Future<void> verifyPhoneCode({
+    required String phoneDigits,
+    required String code,
   });
 
-  /// 개발용 이메일 가입. 성공하면 바로 로그인된다(개발용 프로젝트는 이메일 인증을 꺼 둔다).
-  Future<void> signUpWithEmail({
-    required String email,
-    required String password,
-  });
+  Future<void> signInWithKakao();
+
+  Future<void> signInWithNaver();
 
   /// 로그아웃. 이미 로그아웃 상태여도 던지지 않는다.
   Future<void> signOut();
 }
 
-/// 인증 작업이 실패했다. [code]는 디버그 로그와 분기에만 쓰고 화면에 그대로 보여 주지 않는다.
-class AuthFailure implements Exception {
-  const AuthFailure(this.code);
+/// 실패의 종류. 화면이 보여 줄 문구를 고르는 데 쓴다.
+enum AuthFailureKind {
+  /// 인증번호가 맞지 않거나 만료됐다.
+  invalidCode,
 
-  /// 예: `invalid_credentials`, `user_already_exists`, `weak_password`.
-  final String code;
+  /// 연결이 끊겼거나 응답이 늦다.
+  network,
+
+  /// 그 밖의 실패. 화면에는 "잠시 후 다시 시도해 주세요."로 보여 준다.
+  unknown,
+}
+
+/// 인증 작업이 실패했다. [code]는 디버그 로그와 분기에만 쓰고 화면에 그대로 보여 주지 않는다.
+/// 외부 서비스의 오류 메시지(이메일·전화번호가 섞일 수 있다)는 담지 않는다.
+class AuthFailure implements Exception {
+  const AuthFailure(this.kind, [this.code]);
+
+  const AuthFailure.invalidCode() : this(AuthFailureKind.invalidCode);
+
+  const AuthFailure.network() : this(AuthFailureKind.network);
+
+  const AuthFailure.unknown([String? code])
+    : this(AuthFailureKind.unknown, code);
+
+  final AuthFailureKind kind;
+
+  /// 예: `invalid_credentials`, `session_missing_after_sign_up`. 없을 수 있다.
+  final String? code;
 
   @override
-  String toString() => 'AuthFailure($code)';
+  String toString() => 'AuthFailure($kind${code == null ? '' : ', $code'})';
 }

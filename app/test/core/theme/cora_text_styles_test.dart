@@ -21,6 +21,24 @@ void main() {
     ('button', CoraTextStyles.button, 16, FontWeight.w700, 0, normal),
     // A1 로고 글자: 26px, 900, -0.05em
     ('wordmark', CoraTextStyles.wordmark, 26, FontWeight.w900, -1.3, normal),
+    // NLogin·NVerify
+    ('headline', CoraTextStyles.headline, 28, FontWeight.w900, -1.4, 1.3),
+    ('fieldValue', CoraTextStyles.fieldValue, 17, FontWeight.w400, 0, normal),
+    ('fieldLabel', CoraTextStyles.fieldLabel, 12, FontWeight.w400, 0, normal),
+    ('digit', CoraTextStyles.digit, 24, FontWeight.w700, 0, normal),
+    ('keypad', CoraTextStyles.keypad, 22, FontWeight.w500, 0, normal),
+    ('bodySmall', CoraTextStyles.bodySmall, 14, FontWeight.w400, 0, normal),
+    ('meta', CoraTextStyles.meta, 13, FontWeight.w400, 0, normal),
+    (
+      'buttonMedium',
+      CoraTextStyles.buttonMedium,
+      15,
+      FontWeight.w500,
+      0,
+      normal,
+    ),
+    ('legal', CoraTextStyles.legal, 12, FontWeight.w400, 0, 1.6),
+    ('photoCaption', CoraTextStyles.photoCaption, 15, FontWeight.w400, 0, 1.5),
   ];
 
   test(

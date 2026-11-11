@@ -17,9 +17,19 @@
 자동 테스트는 같은 DB의 `cora_test` 스키마에서 돌고, 앱 데이터는 `public` 스키마에 있다.
 
 1. Supabase 대시보드에서 개발용 프로젝트를 만든다(지역: 서울).
-2. Authentication → 이메일 로그인의 "Confirm email"을 끈다(개발용 로그인에 메일 인증을 요구하지 않기 위해).
+2. Authentication → 이메일 로그인의 "Confirm email"을 끈다(개발 중 가짜 인증이 개발용 계정을 이메일로 만들어 로그인시키는데, 메일 인증을 요구하지 않게 하기 위해).
 3. `api/.env.example`을 `api/.env`로 복사해 값을 채운다. `app/config/dev.example.json`을 `app/config/dev.json`으로 복사해 값을 채운다.
 4. `docker compose up -d`
+
+## 개발용 로그인
+
+앱의 로그인 화면(E1)과 휴대폰 인증 화면(E2)은 정식 화면 그대로고, 개발 중에는 뒤에서 가짜 인증(`AUTH_ADAPTER=fake`, 개발 환경에서는 비워 두어도 기본값)이 개발용 계정으로 로그인시킨다.
+
+- 휴대폰 번호: E1에서 `휴대폰 번호로 시작하기` → 아무 `010` 번호 11자리 → 인증번호 `000000`. 문자는 가지 않는다. 번호마다 고정된 개발용 계정이 생기고 다음부터는 같은 계정으로 들어간다.
+- 카카오·네이버: E1의 버튼을 누르면 각각 고정된 개발용 계정(`kakao`, `naver`)으로 로그인한다.
+- 개발용 계정은 `<이름>@example.com` 이메일에 코드에 적힌 개발 전용 비밀번호로 만들어진다(`app/lib/features/auth/data/fake_sign_in_adapter.dart`). **개발용 Supabase 프로젝트에서만 쓴다.** 비밀번호가 비밀이 아니므로 운영에서는 `AUTH_ADAPTER=fake`면 앱이 시작을 거부한다.
+- 모션 갤러리는 개발 빌드에서 E1의 로고를 길게 누르면 열린다.
+- 실제 로그인(Supabase 휴대폰 OTP·카카오·네이버)은 9번 계획이다.
 
 ## DB 규칙
 

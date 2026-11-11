@@ -4,13 +4,20 @@ import 'package:supabase_flutter/supabase_flutter.dart'
 
 import '../domain/auth_repository.dart';
 import '../domain/auth_session.dart';
+import 'sign_in_adapter.dart';
+import 'supabase_failures.dart';
 
-/// Supabase Auth로 로그인한다. 앱에서 `supabase_flutter`를 아는 기능 코드는 이 파일뿐이다
-/// (앱 시작점 main.dart는 SDK 초기화만 한다).
+/// Supabase Auth의 세션을 다룬다. 앱에서 `supabase_flutter`를 아는 기능 코드는 이
+/// `features/auth/data` 안의 파일뿐이다(앱 시작점 main.dart는 SDK 초기화만 한다).
 class SupabaseAuthRepository implements AuthRepository {
-  SupabaseAuthRepository(this._auth);
+  SupabaseAuthRepository(this._auth, {required SignInAdapter signInAdapter})
+    : _adapter = signInAdapter;
 
   final GoTrueClient _auth;
+
+  /// 로그인하는 방법. 세션 감시·갱신·로그아웃·보관은 이 클래스가 하고, 로그인 한 번이
+  /// 어떻게 이루어지는지만 어댑터가 안다.
+  final SignInAdapter _adapter;
 
   @override
   AuthSession? get currentSession => _toDomain(_auth.currentSession);
@@ -50,25 +57,22 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signInWithEmail({
-    required String email,
-    required String password,
-  }) => _guard(() async {
-    await _auth.signInWithPassword(email: email, password: password);
-  });
+  Future<void> requestPhoneCode(String phoneDigits) =>
+      _guard(() => _adapter.requestPhoneCode(phoneDigits));
 
   @override
-  Future<void> signUpWithEmail({
-    required String email,
-    required String password,
-  }) => _guard(() async {
-    final response = await _auth.signUp(email: email, password: password);
-    // 이메일 인증이 켜진 프로젝트면 세션 없이 돌아와 로그인 화면에 그대로 남는다.
-    // 아무 반응이 없는 것보다 실패로 알리는 편이 낫다.
-    if (response.session == null) {
-      throw const AuthFailure('session_missing_after_sign_up');
-    }
-  });
+  Future<void> verifyPhoneCode({
+    required String phoneDigits,
+    required String code,
+  }) => _guard(
+    () => _adapter.verifyPhoneCode(phoneDigits: phoneDigits, code: code),
+  );
+
+  @override
+  Future<void> signInWithKakao() => _guard(_adapter.signInWithKakao);
+
+  @override
+  Future<void> signInWithNaver() => _guard(_adapter.signInWithNaver);
 
   @override
   Future<void> signOut() async {
@@ -82,21 +86,14 @@ class SupabaseAuthRepository implements AuthRepository {
     }
   }
 
+  // 어댑터와 SDK가 던지는 모든 오류를 도메인 오류로 바꾼다.
   Future<void> _guard(Future<void> Function() action) async {
     try {
       await action();
-    } on AuthFailure {
-      rethrow;
-    } on AuthException catch (error, stackTrace) {
-      Error.throwWithStackTrace(
-        AuthFailure(error.code ?? error.statusCode ?? 'auth_error'),
-        stackTrace,
-      );
     } catch (error, stackTrace) {
-      Error.throwWithStackTrace(
-        AuthFailure('unexpected_${error.runtimeType}'),
-        stackTrace,
-      );
+      final failure = toAuthFailure(error);
+      _debugLog('로그인 실패', failure);
+      Error.throwWithStackTrace(failure, stackTrace);
     }
   }
 
@@ -109,6 +106,8 @@ class SupabaseAuthRepository implements AuthRepository {
     if (!kDebugMode) return;
     final code = error is AuthException
         ? (error.code ?? error.statusCode)
+        : error is AuthFailure
+        ? error.kind.name
         : error.runtimeType;
     debugPrint('[auth] $what: $code');
   }
