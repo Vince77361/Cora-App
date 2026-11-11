@@ -1,6 +1,7 @@
 import { Body, Controller, Get, INestApplication, Post } from '@nestjs/common';
 import { IsInt } from 'class-validator';
 import request from 'supertest';
+import { Public } from '../src/auth/public.decorator';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 
 class SampleDto {
@@ -8,7 +9,8 @@ class SampleDto {
   count!: number;
 }
 
-// 테스트 전용 컨트롤러. src에는 두지 않는다.
+// 테스트 전용 컨트롤러. src에는 두지 않는다. 토큰 없이 오류 형식만 보려고 공개로 연다.
+@Public()
 @Controller('__test')
 class TestController {
   @Get('boom')

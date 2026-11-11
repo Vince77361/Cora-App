@@ -26,3 +26,14 @@
 테이블을 추가하는 마이그레이션에는 `ENABLE ROW LEVEL SECURITY`를 반드시 넣는다. 빠뜨리면 `yarn test:db`가 실패한다.
 
 `yarn test:db`와 `yarn test:e2e`는 원격 개발 DB의 `cora_test` 스키마에서 돌기 때문에 인터넷 연결이 필요하다. 개발 DB(`public`)의 RLS 상태는 `yarn check:rls`로 확인한다.
+
+## 인증
+
+API는 `Authorization: Bearer <토큰>`의 Supabase 액세스 토큰을 검증한다. 검증은 프로젝트의 JWKS(`<SUPABASE_URL>/auth/v1/.well-known/jwks.json`, ES256 공개키)로 하므로 서버에 JWT 비밀값이 필요 없다(`SUPABASE_JWT_SECRET`은 쓰지 않는다).
+
+실제 토큰으로 직접 확인하는 방법(`yarn start:dev`로 서버를 띄운 뒤):
+
+1. 개발용 프로젝트에 가입한다: `POST <SUPABASE_URL>/auth/v1/signup`, 헤더 `apikey: <공개 키>`, JSON 본문 `{"email": "...", "password": "..."}`.
+2. 응답의 `access_token`을 꺼낸다.
+3. `curl -H "Authorization: Bearer <token>" http://127.0.0.1:3000/me`
+4. 기대 결과: `{"id":"<uuid>","role":null}`
