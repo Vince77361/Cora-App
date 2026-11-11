@@ -11,13 +11,24 @@ async function main() {
     datasources: { db: { url: process.env.DIRECT_URL } },
   });
   try {
-    const [{ s }] = await prisma.$queryRawUnsafe('SELECT current_schema() AS s');
+    const [{ s }] = await prisma.$queryRawUnsafe(
+      'SELECT current_schema() AS s',
+    );
     const missing = await prisma.$queryRawUnsafe(TABLES_WITHOUT_RLS);
     const [{ n }] = await prisma.$queryRawUnsafe(POLICY_COUNT);
     console.log(`스키마: ${s}`);
-    console.log(`RLS가 꺼진 테이블: ${missing.length === 0 ? '없음' : missing.map((r) => r.relname).join(', ')}`);
+    console.log(
+      `RLS가 꺼진 테이블: ${missing.length === 0 ? '없음' : missing.map((r) => r.relname).join(', ')}`,
+    );
     console.log(`정책 수: ${Number(n)}`);
-    process.exitCode = missing.length > 0 || Number(n) > 0 ? 1 : 0;
+    // 다른 스키마를 봤다면 검사 결과를 믿을 수 없으므로 실패로 처리한다.
+    const expected =
+      new URL(process.env.DIRECT_URL).searchParams.get('schema') ?? 'public';
+    const wrongSchema = s !== expected;
+    if (wrongSchema)
+      console.log(`기대한 스키마(${expected})와 다른 스키마를 봤어요.`);
+    process.exitCode =
+      wrongSchema || missing.length > 0 || Number(n) > 0 ? 1 : 0;
   } finally {
     await prisma.$disconnect();
   }
