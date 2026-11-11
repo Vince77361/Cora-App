@@ -83,6 +83,23 @@ void main() {
     expect(find.text('시작하기'), findsOneWidget);
   });
 
+  testWidgets('the text fields draw no border of their own', (tester) async {
+    await _pump(tester);
+
+    // 앱 테마의 입력칸 테두리가 칸 안에 한 겹 더 그려지지 않아야 한다(바깥 상자가 칸 모양이다).
+    for (final key in [
+      CreatorProfileSetupPage.nameFieldKey,
+      CreatorProfileSetupPage.sigunguFieldKey,
+      CreatorProfileSetupPage.focusFieldKey,
+      CreatorProfileSetupPage.instagramFieldKey,
+    ]) {
+      final decoration = tester.widget<TextField>(find.byKey(key)).decoration!;
+      expect(decoration.border, InputBorder.none);
+      expect(decoration.enabledBorder, InputBorder.none);
+      expect(decoration.focusedBorder, InputBorder.none);
+    }
+  });
+
   testWidgets('start button is disabled until a display name is typed', (
     tester,
   ) async {

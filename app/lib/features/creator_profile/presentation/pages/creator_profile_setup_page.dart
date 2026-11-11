@@ -307,7 +307,16 @@ class _TextBox extends StatelessWidget {
                   LengthLimitingTextInputFormatter(maxLength),
                   ...formatters,
                 ],
-                decoration: InputDecoration.collapsed(
+                // 앱 테마의 입력칸 테두리(실선)를 쓰지 않는다. 칸 모양은 바깥 상자가 그린다.
+                // `InputDecoration.collapsed`도 테마의 테두리를 물려받아 직접 끈다.
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
                   hintText: hint,
                   hintStyle: valueStyle.copyWith(color: c.textSecondary),
                 ),
