@@ -11,6 +11,8 @@ const PLACEHOLDERS: Record<string, string> = {
   DIRECT_URL: 'postgresql://placeholder:placeholder@localhost:5432/placeholder',
   SUPABASE_URL: 'https://placeholder.invalid',
   PUSH_ADAPTER: 'fake',
+  STORE_LINK_ADAPTER: 'fake',
+  CONTENT_DRAFT_ADAPTER: 'fake',
 };
 for (const [key, value] of Object.entries(PLACEHOLDERS)) {
   process.env[key] = value;

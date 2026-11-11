@@ -8,6 +8,8 @@ const env: Env = {
   DIRECT_URL: 'postgresql://x',
   SUPABASE_URL: 'https://x.supabase.co',
   PUSH_ADAPTER: 'real',
+  STORE_LINK_ADAPTER: 'real',
+  CONTENT_DRAFT_ADAPTER: 'real',
 };
 
 describe('assertNoFakesInProduction', () => {
@@ -46,6 +48,26 @@ describe('assertNoFakesInProduction', () => {
         PUSH_ADAPTER: 'real',
       }),
     ).not.toThrow();
+  });
+
+  it('throws in production when STORE_LINK_ADAPTER is fake', () => {
+    expect(() =>
+      assertNoFakesInProduction({
+        ...env,
+        NODE_ENV: 'production',
+        STORE_LINK_ADAPTER: 'fake',
+      }),
+    ).toThrow(/STORE_LINK_ADAPTER/);
+  });
+
+  it('throws in production when CONTENT_DRAFT_ADAPTER is fake', () => {
+    expect(() =>
+      assertNoFakesInProduction({
+        ...env,
+        NODE_ENV: 'production',
+        CONTENT_DRAFT_ADAPTER: 'fake',
+      }),
+    ).toThrow(/CONTENT_DRAFT_ADAPTER/);
   });
 
   it('scans any key ending in _ADAPTER so future adapters are covered', () => {

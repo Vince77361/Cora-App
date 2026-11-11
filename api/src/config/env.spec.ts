@@ -7,6 +7,8 @@ const valid = {
   DIRECT_URL: 'postgresql://u:p@localhost:5432/db',
   SUPABASE_URL: 'https://example.supabase.co',
   PUSH_ADAPTER: 'fake',
+  STORE_LINK_ADAPTER: 'fake',
+  CONTENT_DRAFT_ADAPTER: 'fake',
 };
 
 describe('loadEnv', () => {
@@ -51,6 +53,22 @@ describe('loadEnv', () => {
       /PUSH_ADAPTER/,
     );
   });
+
+  it.each(['STORE_LINK_ADAPTER', 'CONTENT_DRAFT_ADAPTER'])(
+    'keeps %s and rejects unknown or missing values',
+    (key) => {
+      // @Expose가 빠지면 loadEnv가 이 키를 버려 검증이 조용히 사라진다.
+      expect(loadEnv({ ...valid, [key]: 'real' })[key as 'PUSH_ADAPTER']).toBe(
+        'real',
+      );
+      expect(() => loadEnv({ ...valid, [key]: 'mock' })).toThrow(
+        new RegExp(key),
+      );
+      expect(() => loadEnv({ ...valid, [key]: undefined })).toThrow(
+        new RegExp(key),
+      );
+    },
+  );
 
   it('allows a missing SUPABASE_SERVICE_ROLE_KEY outside production', () => {
     expect(loadEnv(valid).SUPABASE_SERVICE_ROLE_KEY).toBeUndefined();

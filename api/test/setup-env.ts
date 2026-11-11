@@ -8,3 +8,5 @@ if (process.env.CORA_TEST_DB !== '1') {
 process.env.NODE_ENV = 'test';
 process.env.SUPABASE_URL = 'https://fake.supabase.co';
 process.env.PUSH_ADAPTER = 'fake';
+process.env.STORE_LINK_ADAPTER = 'fake';
+process.env.CONTENT_DRAFT_ADAPTER = 'fake';

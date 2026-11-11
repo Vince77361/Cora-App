@@ -61,6 +61,14 @@ export class Env {
   @Expose()
   @IsIn(['fake', 'real'])
   PUSH_ADAPTER!: 'fake' | 'real';
+
+  @Expose()
+  @IsIn(['fake', 'real'])
+  STORE_LINK_ADAPTER!: 'fake' | 'real';
+
+  @Expose()
+  @IsIn(['fake', 'real'])
+  CONTENT_DRAFT_ADAPTER!: 'fake' | 'real';
 }
 
 // process.env에는 PATH 같은 무관한 키가 많아서, Env에 선언한 키만 골라 검증한다.
