@@ -13,6 +13,7 @@ import '../../features/onboarding/presentation/pages/role_home_placeholder_page.
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
 import '../../features/offers/presentation/pages/received_offers_page.dart';
+import '../../features/offers/presentation/pages/send_offer_page.dart';
 import '../../features/store_browse/presentation/pages/store_detail_page.dart';
 import '../../features/store_browse/presentation/pages/store_list_page.dart';
 import '../../features/store_home/presentation/pages/store_home_page.dart';
@@ -145,7 +146,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      _roleRoute('/store/offers/new/:creatorId', '오퍼 보내기'),
+      GoRoute(
+        path: '/store/offers/new/:creatorId',
+        pageBuilder: (context, state) => CoraTransitions.push(
+          SendOfferPage(creatorId: state.pathParameters['creatorId']!),
+          key: state.pageKey,
+        ),
+      ),
       GoRoute(
         path: '/store/coming-soon/:title',
         pageBuilder: (context, state) => _entryPage(
@@ -201,20 +208,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   });
   return router;
 });
-
-/// 역할 화면 하나. 아직 화면이 없는 동안은 `준비 중이에요.`를 보여 준다.
-///
-/// [entry]이면 진입 경로로 쓰일 수 있는 화면이라 [_entryPage]의 전환 규칙을 따르고, 아니면
-/// 항상 밀려 들어온다.
-GoRoute _roleRoute(String path, String title, {bool entry = false}) => GoRoute(
-  path: path,
-  pageBuilder: (context, state) {
-    final page = CoraComingSoonPage(title: title);
-    return entry
-        ? _entryPage(state, page)
-        : CoraTransitions.push(page, key: state.pageKey);
-  },
-);
 
 /// 진입 경로로도 쓰이는 화면의 전환. 역할을 고른 직후(`?from=roleSelect`)이거나 앱 안에서
 /// `push`로 연 경우(`stacked`)에만 밀려 들어오고, 로그인 직후나 앱을 다시 켰을 때는 제자리에서
