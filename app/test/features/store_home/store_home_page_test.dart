@@ -1,6 +1,7 @@
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/features/offers/domain/offer_view.dart';
+import 'package:cora/features/payment/domain/payment_repository.dart';
 import 'package:cora/features/store_home/presentation/pages/store_home_page.dart';
 import 'package:cora/features/store_home/presentation/pages/store_me_page.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/store_page_preview_page.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
+import '../payment/fake_payment_repository.dart';
 import '../../support/pump_cora_app.dart';
 import 'fake_store_home_repository.dart';
 import 'store_home_harness.dart';
@@ -28,6 +30,11 @@ FakeStoreHomeRepository _homeWithSent() => FakeStoreHomeRepository(
 
 Future<void> _openSentTab(WidgetTester tester) async {
   await tester.tap(find.text('보낸 오퍼 3'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openSentTabOf(WidgetTester tester, int count) async {
+  await tester.tap(find.text('보낸 오퍼 $count'));
   await tester.pumpAndSettle();
 }
 
@@ -102,15 +109,43 @@ void main() {
     expect(topPath(tester), AppRoutes.storeOfferNew('c1'));
   });
 
-  testWidgets('opens the pay and find-again placeholders from sent offers', (
+  testWidgets('opens the payment screen from an accepted offer', (
+    tester,
+  ) async {
+    await pumpStoreHome(
+      tester,
+      home: FakeStoreHomeRepository(
+        sent: [
+          sentOffer(
+            id: 'p1',
+            name: '국물 수집가',
+            view: OfferView.accepted,
+            collaborationId: 'col-1',
+            paymentDaysLeft: 3,
+          ),
+        ],
+      ),
+      overrides: [
+        paymentRepositoryProvider.overrideWithValue(FakePaymentRepository()),
+      ],
+    );
+    await _openSentTabOf(tester, 1);
+
+    await tester.tap(find.text('결제하기'));
+    await tester.pumpAndSettle();
+    expect(topPath(tester), AppRoutes.storePay('col-1'));
+    expect(find.text('지금 결제할 금액'), findsOneWidget);
+  });
+
+  testWidgets('opens the find-again placeholder from a declined offer', (
     tester,
   ) async {
     await pumpStoreHome(tester, home: _homeWithSent());
     await _openSentTab(tester);
 
-    await tester.tap(find.text('결제하기'));
+    await tester.tap(find.text('다시 찾기'));
     await tester.pumpAndSettle();
-    expect(topPath(tester), AppRoutes.storeComingSoon('결제하기'));
+    expect(topPath(tester), AppRoutes.storeComingSoon('다시 찾기'));
     expect(find.text('준비 중이에요.'), findsOneWidget);
   });
 

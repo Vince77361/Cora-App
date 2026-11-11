@@ -52,6 +52,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     required this.slideNeutral,
     required this.onSlideNeutral,
     required this.onSlidePhoto,
+    this.creatorPhotoPlaceholder = const Color(0xFFF3E3D3),
   });
 
   final Color background;
@@ -138,6 +139,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
   final Color slideNeutral;
   final Color onSlideNeutral;
   final Color onSlidePhoto;
+
+  /// A8 결제 화면 머리의 크리에이터 사진이 뜨기 전·없을 때의 바탕(NPay). 라이트·다크가 같다.
+  final Color creatorPhotoPlaceholder;
 
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
@@ -319,6 +323,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? slideNeutral,
     Color? onSlideNeutral,
     Color? onSlidePhoto,
+    Color? creatorPhotoPlaceholder,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -369,6 +374,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
       slideNeutral: slideNeutral ?? this.slideNeutral,
       onSlideNeutral: onSlideNeutral ?? this.onSlideNeutral,
       onSlidePhoto: onSlidePhoto ?? this.onSlidePhoto,
+      creatorPhotoPlaceholder:
+          creatorPhotoPlaceholder ?? this.creatorPhotoPlaceholder,
     );
   }
 
@@ -425,6 +432,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
       slideNeutral: mix(slideNeutral, other.slideNeutral),
       onSlideNeutral: mix(onSlideNeutral, other.onSlideNeutral),
       onSlidePhoto: mix(onSlidePhoto, other.onSlidePhoto),
+      creatorPhotoPlaceholder: mix(
+        creatorPhotoPlaceholder,
+        other.creatorPhotoPlaceholder,
+      ),
     );
   }
 }

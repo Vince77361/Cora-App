@@ -37,6 +37,13 @@ abstract final class AppRoutes {
   static String storeOfferNew(String creatorId) =>
       '/store/offers/new/${Uri.encodeComponent(creatorId)}';
 
+  /// 협업 [collaborationId]의 결제(A8). 보낸 오퍼 줄의 `결제하기`로 열고, 홈 위에 밀려 들어온다.
+  static String storePay(String collaborationId) =>
+      '/store/collaborations/${Uri.encodeComponent(collaborationId)}/pay';
+
+  /// [storePay]의 라우트 패턴.
+  static const storePayPattern = '/store/collaborations/:collaborationId/pay';
+
   /// 아직 만들지 않은 가게 쪽 화면. [title]이 한글이어도 되도록 인코딩한다.
   static String storeComingSoon(String title) =>
       '/store/coming-soon/${Uri.encodeComponent(title)}';
@@ -68,6 +75,9 @@ abstract final class AppRoutes {
 
   /// 개발 환경 전용 모션 갤러리. 운영 빌드에는 없다.
   static const devMotion = '/dev/motion';
+
+  /// 개발 환경 전용 가짜 결제창. 서버의 가짜 PG(`cora-dev://fake-pay`)를 앱 안에서 연다.
+  static const devFakeCheckout = '/dev/fake-checkout';
 
   /// 이 경로 아래는 개발 도구다. 로그인 없이 열 수 있다.
   static const devPrefix = '/dev/';

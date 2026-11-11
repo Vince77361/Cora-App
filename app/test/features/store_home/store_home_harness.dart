@@ -1,3 +1,4 @@
+import 'package:cora/core/config/app_config.dart';
 import 'package:cora/core/media/photo_picker.dart';
 import 'package:cora/core/network/photo_uploader.dart';
 import 'package:cora/core/time/clock.dart';
@@ -6,6 +7,7 @@ import 'package:cora/features/store_home/domain/store_home_repository.dart';
 import 'package:cora/features/store_onboarding/domain/content_draft_repository_provider.dart';
 import 'package:cora/features/store_onboarding/domain/store_repository_provider.dart';
 import 'package:cora/features/store_onboarding/domain/my_store.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_clock.dart';
@@ -24,6 +26,8 @@ Future<void> pumpStoreHome(
   FakeStoreRepository? stores,
   FakeClock? clock,
   bool smallPhoneLargeText = false,
+  CoraEnv env = CoraEnv.dev,
+  List<Override> overrides = const [],
 }) async {
   if (smallPhoneLargeText) {
     useSmallPhoneWithLargeText(tester);
@@ -34,6 +38,7 @@ Future<void> pumpStoreHome(
     tester,
     auth: FakeAuthRepository(session: FakeAuthRepository.signedInSession),
     me: FakeMeRepository(role: UserRole.store),
+    env: env,
     overrides: [
       storeRepositoryProvider.overrideWithValue(
         stores ??
@@ -53,6 +58,7 @@ Future<void> pumpStoreHome(
       photoPickerProvider.overrideWithValue(FakePhotoPicker()),
       photoUploaderProvider.overrideWithValue(FakePhotoUploader()),
       clockProvider.overrideWithValue(clock ?? FakeClock()),
+      ...overrides,
     ],
   );
 }

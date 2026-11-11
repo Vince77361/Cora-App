@@ -100,6 +100,7 @@ class ApiStoreHomeRepository implements StoreHomeRepository {
       _ => OfferView.waiting,
     },
     paymentDaysLeft: m.paymentDaysLeft,
+    collaborationId: m.collaborationId,
   );
 }
 

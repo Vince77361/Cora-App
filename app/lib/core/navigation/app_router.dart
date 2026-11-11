@@ -9,6 +9,8 @@ import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import '../../features/creator_profile/presentation/pages/creator_profile_setup_page.dart';
 import '../../features/dev/presentation/pages/motion_gallery_page.dart';
 import '../../features/onboarding/domain/me.dart';
+import '../../features/payment/presentation/pages/fake_checkout_page.dart';
+import '../../features/payment/presentation/pages/store_payment_page.dart';
 import '../../features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
@@ -154,6 +156,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: AppRoutes.storePayPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          StorePaymentPage(
+            collaborationId: state.pathParameters['collaborationId']!,
+          ),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
         path: '/store/coming-soon/:title',
         pageBuilder: (context, state) => _entryPage(
           state,
@@ -196,6 +207,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           path: AppRoutes.devMotion,
           pageBuilder: (context, state) => CoraTransitions.push(
             const MotionGalleryPage(),
+            key: state.pageKey,
+          ),
+        ),
+      // 가짜 결제창은 서버가 가짜 PG일 때(개발)만 쓴다. 운영 빌드에는 라우트도 코드도 없다.
+      if (kDevScreensCompiledIn && config.isDev)
+        GoRoute(
+          path: AppRoutes.devFakeCheckout,
+          pageBuilder: (context, state) => CoraTransitions.push(
+            FakeCheckoutPage(
+              paymentId: state.uri.queryParameters['paymentId'] ?? '',
+              amount: int.tryParse(state.uri.queryParameters['amount'] ?? ''),
+            ),
             key: state.pageKey,
           ),
         ),

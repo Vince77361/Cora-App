@@ -25,6 +25,9 @@ String won(int amount) {
   return '${_withCommas(amount)}원';
 }
 
+/// 금액을 쉼표로만 끊어서(`100,000원`). 결제 화면은 만 원 단위로 줄이지 않고 정확한 금액을 보인다.
+String wonExact(int amount) => '${_withCommas(amount)}원';
+
 String _withCommas(int amount) {
   final digits = amount.abs().toString();
   final out = StringBuffer(amount < 0 ? '-' : '');

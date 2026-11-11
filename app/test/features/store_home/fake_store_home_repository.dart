@@ -47,9 +47,11 @@ SentOffer sentOffer({
   String name = '민의 옷장 기록',
   OfferView view = OfferView.waiting,
   int? paymentDaysLeft,
+  String? collaborationId,
   OfferTerms? terms,
 }) => SentOffer(
   id: id,
+  collaborationId: collaborationId,
   creator: CreatorSummary(userId: creatorId, displayName: name),
   terms:
       terms ??

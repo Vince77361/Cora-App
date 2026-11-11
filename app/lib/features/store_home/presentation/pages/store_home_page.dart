@@ -94,6 +94,20 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
     }
   }
 
+  /// 보낸 오퍼 줄의 버튼. `결제하기`는 결제 화면을 열고, `다시 찾기`는 아직 만들지 않은 화면이다.
+  void _onSentOfferAction(SentOffer offer) {
+    final collaborationId = offer.collaborationId;
+    if (offer.view == OfferView.accepted && collaborationId != null) {
+      // 결제 화면을 닫고 돌아오면(결제했든 그냥 나왔든) 숫자와 오퍼 줄을 서버에서 다시 읽는다.
+      context.push(AppRoutes.storePay(collaborationId)).then((_) {
+        if (mounted) ref.read(storeHomeViewModelProvider.notifier).refresh();
+      });
+      return;
+    }
+    final label = sentOfferAction(offer);
+    if (label != null) _comingSoon(label);
+  }
+
   void _onSentOffer(SentOffer offer) {
     if (!offer.cancellable) return;
     showCancelOfferSheet(
@@ -119,6 +133,7 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
               AsyncData(:final value) => _Body(
                 state: value,
                 onSentOffer: _onSentOffer,
+                onSentOfferAction: _onSentOfferAction,
                 onShortcut: _comingSoon,
               ),
               AsyncError() => CoraErrorView(
@@ -158,11 +173,13 @@ class _Body extends ConsumerWidget {
   const _Body({
     required this.state,
     required this.onSentOffer,
+    required this.onSentOfferAction,
     required this.onShortcut,
   });
 
   final StoreHomeState state;
   final ValueChanged<SentOffer> onSentOffer;
+  final ValueChanged<SentOffer> onSentOfferAction;
   final ValueChanged<String> onShortcut;
 
   /// 하단 메뉴(높이 64, 아래 20)에 가려지지 않게 목록 끝에 두는 여백.
@@ -250,7 +267,7 @@ class _Body extends ConsumerWidget {
                 ? _SentOffers(
                     state: state,
                     onTap: onSentOffer,
-                    onAction: onShortcut,
+                    onAction: onSentOfferAction,
                   )
                 : _Applicants(state: state, now: now),
           ),
@@ -494,8 +511,8 @@ class _SentOffers extends StatelessWidget {
   final StoreHomeState state;
   final ValueChanged<SentOffer> onTap;
 
-  /// `결제하기`, `다시 찾기`를 눌렀을 때(아직 만들지 않은 화면).
-  final ValueChanged<String> onAction;
+  /// `결제하기`, `다시 찾기`를 눌렀을 때.
+  final ValueChanged<SentOffer> onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -513,7 +530,7 @@ class _SentOffers extends StatelessWidget {
             actionLabel: sentOfferAction(offer),
             // 캔버스에서 강조색 버튼은 결제하기뿐이다.
             actionHighlighted: offer.view == OfferView.accepted,
-            onAction: () => onAction(sentOfferAction(offer)!),
+            onAction: () => onAction(offer),
             onTap: offer.cancellable ? () => onTap(offer) : null,
           ),
       ],
