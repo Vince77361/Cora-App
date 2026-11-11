@@ -1,0 +1,44 @@
+# Cora 작업 규칙
+
+Cora는 가게 사장님·브랜드와 크리에이터를 잇는 모바일 앱이다. Flutter 앱(`app/`)과 NestJS 서버(`api/`)를 이 레포 하나에서 만든다. 1인 개발이다.
+
+## 먼저 읽을 것
+
+- 설계: `docs/superpowers/specs/`. 시작은 `2026-11-11-tech-stack-design.md`.
+- **여러 설계에 걸친 규칙은 `2026-11-11-collaboration-common-model.md`에 있고, 기능 설계와 다르면 이 문서가 우선한다.**
+- 실행 계획: `docs/superpowers/plans/`. 순서는 공통 기반 → 가게 사장님 흐름과 오퍼 → 결제·에스크로·지급 → 브랜드 탐색·매칭 → 대화·계약 → 제작·검토·회고 → 포트폴리오·릴스·입찰 → 유입 전략.
+- 코딩 패턴: https://github.com/Vince77361/Vince_Wiki 의 `wiki/`. 인증, 권한, API, DB, 업로드, 결제, 개인정보를 다룰 때는 `wiki/patterns/security-baseline.md`를 먼저 읽는다.
+
+## 일하는 방식
+
+- 계획 하나를 새 세션 하나에서 실행한다. 진행 기록은 `.superpowers/sdd/<계획 이름>/progress.md`에 남기고, 세션을 시작할 때 이 기록부터 읽는다.
+- 작업(Task)마다 구현 에이전트 하나가 구현하고 다른 에이전트 하나가 검토한다. 세션의 주 에이전트는 조율만 하고 직접 고치지 않는다.
+- 작업의 완료 기준은 둘 다다: 테스트가 통과한 실제 출력, 검토 통과. 화면은 시뮬레이터나 에뮬레이터에서 실제로 띄워 확인한다.
+- 멈추고 소유자에게 묻는 경우: 같은 실패가 2~3번 반복될 때, 설계나 공통 모델과 충돌할 때, 계획에 "소유자 승인"이나 "소유자 준비 확인"이라고 적힌 단계에 왔을 때. 추측해서 구현하지 않는다.
+- 질문은 설계가 갈리는 곳에서만 하고, 선택지와 추천을 함께 준다. 답은 짧게, 결론부터.
+
+## Git
+
+- 브랜치를 만들지 않는다. `main`에 바로 커밋한다.
+- 계획을 실행하라는 요청은 그 계획의 모든 작업 커밋에 대한 요청으로 본다. 작업 하나가 끝날 때마다 커밋하고, 커밋마다 테스트가 통과한 상태여야 한다.
+- 커밋 메시지는 한국어 conventional commit(`feat:`, `fix:`, `docs:`, `chore:`), 한 커밋에 한 목적.
+- push는 계획 하나가 끝났을 때 한 번, 소유자에게 확인받고 한다. 그 밖의 원격 작업(PR, 원격 브랜치)도 매번 확인받는다.
+- 삭제, 덮어쓰기, `git reset --hard`처럼 되돌리기 어려운 일은 무엇이 사라지는지 설명하고 확인받은 뒤에 한다.
+
+## 환경
+
+- Supabase는 원격의 개발용 프로젝트를 쓴다. **로컬에 Supabase를 띄우지 않는다.** Supabase CLI와 `supabase/` 폴더를 쓰지 않는다. 로컬 Docker로 띄우는 것은 Redis뿐이다.
+- 자동 테스트는 같은 DB의 `cora_test` 스키마에서 돈다. 앱 데이터는 `public`에 있다. 마이그레이션의 직접 SQL에 `public.`을 쓰지 않는다.
+- Storage 버킷은 `yarn setup:supabase`로 만든다.
+- **`api/.env`, `app/config/dev.json`을 비롯해 비밀값이 든 파일을 읽지 않는다.** 키 이름은 `*.example` 파일에서 본다. 값이 필요하거나 비어 있어 실패하면 멈추고 소유자에게 어떤 키가 필요한지 알린다.
+- 디스크를 많이 쓰는 도구나 이미지를 새로 들이기 전에 소유자에게 묻는다.
+
+## 코드
+
+- 대화, 문서, 코드 주석은 한국어다. 주석은 "왜"를 적는다. 테스트 이름은 영어 문장이다.
+- 서버: 기능별 모듈, controller → service → repository. Prisma는 repository에서만 쓴다. 다른 모듈의 내부 파일을 import하지 않는다. JSON 키는 camelCase, DB는 snake_case.
+- 새 테이블에는 RLS를 켜고 정책은 만들지 않는다. 앱은 데이터를 NestJS API로만 읽고 쓴다.
+- 앱: `lib/features/<feature>/{data,domain,presentation/{pages,viewmodels}}` + `lib/core/`. ViewModel은 Riverpod `AsyncNotifier`. freezed와 build_runner를 쓰지 않는다. 색과 모양은 `core/theme`의 토큰에서만 가져온다.
+- 외부 연동은 포트 뒤에 두고 가짜 구현(`Fake*`)으로 시작한다. 운영 환경에서 가짜 구현이 선택되면 서버가 시작을 거부한다.
+- 테스트에는 손으로 쓴 `Fake*`를 쓴다. 시각은 `Clock`으로 주입받는다.
+- 화면 문구는 설계 문서와 기획 캔버스의 문구를 그대로 쓴다.
