@@ -192,6 +192,24 @@ describe('InstagramService', () => {
     expect(creators.overwritten).toHaveLength(0);
   });
 
+  it('lowercases the handle so letter case cannot connect one account twice', async () => {
+    const result = await service.complete(OTHER, 'Haru_Cafe');
+    expect(result.handle).toBe('haru_cafe');
+    expect((await errorOf(service.complete(CREATOR, 'haru_cafe'))).code).toBe(
+      'CONFLICT',
+    );
+    expect((await errorOf(service.complete(CREATOR, 'HARU_CAFE'))).code).toBe(
+      'CONFLICT',
+    );
+  });
+
+  it('rejects a handle in a bad format from the provider', async () => {
+    expect((await errorOf(service.complete(CREATOR, 'haru cafe!'))).code).toBe(
+      'VALIDATION_FAILED',
+    );
+    expect(repo.rows.size).toBe(0);
+  });
+
   it('lets the same creator connect again with the same or another handle', async () => {
     await service.complete(CREATOR, 'haru_cafe');
     await expect(service.complete(CREATOR, 'haru_cafe')).resolves.toMatchObject(
@@ -207,10 +225,9 @@ describe('InstagramService', () => {
     expect(await service.getConnection(CREATOR)).toBeNull();
   });
 
-  it('disconnects when no per-view collaboration holds money', async () => {
+  it('disconnects when no per-view collaboration is in progress', async () => {
     await service.complete(CREATOR, 'haru_cafe');
     collaborations.held = [
-      { kind: 'STORE_OFFER', stage: 'AWAITING_PAYMENT' },
       { kind: 'STORE_OFFER', stage: 'SETTLED' },
       { kind: 'STORE_OFFER', stage: 'CANCELLED' },
     ];
@@ -231,6 +248,44 @@ describe('InstagramService', () => {
       expect(repo.rows.has(CREATOR)).toBe(true);
     },
   );
+
+  it('refuses to disconnect while a per-view collaboration awaits payment', async () => {
+    await service.complete(CREATOR, 'haru_cafe');
+    collaborations.held = [{ kind: 'STORE_OFFER', stage: 'AWAITING_PAYMENT' }];
+    expect((await errorOf(service.disconnect(CREATOR))).code).toBe('CONFLICT');
+    expect(repo.rows.has(CREATOR)).toBe(true);
+  });
+
+  it.each(['AWAITING_PAYMENT', 'FUNDED', 'COUNTING', 'HALTED'] as const)(
+    'refuses to switch to another handle while a per-view collaboration is %s',
+    async (stage) => {
+      await service.complete(CREATOR, 'haru_cafe');
+      collaborations.held = [{ kind: 'STORE_OFFER', stage }];
+      const error = await errorOf(service.complete(CREATOR, 'haru_two'));
+      expect(error.code).toBe('CONFLICT');
+      expect(repo.rows.get(CREATOR)!.handle).toBe('haru_cafe');
+    },
+  );
+
+  it('still lets the creator reconnect the same handle (token refresh) while per-view money is held', async () => {
+    await service.complete(CREATOR, 'haru_cafe');
+    collaborations.held = [
+      { kind: 'STORE_OFFER', stage: 'COUNTING' },
+      { kind: 'STORE_OFFER', stage: 'AWAITING_PAYMENT' },
+    ];
+    await expect(service.complete(CREATOR, '@Haru_Cafe')).resolves.toEqual({
+      handle: 'haru_cafe',
+      followers: 2100,
+    });
+  });
+
+  it('lets the creator switch handle when no per-view collaboration is in progress', async () => {
+    await service.complete(CREATOR, 'haru_cafe');
+    collaborations.held = [{ kind: 'STORE_OFFER', stage: 'SETTLED' }];
+    await expect(service.complete(CREATOR, 'haru_two')).resolves.toMatchObject({
+      handle: 'haru_two',
+    });
+  });
 
   it('treats disconnecting with nothing connected as done', async () => {
     await expect(service.disconnect(CREATOR)).resolves.toBeUndefined();

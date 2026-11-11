@@ -43,6 +43,22 @@ describe('SecretBox', () => {
     expect(errorOf(() => box.open('v9:a:b:c')).code).toBe('INTERNAL');
   });
 
+  it('refuses a truncated tag, a wrong-sized iv and extra parts', () => {
+    const box = new SecretBox(KEY);
+    const [version, iv, tag, body] = box.seal('secret-value').split(':');
+    const cut = (value: string, bytes: number) =>
+      Buffer.from(value, 'base64').subarray(0, bytes).toString('base64');
+    for (const sealed of [
+      [version, iv, cut(tag, 4), body],
+      [version, iv, cut(tag, 15), body],
+      [version, cut(iv, 8), tag, body],
+      [version, iv, tag, body, 'extra'],
+    ]) {
+      expect(errorOf(() => box.open(sealed.join(':'))).code).toBe('INTERNAL');
+    }
+    expect(box.open([version, iv, tag, body].join(':'))).toBe('secret-value');
+  });
+
   it('refuses a value sealed with another key', () => {
     const other = new SecretBox(randomBytes(32).toString('base64'));
     const sealed = other.seal('secret-value');

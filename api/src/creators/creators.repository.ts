@@ -15,7 +15,7 @@ export interface CreatorProfileData {
 // 프로필과 인스타그램 연결(연결이 없거나 지워졌으면 null). 연결 여부와 팔로워 수는 여기서 한 번에 읽는다.
 // CreatorsModule이 InstagramModule을 import하면 순환이라, 연결 테이블은 관계로 읽는다.
 export type CreatorProfileRow = CreatorProfile & {
-  instagram: { followers: number | null } | null;
+  instagram: { handle: string; followers: number | null } | null;
 };
 
 // 크리에이터 조회는 모두 여기를 거친다. 4번 계획이 목록 조건(피하는 업종 등)을 이곳에 끼운다.
@@ -31,7 +31,7 @@ export class CreatorsRepository {
         user: {
           select: {
             instagramConnection: {
-              select: { followers: true, deletedAt: true },
+              select: { handle: true, followers: true, deletedAt: true },
             },
           },
         },
@@ -44,9 +44,18 @@ export class CreatorsRepository {
       ...profile,
       instagram:
         connection && !connection.deletedAt
-          ? { followers: connection.followers }
+          ? { handle: connection.handle, followers: connection.followers }
           : null,
     };
+  }
+
+  // 프로필이 없어도 연결은 있을 수 있다(연결을 먼저 한 크리에이터). 프로필을 저장할 때 연결된 아이디를 따르려고 따로 읽는다.
+  async findConnectedHandle(userId: string): Promise<string | null> {
+    const connection = await this.prisma.instagramConnection.findFirst({
+      where: { creatorId: userId, deletedAt: null },
+      select: { handle: true },
+    });
+    return connection?.handle ?? null;
   }
 
   // 연결한 계정의 아이디로 프로필의 인스타그램 아이디를 덮어쓴다. 프로필이 아직 없으면 할 일이 없다.

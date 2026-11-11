@@ -4,6 +4,8 @@ import { AppError } from '../errors/app-error';
 const VERSION = 'v1';
 const IV_BYTES = 12;
 const KEY_BYTES = 32;
+// GCM 태그는 항상 16바이트로 고정한다. 짧은 태그를 받아 주면 변조 검증이 약해진다.
+const TAG_BYTES = 16;
 
 // 인스타그램 토큰과 계좌번호처럼 DB에 그대로 두면 안 되는 값을 AES-256-GCM으로 봉한다.
 // 출력은 `v1:<iv>:<tag>:<본문>`(각 base64)이라 키를 바꾸는 날에도 어떤 방식으로 봉했는지 알 수 있다.
@@ -24,7 +26,9 @@ export class SecretBox {
   seal(plain: string): string {
     const key = this.requireKey();
     const iv = randomBytes(IV_BYTES);
-    const cipher = createCipheriv('aes-256-gcm', key, iv);
+    const cipher = createCipheriv('aes-256-gcm', key, iv, {
+      authTagLength: TAG_BYTES,
+    });
     const body = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
     return [
       VERSION,
@@ -46,13 +50,16 @@ export class SecretBox {
     ) {
       throw this.unreadable();
     }
+    const ivBytes = Buffer.from(iv, 'base64');
+    const tagBytes = Buffer.from(tag, 'base64');
+    if (ivBytes.length !== IV_BYTES || tagBytes.length !== TAG_BYTES) {
+      throw this.unreadable();
+    }
     try {
-      const decipher = createDecipheriv(
-        'aes-256-gcm',
-        key,
-        Buffer.from(iv, 'base64'),
-      );
-      decipher.setAuthTag(Buffer.from(tag, 'base64'));
+      const decipher = createDecipheriv('aes-256-gcm', key, ivBytes, {
+        authTagLength: TAG_BYTES,
+      });
+      decipher.setAuthTag(tagBytes);
       return Buffer.concat([
         decipher.update(Buffer.from(body, 'base64')),
         decipher.final(),
@@ -67,7 +74,7 @@ export class SecretBox {
     if (!this.key) {
       throw new AppError(
         'INTERNAL',
-        'PAYOUT_ACCOUNT_KEY가 없거나 올바르지 않아 값을 암호화할 수 없어요. 32바이트를 base64로 인코딩한 값이어야 해요.',
+        'PAYOUT_ACCOUNT_KEY가 없거나 올바르지 않아 값을 암호화하거나 열 수 없어요. 32바이트를 base64로 인코딩한 값이어야 해요.',
       );
     }
     return this.key;

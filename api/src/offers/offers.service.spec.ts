@@ -625,6 +625,16 @@ describe('OffersService', () => {
       expect(accepted.needsInstagram).toBe(false);
     });
 
+    it('stops flagging an accepted offer even if the creator disconnects afterwards', async () => {
+      const perView = await sendAs('REELS', 'PER_VIEW');
+      instagram.connected = true;
+      await service.accept(CREATOR, perView);
+      instagram.connected = false;
+      const [active] = await service.listReceived(CREATOR, 'active');
+      expect(active.view).toBe('ACCEPTED');
+      expect(active.needsInstagram).toBe(false);
+    });
+
     it('does not require instagram for a voucher-only offer or a shorts offer', async () => {
       const [voucher] = await service.listReceived(CREATOR, 'new');
       expect(voucher.needsInstagram).toBe(false);

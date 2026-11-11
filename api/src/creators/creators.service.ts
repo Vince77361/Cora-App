@@ -44,10 +44,14 @@ export class CreatorsService {
       this.uploads.assertOwnedPath(userId, photoPath, 'CREATOR_PHOTO');
     }
     const handle = blankToNull(input.instagramHandle);
+    // 연결된 계정이 있으면 프로필의 인스타그램 아이디는 항상 그 계정이다. 직접 적은 값(없는 값 포함)은 무시한다.
+    // 정산이 읽는 조회수와 가게가 보는 아이디가 어긋나지 않게 하려는 것이다.
+    const connected = await this.creators.findConnectedHandle(userId);
     const row = await this.creators.upsert(userId, {
       displayName: input.displayName.trim(),
       contentFocus: blankToNull(input.contentFocus),
-      instagramHandle: handle?.startsWith('@') ? handle.slice(1) : handle,
+      instagramHandle:
+        connected ?? (handle?.startsWith('@') ? handle.slice(1) : handle),
       photoPath,
       regionSido: input.regionSido,
       regionSigungu: blankToNull(input.regionSigungu),
@@ -55,7 +59,7 @@ export class CreatorsService {
     return this.toProfile(row);
   }
 
-  // 인스타그램 연결 모듈이 연결 직후 부른다. 연결된 계정이 직접 적은 값보다 우선한다.
+  // 인스타그램 연결 모듈이 연결 직후 부른다. 프로필이 아직 없으면 할 일이 없고, 나중에 만들 때 upsertMine이 연결된 아이디를 따른다.
   async overwriteInstagramHandle(
     userId: string,
     handle: string,

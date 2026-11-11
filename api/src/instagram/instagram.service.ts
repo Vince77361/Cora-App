@@ -38,11 +38,21 @@ export class InstagramService {
   ): Promise<InstagramConnectionModel> {
     await this.assertCreator(userId);
     const connected = await this.port.completeConnect(userId, code.trim());
-    const handle = connected.handle.trim().replace(/^@/, '');
+    // 인스타그램 아이디는 대소문자를 가리지 않으므로 소문자로 맞춰 같은 계정이 두 번 연결되지 않게 한다.
+    const handle = connected.handle.trim().replace(/^@/, '').toLowerCase();
     if (!HANDLE.test(handle)) {
       throw new AppError(
         'VALIDATION_FAILED',
         '인스타그램 아이디는 영문, 숫자, 점, 밑줄만 쓸 수 있어요.',
+      );
+    }
+    // 이미 연결된 크리에이터가 다른 계정으로 바꾸는 것은 해제와 같은 조건을 따른다.
+    // 같은 계정으로 다시 연결하는 것(토큰 갱신)은 언제든 된다.
+    const mine = await this.connections.findByCreatorId(userId);
+    if (mine && mine.handle !== handle) {
+      await this.assertNoPerViewInProgress(
+        userId,
+        '조회수당 지급이 진행 중이라 지금은 다른 계정으로 바꿀 수 없어요.',
       );
     }
     // 먼저 읽어 친절한 오류를 주고, 동시에 연결하는 경우는 저장할 때 유일 제약이 막는다.
@@ -80,20 +90,32 @@ export class InstagramService {
     return row;
   }
 
-  // 조회수당 협업의 돈이 보관 중이면 정산이 조회수를 읽어야 하므로 풀 수 없다. 연결이 없으면 이미 풀린 것이다.
+  // 조회수당 협업이 진행 중이면 정산이 이 계정의 조회수를 읽어야 하므로 풀 수 없다. 연결이 없으면 이미 풀린 것이다.
   async disconnect(userId: string): Promise<void> {
     await this.assertCreator(userId);
+    await this.assertNoPerViewInProgress(
+      userId,
+      '조회수당 지급이 진행 중이라 지금은 연동을 해제할 수 없어요.',
+    );
+    await this.connections.remove(userId);
+  }
+
+  // 결제를 기다리는 협업도 막는다. 결제가 끝나면 곧 돈이 보관되고, 그때 조회수를 읽을 계정이 있어야 한다.
+  private async assertNoPerViewInProgress(
+    userId: string,
+    message: string,
+  ): Promise<void> {
     const perView = await this.collaborations.listForCreator(
       userId,
       'PER_VIEW',
     );
-    if (perView.some((c) => isMoneyHeld(c.kind, c.stage))) {
-      throw new AppError(
-        'CONFLICT',
-        '조회수당 지급이 진행 중이라 지금은 연동을 해제할 수 없어요.',
-      );
+    if (
+      perView.some(
+        (c) => c.stage === 'AWAITING_PAYMENT' || isMoneyHeld(c.kind, c.stage),
+      )
+    ) {
+      throw new AppError('CONFLICT', message);
     }
-    await this.connections.remove(userId);
   }
 
   // 키가 없는 개발 환경에서도 연결 → 수락 흐름을 쓸 수 있게 토큰을 저장하지 않는다. 운영은 키 없이 시작하지 않는다.

@@ -650,6 +650,7 @@ export class OffersService {
     collaborationId: string | null,
     instagramConnected: boolean,
   ): ReceivedOfferModel {
+    const view = viewForCreator(row, now);
     return {
       id: row.id,
       collaborationId,
@@ -657,10 +658,12 @@ export class OffersService {
       storeIntro: card.intro,
       bestShootingTime: card.bestShootingTime,
       terms: this.termsOf(row),
-      view: viewForCreator(row, now),
+      view,
       receivedAt: row.createdAt.toISOString(),
       canUndoDecline: canUndoDecline(row, now),
-      needsInstagram: needsInstagram(row, instagramConnected),
+      // 수락할 수 있는 오퍼(기다리는 중)에만 알린다. 이미 처리된 오퍼에는 해당이 없다.
+      needsInstagram:
+        view === 'WAITING' && needsInstagram(row, instagramConnected),
     };
   }
 

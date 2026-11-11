@@ -1036,6 +1036,19 @@ describe('offers', () => {
       });
     });
 
+    it('stops flagging an accepted offer after the creator disconnects', async () => {
+      const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
+      await connectInstagram();
+      await accept(offer.id).expect(200);
+      // 결제를 기다리는 동안에는 해제할 수 없으므로 DB에서 풀린 상태를 만든다.
+      await prisma.instagramConnection.deleteMany();
+      const active = (await received('active').expect(200))
+        .body as ReceivedBody[];
+      expect(active.map((o) => [o.view, o.needsInstagram])).toEqual([
+        ['ACCEPTED', false],
+      ]);
+    });
+
     it('does not require instagram for a voucher-only offer or a shorts offer', async () => {
       const voucher = await seedOffer(store.id, USER_A);
       const other = await seedStore();

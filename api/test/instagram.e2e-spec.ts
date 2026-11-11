@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { CollaborationStage, PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { SecretBox } from '../src/common/crypto/secret-box';
+import { InstagramService } from '../src/instagram/instagram.service';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { USER_A } from './support/fake-token-verifier';
@@ -150,13 +151,46 @@ describe('instagram', () => {
       instagramConnected: true,
       followers: 2100,
     });
-    // 연결한 뒤 프로필을 고쳐도 연결 표시는 그대로다.
+    // 연결한 뒤 프로필을 고쳐도(아이디를 빼도) 연결 표시와 연결된 아이디는 그대로다.
     const saved = await request(server)
       .put('/creators/me')
       .set(auth)
       .send({ displayName: '민지', ...REGION })
       .expect(200);
     expect(saved.body as ProfileBody).toMatchObject({
+      instagramHandle: 'haru_cafe',
+      instagramConnected: true,
+      followers: 2100,
+    });
+  });
+
+  it('keeps the connected handle when the profile is saved with another handle', async () => {
+    await complete('haru_cafe').expect(200);
+    await request(server)
+      .put('/creators/me')
+      .set(auth)
+      .send({
+        displayName: '민지',
+        instagramHandle: 'someone_else',
+        ...REGION,
+      })
+      .expect(200);
+    const res = await request(server).get('/creators/me').set(auth).expect(200);
+    expect(res.body as ProfileBody).toMatchObject({
+      instagramHandle: 'haru_cafe',
+      instagramConnected: true,
+    });
+  });
+
+  it('gives a profile created after connecting the connected handle', async () => {
+    await complete('haru_cafe').expect(200);
+    const created = await request(server)
+      .put('/creators/me')
+      .set(auth)
+      .send({ displayName: '민지', ...REGION })
+      .expect(200);
+    expect(created.body as ProfileBody).toMatchObject({
+      instagramHandle: 'haru_cafe',
       instagramConnected: true,
       followers: 2100,
     });
@@ -204,10 +238,30 @@ describe('instagram', () => {
     await getConnection().expect(404);
     expect(await prisma.instagramConnection.count()).toBe(0);
     // 풀린 아이디는 다른 크리에이터가 연결할 수 있다.
+    const other = await seedUser('CREATOR');
+    await expect(
+      app.get(InstagramService).complete(other, 'haru_cafe'),
+    ).resolves.toEqual({ handle: 'haru_cafe', followers: 2100 });
+    // 이미 풀렸으면 다시 풀어도 204다.
     await disconnect().expect(204);
   });
 
-  it.each(['FUNDED', 'COUNTING', 'HALTED'] as const)(
+  it('lowercases the handle and treats another letter case as the same account', async () => {
+    const res = await complete('@Haru_Cafe').expect(200);
+    expect((res.body as ConnectionBody).handle).toBe('haru_cafe');
+    const other = await seedUser('CREATOR');
+    await expect(
+      app.get(InstagramService).complete(other, 'HARU_CAFE'),
+    ).rejects.toMatchObject({ code: 'CONFLICT' });
+  });
+
+  it('rejects a handle in a bad format with 400', async () => {
+    const res = await complete('haru cafe!').expect(400);
+    expect(codeOf(res)).toBe('VALIDATION_FAILED');
+    expect(await prisma.instagramConnection.count()).toBe(0);
+  });
+
+  it.each(['AWAITING_PAYMENT', 'FUNDED', 'COUNTING', 'HALTED'] as const)(
     'refuses to disconnect while a per-view collaboration is %s',
     async (stage) => {
       await complete('haru_cafe').expect(200);
@@ -218,12 +272,48 @@ describe('instagram', () => {
     },
   );
 
-  it('lets the creator disconnect when no per-view money is held', async () => {
+  it('lets the creator disconnect when no per-view collaboration is in progress', async () => {
     await complete('haru_cafe').expect(200);
-    await seedCollaboration('AWAITING_PAYMENT');
     await seedCollaboration('SETTLED');
+    await seedCollaboration('CANCELLED');
     // 식사권만 있는 협업은 FUNDED여도 조회수를 읽지 않는다.
     await seedCollaboration('FUNDED', 'NONE');
     await disconnect().expect(204);
+  });
+
+  it.each(['AWAITING_PAYMENT', 'COUNTING'] as const)(
+    'refuses to switch to another handle while a per-view collaboration is %s',
+    async (stage) => {
+      await complete('haru_cafe').expect(200);
+      await seedCollaboration(stage);
+      const res = await complete('haru_two').expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect((await getConnection().expect(200)).body).toMatchObject({
+        handle: 'haru_cafe',
+      });
+    },
+  );
+
+  it('lets the creator reconnect the same handle while a per-view collaboration is in progress', async () => {
+    await complete('haru_cafe').expect(200);
+    await seedCollaboration('COUNTING');
+    const before = await prisma.instagramConnection.findUniqueOrThrow({
+      where: { creatorId: USER_A },
+    });
+    await complete('haru_cafe').expect(200);
+    const after = await prisma.instagramConnection.findUniqueOrThrow({
+      where: { creatorId: USER_A },
+    });
+    // 토큰을 새로 봉했다(같은 아이디를 다시 연결하는 토큰 갱신).
+    expect(after.tokenEnc).not.toBe(before.tokenEnc);
+  });
+
+  it('lets the creator switch handle when nothing is in progress', async () => {
+    await complete('haru_cafe').expect(200);
+    await seedCollaboration('SETTLED');
+    await complete('haru_two').expect(200);
+    expect((await getConnection().expect(200)).body).toMatchObject({
+      handle: 'haru_two',
+    });
   });
 });

@@ -35,7 +35,7 @@ class ReceivedOfferModel {
 
   String id;
 
-  /// 릴스·카드뉴스의 조회수 보상을 받으려면 인스타그램 연동이 필요한데 아직 연동하지 않았으면 true. true인 오퍼는 수락할 수 없다.
+  /// 릴스·카드뉴스의 조회수 보상을 받으려면 인스타그램 연동이 필요한데 아직 연동하지 않았으면 true. true인 오퍼는 수락할 수 없다. 기다리는 중(WAITING)이 아닌 오퍼는 항상 false.
   bool needsInstagram;
 
   /// 도착한 시각(ISO 8601).

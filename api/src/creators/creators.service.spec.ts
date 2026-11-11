@@ -21,7 +21,10 @@ const PHOTO = `creators/${USER}/33333333-3333-4333-8333-333333333333.jpg`;
 class FakeCreatorsRepository extends CreatorsRepository {
   readonly rows = new Map<string, CreatorProfileRow>();
   // 연결 정보는 프로필 행 밖(instagram_connections)에 있어 따로 둔다.
-  readonly connections = new Map<string, { followers: number | null }>();
+  readonly connections = new Map<
+    string,
+    { handle: string; followers: number | null }
+  >();
 
   constructor() {
     super(null as never);
@@ -49,6 +52,10 @@ class FakeCreatorsRepository extends CreatorsRepository {
     };
     this.rows.set(userId, row);
     return this.findActiveByUserId(userId) as Promise<CreatorProfileRow>;
+  }
+
+  findConnectedHandle(userId: string): Promise<string | null> {
+    return Promise.resolve(this.connections.get(userId)?.handle ?? null);
   }
 
   updateInstagramHandle(userId: string, handle: string): Promise<void> {
@@ -197,7 +204,7 @@ describe('CreatorsService', () => {
       instagramConnected: false,
       followers: null,
     });
-    repo.connections.set(USER, { followers: 2100 });
+    repo.connections.set(USER, { handle: 'haru', followers: 2100 });
     expect(await service.getSummary(USER)).toMatchObject({
       instagramConnected: true,
       followers: 2100,
@@ -207,7 +214,7 @@ describe('CreatorsService', () => {
       instagramConnected: true,
       followers: 2100,
     });
-    repo.connections.set(USER, { followers: null });
+    repo.connections.set(USER, { handle: 'haru', followers: null });
     expect(await service.getMine(USER)).toMatchObject({
       instagramConnected: true,
       followers: null,
@@ -222,6 +229,32 @@ describe('CreatorsService', () => {
       service.overwriteInstagramHandle(OTHER, 'connected'),
     ).resolves.toBeUndefined();
     expect(repo.rows.has(OTHER)).toBe(false);
+  });
+
+  it('keeps the connected handle on every profile save, whatever the input says', async () => {
+    repo.connections.set(USER, { handle: 'haru', followers: 2100 });
+    // 연결을 먼저 하고 프로필을 처음 만들 때도 연결된 아이디가 들어간다.
+    const created = await service.upsertMine(USER, {
+      ...input,
+      instagramHandle: 'typed',
+    });
+    expect(created.instagramHandle).toBe('haru');
+    // 전체 교체(PUT)에서 아이디를 빼도, 다른 아이디를 적어도 그대로다.
+    expect((await service.upsertMine(USER, input)).instagramHandle).toBe(
+      'haru',
+    );
+    expect(
+      (await service.upsertMine(USER, { ...input, instagramHandle: '@other' }))
+        .instagramHandle,
+    ).toBe('haru');
+  });
+
+  it('uses the typed handle when nothing is connected', async () => {
+    const saved = await service.upsertMine(USER, {
+      ...input,
+      instagramHandle: 'typed',
+    });
+    expect(saved.instagramHandle).toBe('typed');
   });
 
   it('requireProfile returns the profile or throws CONFLICT', async () => {
