@@ -7,6 +7,7 @@ import { loadEnv } from './config/env';
 import { HealthModule } from './health/health.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { StoresModule } from './stores/stores.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 
@@ -21,6 +22,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     UploadsModule,
     CreatorsModule,
+    StoresModule,
   ],
 })
 export class AppModule {}

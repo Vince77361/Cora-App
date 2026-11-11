@@ -65,6 +65,30 @@ String parameterToString(dynamic value) {
   if (value is DateTime) {
     return value.toUtc().toIso8601String();
   }
+  if (value is AdvanceOnboardingStep) {
+    return AdvanceOnboardingStepTypeTransformer().encode(value).toString();
+  }
+  if (value is ContentFormat) {
+    return ContentFormatTypeTransformer().encode(value).toString();
+  }
+  if (value is IndustryCategory) {
+    return IndustryCategoryTypeTransformer().encode(value).toString();
+  }
+  if (value is MyApplicationStatus) {
+    return MyApplicationStatusTypeTransformer().encode(value).toString();
+  }
+  if (value is RewardType) {
+    return RewardTypeTypeTransformer().encode(value).toString();
+  }
+  if (value is SourceLinkKind) {
+    return SourceLinkKindTypeTransformer().encode(value).toString();
+  }
+  if (value is StoreOnboardingStep) {
+    return StoreOnboardingStepTypeTransformer().encode(value).toString();
+  }
+  if (value is StoreStatus) {
+    return StoreStatusTypeTransformer().encode(value).toString();
+  }
   if (value is UserRole) {
     return UserRoleTypeTransformer().encode(value).toString();
   }

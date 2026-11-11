@@ -144,6 +144,8 @@ model Store {
   defaultRewardType   RewardType?         @map("default_reward_type")
   defaultVoucherName  String?             @map("default_voucher_name")
   defaultVoucherValue Int?                @map("default_voucher_value")
+  // 공개한 시각. 공개 목록의 "최근 공개 순"에 쓴다.
+  publishedAt         DateTime?           @map("published_at") @db.Timestamptz(3)
   createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(3)

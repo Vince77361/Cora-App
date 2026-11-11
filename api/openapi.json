@@ -1,6 +1,69 @@
 {
   "components": {
     "schemas": {
+      "AdvanceOnboardingDto": {
+        "properties": {
+          "step": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvanceOnboardingStep"
+              }
+            ]
+          }
+        },
+        "required": [
+          "step"
+        ],
+        "type": "object"
+      },
+      "AdvanceOnboardingStep": {
+        "enum": [
+          "DRAFTS",
+          "TERMS"
+        ],
+        "type": "string"
+      },
+      "AnalyzeLinksDto": {
+        "properties": {
+          "links": {
+            "description": "링크 1~3개. 같은 종류는 한 번만.",
+            "items": {
+              "$ref": "#/components/schemas/SourceLinkInputDto"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "links"
+        ],
+        "type": "object"
+      },
+      "AnalyzeStoreLinksResultModel": {
+        "properties": {
+          "analysisFailed": {
+            "type": "boolean"
+          },
+          "store": {
+            "$ref": "#/components/schemas/MyStoreModel"
+          }
+        },
+        "required": [
+          "store",
+          "analysisFailed"
+        ],
+        "type": "object"
+      },
+      "ContentFormat": {
+        "enum": [
+          "SHORTS",
+          "REELS",
+          "CARD_NEWS",
+          "BLOG"
+        ],
+        "type": "string"
+      },
       "CreatePhotoUploadDto": {
         "properties": {
           "contentType": {
@@ -85,6 +148,24 @@
         ],
         "type": "object"
       },
+      "IndustryCategory": {
+        "enum": [
+          "FOOD_CAFE",
+          "BEAUTY",
+          "FASHION",
+          "ACCESSORY",
+          "LIVING",
+          "GROCERY",
+          "DIGITAL",
+          "HEALTH",
+          "OTHER",
+          "ALCOHOL",
+          "GAMBLING",
+          "LOAN",
+          "DIET_SUPPLEMENT"
+        ],
+        "type": "string"
+      },
       "MeModel": {
         "properties": {
           "id": {
@@ -106,6 +187,166 @@
         ],
         "type": "object"
       },
+      "MyApplicationStatus": {
+        "description": "내가 이 가게에 낸 지금 살아 있는 지원의 상태. 없으면 NONE.",
+        "enum": [
+          "NONE",
+          "APPLIED",
+          "OFFERED"
+        ],
+        "type": "string"
+      },
+      "MyStoreModel": {
+        "properties": {
+          "bestShootingTime": {
+            "nullable": true,
+            "type": "string"
+          },
+          "category": {
+            "nullable": true,
+            "type": "string"
+          },
+          "coverPhotoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "defaultTerms": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferTermsModel"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "hours": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "industry": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IndustryCategory"
+              }
+            ]
+          },
+          "intro": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "neighborhood": {
+            "nullable": true,
+            "type": "string"
+          },
+          "onboardingStep": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StoreOnboardingStep"
+              }
+            ]
+          },
+          "regionSido": {
+            "nullable": true,
+            "type": "string"
+          },
+          "regionSigungu": {
+            "nullable": true,
+            "type": "string"
+          },
+          "seats": {
+            "nullable": true,
+            "type": "string"
+          },
+          "signatureMenu": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sourceLinks": {
+            "items": {
+              "$ref": "#/components/schemas/StoreSourceLinkModel"
+            },
+            "type": "array"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StoreStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "onboardingStep",
+          "name",
+          "category",
+          "industry",
+          "neighborhood",
+          "regionSido",
+          "regionSigungu",
+          "coverPhotoUrl",
+          "signatureMenu",
+          "hours",
+          "seats",
+          "bestShootingTime",
+          "intro",
+          "defaultTerms",
+          "sourceLinks"
+        ],
+        "type": "object"
+      },
+      "OfferTermsModel": {
+        "properties": {
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "perViewAmount": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "perViewCap": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "rewardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RewardType"
+              }
+            ]
+          },
+          "voucherName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "voucherValue": {
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "format",
+          "rewardType",
+          "voucherName",
+          "voucherValue",
+          "perViewAmount",
+          "perViewCap"
+        ],
+        "type": "object"
+      },
       "PhotoUploadModel": {
         "properties": {
           "path": {
@@ -118,6 +359,258 @@
         "required": [
           "uploadUrl",
           "path"
+        ],
+        "type": "object"
+      },
+      "RewardType": {
+        "enum": [
+          "VOUCHER",
+          "PER_VIEW",
+          "BOTH"
+        ],
+        "type": "string"
+      },
+      "SetDefaultTermsDto": {
+        "properties": {
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "rewardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RewardType"
+              }
+            ]
+          },
+          "voucherName": {
+            "description": "식사권이 보상에 들어갈 때만 쓴다. 없으면 \"2인 식사권\".",
+            "maxLength": 20,
+            "minLength": 1,
+            "type": "string"
+          },
+          "voucherValue": {
+            "description": "식사권이 보상에 들어갈 때만 쓴다. 없으면 40000.",
+            "maximum": 1000000,
+            "minimum": 1000,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "format",
+          "rewardType"
+        ],
+        "type": "object"
+      },
+      "SourceLinkInputDto": {
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SourceLinkKind"
+              }
+            ]
+          },
+          "url": {
+            "description": "종류에 맞는 https 주소. 네이버 지도: naver.me, map.naver.com. 캐치테이블: app.catchtable.co.kr. 인스타그램: instagram.com, www.instagram.com.",
+            "maxLength": 500,
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "url"
+        ],
+        "type": "object"
+      },
+      "SourceLinkKind": {
+        "enum": [
+          "NAVER_MAP",
+          "CATCHTABLE",
+          "INSTAGRAM"
+        ],
+        "type": "string"
+      },
+      "StoreDetailModel": {
+        "properties": {
+          "bestShootingTime": {
+            "nullable": true,
+            "type": "string"
+          },
+          "category": {
+            "nullable": true,
+            "type": "string"
+          },
+          "coverPhotoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "defaultTerms": {
+            "$ref": "#/components/schemas/OfferTermsModel"
+          },
+          "hours": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "industry": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IndustryCategory"
+              }
+            ]
+          },
+          "intro": {
+            "nullable": true,
+            "type": "string"
+          },
+          "myApplicationStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyApplicationStatus"
+              }
+            ],
+            "description": "내가 이 가게에 낸 지금 살아 있는 지원의 상태. 없으면 NONE."
+          },
+          "name": {
+            "type": "string"
+          },
+          "neighborhood": {
+            "nullable": true,
+            "type": "string"
+          },
+          "regionSido": {
+            "nullable": true,
+            "type": "string"
+          },
+          "regionSigungu": {
+            "nullable": true,
+            "type": "string"
+          },
+          "seats": {
+            "nullable": true,
+            "type": "string"
+          },
+          "signatureMenu": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "industry",
+          "neighborhood",
+          "regionSido",
+          "regionSigungu",
+          "coverPhotoUrl",
+          "defaultTerms",
+          "signatureMenu",
+          "hours",
+          "seats",
+          "bestShootingTime",
+          "intro",
+          "myApplicationStatus"
+        ],
+        "type": "object"
+      },
+      "StoreOnboardingStep": {
+        "enum": [
+          "PAGE",
+          "DRAFTS",
+          "TERMS",
+          "DONE"
+        ],
+        "type": "string"
+      },
+      "StoreSourceLinkModel": {
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SourceLinkKind"
+              }
+            ]
+          },
+          "summary": {
+            "nullable": true,
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "url",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "StoreStatus": {
+        "enum": [
+          "DRAFT",
+          "PUBLISHED"
+        ],
+        "type": "string"
+      },
+      "StoreSummaryModel": {
+        "properties": {
+          "category": {
+            "nullable": true,
+            "type": "string"
+          },
+          "coverPhotoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "defaultTerms": {
+            "$ref": "#/components/schemas/OfferTermsModel"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "industry": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IndustryCategory"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "neighborhood": {
+            "nullable": true,
+            "type": "string"
+          },
+          "regionSido": {
+            "nullable": true,
+            "type": "string"
+          },
+          "regionSigungu": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "industry",
+          "neighborhood",
+          "regionSido",
+          "regionSigungu",
+          "coverPhotoUrl",
+          "defaultTerms"
         ],
         "type": "object"
       },
@@ -134,6 +627,65 @@
         "required": [
           "role"
         ],
+        "type": "object"
+      },
+      "UpdateStoreDto": {
+        "properties": {
+          "bestShootingTime": {
+            "maxLength": 50,
+            "type": "string"
+          },
+          "category": {
+            "description": "표시용 업종(예: 라멘집).",
+            "maxLength": 50,
+            "type": "string"
+          },
+          "coverPhotoPath": {
+            "type": "string"
+          },
+          "hours": {
+            "maxLength": 50,
+            "type": "string"
+          },
+          "industry": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IndustryCategory"
+              }
+            ],
+            "description": "업종 분류(공통 모델 3장)."
+          },
+          "intro": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          },
+          "neighborhood": {
+            "description": "표시용 동네(예: 성수동).",
+            "maxLength": 50,
+            "type": "string"
+          },
+          "regionSido": {
+            "description": "시·도 고정 목록(SIDO_LIST) 중 하나.",
+            "type": "string"
+          },
+          "regionSigungu": {
+            "maxLength": 20,
+            "type": "string"
+          },
+          "seats": {
+            "maxLength": 50,
+            "type": "string"
+          },
+          "signatureMenu": {
+            "maxLength": 50,
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "UpsertCreatorProfileDto": {
@@ -340,6 +892,272 @@
         "summary": "",
         "tags": [
           "Users"
+        ]
+      }
+    },
+    "/stores": {
+      "get": {
+        "operationId": "listPublishedStores",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StoreSummaryModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/me": {
+      "get": {
+        "operationId": "getMyStore",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyStoreModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      },
+      "patch": {
+        "operationId": "updateMyStore",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStoreDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyStoreModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/me/analyze": {
+      "post": {
+        "operationId": "analyzeMyStoreLinks",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeLinksDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeStoreLinksResultModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/me/default-terms": {
+      "put": {
+        "operationId": "setMyStoreDefaultTerms",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDefaultTermsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyStoreModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/me/onboarding-step": {
+      "post": {
+        "operationId": "advanceMyStoreOnboarding",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceOnboardingDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyStoreModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/me/publish": {
+      "post": {
+        "operationId": "publishMyStore",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyStoreModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/{id}": {
+      "get": {
+        "operationId": "getPublishedStore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreDetailModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
         ]
       }
     },

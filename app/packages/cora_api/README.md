@@ -67,6 +67,14 @@ Class | Method | HTTP request | Description
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
 *CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
 *HealthApi* | [**getHealth**](doc//HealthApi.md#gethealth) | **GET** /health | 
+*StoresApi* | [**advanceMyStoreOnboarding**](doc//StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
+*StoresApi* | [**analyzeMyStoreLinks**](doc//StoresApi.md#analyzemystorelinks) | **POST** /stores/me/analyze | 
+*StoresApi* | [**getMyStore**](doc//StoresApi.md#getmystore) | **GET** /stores/me | 
+*StoresApi* | [**getPublishedStore**](doc//StoresApi.md#getpublishedstore) | **GET** /stores/{id} | 
+*StoresApi* | [**listPublishedStores**](doc//StoresApi.md#listpublishedstores) | **GET** /stores | 
+*StoresApi* | [**publishMyStore**](doc//StoresApi.md#publishmystore) | **POST** /stores/me/publish | 
+*StoresApi* | [**setMyStoreDefaultTerms**](doc//StoresApi.md#setmystoredefaultterms) | **PUT** /stores/me/default-terms | 
+*StoresApi* | [**updateMyStore**](doc//StoresApi.md#updatemystore) | **PATCH** /stores/me | 
 *UploadsApi* | [**createPhotoUpload**](doc//UploadsApi.md#createphotoupload) | **POST** /uploads/photos | 
 *UsersApi* | [**getMe**](doc//UsersApi.md#getme) | **GET** /me | 
 *UsersApi* | [**updateMyRole**](doc//UsersApi.md#updatemyrole) | **PATCH** /me/role | 
@@ -74,12 +82,31 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [AdvanceOnboardingDto](doc//AdvanceOnboardingDto.md)
+ - [AdvanceOnboardingStep](doc//AdvanceOnboardingStep.md)
+ - [AnalyzeLinksDto](doc//AnalyzeLinksDto.md)
+ - [AnalyzeStoreLinksResultModel](doc//AnalyzeStoreLinksResultModel.md)
+ - [ContentFormat](doc//ContentFormat.md)
  - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
  - [CreatorProfileModel](doc//CreatorProfileModel.md)
  - [HealthModel](doc//HealthModel.md)
+ - [IndustryCategory](doc//IndustryCategory.md)
  - [MeModel](doc//MeModel.md)
+ - [MyApplicationStatus](doc//MyApplicationStatus.md)
+ - [MyStoreModel](doc//MyStoreModel.md)
+ - [OfferTermsModel](doc//OfferTermsModel.md)
  - [PhotoUploadModel](doc//PhotoUploadModel.md)
+ - [RewardType](doc//RewardType.md)
+ - [SetDefaultTermsDto](doc//SetDefaultTermsDto.md)
+ - [SourceLinkInputDto](doc//SourceLinkInputDto.md)
+ - [SourceLinkKind](doc//SourceLinkKind.md)
+ - [StoreDetailModel](doc//StoreDetailModel.md)
+ - [StoreOnboardingStep](doc//StoreOnboardingStep.md)
+ - [StoreSourceLinkModel](doc//StoreSourceLinkModel.md)
+ - [StoreStatus](doc//StoreStatus.md)
+ - [StoreSummaryModel](doc//StoreSummaryModel.md)
  - [UpdateRoleDto](doc//UpdateRoleDto.md)
+ - [UpdateStoreDto](doc//UpdateStoreDto.md)
  - [UpsertCreatorProfileDto](doc//UpsertCreatorProfileDto.md)
  - [UserRole](doc//UserRole.md)
 

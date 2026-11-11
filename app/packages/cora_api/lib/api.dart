@@ -30,15 +30,35 @@ part 'auth/http_bearer_auth.dart';
 
 part 'api/creators_api.dart';
 part 'api/health_api.dart';
+part 'api/stores_api.dart';
 part 'api/uploads_api.dart';
 part 'api/users_api.dart';
 
+part 'model/advance_onboarding_dto.dart';
+part 'model/advance_onboarding_step.dart';
+part 'model/analyze_links_dto.dart';
+part 'model/analyze_store_links_result_model.dart';
+part 'model/content_format.dart';
 part 'model/create_photo_upload_dto.dart';
 part 'model/creator_profile_model.dart';
 part 'model/health_model.dart';
+part 'model/industry_category.dart';
 part 'model/me_model.dart';
+part 'model/my_application_status.dart';
+part 'model/my_store_model.dart';
+part 'model/offer_terms_model.dart';
 part 'model/photo_upload_model.dart';
+part 'model/reward_type.dart';
+part 'model/set_default_terms_dto.dart';
+part 'model/source_link_input_dto.dart';
+part 'model/source_link_kind.dart';
+part 'model/store_detail_model.dart';
+part 'model/store_onboarding_step.dart';
+part 'model/store_source_link_model.dart';
+part 'model/store_status.dart';
+part 'model/store_summary_model.dart';
 part 'model/update_role_dto.dart';
+part 'model/update_store_dto.dart';
 part 'model/upsert_creator_profile_dto.dart';
 part 'model/user_role.dart';
 

@@ -204,18 +204,56 @@ class ApiClient {
           return valueString == 'true' || valueString == '1';
         case 'DateTime':
           return value is DateTime ? value : DateTime.tryParse(value);
+        case 'AdvanceOnboardingDto':
+          return AdvanceOnboardingDto.fromJson(value);
+        case 'AdvanceOnboardingStep':
+          return AdvanceOnboardingStepTypeTransformer().decode(value);
+        case 'AnalyzeLinksDto':
+          return AnalyzeLinksDto.fromJson(value);
+        case 'AnalyzeStoreLinksResultModel':
+          return AnalyzeStoreLinksResultModel.fromJson(value);
+        case 'ContentFormat':
+          return ContentFormatTypeTransformer().decode(value);
         case 'CreatePhotoUploadDto':
           return CreatePhotoUploadDto.fromJson(value);
         case 'CreatorProfileModel':
           return CreatorProfileModel.fromJson(value);
         case 'HealthModel':
           return HealthModel.fromJson(value);
+        case 'IndustryCategory':
+          return IndustryCategoryTypeTransformer().decode(value);
         case 'MeModel':
           return MeModel.fromJson(value);
+        case 'MyApplicationStatus':
+          return MyApplicationStatusTypeTransformer().decode(value);
+        case 'MyStoreModel':
+          return MyStoreModel.fromJson(value);
+        case 'OfferTermsModel':
+          return OfferTermsModel.fromJson(value);
         case 'PhotoUploadModel':
           return PhotoUploadModel.fromJson(value);
+        case 'RewardType':
+          return RewardTypeTypeTransformer().decode(value);
+        case 'SetDefaultTermsDto':
+          return SetDefaultTermsDto.fromJson(value);
+        case 'SourceLinkInputDto':
+          return SourceLinkInputDto.fromJson(value);
+        case 'SourceLinkKind':
+          return SourceLinkKindTypeTransformer().decode(value);
+        case 'StoreDetailModel':
+          return StoreDetailModel.fromJson(value);
+        case 'StoreOnboardingStep':
+          return StoreOnboardingStepTypeTransformer().decode(value);
+        case 'StoreSourceLinkModel':
+          return StoreSourceLinkModel.fromJson(value);
+        case 'StoreStatus':
+          return StoreStatusTypeTransformer().decode(value);
+        case 'StoreSummaryModel':
+          return StoreSummaryModel.fromJson(value);
         case 'UpdateRoleDto':
           return UpdateRoleDto.fromJson(value);
+        case 'UpdateStoreDto':
+          return UpdateStoreDto.fromJson(value);
         case 'UpsertCreatorProfileDto':
           return UpsertCreatorProfileDto.fromJson(value);
         case 'UserRole':
