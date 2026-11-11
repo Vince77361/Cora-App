@@ -90,6 +90,7 @@ class CoraStepHeader extends StatelessWidget {
     this.onBack,
     this.leading,
     this.backDimmed = false,
+    this.showProgress = true,
   });
 
   final String title;
@@ -100,6 +101,9 @@ class CoraStepHeader extends StatelessWidget {
   final VoidCallback? onBack;
   final Widget? leading;
   final bool backDimmed;
+
+  /// false이면 오른쪽 `2 / 3`과 진행 막대를 그리지 않는다(등록이 끝난 뒤 다시 여는 화면).
+  final bool showProgress;
 
   static const double rowHeight = 64;
   static const double barHeight = 4;
@@ -136,44 +140,47 @@ class CoraStepHeader extends StatelessWidget {
                 ),
                 SizedBox(
                   width: 60,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Text(
-                        '$step / $total',
-                        maxLines: 1,
-                        style: CoraTextStyles.label.copyWith(
-                          fontWeight: FontWeight.w400,
-                          color: c.textSecondary,
+                  child: !showProgress
+                      ? null
+                      : Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Text(
+                              '$step / $total',
+                              maxLines: 1,
+                              style: CoraTextStyles.label.copyWith(
+                                fontWeight: FontWeight.w400,
+                                color: c.textSecondary,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
                 ),
               ],
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: ExcludeSemantics(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: SizedBox(
-                height: barHeight,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: c.progressTrack),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: progress,
-                    child: ColoredBox(color: c.progressFill),
+        if (showProgress)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ExcludeSemantics(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: SizedBox(
+                  height: barHeight,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: c.progressTrack),
+                    child: FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: progress,
+                      child: ColoredBox(color: c.progressFill),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
   }

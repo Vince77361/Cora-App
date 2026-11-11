@@ -12,7 +12,7 @@ import '../../features/onboarding/domain/me.dart';
 import '../../features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
-import '../../features/store_onboarding/presentation/pages/default_terms_page.dart';
+import '../../features/store_onboarding/presentation/pages/content_drafts_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_edit_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_links_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_page_preview_page.dart';
@@ -106,14 +106,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      _roleRoute(AppRoutes.storeOnboardingDrafts, '소개 글', entry: true),
       GoRoute(
-        path: AppRoutes.storeOnboardingTerms,
+        path: AppRoutes.storeOnboardingDrafts,
         pageBuilder: (context, state) =>
-            _entryPage(state, const DefaultTermsPage()),
+            _entryPage(state, const ContentDraftsPage()),
       ),
+      _roleRoute(AppRoutes.storeOnboardingTerms, '약관', entry: true),
       _roleRoute(AppRoutes.storePage, '가게 페이지'),
-      _roleRoute(AppRoutes.storeDrafts, '소개 글'),
+      GoRoute(
+        path: AppRoutes.storeDrafts,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const ContentDraftsPage(onboarding: false),
+          key: state.pageKey,
+        ),
+      ),
       _roleRoute('/store/offers/new/:creatorId', '오퍼 보내기'),
       GoRoute(
         path: '/store/coming-soon/:title',

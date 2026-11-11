@@ -16,11 +16,19 @@ class CoraSegmentedTabs extends StatelessWidget {
     required this.labels,
     required this.selected,
     required this.onChanged,
+    this.horizontalPadding = 14,
+    this.textStyle = CoraTextStyles.label,
   });
 
   final List<String> labels;
   final int selected;
   final ValueChanged<int> onChanged;
+
+  /// 탭 안쪽 좌우 여백. 기본 14(NStoreHome). NStoreAI의 탭은 16이다.
+  final double horizontalPadding;
+
+  /// 탭 글자 모양(색은 탭이 입힌다). 기본 13/500, NStoreAI의 탭은 14/500이다.
+  final TextStyle textStyle;
 
   static const double height = 38;
 
@@ -36,6 +44,8 @@ class CoraSegmentedTabs extends StatelessWidget {
             _Tab(
               label: label,
               selected: i == selected,
+              horizontalPadding: horizontalPadding,
+              textStyle: textStyle,
               onTap: () => onChanged(i),
             ),
           ],
@@ -49,11 +59,15 @@ class _Tab extends StatelessWidget {
   const _Tab({
     required this.label,
     required this.selected,
+    required this.horizontalPadding,
+    required this.textStyle,
     required this.onTap,
   });
 
   final String label;
   final bool selected;
+  final double horizontalPadding;
+  final TextStyle textStyle;
   final VoidCallback onTap;
 
   @override
@@ -72,7 +86,7 @@ class _Tab extends StatelessWidget {
             duration: CoraMotion.resolve(context, CoraMotion.stateDuration),
             curve: CoraMotion.standardCurve,
             height: CoraSegmentedTabs.height,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: selected ? c.surfaceSelected : c.surface,
@@ -81,7 +95,7 @@ class _Tab extends StatelessWidget {
             child: Text(
               label,
               maxLines: 1,
-              style: CoraTextStyles.label.copyWith(
+              style: textStyle.copyWith(
                 color: selected ? c.onSurfaceSelected : c.text,
               ),
             ),
