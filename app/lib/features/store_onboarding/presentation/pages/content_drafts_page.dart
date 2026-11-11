@@ -127,16 +127,56 @@ class _ContentDraftsPageState extends ConsumerState<ContentDraftsPage> {
             Expanded(
               child: state.when(
                 loading: () => const _Writing(),
-                error: (_, _) => CoraErrorView(
-                  message: ContentDraftsPage.loadFailed,
-                  onRetry: () => ref.invalidate(contentDraftsViewModelProvider),
-                ),
+                error: (_, _) => _loadFailed(),
                 data: _content,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// 초안을 불러오지 못했을 때. 등록 중이면 초안 없이도 다음 단계로 갈 수 있어야 해서(초안은 나중에
+  /// 사장님 홈의 `AI 글`에서 다시 볼 수 있다) `저장하고 오퍼 만들기`를 그대로 둔다.
+  Widget _loadFailed() {
+    final c = context.colors;
+    final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
+    return Column(
+      children: [
+        Expanded(
+          child: CoraErrorView(
+            message: ContentDraftsPage.loadFailed,
+            onRetry: () => ref.invalidate(contentDraftsViewModelProvider),
+          ),
+        ),
+        if (widget.onboarding)
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, bottom),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_saveFailed)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        ContentDraftsPage.saveFailed,
+                        textAlign: TextAlign.center,
+                        style: CoraTextStyles.meta.copyWith(color: c.text),
+                      ),
+                    ),
+                  ),
+                CoraPrimaryButton(
+                  label: ContentDraftsPage.saveAndOffer,
+                  look: CoraPrimaryButtonLook.accent,
+                  onPressed: _advancing ? null : _saveAndOffer,
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 

@@ -244,6 +244,46 @@ void main() {
     expect(find.text('카드뉴스'), findsOneWidget);
   });
 
+  testWidgets(
+    'can still go on to the terms step when the drafts fail to load',
+    (tester) async {
+      final env = await _pumpDrafts(
+        tester,
+        drafts: FakeContentDraftRepository()..failFetch = true,
+      );
+
+      expect(find.text('초안을 불러오지 못했어요.'), findsOneWidget);
+      expect(find.text('다시 시도'), findsOneWidget);
+      expect(find.text('저장하고 오퍼 만들기'), findsOneWidget);
+
+      await tester.tap(find.text('저장하고 오퍼 만들기'));
+      await tester.pumpAndSettle();
+
+      expect(env.stores.advanced, [StoreOnboardingStep.terms]);
+      expect(topPath(tester), AppRoutes.storeOnboardingTerms);
+    },
+  );
+
+  testWidgets('the home-opened drafts have no next button when they fail', (
+    tester,
+  ) async {
+    await pumpStoreApp(
+      tester,
+      stores: FakeStoreRepository(
+        store: sampleStore(
+          status: StoreStatus.published,
+          step: StoreOnboardingStep.done,
+        ),
+      ),
+      drafts: FakeContentDraftRepository()..failFetch = true,
+    );
+    routerOf(tester).push(AppRoutes.storeDrafts);
+    await tester.pumpAndSettle();
+
+    expect(find.text('초안을 불러오지 못했어요.'), findsOneWidget);
+    expect(find.text('저장하고 오퍼 만들기'), findsNothing);
+  });
+
   testWidgets('shows a waiting line while the drafts are written', (
     tester,
   ) async {
