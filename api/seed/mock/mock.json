@@ -1,0 +1,369 @@
+{
+  "meta": {
+    "origin": "기획 artifact(Cora Match · 스와이프 UI)의 화면 문구와 사진을 그대로 옮긴 목업 묶음이에요. 화면에 보이는 것만 담고 지어내지 않았어요.",
+    "artifactUrl": "https://claude.ai/artifact/VLvHYafMkwqziRViALPicw",
+    "artifactVersion": "1794394654-892b",
+    "followerNotation": "팔로워 수는 화면 표기 그대로 문자열이에요. 숫자로 바꾸려면 각 기능 계획이 정해요.",
+    "imageRoot": "images/"
+  },
+  "devAccounts": [
+    { "phone": "010-0000-0001", "role": "STORE", "persona": "한그릇 라멘" },
+    { "phone": "010-0000-0002", "role": "BRAND", "persona": "모아 스튜디오" },
+    { "phone": "010-0000-0003", "role": "CREATOR", "persona": "서윤의 작은 취향" }
+  ],
+  "images": [
+    {
+      "assetId": "d607dd0c30dba30c6efc831cbd7a6f4f",
+      "file": "images/creator-seoyun.objects-1.jpg",
+      "description": "손목 위 시계, 책상 앞에서 손목을 만지는 사람 (서윤의 작은 취향 콘텐츠)",
+      "usedIn": ["Main.dc.html", "Pass.dc.html", "Likes.dc.html", "Compare.dc.html", "Match.dc.html", "Terms.dc.html", "Progress.dc.html", "Proposal.dc.html", "Guide.dc.html", "Review.dc.html", "NReels.dc.html", "NBidding.dc.html", "NBidResult.dc.html", "NInstagram.dc.html", "NUpload.dc.html", "NChatThread.dc.html", "NContract.dc.html", "NNotify.dc.html"]
+    },
+    {
+      "assetId": "b69c53f92919508dbffde40eedb1953c",
+      "file": "images/creator-min.closet-1.jpg",
+      "description": "'민의 옷장 기록 - 같은 니트, 세가지 악세서리' 코디 콜라주 (E1 로그인 사진과 같은 파일)",
+      "usedIn": ["Main.dc.html", "Likes.dc.html", "Compare.dc.html", "NLogin.dc.html", "NReels.dc.html", "NBidding.dc.html", "NBidResult.dc.html", "NProfile.dc.html", "NCreatorView.dc.html", "NEditProfile.dc.html", "NSettings.dc.html", "NInstagram.dc.html", "NUpload.dc.html", "NStoreHome.dc.html"]
+    },
+    {
+      "assetId": "2c6508f8caadc5c0466b315d99cbda6b",
+      "file": "images/creator-onecup.day-1.png",
+      "description": "머그잔을 두 손으로 든 사람 일러스트 (하루 한 컵 콘텐츠)",
+      "usedIn": ["Main.dc.html", "NStoreHome.dc.html", "NOffer.dc.html", "NPay.dc.html", "NReels.dc.html", "NBidding.dc.html", "NBidResult.dc.html", "NInstagram.dc.html", "NUpload.dc.html"]
+    },
+    {
+      "assetId": "b17a81a543b08af172aa89b26b5db39c",
+      "file": "images/brand-moa-studio-1.jpg",
+      "description": "모아 스튜디오 작업실 (간판에 '모아 스튜디오')",
+      "usedIn": ["Chat.dc.html", "CreatorDiscover.dc.html", "Match.dc.html", "Proposal.dc.html", "Retro.dc.html", "NCampaign.dc.html", "NChatThread.dc.html", "NContract.dc.html", "NKeepList.dc.html", "NNotify.dc.html"]
+    },
+    {
+      "assetId": "05c6e2f12662029787761493c831ec3a",
+      "file": "images/store-hangeureut-ramen-1.png",
+      "description": "김이 나는 라멘 한 그릇 일러스트 (가게 대표 사진, 한그릇 라멘)",
+      "usedIn": ["NStoreHome.dc.html", "CreatorDiscover.dc.html", "NStorePage.dc.html", "NStoreAI.dc.html", "NOfferInbox.dc.html", "NStoreView.dc.html", "NNotify.dc.html"]
+    },
+    {
+      "assetId": "6934ae9b2f2f31bc1db77b574b1c8823",
+      "file": "images/unused-illustration-watch-on-wrist.png",
+      "description": "손목 위 시계와 머그잔 일러스트. 받아 둔 artifact 화면 어디에서도 쓰이지 않아요",
+      "usedIn": []
+    },
+    {
+      "assetId": "48e349b5eb3588dbcbfe706a1665808c",
+      "file": "images/unused-illustration-portrait-grey-knit.png",
+      "description": "회색 니트를 입은 사람 정면 일러스트. 받아 둔 artifact 화면 어디에서도 쓰이지 않아요",
+      "usedIn": []
+    }
+  ],
+  "creators": [
+    {
+      "key": "seoyun",
+      "name": "서윤의 작은 취향",
+      "handle": "@seoyun.objects",
+      "followers": "8,200명",
+      "fields": ["소품", "데일리룩"],
+      "joined": true,
+      "avatarImage": "images/creator-seoyun.objects-1.jpg",
+      "source": ["Main.dc.html", "Terms.dc.html", "NReels.dc.html", "NBidding.dc.html"]
+    },
+    {
+      "key": "min",
+      "name": "민의 옷장 기록",
+      "handle": "@min.closet",
+      "followers": "2,100명",
+      "fields": ["코디", "액세서리"],
+      "joined": true,
+      "avatarImage": "images/creator-min.closet-1.jpg",
+      "profileTags": ["#얼굴출연가능", "#솔직후기"],
+      "editProfileTags": ["#데일리룩", "#액세서리", "#얼굴출연없음"],
+      "bio": "한 벌을 고정하고 액세서리만 바꿔 보여주는 코디 릴스를 만들어요. 희망 제작비는 30만 원대예요.",
+      "editProfileBio": "같은 옷을 여러 방식으로 입어봐요. 출근룩과 주말룩을 주로 올려요.",
+      "desiredFee": "30만 원부터",
+      "availableFrom": "11월 16일 이후",
+      "stats": { "contentCount": 7, "likesReceived": "1,240", "completedCollaborations": 3 },
+      "instagramConnected": true,
+      "source": ["Main.dc.html", "NProfile.dc.html", "NCreatorView.dc.html", "NEditProfile.dc.html", "NInstagram.dc.html"]
+    },
+    {
+      "key": "onecup",
+      "name": "하루 한 컵",
+      "handle": "@onecup.day",
+      "followers": "640명",
+      "fields": ["리빙"],
+      "joined": true,
+      "avatarImage": "images/creator-onecup.day-1.png",
+      "source": ["Main.dc.html", "NStoreHome.dc.html", "NDirectory.dc.html", "NReels.dc.html"]
+    },
+    {
+      "key": "seongsuMeal",
+      "name": "성수 한 끼",
+      "handle": "@seongsu.meal",
+      "followers": "4,800",
+      "fields": ["맛집"],
+      "joined": false,
+      "avatarImage": null,
+      "directoryNote": "5일 전 업데이트",
+      "source": ["NDirectory.dc.html", "NStoreHome.dc.html"]
+    },
+    {
+      "key": "noodleDiary",
+      "name": "면치기 일기",
+      "handle": "@noodle.diary",
+      "followers": "1.2만",
+      "fields": ["라멘 리뷰"],
+      "joined": false,
+      "avatarImage": null,
+      "directoryNote": "3일 전 업데이트",
+      "source": ["NDirectory.dc.html", "NStoreHome.dc.html", "NOutreach.dc.html"]
+    },
+    {
+      "key": "soupCollector",
+      "name": "국물 수집가",
+      "handle": "@soup.collector",
+      "followers": "2.3만",
+      "fields": [],
+      "joined": false,
+      "avatarImage": null,
+      "directoryNote": "1일 전 업데이트",
+      "source": ["NDirectory.dc.html", "NStoreHome.dc.html"]
+    },
+    {
+      "key": "alleyGourmet",
+      "name": "골목 미식회",
+      "handle": "@alley.gourmet",
+      "followers": "8,900",
+      "fields": [],
+      "joined": false,
+      "avatarImage": null,
+      "directoryNote": "6일 전 업데이트",
+      "source": ["NDirectory.dc.html"]
+    }
+  ],
+  "stores": [
+    {
+      "key": "hangeureutRamen",
+      "name": "한그릇 라멘",
+      "category": "라멘집",
+      "area": "성수동",
+      "image": "images/store-hangeureut-ramen-1.png",
+      "signatureMenu": { "name": "돈코츠 라멘", "price": "11,000원" },
+      "openingHours": "11:30 – 21:00",
+      "seats": "18석, 바 좌석",
+      "bestShootingTime": "오후 3시 – 5시",
+      "intro": "진한 국물을 12시간 끓이는 작은 라멘집이에요. 김이 오르는 첫 숟가락 장면을 담아주세요.",
+      "homeCounts": { "newApplicants": 5, "sentOffers": 3, "inProgress": 1 },
+      "aiDrafts": {
+        "cardNews": {
+          "caption": "성수동 골목 안, 12시간 끓인 국물 한 그릇.\n오후 3시 이후엔 줄 없이 들어올 수 있어요.\n#성수라멘 #돈코츠",
+          "slides": ["12시간 끓인\n국물 한 그릇", "대표 메뉴\n돈코츠 라멘\n11,000원", "줄 없는 시간\n오후 3시 – 5시"]
+        },
+        "reelsScript": {
+          "caption": "0–3초 김이 오르는 그릇 클로즈업\n3–8초 면을 들어 올리는 손\n8–15초 가게 간판과 위치 자막",
+          "scenes": ["김이 오르는\n첫 숟가락", "면을 들어\n올리는 손", "골목 간판과\n위치 자막"]
+        },
+        "blog": {
+          "intro": "성수역에서 걸어서 5분, 골목 끝에 바 좌석 18석짜리 라멘집이 있어요. 국물은 매일 아침 12시간을 끓여요.",
+          "headings": ["성수 골목\n라멘집 한 곳", "12시간\n끓인 국물", "줄 없이\n먹는 시간"]
+        }
+      },
+      "source": ["NStorePage.dc.html", "NStoreAI.dc.html", "NStoreHome.dc.html"]
+    }
+  ],
+  "brands": [
+    {
+      "key": "moaStudio",
+      "name": "모아 스튜디오",
+      "tagline": "느린 결, 일상의 주얼리 캠페인",
+      "image": "images/brand-moa-studio-1.jpg",
+      "source": ["Chat.dc.html", "NCampaign.dc.html", "Proposal.dc.html"]
+    },
+    {
+      "key": "gyeolLiving",
+      "name": "결 리빙",
+      "tagline": null,
+      "image": null,
+      "source": ["CreatorDiscover.dc.html", "NKeepList.dc.html"]
+    },
+    {
+      "key": "todayCup",
+      "name": "오늘의 잔",
+      "tagline": null,
+      "image": null,
+      "source": ["CreatorDiscover.dc.html", "NKeepList.dc.html"]
+    }
+  ],
+  "contents": [
+    {
+      "creatorKey": "seoyun",
+      "title": "출근 전 30초,\n오늘의 손목 루틴",
+      "price": "30만 원",
+      "format": "일상형 릴스 1편",
+      "reelLength": "릴스 0:30",
+      "tags": ["얼굴출연없음", "소품"],
+      "reason": "손·소품 클로즈업과 담백한 설명이 브랜드의 미니멀한 분위기와 맞아요.",
+      "likes": 342,
+      "image": "images/creator-seoyun.objects-1.jpg",
+      "source": ["Main.dc.html", "NReels.dc.html", "Terms.dc.html"]
+    },
+    {
+      "creatorKey": "min",
+      "title": "같은 니트,\n세 가지 액세서리",
+      "price": "35만 원",
+      "format": "코디 릴스 1편",
+      "reelLength": "릴스 0:30",
+      "tags": ["니트", "액세서리"],
+      "reason": "한 벌을 고정하고 액세서리만 바꾸는 구성이라 제품이 또렷하게 보여요.",
+      "likes": 128,
+      "image": "images/creator-min.closet-1.jpg",
+      "source": ["Main.dc.html", "NReels.dc.html", "Compare.dc.html"]
+    },
+    {
+      "creatorKey": "onecup",
+      "title": "주말 아침,\n잔 하나로 바뀌는 식탁",
+      "price": "25만 원",
+      "format": "리빙 릴스 1편",
+      "reelLength": "릴스 0:24",
+      "tags": ["리빙", "아침루틴"],
+      "reason": "테이블 위 소품을 천천히 보여주는 호흡이 리빙 라인과 잘 맞아요.",
+      "likes": 57,
+      "image": "images/creator-onecup.day-1.png",
+      "source": ["Main.dc.html", "NReels.dc.html"]
+    }
+  ],
+  "campaigns": [
+    {
+      "ownerKind": "brand",
+      "ownerKey": "moaStudio",
+      "title": "나만의 아침 루틴\n속 작은 포인트",
+      "price": "30만 원 + 제품",
+      "tags": ["얼굴출연없음", "대본낭독없음"],
+      "format": "릴스 1편",
+      "schedule": "11월 16일 이후",
+      "productUse": "7일 먼저 사용",
+      "mustInclude": ["소재 정보", "광고 표시", "제품명 정확히"],
+      "notRequired": ["얼굴 출연", "정해진 대사", "대본 낭독"],
+      "fitReason": "손·소품 중심 표현을 원하고, 대본 낭독 없이 평소 방식의 사용 장면을 좋아해요. 내 협업 원칙과 3개가 겹쳐요.",
+      "image": "images/brand-moa-studio-1.jpg",
+      "source": ["CreatorDiscover.dc.html", "NCampaign.dc.html"]
+    },
+    {
+      "ownerKind": "store",
+      "ownerKey": "hangeureutRamen",
+      "title": "김이 오르는\n첫 숟가락",
+      "price": "2인 식사권 + 조회수당",
+      "tags": ["소상공인", "팔로워무관"],
+      "image": "images/store-hangeureut-ramen-1.png",
+      "source": ["CreatorDiscover.dc.html", "NStoreView.dc.html"]
+    },
+    {
+      "ownerKind": "brand",
+      "ownerKey": "gyeolLiving",
+      "title": "느린 주말,\n향으로 여는 방",
+      "price": "40만 원",
+      "tags": ["리빙", "솔직후기"],
+      "image": null,
+      "source": ["CreatorDiscover.dc.html"]
+    },
+    {
+      "ownerKind": "brand",
+      "ownerKey": "todayCup",
+      "title": "하루 한 잔,\n손에 맞는 컵",
+      "price": "20만 원 + 제품",
+      "tags": ["주방", "손클로즈업"],
+      "image": null,
+      "source": ["CreatorDiscover.dc.html"]
+    }
+  ],
+  "offers": [
+    {
+      "storeKey": "hangeureutRamen",
+      "creatorKey": "onecup",
+      "format": "릴스 1편",
+      "formatChoices": ["쇼츠", "릴스", "카드뉴스", "블로그 글"],
+      "reward": "2인 식사권 + 조회수당",
+      "mealVoucher": "2인 식사권 (약 4만 원)",
+      "perView": "조회 1회당 10원, 최대 10만 원",
+      "message": "김이 오르는 첫 숟가락 장면을 원해요.",
+      "tags": ["#팔로워무관", "#오후3시촬영"],
+      "applyCondition": "팔로워 무관",
+      "payment": { "perViewMax": "100,000원", "mealVoucherNote": "방문 때 가게에서 제공" },
+      "escrowSteps": [
+        { "title": "오퍼 수락", "sub": "11월 10일" },
+        { "title": "가게 결제 완료", "sub": "Cora가 금액을 보관해요" },
+        { "title": "방문하고 촬영하기", "sub": "식사권은 방문 때 보여주세요" },
+        { "title": "콘텐츠 올리고 링크 제출", "sub": "11월 23일까지" },
+        { "title": "7일간 조회수 집계 후 지급", "sub": "최대 10만 원" }
+      ],
+      "source": ["NOffer.dc.html", "NOfferInbox.dc.html", "NPay.dc.html", "NEscrow.dc.html", "NStoreView.dc.html"]
+    }
+  ],
+  "collaborations": [
+    {
+      "brandKey": "moaStudio",
+      "creatorKey": "seoyun",
+      "contentTitle": "출근 전 30초, 오늘의 손목 루틴",
+      "firstMessage": "안녕하세요! 주얼리를 먼저 7일 정도 사용해보신 뒤, 11월 16일 이후 촬영이 가능하실까요?",
+      "termsVersions": [
+        {
+          "version": 1,
+          "note": "브랜드의 최초 제안",
+          "deliverable": "일상형 릴스 1편",
+          "fee": "300,000원",
+          "startDate": "11월 16일",
+          "productProvided": true,
+          "revisionScope": "기획안 기준 1회",
+          "usageRights": "브랜드 계정 재게시만",
+          "payment": "게시 후 7일 이내",
+          "adDisclosure": "영상·게시물에 명확히"
+        },
+        {
+          "version": 2,
+          "note": "내가 제작비·일정 수정 제안",
+          "deliverable": "일상형 릴스 1편",
+          "fee": "350,000원",
+          "startDate": "11월 23일",
+          "productProvided": true,
+          "revisionScope": "기획안 기준 1회",
+          "usageRights": "브랜드 계정 재게시만",
+          "payment": "게시 후 7일 이내",
+          "adDisclosure": "영상·게시물에 명확히"
+        }
+      ],
+      "draftTerms": {
+        "label": "협의 전 초안",
+        "price": "30만 원",
+        "deliverable": "일상형 릴스 1편",
+        "schedule": "11월 16일 이후",
+        "note": "얼굴 출연과 제품 설명문 낭독은 진행하지 않아요.",
+        "extraShooting": "별도 협의",
+        "paymentTiming": "최종 게시 후 7일 이내"
+      },
+      "progressSteps": ["서로 관심 확인", "조건 검토 의사 표시", "양쪽 조건 확정·계약", "기획안 검토·제작", "광고 표시·초안 검토", "게시·성과 확인"],
+      "retro": { "nextAvailable": "12월 1일부터", "nextFee": "40만 원" },
+      "source": ["Chat.dc.html", "NChatThread.dc.html", "Agreement.dc.html", "NContract.dc.html", "Terms.dc.html", "Progress.dc.html", "Retro.dc.html", "NKeepList.dc.html"]
+    }
+  ],
+  "bids": {
+    "weeklyBudget": "500,000원",
+    "spent": "180,000원",
+    "items": [
+      { "creatorKey": "seoyun", "amount": "10만 원", "status": "수락", "note": "10만 원 입찰, 수락했어요" },
+      { "creatorKey": "min", "amount": "5만 원", "status": "대기", "note": "5만 원 입찰, 2일 안에 답이 와요" },
+      { "creatorKey": "onecup", "amount": "3만 원", "status": "거절", "note": "3만 원 입찰, 일정이 안 맞아 거절" }
+    ],
+    "amountChoices": ["3만 원", "5만 원", "10만 원"],
+    "expectedViews": [
+      { "creatorKey": "min", "range": "8천 – 1.2만 회" },
+      { "creatorKey": "onecup", "range": "2천 – 4천 회" },
+      { "creatorKey": "seoyun", "range": "2만 – 3만 회" }
+    ],
+    "source": ["NBidding.dc.html", "NBidResult.dc.html"]
+  },
+  "notifications": [
+    { "kind": "매칭", "text": "서윤의 작은 취향과 서로 관심이 닿았어요.", "time": "방금" },
+    { "kind": "협업", "text": "모아 스튜디오가 조건 버전 2를 확인했어요.", "time": "12분 전" },
+    { "kind": "매칭", "text": "한그릇 라멘이 릴스 1편 오퍼를 보냈어요.", "time": "1시간 전" },
+    { "kind": "정산", "text": "정산 43,200원이 다음 주 수요일에 들어와요.", "time": "어제" },
+    { "kind": "협업", "text": "초안 0:12 구간에 댓글이 달렸어요.", "time": "11월 9일" }
+  ]
+}
