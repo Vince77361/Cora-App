@@ -4,6 +4,8 @@ import 'package:cora/core/config/app_config_provider.dart';
 import 'package:cora/core/navigation/app_router.dart';
 import 'package:cora/features/auth/domain/auth_repository_provider.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
+import 'package:cora/features/store_onboarding/domain/content_draft_repository_provider.dart';
+import 'package:cora/features/store_onboarding/domain/store_repository_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +15,8 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/fake_auth_repository.dart';
 import '../features/onboarding/fake_me_repository.dart';
+import '../features/store_onboarding/fake_content_draft_repository.dart';
+import '../features/store_onboarding/fake_store_repository.dart';
 
 AppConfig testConfig(CoraEnv env) => AppConfig(
   env: env,
@@ -21,6 +25,9 @@ AppConfig testConfig(CoraEnv env) => AppConfig(
   apiBaseUrl: 'http://127.0.0.1:3000',
   authAdapter: AuthAdapter.fake,
 );
+
+bool _overrides(List<Override> overrides, Object provider) =>
+    overrides.any((o) => o.origin == provider);
 
 /// 가짜 인증 저장소와 설정으로 실제 [CoraApp]을 띄운다.
 ///
@@ -41,6 +48,14 @@ Widget coraAppWith(
       meRepositoryOverride ??
           meRepositoryProvider.overrideWithValue(me ?? FakeMeRepository()),
       appConfigProvider.overrideWithValue(testConfig(env)),
+      // 가게 역할의 진입이 내 가게를 읽으므로 기본은 가게가 없는 사장님이다. 테스트가 같은
+      // provider를 직접 바꿔 끼우면 그쪽을 쓴다(같은 provider를 두 번 바꿀 수 없다).
+      if (!_overrides(overrides, storeRepositoryProvider))
+        storeRepositoryProvider.overrideWithValue(FakeStoreRepository()),
+      if (!_overrides(overrides, contentDraftRepositoryProvider))
+        contentDraftRepositoryProvider.overrideWithValue(
+          FakeContentDraftRepository(),
+        ),
       ...overrides,
     ],
     child: const CoraApp(),

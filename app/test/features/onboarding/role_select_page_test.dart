@@ -15,6 +15,7 @@ import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
+import 'package:cora/features/store_onboarding/presentation/pages/store_links_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -183,7 +184,7 @@ void main() {
 
     me.holdSave!.complete();
     await tester.pumpAndSettle();
-    expect(find.text('가게 홈'), findsOneWidget);
+    expect(find.byType(StoreLinksPage), findsOneWidget);
   });
 
   testWidgets('shows an error with retry when the server is unreachable', (
@@ -319,8 +320,8 @@ void main() {
     }
     await tester.pumpAndSettle();
 
-    expect(find.text('가게 홈'), findsOneWidget);
-    expect(currentPath(tester), AppRoutes.storeComingSoon('가게 홈'));
+    expect(find.byType(StoreLinksPage), findsOneWidget);
+    expect(currentPath(tester), AppRoutes.storeOnboardingLinks);
     expect(me.fetchCalls, 1);
   });
 

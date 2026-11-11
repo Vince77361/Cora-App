@@ -2,6 +2,7 @@ import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/features/auth/presentation/pages/login_page.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
+import 'package:cora/features/store_onboarding/presentation/pages/store_links_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/pump_cora_app.dart';
@@ -49,7 +50,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(me.savedRole, UserRole.store);
-    expect(find.text('가게 홈'), findsOneWidget);
+    expect(find.byType(StoreLinksPage), findsOneWidget);
   });
 
   testWidgets('logging out from a home returns to /login', (tester) async {

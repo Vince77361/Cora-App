@@ -12,6 +12,9 @@ import '../../features/onboarding/domain/me.dart';
 import '../../features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
+import '../../features/store_onboarding/presentation/pages/store_edit_page.dart';
+import '../../features/store_onboarding/presentation/pages/store_links_page.dart';
+import '../../features/store_onboarding/presentation/pages/store_page_preview_page.dart';
 import '../config/app_config.dart';
 import '../config/app_config_provider.dart';
 import '../ui/cora_coming_soon_page.dart';
@@ -81,9 +84,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       // 가게 사장님 흐름. 9번 작업이 `준비 중이에요.` 자리를 실제 화면으로 바꾼다.
       _roleRoute(AppRoutes.store, '사장님 홈', entry: true),
-      _roleRoute(AppRoutes.storeOnboardingLinks, '가게 등록', entry: true),
-      _roleRoute(AppRoutes.storeOnboardingPage, '가게 페이지', entry: true),
-      _roleRoute(AppRoutes.storeOnboardingEdit, '정보 고치기'),
+      GoRoute(
+        path: AppRoutes.storeOnboardingLinks,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const StoreLinksPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.storeOnboardingPage,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const StorePagePreviewPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.storeOnboardingEdit,
+        pageBuilder: (context, state) => CoraTransitions.sheet(
+          StoreEditPage(
+            args: state.extra is StoreEditArgs
+                ? state.extra! as StoreEditArgs
+                : const StoreEditArgs(),
+          ),
+          key: state.pageKey,
+        ),
+      ),
       _roleRoute(AppRoutes.storeOnboardingDrafts, '소개 글', entry: true),
       _roleRoute(AppRoutes.storeOnboardingTerms, '약관', entry: true),
       _roleRoute(AppRoutes.storePage, '가게 페이지'),

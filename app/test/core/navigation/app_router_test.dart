@@ -3,6 +3,7 @@ import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/navigation/cora_transitions.dart';
 import 'package:cora/core/navigation/role_entry.dart';
 import 'package:cora/core/ui/cora_coming_soon_page.dart';
+import 'package:cora/features/store_onboarding/presentation/pages/store_links_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:cora/features/auth/presentation/pages/login_page.dart';
@@ -207,8 +208,9 @@ void main() {
     routerOf(tester).go(AppRoutes.creatorOffers);
     await tester.pumpAndSettle();
 
-    expect(currentPath(tester), AppRoutes.storeComingSoon('가게 홈'));
-    expect(find.text('가게 홈'), findsOneWidget);
+    // 가게가 없는 사장님의 진입은 링크 입력(A2)이다.
+    expect(currentPath(tester), AppRoutes.storeOnboardingLinks);
+    expect(find.byType(StoreLinksPage), findsOneWidget);
   });
 
   testWidgets('sends a user without a role from a home to /role', (
@@ -376,14 +378,14 @@ void main() {
     }
 
     testWidgets(
-      'the default resolver sends the store to coming soon and the brand home',
+      'the default resolver sends a store without a saved store to the links step and the brand home',
       (tester) async {
         final container = ProviderContainer();
         addTearDown(container.dispose);
         final ref = container.read(Provider((ref) => ref));
         expect(
           await defaultRoleEntryResolver(ref, UserRole.store),
-          '/store/coming-soon/${Uri.encodeComponent('가게 홈')}',
+          AppRoutes.storeOnboardingLinks,
         );
         expect(await defaultRoleEntryResolver(ref, UserRole.brand), '/brand');
       },
@@ -474,7 +476,7 @@ void main() {
 
       expect(calls, [UserRole.store]);
       expect(currentPath(tester), AppRoutes.storeOnboardingLinks);
-      expect(find.byType(CoraComingSoonPage), findsOneWidget);
+      expect(find.byType(StoreLinksPage), findsOneWidget);
     });
 
     testWidgets(
@@ -579,11 +581,8 @@ void main() {
       await tester.tap(find.text('가게 링크로 시작하기'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(CoraComingSoonPage), findsOneWidget);
-      expect(
-        pushedDuration(tester, CoraComingSoonPage),
-        CoraMotion.pushDuration,
-      );
+      expect(find.byType(StoreLinksPage), findsOneWidget);
+      expect(pushedDuration(tester, StoreLinksPage), CoraMotion.pushDuration);
     });
 
     testWidgets('a cold start shows the entry screen with a fade', (
@@ -596,11 +595,8 @@ void main() {
         me: FakeMeRepository(role: UserRole.store),
       );
 
-      expect(find.byType(CoraComingSoonPage), findsOneWidget);
-      expect(
-        pushedDuration(tester, CoraComingSoonPage),
-        CoraMotion.fadeDuration,
-      );
+      expect(find.byType(StoreLinksPage), findsOneWidget);
+      expect(pushedDuration(tester, StoreLinksPage), CoraMotion.fadeDuration);
     });
 
     testWidgets('signing in shows the entry screen with a fade', (

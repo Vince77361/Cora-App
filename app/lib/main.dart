@@ -20,6 +20,10 @@ import 'features/creator_profile/data/api_creator_profile_repository.dart';
 import 'features/creator_profile/domain/creator_profile_repository.dart';
 import 'features/onboarding/data/api_me_repository.dart';
 import 'features/onboarding/domain/me_repository_provider.dart';
+import 'features/store_onboarding/data/api_content_draft_repository.dart';
+import 'features/store_onboarding/data/api_store_repository.dart';
+import 'features/store_onboarding/domain/content_draft_repository_provider.dart';
+import 'features/store_onboarding/domain/store_repository_provider.dart';
 
 /// 앱 시작점이자 실제 구현을 조립하는 곳. Supabase SDK는 여기서 초기화만 하고,
 /// 기능 코드는 [SupabaseAuthRepository]를 거쳐서만 쓴다.
@@ -64,6 +68,12 @@ Future<void> main() async {
         appConfigProvider.overrideWithValue(config),
         meRepositoryProvider.overrideWith(
           (ref) => ApiMeRepository(ref.watch(apiClientProvider)),
+        ),
+        storeRepositoryProvider.overrideWith(
+          (ref) => ApiStoreRepository(ref.watch(apiClientProvider)),
+        ),
+        contentDraftRepositoryProvider.overrideWith(
+          (ref) => ApiContentDraftRepository(ref.watch(apiClientProvider)),
         ),
         creatorProfileRepositoryProvider.overrideWith(
           (ref) => ApiCreatorProfileRepository(ref.watch(apiClientProvider)),

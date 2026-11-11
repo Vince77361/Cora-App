@@ -12,6 +12,7 @@ class CoraNetworkPhoto extends StatelessWidget {
     required this.url,
     this.fit = BoxFit.cover,
     this.alignment = Alignment.center,
+    this.background,
   });
 
   final String? url;
@@ -20,12 +21,15 @@ class CoraNetworkPhoto extends StatelessWidget {
   /// 캔버스 `object-position`(예: 50% 25%는 `Alignment(0, -0.5)`).
   final Alignment alignment;
 
+  /// 불러오기 전·실패했을 때의 바탕. 기본은 `surface`(NStorePage 대표 사진은 따뜻한 베이지).
+  final Color? background;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final address = url;
     return ColoredBox(
-      color: c.surface,
+      color: background ?? c.surface,
       child: address == null || address.isEmpty
           ? const SizedBox.expand()
           : SizedBox.expand(
