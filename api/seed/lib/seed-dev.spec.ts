@@ -36,15 +36,21 @@ function setup(options: { nodeEnv?: string; supabaseUrl?: string } = {}) {
 }
 
 describe('runSeedDev', () => {
-  it('creates the three accounts and stores their roles', async () => {
+  it('creates the seven accounts and stores their roles', async () => {
     const { admin, users, run } = setup();
 
     const results = await run();
 
-    expect(results.map((r) => r.accountCreated)).toEqual([true, true, true]);
-    expect(admin.users.size).toBe(3);
+    expect(results.map((r) => r.accountCreated)).toEqual(
+      Array(7).fill(true) as boolean[],
+    );
+    expect(admin.users.size).toBe(7);
     expect([...users.rows.values()].sort()).toEqual([
       'BRAND',
+      'CREATOR',
+      'CREATOR',
+      'CREATOR',
+      'CREATOR',
       'CREATOR',
       'STORE',
     ]);
@@ -57,8 +63,8 @@ describe('runSeedDev', () => {
     const second = await run();
 
     expect(second.every((r) => !r.accountCreated && !r.rowCreated)).toBe(true);
-    expect(admin.users.size).toBe(3);
-    expect(users.rows.size).toBe(3);
+    expect(admin.users.size).toBe(7);
+    expect(users.rows.size).toBe(7);
   });
 
   it.each([undefined, '', 'test', 'staging', 'production'])(
@@ -93,7 +99,7 @@ describe('runSeedDev', () => {
     for (const account of admin.users.values()) {
       expect(account.password).toMatch(/^cora-dev-only-phone-010\d{8}$/);
     }
-    expect(lines.slice(-3).every((l) => l.includes('비밀번호 맞춤'))).toBe(
+    expect(lines.slice(-7).every((l) => l.includes('비밀번호 맞춤'))).toBe(
       true,
     );
   });
@@ -103,8 +109,9 @@ describe('runSeedDev', () => {
 
     await run();
 
-    expect(lines).toHaveLength(3);
+    expect(lines).toHaveLength(7);
     expect(lines[2]).toContain('…0003');
+    expect(lines[6]).toContain('…0007');
     for (const line of lines) {
       expect(line).not.toMatch(/010|@|cora-dev-only|[0-9a-f]{8}-/);
     }

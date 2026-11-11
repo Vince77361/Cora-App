@@ -6,11 +6,16 @@ export interface DevAccount {
 }
 
 // 개발용 역할별 계정. 번호는 E1(로그인)에서 인증번호 000000과 함께 쓰는 값이다.
-// 이 세 번호 말고 다른 번호는 쓰지 않는다.
+// 0001~0003은 역할별 기본 계정, 0004~0007은 시연용 목업 크리에이터(mock.json의 devAccounts와 같은 목록).
+// 이 번호들 말고 다른 번호는 쓰지 않는다.
 export const DEV_ACCOUNTS: readonly DevAccount[] = [
   { phone: '010-0000-0001', role: 'STORE' },
   { phone: '010-0000-0002', role: 'BRAND' },
   { phone: '010-0000-0003', role: 'CREATOR' },
+  { phone: '010-0000-0004', role: 'CREATOR' },
+  { phone: '010-0000-0005', role: 'CREATOR' },
+  { phone: '010-0000-0006', role: 'CREATOR' },
+  { phone: '010-0000-0007', role: 'CREATOR' },
 ];
 
 // 아래 두 상수와 devCredentials의 규칙은 앱의 가짜 로그인

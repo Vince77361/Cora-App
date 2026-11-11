@@ -1,6 +1,7 @@
 import { DEV_ACCOUNTS, devCredentials } from './dev-accounts';
 import { DevUsers } from './dev-users';
 import { assertDevTarget } from './dev-target';
+import { MockSeedDeps, runMockSeed } from './mock-seed';
 import { SupabaseAdmin } from './supabase-admin';
 
 export interface SeedDevDeps {
@@ -9,6 +10,8 @@ export interface SeedDevDeps {
   devProjectRef: string;
   admin: SupabaseAdmin;
   users: DevUsers;
+  // 있으면 계정 다음에 목업 가게·크리에이터·지원·오퍼를 맞춘다. 단위 테스트는 생략해도 된다.
+  mock?: Omit<MockSeedDeps, 'log'>;
   log: (line: string) => void;
 }
 
@@ -20,17 +23,19 @@ export interface SeedDevResult {
   rowCreated: boolean;
 }
 
-// 역할별 개발 계정 3개를 Supabase Auth와 users 테이블에 맞춘다. 여러 번 돌려도 같은 결과다.
+// 역할별 개발 계정 3개와 목업 크리에이터 4개를 Supabase Auth와 users 테이블에 맞춘다. 여러 번 돌려도 같은 결과다.
 export async function runSeedDev(deps: SeedDevDeps): Promise<SeedDevResult[]> {
   // 외부를 건드리기 전에 개발 환경·개발 프로젝트인지부터 확인한다.
   assertDevTarget(deps);
   const results: SeedDevResult[] = [];
+  const accountIds = new Map<string, string>();
   for (const account of DEV_ACCOUNTS) {
     const {
       id,
       created: accountCreated,
       passwordReset,
     } = await deps.admin.ensureUser(devCredentials(account.phone));
+    accountIds.set(account.phone, id);
     const { created: rowCreated } = await deps.users.upsertRole(
       id,
       account.role,
@@ -48,5 +53,6 @@ export async function runSeedDev(deps: SeedDevDeps): Promise<SeedDevResult[]> {
       rowCreated,
     });
   }
+  if (deps.mock) await runMockSeed({ ...deps.mock, log: deps.log }, accountIds);
   return results;
 }

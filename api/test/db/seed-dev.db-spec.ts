@@ -22,6 +22,10 @@ describe('seed:dev users upsert', () => {
     expect(rows.map((r) => r.role).sort()).toEqual([
       'BRAND',
       'CREATOR',
+      'CREATOR',
+      'CREATOR',
+      'CREATOR',
+      'CREATOR',
       'STORE',
     ]);
   });
@@ -31,7 +35,7 @@ describe('seed:dev users upsert', () => {
     await run(admin);
     const second = await run(admin);
 
-    expect(await prisma.user.count()).toBe(3);
+    expect(await prisma.user.count()).toBe(7);
     expect(second.every((r) => !r.rowCreated)).toBe(true);
   });
 

@@ -45,10 +45,14 @@ describe('devCredentials', () => {
     }
   });
 
-  it('defines one STORE, one BRAND and one CREATOR account', () => {
+  it('defines one STORE, one BRAND and five CREATOR accounts', () => {
     expect(DEV_ACCOUNTS.map((a) => a.role)).toEqual([
       'STORE',
       'BRAND',
+      'CREATOR',
+      'CREATOR',
+      'CREATOR',
+      'CREATOR',
       'CREATOR',
     ]);
   });

@@ -1,7 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { config } from 'dotenv';
+import { SystemClock } from '../src/common/clock';
+import { SupabaseStorageAdapter } from '../src/integrations/storage/supabase-storage.adapter';
 import { PrismaDevUsers } from '../seed/lib/dev-users';
 import { assertDevTarget, readDevProjectRef } from '../seed/lib/dev-target';
+import { PrismaMockSeedDb } from '../seed/lib/mock-seed-db';
 import { runSeedDev } from '../seed/lib/seed-dev';
 import { HttpSupabaseAdmin, SeedError } from '../seed/lib/supabase-admin';
 
@@ -31,6 +34,15 @@ async function main(): Promise<void> {
         SUPABASE_SERVICE_ROLE_KEY,
       ),
       users: new PrismaDevUsers(prisma),
+      mock: {
+        db: new PrismaMockSeedDb(prisma),
+        // 사진은 개발 프로젝트의 실제 Storage에 올린다(같은 경로는 덮어쓴다).
+        storage: new SupabaseStorageAdapter(
+          SUPABASE_URL,
+          SUPABASE_SERVICE_ROLE_KEY,
+        ),
+        clock: new SystemClock(),
+      },
       log: (line) => console.log(line),
     });
   } finally {
@@ -46,7 +58,7 @@ main().then(
       console.error(error.message);
     } else {
       const name = error instanceof Error ? error.name : 'UnknownError';
-      console.error(`개발 계정 시드가 실패했어요. (${name})`);
+      console.error(`개발 시드가 실패했어요. (${name})`);
     }
     process.exit(1);
   },

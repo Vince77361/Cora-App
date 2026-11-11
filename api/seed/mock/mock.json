@@ -9,7 +9,11 @@
   "devAccounts": [
     { "phone": "010-0000-0001", "role": "STORE", "persona": "한그릇 라멘" },
     { "phone": "010-0000-0002", "role": "BRAND", "persona": "모아 스튜디오" },
-    { "phone": "010-0000-0003", "role": "CREATOR", "persona": "서윤의 작은 취향" }
+    { "phone": "010-0000-0003", "role": "CREATOR", "persona": "서윤의 작은 취향" },
+    { "phone": "010-0000-0004", "role": "CREATOR", "persona": "하루 한 컵" },
+    { "phone": "010-0000-0005", "role": "CREATOR", "persona": "성수 한 끼" },
+    { "phone": "010-0000-0006", "role": "CREATOR", "persona": "면치기 일기" },
+    { "phone": "010-0000-0007", "role": "CREATOR", "persona": "민의 옷장 기록" }
   ],
   "images": [
     {
