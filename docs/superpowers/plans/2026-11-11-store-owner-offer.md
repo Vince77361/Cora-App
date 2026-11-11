@@ -12,6 +12,15 @@
 
 **선행 조건:** `docs/superpowers/plans/2026-11-11-foundation.md`의 작업 10개가 모두 끝나 있어야 한다. 이 계획은 그 계획이 만든 `AppError`, `AuthGuard`, `@CurrentUser()`, `PrismaService`, `IntegrationsModule`, `assertNoFakesInProduction`, `scripts/gen-api.sh`, `apiClientProvider`, `appRouterProvider`, `CoraTransitions`, 공용 위젯, 토큰을 그대로 쓴다.
 
+## 시작 전 확인
+
+2026-11-11 공통 기반 최종 검토에서 이 계획으로 미룬 것이다. Task 1을 시작하기 전에 확인한다.
+
+- [ ] 앱: 현재 사용자 provider(`currentUserIdProvider` 등)를 `auth/presentation`이 아닌 presentation 밖(`auth/domain` 또는 `core/session`)에 노출하고, `onboarding`의 `me_view_model.dart`와 `role_home_placeholder_page.dart`가 그것을 쓰게 바꾼다. 이 계획의 모든 기능이 "지금 사용자"를 필요로 한다.
+- [ ] 서버: 오류 응답 형식(`ErrorEnvelope`)을 OpenAPI에 `@ApiResponse`로 더하거나, 앱 `data` 계층에 해석기를 하나 둔다. 이 계획부터 `CONFLICT`·`RATE_LIMITED` 코드로 화면을 나눈다.
+- [ ] 소유자 `.env`: `DATABASE_URL`과 `DIRECT_URL` 끝에 `schema=public`을 명시한다(`api/.env.example`에 예시와 이유가 있다). 첫 `migrate dev` 전에 한다. 세션 풀러가 `cora_test`의 search_path를 다음 연결로 넘길 가능성을 막는다.
+- [ ] 소유자 확인 필요: 아래 Task 1 Produces의 `CoraNetworkPhoto` 줄(444행 근처)은 자리 배경을 `surfaceMuted`로 적었는데 캔버스에서는 `surface`다. 본문은 고치지 않았다. 소유자 답을 받은 뒤 고친다.
+
 ## Global Constraints
 
 공통 기반 계획의 Global Constraints가 모두 적용된다. 이 계획에서 더해지는 것:
