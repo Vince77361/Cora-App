@@ -1,0 +1,6 @@
+# 로컬에서 띄우는 것은 Redis뿐이다. Supabase는 원격 개발용 프로젝트를 쓴다.
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
