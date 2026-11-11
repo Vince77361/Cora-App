@@ -76,6 +76,8 @@ class DemoSvg extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = color ?? DefaultTextStyle.of(context).style.color ?? Colors.black;
+    // 투명색은 hex로 바꾸면 알파가 빠져 검정이 되므로 그리지 않는다(artifact의 stroke: transparent).
+    if (c.a == 0) return SizedBox(width: size, height: size);
     final hex =
         '#${c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
     return SvgPicture.string(
