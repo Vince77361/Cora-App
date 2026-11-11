@@ -25,6 +25,16 @@
 - 새 테이블 6개(`conversations`, `conversation_members`, `messages`, `blocks`, `reports`, `contracts`)에 RLS를 켠다.
 - 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다. push는 소유자 확인 후에만 한다.
 
+## 2026-11-11 소유자 결정으로 더한 것 (E3~E8 계정·알림 화면)
+
+설계: `specs/2026-11-11-account-notify-settings-design.md`. 알림 기반은 3번 계획 Task 3A, 알림함·설정·정산 화면은 3번 Task 13A~13D, 설정·프로필 수정·고객센터는 `plans/2026-11-11-account-settings.md`(7번 다음)가 만든다. 아래가 이 계획의 작업에 더해진다.
+
+- 이 계획의 모든 알림은 `PushPort`가 아니라 3번 Task 3A의 `NotificationsService.notify`로 보낸다. 새 알림 종류는 `NOTIFICATION_CATALOG`에 탭·스위치·그림·문구를 더하고(설계 3.2 표), 앱의 `locationFor`(3번 Task 13C)에 가는 곳을 더한다. 작업 처리기에서 보내는 알림은 `dedupeKey`를 넘긴다.
+- Task 4: `MessageNotifier`는 `notify({ kind: 'MESSAGE', roomMuted })`로 보낸다. 메시지는 알림함에 남기지 않고, E5의 `대화 메시지` 스위치와 방별 `알림 끄기`가 둘 다 켜져 있어야 푸시한다. 메시지 요청은 `MESSAGE_REQUEST`(탭 매칭, 스위치 대화 메시지).
+- Task 6·7·8: 조건 수정 제안, 협의 그만둠, 계약 체결, 협업 멈춤은 끌 수 없는 알림(탭 협업)이다. 같은 사건이 대화방 안내 줄로도 나가면 안내 줄의 메시지 푸시는 보내지 않는다(같은 일로 두 번 울리지 않게).
+- Task 5 신고(2026-11-11 소유자 결정): 돈이 보관 중인(`isMoneyHeld`) 협업의 대화방을, 또는 그런 협업이 있는 상대를 신고하면 그 협업을 `HALTED`(`stageBeforeHalt` 저장, `haltedReason = 'REPORTED'`)로 바꾸고 등록된 작업을 취소하고 운영자 메일 제목에 `협업 멈춤`을 붙인다. 양쪽에 `COLLABORATION_HALTED`(`협업이 잠시 멈췄어요. 운영팀이 확인하고 연락드릴게요.`, 끌 수 없음)를 보낸다 — 누가 신고했는지는 넣지 않는다. 운영자는 확인 뒤 3번의 `yarn ops resume`으로 푼다(공통 규칙 19장, E8 FAQ "보관 중인 금액은 확인이 끝날 때까지 지급되지 않아요"). 테스트: `it('halts a money-held collaboration when its conversation is reported', ...)`, `it('does not halt when no money is held', ...)`.
+- Task 8: 3번 Task 13B의 `GET /wallet`에 브랜드 계약 줄을 더한다 — 보관 중(`CONTRACTED`~`PUBLISHED`, `PUBLISHED`면 설명 `게시 확인 중`), 지급 예정·지급 완료. 제목은 `{브랜드 이름} · {형식} {편 수}편`. 그 밖의 설명은 캔버스 밖(설계 10장 확인 목록).
+
 ## Review Focus
 
 1. **두 사람이 거의 동시에 조건 수정 제안을 보냄** → 하나만 다음 버전이 되고 다른 하나는 409, 확인과 제안이 엇갈려도 지난 버전이 합의되지 않는다. (Task 6)
@@ -317,7 +327,7 @@ it('schedules the 60 day halt check at conclusion', ...);
 - Consumes: 3번 `submitContentLink`·`isAcceptedLink`·`ViewCountPort.isOwnedBy`·`postingsForSettlement`·`PayoutsService.request`·`OperatorAlertPort`, Task 7
 - Produces:
   - 링크 제출(3번) 브랜드 분기: `APPROVED`일 때만, 형식은 계약 사본의 형식. `APPROVED → PUBLISHED`(`submittedAt`, `submittedUrl`), `settle-fixed`를 `submittedAt + payoutDays × 24시간`에 등록(`jobKey = 'settle-fixed:' + id`), `brand-halt-check` 취소, 브랜드에게 `{활동 이름}님이 콘텐츠를 올렸어요.`
-  - `SettlementsService.settleFixed(collaborationId, key)`: `PUBLISHED`가 아니면 끝. 한 트랜잭션에서 `settlements`(`finalViews = null`, `payoutAmount = 보관액`, `refundAmount = 0`), 장부 `postingsForSettlement({ payout: 보관액, refund: 0 })`, `PUBLISHED → SETTLED`. 그 뒤 `PayoutsService.request`. 지급이 `DONE`이면 크리에이터에게 `{금액}원이 지급됐어요.`, 브랜드에게 `제작비 {금액}원을 크리에이터에게 지급했어요.` 조회수는 읽지 않는다.
+  - `SettlementsService.settleFixed(collaborationId, key)`: `PUBLISHED`가 아니면 끝. 한 트랜잭션에서 `settlements`(`finalViews = null`, `payoutAmount = 보관액`, `refundAmount = 0`), 장부 `postingsForSettlement({ payout: 보관액, refund: 0 })`, `PUBLISHED → SETTLED`. 그 뒤 `PayoutsService.request`(3번 Task 8 — 송금은 정산이 확정된 주의 다음 주 수요일 10시 (2026-11-11 소유자 결정))와 크리에이터에게 `SETTLEMENT_CONFIRMED` `정산 {금액}원이 다음 주 수요일에 들어와요.` 송금이 끝나면 3번의 `payout-send` 처리기가 크리에이터에게 `{금액}원이 지급됐어요.`, 브랜드 계약이면 브랜드에게 `제작비 {금액}원을 크리에이터에게 지급했어요.`(`BRAND_FIXED_PAID`, 탭 정산, 스위치 정산)를 보낸다 — 이 작업이 `payout-send`에 브랜드 분기를 더한다. 조회수는 읽지 않는다.
   - `brand-halt-check` 처리기: 단계가 `CONTRACTED`·`GUIDED`·`REVIEWING`·`APPROVED`면 `HALTED`(`stageBeforeHalt`, `haltedReason = 'NO_LINK_60_DAYS'`), `OperatorAlertPort.alert({ subject: '[Cora] 협업 멈춤 · 60일 동안 링크 없음' })`, 양쪽에 `협업이 잠시 멈췄어요. 운영팀이 확인하고 연락드릴게요.` 그 밖의 단계면 아무것도 하지 않는다.
   - 운영 명령 `resume`(3번) 브랜드 분기: `PUBLISHED`로 돌아가면 `settle-fixed`를 지금 등록, 그 전 단계면 `brand-halt-check`를 `now + 60일`에 다시 등록.
   - `CollaborationModel`에 `fixedPayoutAt: string | null`(`PUBLISHED`일 때 지급 예정 시각) 추가.

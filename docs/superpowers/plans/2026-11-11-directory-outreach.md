@@ -32,6 +32,13 @@
 - `DIRECTORY_ENABLED=false`면 `directory`·`outreach`·`DirectoryIntegrationsModule`을 불러오지 않는다. 그 경로는 모두 404 `NOT_FOUND`, `assertNoFakesInProduction`은 `DIRECTORY_ADAPTER`와 `OUTREACH_ADAPTER`를 검사하지 않는다. `GET /config`, `/i/*`, `/invites/*`, 전환, 만료 작업은 그대로 동작한다.
 - 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다.
 
+## 2026-11-11 소유자 결정으로 더한 것 (E3~E8 계정·알림 화면)
+
+설계: `specs/2026-11-11-account-notify-settings-design.md`. 알림 기반은 3번 계획 Task 3A, 알림함·설정·정산 화면은 3번 Task 13A~13D, 설정·프로필 수정·고객센터는 `plans/2026-11-11-account-settings.md`(7번 다음)가 만든다. 아래가 이 계획의 작업에 더해진다.
+
+- 이 계획의 모든 알림은 `PushPort`가 아니라 3번 Task 3A의 `NotificationsService.notify`로 보낸다. 새 알림 종류는 `NOTIFICATION_CATALOG`에 탭·스위치·그림·문구를 더하고(설계 3.2 표), 앱의 `locationFor`(3번 Task 13C)에 가는 곳을 더한다. 작업 처리기에서 보내는 알림은 `dedupeKey`를 넘긴다.
+- Task 7: 연락 전환 알림 두 건 — 크리에이터 `OFFER_RECEIVED`, 사장님 `OUTREACH_CONVERTED`(탭 매칭, 스위치 새 오퍼와 제안, 가는 곳 `STORE_SENT_OFFERS`).
+
 ## Review Focus
 
 1. **두 사장님이 같은 계정에 거의 동시에 "보냈어요"를 누름** → 하나만 `SENT`가 되고 다른 쪽은 409 `다른 가게가 먼저 연락했어요.` 한 가게의 다섯 번째와 여섯 번째가 동시에 들어와도 다섯 건만 저장된다. (Task 5)
@@ -304,7 +311,7 @@ it('serves the invite summary json for the app', ...);
 **Interfaces:**
 - Consumes: `InstagramService` 연결 완료 (3번 Task 5), `OffersService`, `OFFER_RESPONSE_DAYS` (2번), `VisibilityService.commissionerVisibleTo` (4번), `PushPort`, `OperatorAlertPort`, `JobScheduler.repeatDaily` (7번)
 - Produces:
-  - `OffersService.createFromOutreach(input: { outreachId: string; storeId: string; creatorId: string; terms: OfferTermsModel }, tx): Promise<string | null>` — 2번의 보내기 경로와 같은 검사(가게 `PUBLISHED`, 크리에이터 프로필, 열린 오퍼 부분 유일, `commissionerVisibleTo`)를 거치되 DTO 대신 저장된 조건 사본을 쓴다. `kind: STANDARD`, `expiresAt = now + 7일`. 막히면 null. 만들면 크리에이터에게 2번과 같은 `{가게 이름}에서 오퍼가 왔어요.`
+  - `OffersService.createFromOutreach(input: { outreachId: string; storeId: string; creatorId: string; terms: OfferTermsModel }, tx): Promise<string | null>` — 2번의 보내기 경로와 같은 검사(가게 `PUBLISHED`, 크리에이터 프로필, 열린 오퍼 부분 유일, `commissionerVisibleTo`)를 거치되 DTO 대신 저장된 조건 사본을 쓴다. `kind: STANDARD`, `expiresAt = now + 7일`. 막히면 null. 만들면 크리에이터에게 3번 Task 3A의 `OFFER_RECEIVED`(`{가게 이름}{이/가} {형식} {편 수}편 오퍼를 보냈어요.` (2026-11-11 소유자 결정))
   - `OutreachConversionService.convertOnConnect(input: { creatorId: string; handle: string }): Promise<number>` — 소문자 아이디가 같은 목록 계정의 `linkedCreatorId`를 채운다. 한 트랜잭션에서 그 아이디를 대상으로 한 `SENT`이고 `expiresAt > now`인 연락을 `FOR UPDATE`로 잡고(계정당 하나), `createFromOutreach` → `UPDATE … SET status='CONVERTED', converted_at=now, offer_id=? WHERE id=? AND status='SENT'`. `createFromOutreach`가 null이면 `EXPIRED`로 저장한다. 커밋 뒤 사장님에게 `{활동 이름}님이 가입해 오퍼가 전달됐어요.` 만든 오퍼 수를 돌려준다. 초대 코드는 받지 않는다.
   - 3번의 `POST /instagram/connect/complete`: 연결을 저장한 트랜잭션이 끝난 뒤 `convertOnConnect`를 부른다. 이것이 실패해도 연결은 성공으로 응답하고, 오류를 로그와 `OperatorAlertPort.alert({ subject: '[Cora] 연락 전환 실패', … })`로 남긴다. `InstagramConnectionModel`에 `invitedOffers: number` 추가.
   - `JobName`에 `'outreach-expiry'` 추가. `InvitesModule.onModuleInit`에서 `repeatDaily('outreach-expiry', { hourKst: 3, jobKey: 'outreach-expiry-daily' })`. 처리기: `SENT`이고 `expiresAt <= now`인 것을 `EXPIRED`로, `preparedAt`이 14일 넘은 `PREPARED`도 `EXPIRED`로(`sentAt`은 null로 남아 쉬는 기간을 만들지 않는다). 조건부 갱신이라 두 번 돌아도 같다.

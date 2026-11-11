@@ -24,6 +24,16 @@
 - 조건 버전은 만들기만 하고 고치지 않는다.
 - 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다.
 
+## 2026-11-11 소유자 결정으로 더한 것 (E3~E8 계정·알림 화면)
+
+설계: `specs/2026-11-11-account-notify-settings-design.md`. 알림 기반은 3번 계획 Task 3A, 알림함·설정·정산 화면은 3번 Task 13A~13D, 설정·프로필 수정·고객센터는 `plans/2026-11-11-account-settings.md`(7번 다음)가 만든다. 아래가 이 계획의 작업에 더해진다.
+
+- 이 계획의 모든 알림은 `PushPort`가 아니라 3번 Task 3A의 `NotificationsService.notify`로 보낸다. 새 알림 종류는 `NOTIFICATION_CATALOG`에 탭·스위치·그림·문구를 더하고(설계 3.2 표), 앱의 `locationFor`(3번 Task 13C)에 가는 곳을 더한다. 작업 처리기에서 보내는 알림은 `dedupeKey`를 넘긴다.
+- Task 5: 서로 관심은 `MUTUAL_INTEREST`(탭 매칭, 스위치 서로 관심, 가는 곳 `MATCH` → 05), 조건 확인은 `TERMS_CONFIRMED`(탭 협업, 끌 수 없음, 가는 곳 `TERMS` → 12).
+- Task 9: 01 머리의 종 아이콘(캔버스 — 3번 Task 13C의 `NotificationBell`, 누르면 `/notifications`).
+- Task 11: 08 머리에도 같은 종을 둔다(캔버스 밖, 로고와 `크리에이터` 알약 사이).
+- Task 2: `PrinciplesService`를 export하고 `updateFeeBand(creatorId, band: FeeBand)`를 더한다. Task 4의 원칙 꼬리표 규칙(`CreatorCardModel.tags`)은 순수 함수 `principleTags`로 꺼내 둔다. 계정·설정 계획 Task 1이 E6 프로필 수정과 꼬리표에 쓰면서 순서(분야 → 원칙 표시)와 분야 표시("·" 앞만)를 캔버스 E6대로 바꾸고, 자유 꼬리표를 앞에 붙인다.
+
 ## Review Focus
 
 1. **넘긴 사실이 상대에게 새는 경로** → 상대의 추천, 관심 목록, 상세, 알림 어디에도 넘김과 이유가 없다. (Task 5)
@@ -233,14 +243,14 @@ it('refuses creator recommendations without an active campaign', ...);    // 409
   - 가게 카드의 결정은 이 엔드포인트가 아니다. 앱이 `LIKE`는 2번의 `applyToStore`, `PASS`는 `PUT /discovery/store-passes/:storeId`(이 작업에서 만든다, `targetKind: STORE`로 저장)로 보낸다.
   - `PUT /discovery/decisions/pass-reason` 본문 `{ targetKind; targetId; reason: PassReason }` → 204. `PASS` 결정이 있을 때만. `operationId: putPassReason`
   - `DELETE /discovery/decisions/last` → 200 `{ targetKind; targetId } | null` — 내가 오늘 한 마지막 결정을 지운다. 서로 관심이 된 것이면 409. `operationId: undoLastDecision`
-  - 서로 관심 판정: 결정을 저장한 같은 트랜잭션에서, 반대쪽의 `LIKE`가 있으면 `matches` 행 삽입(유일 제약 위반이면 이미 된 것으로 보고 넘어간다), 협업 생성(`kind: BRAND_CONTRACT`, `stage: MATCHED`, `settlementMethod: FIXED`, `commissionerId` = 브랜드 사용자), `terms_versions` 버전 1(`draftTerms`, 크리에이터의 `note`가 있으면 제목으로). 그 뒤 양쪽에 `{상대 이름}과 서로 관심이 닿았어요.`
+  - 서로 관심 판정: 결정을 저장한 같은 트랜잭션에서, 반대쪽의 `LIKE`가 있으면 `matches` 행 삽입(유일 제약 위반이면 이미 된 것으로 보고 넘어간다), 협업 생성(`kind: BRAND_CONTRACT`, `stage: MATCHED`, `settlementMethod: FIXED`, `commissionerId` = 브랜드 사용자), `terms_versions` 버전 1(`draftTerms`, 크리에이터의 `note`가 있으면 제목으로). 그 뒤 양쪽에 `{상대 이름}{과/와} 서로 관심이 닿았어요.`(조사는 3번의 `josa`)
   - `GET /discovery/interests?tab=all|mutual|sent|held` → 200 `InterestCardModel[] { targetKind; targetId; name; headline: string | null; photoUrl: string | null; state: 'MUTUAL' | 'WAITING' | 'HELD'; feeLabel: number | null; startFrom: string | null; collaborationId: string | null }` — 내 `LIKE`와 `HOLD`만. 넘긴 것은 어디에도 나오지 않는다. `operationId: listInterests`
   - `GET /discovery/received-proposals` → 200 `ProposalModel[] { campaignId; brandName; brandPhotoUrl; note; contentTitle: string | null; contentPhotoUrl: string | null; fee; productProvided; format }` — `CREATOR` 역할. 나에게 온 `note` 있는 `LIKE` 가운데 내가 아직 결정하지 않은 것. (화면은 5번 계획이 만든다.) `operationId: listReceivedProposals`
   - `GET /campaigns/:id/detail` → 200 `CampaignDetailModel` = `CampaignCardModel` + `{ startFrom; trialDays; mustInclude; notRequired; reasons; overlapCount: number; myDecision: 'LIKE' | 'HOLD' | null }` — `CREATOR` 역할, 보이지 않으면 404. `myDecision`에 `PASS`는 나오지 않고(넘긴 캠페인의 상세는 404). `operationId: getCampaignDetail`
   - `GET /creators/:id/card` → 200 `CreatorCardModel` + `{ myDecision }` — `BRAND` 역할, `VisibilityService`를 통과해야 한다. `operationId: getCreatorCard`
   - `TermsVersionModel { version; proposedBy: 'BRAND' | 'CREATOR' | 'SYSTEM'; title; fee; startDate; format; pieces; productProvided; revisionScope; usageRights; payoutDays; brandConfirmed: boolean; creatorConfirmed: boolean }`
   - `GET /collaborations/:id/terms/latest` → 200 `{ terms: TermsVersionModel; notice: string | null; reasons: MatchReason[]; trialDays; followers: number | null }` — 당사자만. `notice`는 크리에이터의 원칙에서 만든다: 둘 다 false면 `얼굴 출연과 제품 설명문 낭독은 진행하지 않아요.`, 얼굴만 false면 `얼굴 출연은 진행하지 않아요.`, 대본만 false면 `제품 설명문 낭독은 진행하지 않아요.`, 아니면 null. `operationId: getLatestTerms`
-  - `POST /collaborations/:id/terms/:version/confirm` → 200 `TermsVersionModel`. 최신 버전만 확인할 수 있다(아니면 409). 내 쪽 확인 시각을 조건부로 채운다. 협업이 `MATCHED`면 `NEGOTIATING`으로, 양쪽이 다 확인했으면 `AGREED`로 옮긴다. 상대에게 `{이름}님이 조건을 확인했어요.` `operationId: confirmTerms`
+  - `POST /collaborations/:id/terms/:version/confirm` → 200 `TermsVersionModel`. 최신 버전만 확인할 수 있다(아니면 409). 내 쪽 확인 시각을 조건부로 채운다. 협업이 `MATCHED`면 `NEGOTIATING`으로, 양쪽이 다 확인했으면 `AGREED`로 옮긴다. 상대에게 `{이름}{이/가} 조건 버전 {n}{을/를} 확인했어요.`(E3 캔버스 문구 (2026-11-11 소유자 결정)) `operationId: confirmTerms`
   - `TermsService`를 export: `latest(collaborationId)`, `createVersion(collaborationId, proposedById, values)`(5번 계획이 쓴다)
 
 - [ ] **Step 1: 실패하는 테스트 작성**

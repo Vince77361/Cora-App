@@ -2,15 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ] **Step N**`) syntax for tracking.
 
-**Goal:** 수락된 가게 오퍼를 사장님이 (가짜 PG로) 결제하면 금액을 장부에 보관하고, 크리에이터가 링크를 제출한 뒤 7일간의 조회수로 지급과 환급을 계산해 끝낸다.
+**Goal:** 수락된 가게 오퍼를 사장님이 (가짜 PG로) 결제하면 금액을 장부에 보관하고, 크리에이터가 링크를 제출한 뒤 7일간의 조회수로 지급과 환급을 계산해 끝낸다. 모든 알림을 한 서비스로 보내 알림함(E3)에 쌓고, 종류별 끄기와 방해 금지(E5)를 적용하고, 크리에이터가 정산 내역(E7)을 본다. 송금은 매주 수요일에 모아서 한다(2026-11-11 소유자 결정).
 
 **Architecture:** 오퍼 수락 때 `collaborations` 행을 만들고 그 `stage`가 협업의 유일한 기준이 된다. 돈의 움직임은 고치지 않는 두 줄짜리 장부에 적는다. PG, 송금, 조회수, 인스타그램 연결, 운영자 알림은 포트 뒤의 가짜 구현이다. 기한과 집계는 이 계획에서 도입하는 작업 큐가 처리하고, 모든 작업은 여러 번 실행돼도 결과가 같다.
 
 **Tech Stack:** 공통 기반·2번 계획과 같다. 추가: `@nestjs/bullmq` + `bullmq`(작업 큐, Redis), `nest-commander`(운영 명령), Node `crypto`(계좌번호 암호화, AES-256-GCM).
 
-**Spec:** `docs/superpowers/specs/2026-11-11-payment-escrow-payout-design.md` · 우선 규칙: `docs/superpowers/specs/2026-11-11-collaboration-common-model.md` (1, 2, 16, 19장) · 상위: `docs/superpowers/specs/2026-11-11-tech-stack-design.md`
+**Spec:** `docs/superpowers/specs/2026-11-11-payment-escrow-payout-design.md`, `docs/superpowers/specs/2026-11-11-account-notify-settings-design.md`(E3·E5·E7, 알림 규칙, 지급일) · 우선 규칙: `docs/superpowers/specs/2026-11-11-collaboration-common-model.md` (1, 2, 16, 19장) · 상위: `docs/superpowers/specs/2026-11-11-tech-stack-design.md`
 
-**선행 조건:** `plans/2026-11-11-foundation.md`, `plans/2026-11-11-store-owner-offer.md`가 끝나 있어야 한다. 이 계획은 2번의 `OffersService`, `offer-rules.ts`, `OfferTermsModel`, `CreatorsService`, `StoresService`, `Clock`, `PushPort`, 앱의 `store_home`, `offers`, 공용 위젯을 그대로 쓴다.
+**선행 조건:** `plans/2026-11-11-foundation.md`, `plans/2026-11-11-store-owner-offer.md`가 끝나 있어야 한다. 이 계획은 2번의 `OffersService`, `offer-rules.ts`, `OfferTermsModel`, `CreatorsService`, `StoresService`, `Clock`, `PushPort`와 그 호출 위치(지원 도착, 오퍼 도착, 오퍼 수락 — Task 3A가 옮긴다), 앱의 `store_home`, `offers`, 공용 위젯을 그대로 쓴다.
 
 ## Global Constraints
 
@@ -25,6 +25,10 @@
 - 작업 큐의 작업은 실행 시각을 `Clock`에서 읽고, 다시 실행돼도 같은 결과를 낸다. 작업 안에서 외부 포트를 부른 뒤 DB를 쓰는 순서를 지키고, 포트 호출에도 중복 방지 키를 넘긴다.
 - 계좌번호는 AES-256-GCM으로 암호화해 저장한다. 키는 환경변수 `PAYOUT_ACCOUNT_KEY`(32바이트 base64). 응답과 로그에는 뒤 4자리만 낸다.
 - 운영자는 DB를 직접 고치지 않는다. 이 계획의 운영 명령만 쓴다.
+- 기능 모듈은 `PushPort`를 직접 부르지 않는다. 모든 알림은 `NotificationsService.notify`로 보낸다(Task 3A). 작업 처리기의 알림은 중복 방지 키를 넘긴다.
+- 한국 시간 계산(방해 금지, 지급일, "이번 달", 시각 표시)은 `Clock`의 값에 `Asia/Seoul`(UTC+9, 서머타임 없음)을 적용한다. 주는 월요일 0시에 시작한다(공통 규칙 15장과 같다).
+- 알림 문구와 푸시에는 다른 사람의 전화번호, 계좌, 메시지 전문을 넣지 않는다.
+- 고정 값(2026-11-11 소유자 결정): 알림함 조회 `90`일, 한 번에 `30`줄, 방해 금지 `NIGHT` 22:00~08:00·`WEEKEND` 토 00:00~월 00:00, 지급 시각 수요일 `10:00`, 기한 알림 실행 시각 `10:00`.
 - 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다.
 
 ## Review Focus
@@ -34,6 +38,11 @@
 3. **정산 작업이 중간에 죽고 다시 실행됨** → 지급과 환급이 한 번씩만 나가고 장부의 합이 맞는다. (Task 8)
 4. **조회수를 3일 연속 읽지 못함** → 0원으로 정산하지 않고 멈추고 운영자에게 알린다. (Task 8)
 5. **조회수가 0이거나 상한을 훨씬 넘음** → 지급 0원·전액 환급, 지급 상한·환급 0원. (Task 2, 8)
+6. **알림 스위치를 모두 꺼도** → 결제 완료·제출 기한 같은 협업 진행 알림은 푸시가 간다. (Task 3A)
+7. **방해 금지 시간에 사건이 생김** → 푸시 0건, 알림함에는 줄이 생긴다. (Task 3A)
+8. **정산 작업이 두 번 돎** → 정산 확정 알림이 한 건이다. (Task 3A, 8)
+9. **지급일의 주 경계** → 일요일 23시 59분 확정은 다음 주 수요일, 월요일 0시 확정은 그다음 주 수요일. (Task 8)
+10. **남의 알림 ID로 읽음 요청** → 404, 아무것도 바뀌지 않는다. (Task 13A)
 
 ---
 
@@ -64,6 +73,24 @@ app/lib/features/
 └── instagram_connect/                  # 계정 연결
 ```
 
+알림과 정산 화면(2026-11-11 소유자 결정):
+
+```text
+api/src/
+├── notifications/
+│   ├── notification-catalog.ts         # 순수: 종류 → 탭, 스위치, 그림, 문구
+│   ├── josa.ts                         # 순수: 받침에 맞는 조사
+│   ├── quiet-hours.ts                  # 순수: 방해 금지 판단 (한국 시간)
+│   └── ...                             # module, controller, service, repository, dto
+├── settlements/payday.ts               # 순수: 지급일 계산
+└── wallet/                             # E7 조회
+
+app/lib/features/
+├── notifications/                      # E3, 종 아이콘
+├── notification_settings/              # E5
+└── wallet/                             # E7
+```
+
 ---
 
 ### Task 1: 스키마와 협업 단계
@@ -84,13 +111,13 @@ app/lib/features/
   - `enum LedgerAccount { PG_IN, ESCROW, CREATOR_PAYABLE, STORE_REFUND, FEE_REVENUE }`
   - `ViewSnapshot` → `view_snapshots`: `collaborationId`, `takenAt`, `views?`(읽지 못하면 null), `dayIndex`(0~7). 유일 제약 `(collaborationId, dayIndex)`.
   - `Settlement` → `settlements`: `collaborationId`(unique), `finalViews?`, `payoutAmount`, `refundAmount`, `settledAt`
-  - `Payout` → `payouts`, `Refund` → `refunds`: `collaborationId`, `amount`, `status`(`PENDING | DONE | FAILED`), `externalId?`, `idempotencyKey`(unique)
+  - `Payout` → `payouts`, `Refund` → `refunds`: `collaborationId`, `amount`, `status`(`PENDING | DONE | FAILED`), `externalId?`, `idempotencyKey`(unique). `Payout`에만 `scheduledFor`(Timestamptz, 송금할 수요일 10:00 KST — Task 8)(2026-11-11 소유자 결정)
   - `PayoutAccount` → `payout_accounts`: `creatorId`(unique), `bankCode`, `accountNumberEnc`, `accountLast4`, `holderName`
   - `InstagramConnection` → `instagram_connections`: `creatorId`(unique), `handle`(unique), `followers?`, `tokenEnc?`, `refreshedAt`
   - `CancelRequest` → `cancel_requests`: `collaborationId`, `requestedById`, `status`(`PENDING | ACCEPTED | EXPIRED`), `expiresAt`
   - `OpsAuditLog` → `ops_audit_logs`: `command`, `collaborationId?`, `operator`, `reason`, `detail`(Json)
-  - `canTransition(kind: CollaborationKind, from: CollaborationStage, to: CollaborationStage): boolean` — 공통 규칙 1장의 두 그림 그대로. 어느 단계에서든 `CONTRACTED` 이후의 브랜드 단계는 `HALTED`로 갈 수 있다.
-  - `isMoneyHeld(kind, stage): boolean` — 가게 `FUNDED`·`COUNTING`, 브랜드 `CONTRACTED`~`PUBLISHED`·`HALTED`
+  - `canTransition(kind: CollaborationKind, from: CollaborationStage, to: CollaborationStage): boolean` — 공통 규칙 1장의 두 그림 그대로. 어느 단계에서든 `CONTRACTED` 이후의 브랜드 단계는 `HALTED`로 갈 수 있다. 가게 오퍼도 돈이 보관 중인 `FUNDED`·`COUNTING`에서 `HALTED`로 갈 수 있다(조회수 3일 실패, 운영 명령, 신고 (2026-11-11 소유자 결정)). `HALTED`에서는 `stageBeforeHalt`나 `SETTLED`·`REFUNDED`로만 간다.
+  - `isMoneyHeld(kind, stage): boolean` — 가게 `FUNDED`·`COUNTING`·`HALTED`, 브랜드 `CONTRACTED`~`PUBLISHED`·`HALTED`(멈춘 협업도 돈은 보관 중이다 — 탈퇴를 막고 E7 "Cora가 보관 중"에 들어간다)
   - `storeInProgressStages: CollaborationStage[]` = `[AWAITING_PAYMENT, FUNDED, COUNTING]`
   - `CollaborationsRepository.advance(id, from: CollaborationStage, to: CollaborationStage, patch?): Promise<boolean>` — 조건부 갱신, 바뀌었으면 true
   - 2번의 `POST /offers/:id/accept`가 같은 트랜잭션에서 협업을 만든다: `kind: STORE_OFFER`, `terms`는 오퍼의 조건 사본, `settlementMethod`는 보상에 조회수가 있으면 `PER_VIEW` 아니면 `NONE`, 단계는 `PER_VIEW`면 `AWAITING_PAYMENT`, `NONE`이면 `FUNDED`(`fundedAt = now`, `submitDueAt = now + 14일`).
@@ -106,6 +133,7 @@ it('allows FUNDED → REFUNDED and FUNDED → CANCELLED but not COUNTING → CAN
 it('rejects skipping from AWAITING_PAYMENT to COUNTING', ...);
 it('allows the brand path in order and rejects GUIDED → APPROVED', ...);
 it('allows HALTED only from CONTRACTED onwards for brand contracts', ...);
+it('allows HALTED from FUNDED and COUNTING for store offers and counts it as money held', ...);
 it('reports money held for FUNDED and COUNTING store collaborations only', ...);
 
 // offers.e2e-spec.ts (추가)
@@ -177,7 +205,7 @@ it('returns duplicate and inserts nothing for a repeated idempotency key', ...);
 **Interfaces:**
 - Produces:
   - `abstract class JobScheduler { abstract schedule(name: JobName, payload: { collaborationId: string; [k: string]: unknown }, runAt: Date, jobKey: string): Promise<void>; abstract cancel(jobKey: string): Promise<void> }` — `jobKey`가 같으면 한 번만 등록된다. 실제 구현은 BullMQ의 지연 작업이고, 테스트는 `FakeJobScheduler`(등록된 작업을 기록하고 `runDue(now)`로 실행)를 쓴다.
-  - `type JobName = 'view-snapshot' | 'settle' | 'refund-unsubmitted' | 'submit-reminder' | 'decline-notice' | 'payment-due-expiry' | 'payment-recheck' | 'cancel-request-expiry' | 'brand-halt-check'`
+  - `type JobName = 'view-snapshot' | 'settle' | 'refund-unsubmitted' | 'submit-reminder' | 'decline-notice' | 'payment-due-expiry' | 'payment-recheck' | 'cancel-request-expiry' | 'brand-halt-check' | 'payout-send'`(`payout-send`는 (2026-11-11 소유자 결정))
   - `PaymentPort`: `createCheckout(input: { paymentId: string; amount: number; method: PaymentMethod; orderName: string }): Promise<{ checkoutUrl: string }>`, `verifyWebhook(rawBody: string, signature: string): { paymentId: string; pgTransactionId: string; status: 'APPROVED' | 'FAILED' } | null`, `fetchStatus(paymentId: string): Promise<'PENDING' | 'APPROVED' | 'FAILED'>`, `refund(input: { pgTransactionId: string; amount: number; idempotencyKey: string }): Promise<{ externalId: string }>`
   - `PayoutPort`: `send(input: { bankCode: string; accountNumber: string; holderName: string; amount: number; idempotencyKey: string }): Promise<{ externalId: string }>`
   - `ViewCountPort`: `isOwnedBy(url: string, creator: { instagramHandle: string | null }): Promise<boolean>`, `read(url: string): Promise<number>`(읽지 못하면 `ViewCountUnavailableError`)
@@ -209,6 +237,73 @@ it('throws in production when PAYMENT_ADAPTER is fake', ...);           // 다�
 
 ---
 
+### Task 3A: 알림 기반 (서버) (2026-11-11 소유자 결정)
+
+**Files:**
+- Modify: `api/prisma/schema.prisma`, `api/src/integrations/push/push.port.ts`·`fake-push.adapter.ts`(`data` 추가), 2번의 `PushPort.send` 호출 위치(지원 도착 — `stores` 또는 `applications` 모듈, 오퍼 도착·수락 — `api/src/offers/offers.service.ts`)
+- Create: 마이그레이션, `api/src/notifications/{notifications.module.ts,notifications.service.ts,notifications.repository.ts,notification-catalog.ts,josa.ts,quiet-hours.ts}`
+- Test: `api/src/notifications/{notification-catalog.spec.ts,josa.spec.ts,quiet-hours.spec.ts,notifications.service.spec.ts}`, `api/test/db/notifications.db-spec.ts`, `api/test/offers.e2e-spec.ts`(추가)
+
+**Interfaces:**
+- Consumes: `PushPort`, `Clock`, `PrismaService`, 공통 기반의 역할 enum
+- Produces:
+  - `Notification` → `notifications`: `id`, `userId`, `role`, `kind`, `tab?`, `params`(Json), `actorUserId?`, `actorName?`, `actorPhotoPath?`(사본), `targetKind`, `targetId?`, `dedupeKey?`, `createdAt`, `readAt?`. 유일 제약 `(userId, dedupeKey)`. 인덱스 `(userId, role, createdAt desc)`.
+  - `NotificationSetting` → `notification_settings`: `userId`(unique), `mutualInterest`(기본 true), `offers`(true), `messages`(true), `settlement`(true), `recommendations`(false), `recommendationsAgreedAt?`, `quietHours`(`OFF | NIGHT | WEEKEND`, 기본 `NIGHT`). 행이 없으면 기본값으로 본다.
+  - `enum NotificationTab { MATCHING, COLLABORATION, SETTLEMENT }`, `enum NotificationSwitch { MUTUAL_INTEREST, OFFERS, MESSAGES, SETTLEMENT, RECOMMENDATIONS, ESSENTIAL }`(`ESSENTIAL` = 끌 수 없음), `enum NotificationGlyph { WON, PEN }`
+  - `enum NotificationKind` — 이 계획의 것: `APPLICATION_RECEIVED`, `OFFER_RECEIVED`, `OFFER_ACCEPTED`, `OFFER_DECLINED`, `PAYMENT_FUNDED`, `CONTENT_SUBMITTED`, `SUBMIT_REMINDER`, `UNSUBMITTED_ENDED`, `UNSUBMITTED_REFUNDED`, `CREATOR_CANCELLED`, `CANCEL_REQUESTED`, `COLLABORATION_HALTED`, `SETTLEMENT_CONFIRMED`, `PAYOUT_DONE`, `SETTLEMENT_REFUNDED`. 4~8번 계획이 자기 종류를 더한다.
+  - `type NotificationTarget = { kind: 'STORE_APPLICANTS' | 'STORE_SENT_OFFERS' | 'OFFER_INBOX' | 'PAYMENT' | 'COLLABORATION' | 'WALLET'; id: string | null }` — 4~8번이 종류를 더한다. 앱이 화면으로 바꾼다.
+  - `NOTIFICATION_CATALOG: Record<NotificationKind, { tab: NotificationTab | null; switch: NotificationSwitch; glyph: NotificationGlyph | null; render(p: { actorName: string | null; params: Record<string, string | number> }): string }>` — `tab: null`은 알림함에 남기지 않는 종류(5번의 대화 메시지). 탭·스위치·그림·문구는 설계 3.2의 표 그대로. 이 계획의 문구:
+    - `OFFER_RECEIVED`: `{가게 이름}{이/가} {형식} {편 수}편 오퍼를 보냈어요.` (2번의 `{가게 이름}에서 오퍼가 왔어요.`를 대신한다)
+    - `SETTLEMENT_CONFIRMED`: `정산 {금액}원이 다음 주 수요일에 들어와요.`
+    - 나머지는 2번·3번 계획의 문구 그대로(`{활동 이름}님이 지원했어요.`, `{활동 이름}님이 오퍼를 수락했어요.`, `{활동 이름}님이 이번 오퍼는 함께하기 어렵대요.`, `{가게 이름}이 결제했어요. 방문하고 촬영해 주세요.`, `{활동 이름}님이 콘텐츠를 올렸어요.`, `콘텐츠 제출 기한이 {n}일 남았어요.`, `제출 기한이 지나 협업이 종료됐어요.`, `기한 안에 콘텐츠가 올라오지 않아 {금액}원을 돌려드려요.`, `{활동 이름}님이 협업을 그만뒀어요. {금액}원을 돌려드려요.`, `{가게 이름}이 협업 취소를 요청했어요.`, `협업이 잠시 멈췄어요. 운영팀이 확인하고 연락드릴게요.`, `{금액}원이 지급됐어요.`, `조회수 집계가 끝났어요. {금액}원을 돌려드려요.`). 기존 문구의 `이`도 `josa`로 바꾼다.
+  - `josa(word: string, pair: '이/가' | '과/와' | '을/를' | '은/는'): string` — 마지막 글자가 한글이면 받침으로 고른다. 숫자로 끝나면 마지막 자리의 한글 읽기(영·일·이·삼·사·오·육·칠·팔·구)로 고른다. 그 밖의 글자면 `이(가)`처럼 둘 다 쓴다.
+  - `isQuietAt(now: Date, quiet: 'OFF' | 'NIGHT' | 'WEEKEND'): boolean` — 한국 시간 기준.
+  - `NotificationsService.notify(input: { userId: string; role: Role; kind: NotificationKind; params?: Record<string, string | number>; actor?: { userId: string; name: string; photoPath: string | null }; target: NotificationTarget; dedupeKey?: string; roomMuted?: boolean }): Promise<void>` — 트랜잭션이 끝난 뒤에 부른다. 순서: (1) `tab`이 있으면 줄을 만든다. `dedupeKey`가 겹치면 아무것도 하지 않고 끝낸다. (2) 스위치가 `ESSENTIAL`이 아니고 받는 사람의 그 스위치가 꺼졌으면 푸시하지 않는다. `roomMuted`면 푸시하지 않는다. (3) 방해 금지 시간이면 푸시하지 않는다(끌 수 없는 것도). (4) `PushPort.send({ userId, title: '', body: render(...), data: { notificationId, targetKind: target.kind, targetId: target.id, role } })`. 푸시 실패는 로그만 남기고 던지지 않는다.
+  - `PushPort.send` 입력에 `data?: { notificationId: string | null; targetKind: string; targetId: string | null; role: string }` 추가(`role`은 받는 역할 — 역할이 여럿인 계정에서 앱이 역할을 바꾼 뒤 이동하게)(9번 계획 Task 15의 FCM 구현이 그대로 싣는다). 가짜 구현은 로그에 함께 남긴다.
+  - `NotificationsModule`이 `NotificationsService`를 export. 2번의 세 호출 위치와 3번 Task 4·6·8·9의 알림은 모두 이것으로 보낸다(그 작업들의 문구 줄은 위 표를 따른다). Task 4~9의 작업 처리기 알림은 `dedupeKey`에 작업 키를 넣는다(예: `'settle:' + collaborationId`).
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+```ts
+// josa.spec.ts
+it('picks 가 after a vowel and 이 after a final consonant', () => { expect(josa('모아 스튜디오', '이/가')).toBe('모아 스튜디오가'); expect(josa('한그릇 라멘', '이/가')).toBe('한그릇 라멘이'); });
+it('picks 과 after a final consonant', () => { expect(josa('서윤의 작은 취향', '과/와')).toBe('서윤의 작은 취향과'); });
+it('reads a trailing number for the particle', () => { expect(josa('조건 버전 2', '을/를')).toBe('조건 버전 2를'); expect(josa('조건 버전 3', '을/를')).toBe('조건 버전 3을'); });
+it('writes both forms after a non-hangul word', () => { expect(josa('Cora', '이/가')).toBe('Cora이(가)'); });
+
+// quiet-hours.spec.ts
+it('treats 22:00 to 07:59 KST as quiet at night', ...);           // 2026-11-11T13:00Z(22:00 KST) true, 22:59Z(07:59 KST) true, 23:00Z(08:00 KST) false
+it('treats saturday 00:00 to monday 00:00 KST as quiet on weekends', ...);
+it('is never quiet when off', ...);
+
+// notification-catalog.spec.ts
+it('renders the canvas offer text', ...);                         // '한그릇 라멘이 릴스 1편 오퍼를 보냈어요.'
+it('renders the canvas settlement text', ...);                    // '정산 43,200원이 다음 주 수요일에 들어와요.'
+it('gives every kind a tab or null, a switch and a renderer', ...);
+
+// notifications.service.spec.ts (FakePushAdapter, FakeClock)
+it('records a row and pushes when the switch is on', ...);
+it('records a row but does not push when the switch is off', ...);
+it('pushes an essential notice even when every switch is off', ...);
+it('records but does not push during quiet hours, essential included', ...);
+it('uses the defaults when the person has no settings row', ...);  // NIGHT, 추천 소식 꺼짐
+it('does nothing for a repeated dedupe key', ...);                 // 줄 1, 푸시 1
+it('passes the notification id and target in the push data', ...);
+
+// notifications.db-spec.ts
+it('rejects two rows with the same user and dedupe key', ...);
+
+// offers.e2e-spec.ts (추가)
+it('notifies the creator with the canvas wording when an offer is sent', ...);
+```
+
+- [ ] **Step 2: 실패 확인** — Run: `cd api && yarn test notifications && yarn test:db && yarn test:e2e offers` · Expected: FAIL
+- [ ] **Step 3: 스키마, 마이그레이션(새 테이블 2개의 RLS 포함), 순수 함수, 서비스 구현, 2번 호출 위치 옮기기**
+- [ ] **Step 4: 통과 확인** — Run: `cd api && yarn prisma migrate dev && yarn lint && yarn test && yarn test:e2e && yarn test:db` · Expected: PASS. `grep -rn "PushPort" api/src --include='*.ts'`의 결과가 `integrations/`와 `notifications/`뿐인지 확인한다.
+- [ ] **Step 5: Commit** — `feat: 알림을 한 서비스로 모으고 알림함 기록과 방해 금지 추가`
+
+---
+
 ### Task 4: 2번에서 미룬 예약 작업 옮기기
 
 **Files:**
@@ -222,6 +317,7 @@ it('throws in production when PAYMENT_ADAPTER is fake', ...);           // 다�
   - 거절하면 `decline-notice`를 `declinedAt + 30초`에 등록(`jobKey = 'decline:' + offerId`). 되돌리면 취소. 처리기는 오퍼가 여전히 `DECLINED`일 때만 사장님에게 `{활동 이름}님이 이번 오퍼는 함께하기 어렵대요.`를 보내고 연결된 지원을 닫는다.
   - 수락하면(조회수 보상이 있을 때) `payment-due-expiry`를 `paymentDueAt`에 등록. 처리기는 오퍼가 `ACCEPTED`이고 결제가 승인되지 않았으면 `EXPIRED`로, 협업을 `CANCELLED`로 옮긴다.
   - 2번의 "조회할 때 계산"은 그대로 둔다(작업이 늦어도 화면은 맞다).
+  - 이 작업의 알림은 `NotificationsService.notify`(Task 3A, `OFFER_DECLINED`, `dedupeKey = 'decline:' + offerId`)로 보낸다(2026-11-11 소유자 결정).
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
@@ -280,14 +376,15 @@ it('refuses to disconnect while a per-view collaboration holds money', ...);
 - Test: `api/src/payments/payments.service.spec.ts`, `api/test/payments.e2e-spec.ts`
 
 **Interfaces:**
-- Consumes: `PaymentPort`, `JobScheduler` (Task 3), `LedgerService`, `feeFor`, `postingsForPaymentApproved` (Task 2), `CollaborationsRepository` (Task 1), `PushPort`
+- Consumes: `PaymentPort`, `JobScheduler` (Task 3), `LedgerService`, `feeFor`, `postingsForPaymentApproved` (Task 2), `CollaborationsRepository` (Task 1), `NotificationsService` (Task 3A)
 - Produces:
   - `GET /collaborations/:id/payment-quote` → 200 `PaymentQuoteModel { escrow: number; fee: number; feeRate: number; total: number; orderName: string }` — 사장님만. `escrow`는 조건의 `perViewCap`. `operationId: getPaymentQuote`
   - `POST /collaborations/:id/payments` 본문 `{ method: 'CARD' | 'TRANSFER' | 'EASY_PAY' }` → 201 `{ paymentId: string; checkoutUrl: string }`. 협업이 `AWAITING_PAYMENT`가 아니면 409. 같은 협업에 `PENDING` 결제가 있으면 그것을 `CANCELLED`로 바꾸고 새로 만든다. `payment-recheck`를 10분 뒤에 등록한다. `operationId: createPayment`
   - `GET /payments/:id` → 200 `{ status: 'PENDING' | 'APPROVED' | 'FAILED' | 'CANCELLED' }` — 그 협업의 사장님만. `operationId: getPayment`
   - `POST /webhooks/payments` — `@Public()`. 헤더 `x-cora-signature`. `PaymentPort.verifyWebhook`이 null이면 401. 통과하면 `PaymentsService.applyResult`.
   - `POST /dev/fake-payments/:id/approve`, `/fail` — `PAYMENT_ADAPTER=fake`일 때만 등록되는 컨트롤러. 가짜 통지를 만들어 위 웹훅과 같은 경로로 처리한다. 운영에서는 라우트가 없다(404).
-  - `PaymentsService.applyResult(result: { paymentId; pgTransactionId; status }): Promise<void>` — 한 트랜잭션에서: 결제를 `PENDING → APPROVED` 조건부 갱신(바뀐 행 0이면 끝), 장부 `post(..., 'payment:' + paymentId)`, 협업 `AWAITING_PAYMENT → FUNDED`(`fundedAt = now`, `submitDueAt = now + 14일`). 그 뒤 `refund-unsubmitted`(submitDueAt), `submit-reminder`(3일 전, 1일 전) 등록, `payment-due-expiry` 취소, 크리에이터에게 `{가게 이름}이 결제했어요. 방문하고 촬영해 주세요.` `FAILED`면 결제만 `FAILED`로.
+  - `PaymentsService.applyResult(result: { paymentId; pgTransactionId; status }): Promise<void>` — 한 트랜잭션에서: 결제를 `PENDING → APPROVED` 조건부 갱신(바뀐 행 0이면 끝), 장부 `post(..., 'payment:' + paymentId)`, 협업 `AWAITING_PAYMENT → FUNDED`(`fundedAt = now`, `submitDueAt = now + 14일`). 그 뒤 `refund-unsubmitted`(submitDueAt), `submit-reminder`(기한 3일 전·1일 전 날의 한국 시간 10:00(2026-11-11 소유자 결정)) 등록, `payment-due-expiry` 취소, 크리에이터에게 `{가게 이름}이 결제했어요. 방문하고 촬영해 주세요.` `FAILED`면 결제만 `FAILED`로.
+  - 이 작업의 알림은 `NotificationsService.notify`(`PAYMENT_FUNDED`, `dedupeKey = 'funded:' + collaborationId`)로 보낸다(2026-11-11 소유자 결정).
   - `payment-recheck` 처리기: 결제가 아직 `PENDING`이면 `PaymentPort.fetchStatus`로 물어 결과를 `applyResult`에 넣는다. 여전히 `PENDING`이면 10분 뒤 다시 등록(최대 6번).
 
 - [ ] **Step 1: 실패하는 테스트 작성**
@@ -325,6 +422,8 @@ it('does not expose the dev approve route in production mode', ...);
   - `GET /payout-account` → 200 `PayoutAccountModel { bankCode; bankName; accountLast4; holderName }` | 404. `operationId: getPayoutAccount`
   - `PUT /payout-account` 본문 `{ bankCode; accountNumber(숫자 10~14자리, 하이픈은 떼고 저장); holderName(1~20자) }` → 200 `PayoutAccountModel`. `CREATOR` 역할만. 등록되면 그 크리에이터의 `PENDING` 지급을 처리하는 Task 8의 `PayoutsService.flushPending(creatorId)`을 부른다(Task 8에서 연결). `operationId: upsertPayoutAccount`
   - `PayoutAccountsService`를 export: `getForPayout(creatorId): Promise<{ bankCode; accountNumber; holderName } | null>`
+- (2026-11-11 소유자 결정) `BANKS`의 항목에 `fullName`을 더한다(예: `{ code, name: '국민', fullName: '국민은행' }`). `PayoutAccountModel`에 `bankFullName` 추가.
+- 화면 표시는 뒤 2자리(`****12`)다(E4·E7 캔버스). 저장과 응답의 `accountLast4`는 그대로 두고 앱이 뒤 2자리만 그린다. Task 12의 계좌 등록 뒤 표시(`{은행} ****{뒤 4자리}`)도 뒤 2자리로 맞춘다.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
@@ -345,9 +444,9 @@ it('requires the CREATOR role', ...);
 ### Task 8: 링크 제출, 조회수 집계, 정산, 지급, 환급
 
 **Files:**
-- Create: `api/src/settlements/{settlements.module.ts,submissions.controller.ts,submissions.service.ts,settlements.service.ts,payouts.service.ts,refunds.service.ts,settlements.repository.ts,link-rules.ts,dto/*.ts}`, `api/src/jobs/handlers/{view-snapshot.handler.ts,settle.handler.ts,refund-unsubmitted.handler.ts,submit-reminder.handler.ts}`
+- Create: `api/src/settlements/{settlements.module.ts,submissions.controller.ts,submissions.service.ts,settlements.service.ts,payouts.service.ts,refunds.service.ts,settlements.repository.ts,link-rules.ts,dto/*.ts}`, `api/src/jobs/handlers/{view-snapshot.handler.ts,settle.handler.ts,refund-unsubmitted.handler.ts,submit-reminder.handler.ts,payout-send.handler.ts}`, `api/src/settlements/payday.ts`
 - Modify: `api/src/payout-accounts/payout-accounts.service.ts`
-- Test: `api/src/settlements/link-rules.spec.ts`, `api/src/settlements/*.service.spec.ts`, `api/test/settlements.e2e-spec.ts`
+- Test: `api/src/settlements/link-rules.spec.ts`, `api/src/settlements/payday.spec.ts`, `api/src/settlements/*.service.spec.ts`, `api/test/settlements.e2e-spec.ts`
 
 **Interfaces:**
 - Consumes: Task 1~7의 전부
@@ -355,8 +454,14 @@ it('requires the CREATOR role', ...);
   - `isAcceptedLink(format: ContentFormat, url: string): boolean` (`link-rules.ts`, 순수 함수) — `https`만. `SHORTS`: `youtube.com/shorts/…`, `youtu.be/…`. `REELS`, `CARD_NEWS`: `instagram.com/reel/…`, `instagram.com/p/…`(`www.` 허용). `BLOG`: `blog.naver.com/…`, `*.tistory.com/…`.
   - `POST /collaborations/:id/submission` 본문 `{ url: string }` → 200 `CollaborationModel`(Task 9). 크리에이터만, `FUNDED`일 때만(브랜드 계약은 `APPROVED`일 때만 — 이 검사를 지금 넣어 둔다). 형식에 안 맞으면 400 `링크 형식을 확인해 주세요.`, `ViewCountPort.isOwnedBy`가 false면 409 `내 계정의 게시물만 제출할 수 있어요.` 통과하면: `PER_VIEW`는 `FUNDED → COUNTING`(`countingEndsAt = now + 7일`), `view-snapshot` dayIndex 0을 지금, 1~7을 하루 간격으로, `settle`을 `countingEndsAt`에 등록. `NONE`은 `FUNDED → SETTLED`. `refund-unsubmitted`와 `submit-reminder`를 취소한다. 사장님에게 `{활동 이름}님이 콘텐츠를 올렸어요.` `operationId: submitContentLink`
   - `view-snapshot` 처리기: `ViewCountPort.read` 결과를 `(collaborationId, dayIndex)`에 저장. 읽지 못하면 `views = null`로 저장. 가장 최근 3개의 스냅샷이 모두 null이면 협업을 `HALTED`로 옮기고(`stageBeforeHalt = COUNTING`, `haltedReason = 'VIEW_COUNT_UNAVAILABLE'`) `settle`을 취소하고 `OperatorAlertPort.alert`.
-  - `settle` 처리기 → `SettlementsService.settle(collaborationId, key)`: 협업이 `COUNTING`이 아니면 끝. `finalViews` = dayIndex 7의 값, null이면 가장 최근의 null이 아닌 값, 하나도 없으면 `HALTED`로 옮기고 알림. 한 트랜잭션에서 `settlements` 행 생성(유일 제약이 중복을 막는다), 장부 `post(..., 'settle:' + collaborationId)`, `COUNTING → SETTLED`. 그 뒤 `PayoutsService.request`, `RefundsService.request`, 알림 두 건(`{금액}원이 지급됐어요.`는 지급이 `DONE`이 된 뒤, 사장님에게 `조회수 집계가 끝났어요. {금액}원을 돌려드려요.`).
-  - `PayoutsService.request(collaborationId, amount, key)`: `payouts` 행을 `PENDING`으로 만든다(금액 0이면 만들지 않는다). 계좌가 있으면 `PayoutPort.send` 후 `DONE`, 없으면 `PENDING`으로 둔다. `flushPending(creatorId)`: 그 크리에이터의 `PENDING` 지급을 모두 보낸다. 포트가 실패하면 `FAILED`로 두고 운영자에게 알린다.
+  - `settle` 처리기 → `SettlementsService.settle(collaborationId, key)`: 협업이 `COUNTING`이 아니면 끝. `finalViews` = dayIndex 7의 값, null이면 가장 최근의 null이 아닌 값, 하나도 없으면 `HALTED`로 옮기고 알림. 한 트랜잭션에서 `settlements` 행 생성(유일 제약이 중복을 막는다), 장부 `post(..., 'settle:' + collaborationId)`, `COUNTING → SETTLED`. 그 뒤 `PayoutsService.request`, `RefundsService.request`, 알림 두 건 — 크리에이터에게 `SETTLEMENT_CONFIRMED` `정산 {금액}원이 다음 주 수요일에 들어와요.`(`dedupeKey = 'settled:' + collaborationId`), 사장님에게 `조회수 집계가 끝났어요. {금액}원을 돌려드려요.` `{금액}원이 지급됐어요.`는 송금이 끝난 뒤 `payout-send`가 보낸다(2026-11-11 소유자 결정).
+  - 지급일(2026-11-11 소유자 결정) — 송금은 매주 수요일에 모아서 한다(설계 `account-notify-settings-design.md` 4장). 정산 확정과 장부(`ESCROW → CREATOR_PAYABLE`)는 그대로 그날 한다.
+    - `nextPayday(settledAt: Date): Date` (`payday.ts`, 순수) — 정산 시각이 속한 한국 시간의 주(월요일 0시 시작) 다음 주의 수요일 10:00 KST.
+    - `upcomingPayday(now: Date): Date` (순수) — `now` 이후 가장 가까운 수요일 10:00 KST(수요일 10시 전이면 그날).
+  - `PayoutsService.request(collaborationId, amount, key)`: `payouts` 행을 `PENDING`, `scheduledFor = nextPayday(settledAt)`로 만든다(금액 0이면 만들지 않는다). `payout-send`를 `scheduledFor`에 등록한다(`jobKey = 'payout:' + payoutId`). **바로 보내지 않는다.**
+  - `payout-send` 처리기: 지급이 `PENDING`이고 계좌가 있으면 `PayoutPort.send` 후 `DONE`, 크리에이터에게 `PAYOUT_DONE` `{금액}원이 지급됐어요.`(`dedupeKey = 'payout-done:' + payoutId`). 계좌가 없으면 그대로 둔다. 포트가 실패하면 `FAILED`로 두고 운영자에게 알린다.
+  - `flushPending(creatorId)`(Task 7의 계좌 등록 때): 그 크리에이터의 `PENDING` 지급 가운데 `scheduledFor`가 지난 것을 `upcomingPayday(now)`로 옮기고 `payout-send`를 다시 등록한다. 바로 보내지 않는다.
+  - 이 작업의 알림은 모두 `NotificationsService.notify`(Task 3A)로 보내고, 처리기의 알림은 `dedupeKey`를 넘긴다.
   - `RefundsService.request(collaborationId, amount, key)`: `refunds` 행을 만들고 `PaymentPort.refund` 후 `DONE`. 금액 0이면 만들지 않는다.
   - `refund-unsubmitted` 처리기: 협업이 `FUNDED`이면 장부에 `postingsForFullRefund`, `FUNDED → REFUNDED`, 환급 요청(상한 + 수수료), 양쪽에 알림(`기한 안에 콘텐츠가 올라오지 않아 {금액}원을 돌려드려요.` / `제출 기한이 지나 협업이 종료됐어요.`). `NONE` 방식이면 돈 없이 `REFUNDED`로만 옮긴다.
   - `submit-reminder` 처리기: `FUNDED`이면 크리에이터에게 `콘텐츠 제출 기한이 {n}일 남았어요.`
@@ -374,17 +479,24 @@ it('settles 4320 views as 43200 paid and 56800 refunded', ...);             // �
 it('pays nothing and refunds the full cap for zero views', ...);
 it('caps the payout at the cap', ...);
 it('does not pay or refund twice when the settle job runs twice', ...);     // payouts 1행, refunds 1행, 장부 균형
-it('keeps the payout pending until an account is registered, then sends it', ...);
+it('waits without an account and sends on the next payday after registration', ...);
 it('uses the last readable snapshot when day 7 cannot be read', ...);
 it('halts and alerts the operator after three unreadable days in a row', ...); // stage HALTED, settlements 없음
 it('refunds cap and fee 14 days after funding when nothing was submitted', ...); // refund 110000, stage REFUNDED
 it('does not refund when a link was submitted on day 13', ...);
 it('reminds the creator 3 days and 1 day before the due date', ...);
 it('keeps every collaboration ledger balanced after each scenario', ...);
+// 지급일(2026-11-11 소유자 결정)
+it('pays a tuesday settlement on the wednesday of the following week', ...);   // 2026-11-10 화 → 2026-11-18 10:00 KST
+it('pays a sunday 23:59 settlement on the next wednesday', ...);               // 2026-11-15 23:59 KST → 2026-11-18
+it('pays a monday 00:00 settlement on the wednesday after next', ...);         // 2026-11-16 00:00 KST → 2026-11-25
+it('sends the payout on the payday and not before', ...);                      // FakeClock, runDue
+it('does not send twice when the payout job runs twice', ...);
+it('notifies the settlement once with the canvas text', ...);                  // '정산 43,200원이 다음 주 수요일에 들어와요.'
 ```
 
 - [ ] **Step 2~4: 실패 확인 → 구현 → 통과 확인** — Run: `cd api && yarn lint && yarn test && yarn test:e2e && yarn test:db`
-- [ ] **Step 5: gen-api, Commit** — 커밋 세 개: `feat: 콘텐츠 링크 제출과 조회수 집계 추가`, `feat: 정산과 지급·환급 추가`, `feat: 미제출 환급과 제출 기한 알림 추가`
+- [ ] **Step 5: gen-api, Commit** — 커밋 세 개: `feat: 콘텐츠 링크 제출과 조회수 집계 추가`, `feat: 정산과 지급·환급 추가`(매주 수요일 송금 포함), `feat: 미제출 환급과 제출 기한 알림 추가`
 
 ---
 
@@ -397,13 +509,14 @@ it('keeps every collaboration ledger balanced after each scenario', ...);
 **Interfaces:**
 - Consumes: Task 1~8
 - Produces:
-  - `CollaborationModel { id; kind; stage; role: 'COMMISSIONER' | 'CREATOR'; counterpart: { name: string; photoUrl: string | null }; store: StoreSummaryModel | null; terms: OfferTermsModel; steps: { key: 'ACCEPTED' | 'PAID' | 'VISIT' | 'SUBMIT' | 'SETTLE'; state: 'DONE' | 'NOW' | 'TODO'; at: string | null }[]; escrowAmount: number; submitDueAt: string | null; submittedUrl: string | null; countingEndsAt: string | null; currentViews: number | null; earnedSoFar: number | null; expectedRefund: number | null; settlement: { finalViews: number | null; payoutAmount: number; refundAmount: number } | null; payoutStatus: 'NONE' | 'NEEDS_ACCOUNT' | 'PENDING' | 'DONE' | 'FAILED'; cancelRequest: { id: string; requestedByMe: boolean; expiresAt: string } | null; canCancel: boolean; canRequestCancel: boolean }`
+  - `CollaborationModel { id; kind; stage; role: 'COMMISSIONER' | 'CREATOR'; counterpart: { name: string; photoUrl: string | null }; store: StoreSummaryModel | null; terms: OfferTermsModel; steps: { key: 'ACCEPTED' | 'PAID' | 'VISIT' | 'SUBMIT' | 'SETTLE'; state: 'DONE' | 'NOW' | 'TODO'; at: string | null }[]; escrowAmount: number; submitDueAt: string | null; submittedUrl: string | null; countingEndsAt: string | null; currentViews: number | null; earnedSoFar: number | null; expectedRefund: number | null; settlement: { finalViews: number | null; payoutAmount: number; refundAmount: number } | null; payoutStatus: 'NONE' | 'NEEDS_ACCOUNT' | 'PENDING' | 'DONE' | 'FAILED'; payoutScheduledFor: string | null; cancelRequest: { id: string; requestedByMe: boolean; expiresAt: string } | null; canCancel: boolean; canRequestCancel: boolean }`
   - `steps`는 다섯 개 고정. 식사권만 있는 오퍼는 `PAID`가 처음부터 `DONE`. `earnedSoFar`와 `expectedRefund`는 `settle()`에 최신 조회수를 넣은 값이고 `COUNTING`일 때만 숫자다. `expectedRefund`는 사장님에게만, `earnedSoFar`는 크리에이터에게만 준다(상대 쪽 값은 null).
   - `GET /collaborations?scope=active|done` → 200 `CollaborationModel[]` — 내가 당사자인 것만. `GET /collaborations/:id` → 200 | 404. `operationId: listCollaborations`, `getCollaboration`
   - `POST /collaborations/:id/cancel` — 크리에이터만, `FUNDED`일 때만. 장부에 전액 환급, `FUNDED → CANCELLED`, 환급 요청, `refund-unsubmitted`·`submit-reminder` 취소, 사장님에게 `{활동 이름}님이 협업을 그만뒀어요. {금액}원을 돌려드려요.` `operationId: cancelCollaboration`
   - `POST /collaborations/:id/cancel-requests` — 사장님만, `FUNDED`일 때만, `PENDING` 요청이 없을 때만. `expiresAt = now + 3일`, `cancel-request-expiry` 등록, 크리에이터에게 `{가게 이름}이 협업 취소를 요청했어요.` `operationId: requestCollaborationCancel`
   - `POST /collaborations/:id/cancel-requests/:requestId/accept` — 크리에이터만. 위의 취소와 같은 처리. `operationId: acceptCollaborationCancel`
   - `cancel-request-expiry` 처리기: `PENDING`이면 `EXPIRED`로.
+  - `payoutScheduledFor`는 지급이 `PENDING`이고 계좌가 있을 때 그 `scheduledFor`(2026-11-11 소유자 결정). 이 작업의 알림(`CREATOR_CANCELLED`, `CANCEL_REQUESTED`)은 `NotificationsService.notify`로 보낸다.
   - 2번의 `GET /offers/received?tab=active`가 주던 "진행 중" 목록은 이 `GET /collaborations?scope=active`로 대체한다. 2번의 엔드포인트는 `tab=new`만 남긴다.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
@@ -436,7 +549,7 @@ it('reports NEEDS_ACCOUNT when settled without a payout account', ...);
 - Consumes: Task 1~9
 - Produces — 모두 `--operator <이름>`과 `--reason <글>`이 필수이고 `ops_audit_logs`에 한 줄을 남긴다:
   - `yarn ops halt --collaboration <id>` — 돈을 보관 중인 단계 → `HALTED`(`stageBeforeHalt` 저장). 등록된 작업을 취소한다.
-  - `yarn ops resume --collaboration <id>` — `HALTED` → `stageBeforeHalt`. `COUNTING`으로 돌아가면 `settle`을 지금 실행하도록 등록한다.
+  - `yarn ops resume --collaboration <id>` — `HALTED` → `stageBeforeHalt`. `COUNTING`으로 돌아가면 `settle`을 지금 실행하도록 등록한다. 가게 `FUNDED`로 돌아가면 `refund-unsubmitted`와 `submit-reminder`를 다시 등록한다(`submitDueAt`가 이미 지났으면 `refund-unsubmitted`를 지금 실행하도록 등록한다). 신고로 멈춘 협업도 이 명령으로 푼다(2026-11-11 소유자 결정).
   - `yarn ops resume-settlement --collaboration <id> --views <n>` — `HALTED`(사유가 조회수)인 협업을 주어진 조회수로 정산한다.
   - `yarn ops force-refund --collaboration <id>` — 보관 중인 전액과 수수료를 환급하고 `REFUNDED`로.
   - `yarn ops force-payout --collaboration <id> --amount <n>` — 보관액 안에서 지급하고 남은 금액을 환급하고 `SETTLED`로. `amount`가 보관액보다 크면 거절.
@@ -519,13 +632,13 @@ testWidgets('prod build has no fake checkout route', ...);
 화면 문구:
 - A7 머리 `{가게 이름} 협업`. 상자: `Cora가 안전하게 보관 중`, `100,000원`, (식사권이 있으면) `+ {식사권 이름} (방문 때 사용)`. 아래 두 칸 `지금 받을 금액` / `43,200원`, `조회수` / `4,320회`. 제출 전에는 두 칸 대신 `링크를 제출하면 집계가 시작돼요.` 식사권만 있는 협업은 금액 자리에 식사권 이름이 크게 나온다.
 - 단계: `오퍼 수락`(날짜), `가게 결제 완료` / `Cora가 금액을 보관해요`, `방문하고 촬영하기` / `식사권은 방문 때 보여주세요`, `콘텐츠 올리고 링크 제출` / `{기한}까지`, `7일간 조회수 집계 후 지급` / `최대 10만 원`.
-- 버튼: `문의하기`, `콘텐츠 링크 제출`. `COUNTING`이면 주 버튼이 `집계 중이에요 · {n}일 남음`(눌리지 않음). `SETTLED`면 `{금액}원이 지급됐어요` 또는 계좌가 없으면 `지급받을 계좌 등록하기`.
+- 버튼: `문의하기`, `콘텐츠 링크 제출`. `COUNTING`이면 주 버튼이 `집계 중이에요 · {n}일 남음`(눌리지 않음). `SETTLED`면 `{금액}원이 지급됐어요` 또는 계좌가 없으면 `지급받을 계좌 등록하기`. 계좌가 있고 송금을 기다리면 `지급 예정 · {M}월 {D}일`(2026-11-11 소유자 결정), 캔버스 밖 — 소유자 확인 목록).
 - 식사권이 있으면 단계 아래에 `식사권 보여주기` → 큰 글자로 가게 이름, 식사권 이름, `협업 번호 {앞 8자리}`.
 - `문의하기`는 `mailto:{OPERATOR_EMAIL}?subject=[Cora] 협업 {앞 8자리} 문의`. 주소는 `AppConfig.operatorEmail`(`--dart-define=OPERATOR_EMAIL`).
 - 오른쪽 위 메뉴 `협업 그만두기`(`FUNDED`일 때만): 확인 `협업을 그만둘까요? 가게에 결제 금액을 모두 돌려드려요.` / `그만두기` / `계속하기`.
 - 사장님의 취소 요청이 와 있으면 위에 띠: `{가게 이름}이 협업 취소를 요청했어요.` / `동의하기`.
 - 링크 제출: 제목 `올린 콘텐츠의\n링크를 붙여 주세요`, 입력란 `콘텐츠 링크`, 안내 `제출한 뒤에는 고칠 수 없어요.`, 버튼 `제출하기`. 오류: `링크 형식을 확인해 주세요.`, `내 계정의 게시물만 제출할 수 있어요.`
-- 계좌 등록: 제목 `지급받을 계좌를\n알려 주세요`, `은행`(고르기), `계좌번호`, `예금주`, 버튼 `등록하기`. 등록 뒤에는 `{은행} ****{뒤 4자리}`와 `바꾸기`.
+- 계좌 등록: 제목 `지급받을 계좌를\n알려 주세요`, `은행`(고르기), `계좌번호`, `예금주`, 버튼 `등록하기`. 등록 뒤에는 `{은행} ****{뒤 2자리}`와 `바꾸기`(E4·E7 캔버스와 같게 뒤 2자리(2026-11-11 소유자 결정)).
 - 인스타그램 연결: 제목 `인스타그램을\n연동해 주세요`, 설명 `조회수를 세고, 내 게시물만 제출할 수 있게 해요.`, 버튼 `인스타그램 연동하기`. 개발 빌드에서는 아이디 입력란이 있는 가짜 연결 화면이 뜬다. 연결 뒤 `@{아이디} 연동됨`.
 - 받은 오퍼 카드(2번 A6): `needsInstagram`이면 `수락하기` 대신 `인스타그램을 연동하면 수락할 수 있어요`와 `연동하기`. 연동하고 돌아오면 `수락하기`가 된다.
 - 받은 오퍼의 `진행 중` 탭은 `fetchActive()`의 협업을 줄로 보여 준다: 가게 이름, `결제를 기다리고 있어요` / `방문하고 촬영해 주세요 · {기한}까지` / `집계 중 · {n}일 남음`. 누르면 A7.
@@ -542,7 +655,7 @@ testWidgets('shows the server message for a link that is not mine', ...);
 testWidgets('cancels after confirmation', ...);
 testWidgets('accepts an owner cancel request from the banner', ...);
 testWidgets('shows the voucher in large type', ...);
-testWidgets('registers a payout account and shows only the last four digits', ...);
+testWidgets('registers a payout account and shows only the last two digits', ...);
 testWidgets('offers instagram connect instead of accept when needed', ...);
 testWidgets('lists active collaborations on the in-progress tab', ...);
 testWidgets('does not overflow at 1.3x text scale', ...);
@@ -586,6 +699,159 @@ testWidgets('opens the collaboration from the sent offers row', ...);
 
 ---
 
+### Task 13A: 알림함과 알림 설정 API (서버) (2026-11-11 소유자 결정)
+
+**Files:**
+- Create: `api/src/notifications/{notifications.controller.ts,notification-settings.controller.ts,dto/*.ts}`
+- Modify: `api/src/notifications/notifications.service.ts`, `notifications.repository.ts`
+- Test: `api/test/notifications.e2e-spec.ts`
+
+**Interfaces:**
+- Consumes: Task 3A, 공통 기반의 현재 역할(`users.role`)
+- Produces:
+  - `GET /notifications?tab=ALL|MATCHING|COLLABORATION|SETTLEMENT&cursor=` → 200 `NotificationPageModel { items: NotificationModel[]; nextCursor: string | null }`. 지금 역할의 최근 90일, 최신순, 30줄. `operationId: listNotifications`
+  - `NotificationModel { id; tab: 'MATCHING' | 'COLLABORATION' | 'SETTLEMENT'; text: string; glyph: 'WON' | 'PEN' | null; actor: { name: string; photoUrl: string | null } | null; target: { kind: string; id: string | null }; createdAt: string; read: boolean }` — `text`는 카탈로그의 `render`를 사본으로 돌린 값.
+  - `GET /notifications/unread-count` → 200 `{ count: number }`(지금 역할, 90일). `operationId: countUnreadNotifications`
+  - `POST /notifications/:id/read` → 204. 내 것이 아니면 404. `operationId: readNotification`
+  - `POST /notifications/read-all` → 204. 지금 역할의 읽지 않은 줄 전부. `operationId: readAllNotifications`
+  - `GET /me/notification-settings` → 200 `NotificationSettingsModel { mutualInterest; offers; messages; settlement; recommendations; quietHours: 'OFF' | 'NIGHT' | 'WEEKEND'; enabledCount: number }`. `PUT` 같은 본문(`enabledCount` 제외) → 200. 추천 소식이 꺼짐 → 켜짐이면 `recommendationsAgreedAt = now`. `operationId: getNotificationSettings`, `putNotificationSettings`
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+```ts
+it('lists only my notifications for my current role, newest first', ...);
+it('filters by tab', ...);
+it('pages by 30 with a cursor', ...);
+it('hides notifications older than 90 days', ...);
+it('renders the actor name from the copy taken when it was created', ...);
+it('counts unread notifications', ...);
+it('marks one as read and returns 404 for someone else's', ...);
+it('marks all of my current role as read', ...);
+it('returns default settings and saves changes', ...);           // 처음 enabledCount 4, quietHours NIGHT
+it('stamps the consent time when recommendations are turned on', ...);
+```
+
+- [ ] **Step 2~4: 실패 확인 → 구현 → 통과 확인** — Run: `cd api && yarn lint && yarn test && yarn test:e2e`
+- [ ] **Step 5: gen-api, Commit** — `feat: 알림함과 알림 설정 API 추가`
+
+---
+
+### Task 13B: 정산 내역 API (서버) (2026-11-11 소유자 결정)
+
+**Files:**
+- Create: `api/src/wallet/{wallet.module.ts,wallet.controller.ts,wallet.service.ts,wallet.repository.ts,dto/*.ts}`
+- Modify: `api/src/settlements/settlements.module.ts`, `api/src/collaborations/collaborations.module.ts`, `api/src/ledger/ledger.module.ts`(필요한 조회를 export)
+- Test: `api/src/wallet/wallet.service.spec.ts`, `api/test/wallet.e2e-spec.ts`
+
+**Interfaces:**
+- Consumes: `isMoneyHeld`, `LedgerService.escrowBalance`, `payouts`, `settlements`, `PayoutAccountsService`, `BANKS`, `Clock`
+- Produces:
+  - `GET /wallet` → 200 `WalletModel` — `CREATOR` 역할만(아니면 403). `operationId: getWallet`
+  - `WalletModel { nextPayout: { date: string; amount: number } | null; account: { bankName: string; bankFullName: string; accountLast4: string; holderName: string } | null; receivedThisMonth: number; heldAmount: number; entries: WalletEntryModel[] }`
+    - `nextPayout`: `PENDING` 지급 가운데 가장 이른 `scheduledFor`의 날짜(한국 시간 `YYYY-MM-DD`)와 그날 지급의 합.
+    - `receivedThisMonth`: 이번 달(한국 시간) `DONE` 지급의 합.
+    - `heldAmount`: `isMoneyHeld`인 내 협업들의 `ESCROW` 잔액 합.
+  - `WalletEntryModel { collaborationId; counterpartName; format; pieces: number; kind: 'PAYOUT_SCHEDULED' | 'PAYOUT_DONE' | 'PAYOUT_FAILED' | 'HELD' | 'VOUCHER'; amount: number | null; views: number | null; voucherName: string | null; voucherUsed: boolean | null; stage: CollaborationStage; at: string }` — 설계 4장의 줄 규칙. 순서는 `at` 최신순, 식사권 줄은 같은 협업의 돈 줄 바로 아래. 취소·환급으로 끝난 협업은 넣지 않는다. 브랜드 계약의 줄은 5번 계획이 더한다(이 작업은 `kind`와 `stage`로 받을 수 있게만 둔다).
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+```ts
+it('shows the next payday and its total', ...);                  // 43200, 2026-11-18
+it('sums payouts done this month in KST only', ...);             // 10월 31일 23시 KST 지급은 빠짐
+it('sums escrow balances of my money-held collaborations', ...); // 조회수당 결제 뒤 상한 100000
+it('lists scheduled, done, held and voucher rows in canvas order', ...);
+it('marks the voucher used once the link is submitted', ...);
+it('leaves out cancelled and refunded collaborations', ...);
+it('returns a null account before registration', ...);
+it('refuses a non-creator', ...);                                // 403
+it('never shows another creator\'s rows', ...);
+```
+
+- [ ] **Step 2~4: 실패 확인 → 구현 → 통과 확인**
+- [ ] **Step 5: gen-api, Commit** — `feat: 크리에이터 정산 내역 API 추가`
+
+---
+
+### Task 13C: 앱 — 알림(E3)과 종 아이콘 (2026-11-11 소유자 결정)
+
+**Files:**
+- Create: `app/lib/features/notifications/domain/{app_notification.dart,notification_repository.dart}`, `data/api_notification_repository.dart`, `presentation/viewmodels/{notifications_view_model.dart,unread_count_view_model.dart}`, `presentation/pages/notifications_page.dart`, `presentation/widgets/notification_bell.dart`, `presentation/notification_text.dart`, `presentation/notification_routes.dart`
+- Modify: `app/lib/core/theme/cora_colors.dart`(`iconMuted`, E3 고른 탭, 읽지 않음 점), `app/lib/core/navigation/app_router.dart`(`/notifications`), 2번의 사장님 홈 머리(`app/lib/features/store_home/…`, 종 아이콘 — 캔버스 밖, 2026-11-11 소유자 결정)
+- Test: `app/test/features/notifications/`
+
+**Interfaces:**
+- Consumes: `cora_api`의 `listNotifications`, `countUnreadNotifications`, `readNotification`, `readAllNotifications` (Task 13A), `CoraNetworkPhoto`, 토큰
+- Produces:
+  - `class AppNotification { id; tab; text; glyph; actorName; actorPhotoUrl; targetKind; targetId; createdAt; read }`, `enum NotificationTabFilter { all, matching, collaboration, settlement }`
+  - `abstract class NotificationRepository { Future<({List<AppNotification> items, String? nextCursor})> fetch(NotificationTabFilter tab, {String? cursor}); Future<int> unreadCount(); Future<void> read(String id); Future<void> readAll(); }`
+  - `relativeTimeLabel(DateTime now, DateTime at)` (순수, 한국 시간): `방금` / `{n}분 전` / `{n}시간 전` / `어제` / `{M}월 {D}일` / `{YYYY}년 {M}월 {D}일`
+  - `String? locationFor(String targetKind, String? targetId, UserRole role)` (순수) — 이 계획의 종류: `STORE_APPLICANTS` → 사장님 홈 지원 탭, `STORE_SENT_OFFERS` → 보낸 오퍼 탭, `OFFER_INBOX` → 받은 오퍼, `PAYMENT` → `/store/collaborations/:id/pay`, `COLLABORATION` → 역할에 맞는 협업 화면, `WALLET` → `/creator/wallet`. 모르는 종류는 null(누르면 읽음만).
+  - `NotificationBell` — 44 버튼, 종 22(선 2, `text`), 읽지 않은 것이 있으면 점 8(`accent`, 바깥 2 고리 `background`, 오른쪽 10·위 10). 읽을 이름 `알림, 새 알림 {n}개` / 없으면 `알림`. 누르면 `/notifications`. 4번 계획이 01·08 머리에 같은 위젯을 쓴다.
+
+화면 문구(E3, 설계 2장 그대로):
+- 머리 `알림`, 오른쪽 아이콘(읽을 이름 `알림 설정`) → `/settings/notifications`.
+- 탭 `전체`, `매칭`, `협업`, `정산`.
+- 줄: 그림(`WON` → `₩`, `PEN` → `✎`, 아니면 사진, 사진이 없으면 이름 첫 글자), 문구, 시각. 읽지 않은 줄은 `surface` 바탕과 오른쪽 점.
+- 아래 `모두 읽음으로 표시`.
+- 빈 상태 `아직 알림이 없어요.`(캔버스 밖 — 확인 목록).
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+```dart
+test('labels times like the canvas', ...);                       // 방금, 12분 전, 1시간 전, 어제, 11월 9일
+testWidgets('shows the five canvas rows from a fake repository', ...);
+testWidgets('filters rows by tab', ...);
+testWidgets('marks a row read and opens its screen on tap', ...);
+testWidgets('marks everything read from the bottom button', ...);
+testWidgets('draws unread rows with surface and a dot, light and dark', ...);  // 다크 점 #0F1012
+testWidgets('uses #33363D for the selected tab in dark', ...);
+testWidgets('shows the bell dot only when something is unread', ...);
+testWidgets('does not overflow at 1.3x text scale', ...);
+```
+
+- [ ] **Step 2~4: 실패 확인 → 구현 → 통과 확인** — Run: `cd app && flutter analyze && flutter test`
+- [ ] **Step 5: 시뮬레이터에서 라이트·다크 E3을 캔버스와 나란히 확인**
+- [ ] **Step 6: Commit** — `feat: 알림함 화면과 종 아이콘 추가`
+
+---
+
+### Task 13D: 앱 — 알림 설정(E5)과 정산(E7) (2026-11-11 소유자 결정)
+
+**Files:**
+- Create: `app/lib/features/notification_settings/{domain,data,presentation}/…`, `app/lib/features/wallet/{domain/{wallet.dart,wallet_repository.dart},data/api_wallet_repository.dart,presentation/{viewmodels/wallet_view_model.dart,pages/wallet_page.dart,wallet_text.dart}}`
+- Modify: `app/lib/core/theme/cora_colors.dart`·`cora_shadows.dart`(스위치 손잡이, 방해 금지 고른 것, "계좌 변경" 버튼), `app/lib/core/navigation/app_router.dart`(`/settings/notifications`, `/creator/wallet`)
+- Test: `app/test/features/notification_settings/`, `app/test/features/wallet/`
+
+**Interfaces:**
+- Consumes: `getNotificationSettings`, `putNotificationSettings` (Task 13A), `getWallet` (Task 13B), `won()` (2번), 3번 Task 12의 계좌 등록 화면(`/creator/payout-account`)
+- Produces:
+  - `NotificationSettingsViewModel` — 스위치를 누르면 바로 `PUT`. 실패하면 되돌리고 3초 안내(캔버스 밖).
+  - `wallet_text.dart`(순수): `paydayLabel(DateTime)`(`11월 18일 수요일`), `entryTitle`(`{상대} · {형식} {편 수}편`), `entrySubtitle`(`조회수 {n}회분` / `{M}월 {D}일 지급` / `게시 확인 중` / 식사권 이름), `entryAmount`(`43,200원` / `식사권`), `entryState`(`지급 예정` / `지급 완료` / `보관 중` / `사용 완료` / `방문 때 사용`), `accountLabel`(`{bankFullName} ****{뒤 2자리}`)
+
+화면 문구:
+- E5: 머리 `알림`, 제목 `꼭 필요한 알림만\n받을 수 있어요.`, 스위치 다섯(설계 2장 표), `방해 금지 시간` / `끄기`, `밤 10시 – 아침 8시`, `주말`.
+- E7: 머리 `정산`, `다음 지급 예정 · {날짜 요일}`, 금액, `{은행 전체 이름} ****{뒤 2자리}` + 예금주, `계좌 변경`(→ `/creator/payout-account`), `이번 달 받은 금액`, `Cora가 보관 중`, `내역`과 줄. 계좌가 없으면 `지급받을 계좌를 등록해 주세요.` / `계좌 등록`, 다음 지급이 없으면 `다음 지급 예정 없음` / `0원`(캔버스 밖 — 확인 목록).
+- E7 맨 아래 안내 줄 `수수료 [수수료]와 원천징수 3.3%를 뺀 금액이에요.`는 그리지 않는다 — 법률·세무 확인 전까지 숨기는 것을 소유자가 승인했다(캔버스 100% 규칙의 예외(2026-11-11 소유자 결정)). 확인 뒤 문구가 정해지면 되살린다.
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+```dart
+testWidgets('shows five switches with four on and night quiet hours by default', ...);
+testWidgets('saves a switch immediately and reverts on failure', ...);
+testWidgets('picks one quiet-hours option at a time', ...);       // 다크 고른 것 #2A2D33
+test('formats the payday as month, day and weekday', ...);         // 11월 18일 수요일
+testWidgets('shows the canvas wallet numbers and four rows', ...);
+testWidgets('keeps the account change button white in dark', ...);
+testWidgets('asks for an account when none is registered', ...);
+testWidgets('does not overflow at 1.3x text scale', ...);
+```
+
+- [ ] **Step 2~4: 실패 확인 → 구현 → 통과 확인**
+- [ ] **Step 5: 시뮬레이터에서 라이트·다크 E5·E7을 캔버스와 나란히 확인**
+- [ ] **Step 6: Commit** — 커밋 두 개: `feat: 알림 설정 화면 추가`, `feat: 크리에이터 정산 화면 추가`
+
+---
+
 ### Task 14: 전체 흐름 확인
 
 **Files:** 없음
@@ -603,12 +869,17 @@ Run: `./scripts/gen-api.sh && git status --short` — Expected: 변경 없음
 3. A: 가짜 결제창에서 `닫기`만 누른 경우 `결제가 완료되지 않았어요.`가 뜨는지(새 오퍼로 확인).
 4. B: A7에 `100,000원`과 `방문하고 촬영하기`가 현재 단계. `식사권 보여주기`.
 5. B: 링크 `https://www.instagram.com/reel/abc?views=4320` 제출 → `집계 중이에요 · 7일 남음`.
-6. 서버를 7일 뒤로 띄운다 → B: `지급받을 계좌 등록하기` → 등록 → `43,200원이 지급됐어요`. A: `지급 43,200원 · 환급 56,800원`.
+6. 서버를 7일 뒤로 띄운다 → B의 E3에 `정산 43,200원이 다음 주 수요일에 들어와요.`, A7에 `지급받을 계좌 등록하기` → 등록 → A7 `지급 예정 · {M}월 {D}일`, E7에 `다음 지급 예정 · {날짜 요일}`과 `지급 예정` 줄 → 서버를 그 수요일 10시 뒤로 → `43,200원이 지급됐어요`, E7 `지급 완료`. A: `지급 43,200원 · 환급 56,800원`.
 7. `yarn ops show --collaboration <id>`: `ESCROW 0`, `CREATOR_PAYABLE 43200`, `STORE_REFUND 56800`, `FEE_REVENUE 10000`.
 8. 새 오퍼로: 결제 뒤 B가 `협업 그만두기` → A에게 환급 `110,000원`.
 9. 새 오퍼로: 결제 뒤 14일을 건너뛴다 → 양쪽에 종료 알림, `REFUNDED`.
 10. 새 오퍼로: 링크에 `unavailable`을 넣고 3일을 건너뛴다 → 운영자 알림 로그, `HALTED` → `yarn ops resume-settlement --views 5000` → 지급 `50,000원`.
-11. 식사권만 있는 오퍼: 결제 없이 진행되고 링크 제출로 바로 끝난다.
+11. 식사권만 있는 오퍼: 결제 없이 진행되고 링크 제출로 바로 끝난다. E7의 식사권 줄이 `사용 완료`.
+12. A(사장님 홈)의 종에 점이 있고 E3에 `{활동 이름}님이 오퍼를 수락했어요.` 줄이 읽지 않음으로 보인다. 누르면 결제 화면, 돌아오면 읽음.
+13. B가 E5에서 `새 오퍼와 제안`을 끈다 → A가 새 오퍼를 보낸다 → 서버 로그에 푸시 없음, B의 E3에는 `{가게 이름}이 릴스 1편 오퍼를 보냈어요.` 줄이 있음.
+14. B가 모든 스위치를 끈다 → 결제 완료 알림의 푸시는 로그에 남는다.
+15. B가 방해 금지를 `주말`로 두고, 서버를 다음 토요일로 띄운다 → 어떤 알림도 푸시 로그가 없고 E3에는 쌓인다.
+16. E3·E5·E7을 라이트·다크로 캔버스와 나란히 본다(설계 6장의 다크 차이 — E3 고른 탭 `#33363D`, 읽지 않음 점, E7 `계좌 변경` 흰 바탕 — 와 E7 안내 줄을 숨긴 것 포함).
 
 - [ ] **Step 3: 장부 전체 점검** — 테스트 DB의 모든 협업에 대해 `assertBalanced`를 도는 스크립트 `api/scripts/check-ledger.ts`를 만들고 실행한다. Expected: `모든 협업의 장부가 맞습니다 (n건)`.
 
@@ -616,7 +887,7 @@ Run: `./scripts/gen-api.sh && git status --short` — Expected: 변경 없음
 
 ## 완료 기준
 
-- Task 14의 자동 확인과 수동 확인 11개, 장부 점검 통과
+- Task 14의 자동 확인과 수동 확인 16개, 장부 점검 통과
 - 운영 환경 모드(`NODE_ENV=production`)에서 가짜 어댑터가 하나라도 있으면 서버가 시작을 거부하고, 개발 전용 결제 라우트가 없음
 
 ## 이 계획이 하지 않는 것
@@ -624,3 +895,4 @@ Run: `./scripts/gen-api.sh && git status --short` — Expected: 변경 없음
 - 브랜드 계약의 결제와 고정 제작비 정산 (5번 계획. 이 계획은 단계 값과 제출 검사만 미리 넣는다)
 - 실제 PG, 송금, 조회수, 인스타그램 연결 (9번 계획)
 - 인스타그램 게시물 가져오기 (7번 계획)
+- 설정(E4), 프로필 수정(E6), 고객센터(E8) (`plans/2026-11-11-account-settings.md`, 7번 다음)

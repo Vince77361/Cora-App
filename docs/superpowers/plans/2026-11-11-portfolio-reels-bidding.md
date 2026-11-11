@@ -28,6 +28,15 @@
 - 맡기는 쪽에게 크리에이터를 보여 주는 모든 조회(피드, B5, 좋아요, 신고, 입찰 후보, 입찰 보내기)는 `VisibilityService`를 거친다. 공통 규칙 5장의 "추천에서 빼는 상대"는 릴스 피드와 입찰 후보에 적용한다.
 - 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다.
 
+## 2026-11-11 소유자 결정으로 더한 것 (E3~E8 계정·알림 화면)
+
+설계: `specs/2026-11-11-account-notify-settings-design.md`. 알림 기반은 3번 계획 Task 3A, 알림함·설정·정산 화면은 3번 Task 13A~13D, 설정·프로필 수정·고객센터는 `plans/2026-11-11-account-settings.md`(7번 다음)가 만든다. 아래가 이 계획의 작업에 더해진다.
+
+- 이 계획의 모든 알림은 `PushPort`가 아니라 3번 Task 3A의 `NotificationsService.notify`로 보낸다. 새 알림 종류는 `NOTIFICATION_CATALOG`에 탭·스위치·그림·문구를 더하고(설계 3.2 표), 앱의 `locationFor`(3번 Task 13C)에 가는 곳을 더한다. 작업 처리기에서 보내는 알림은 `dedupeKey`를 넘긴다.
+- Task 9 B2: 오른쪽 위 톱니(캔버스, 읽을 이름 `설정`)를 그리고 `/settings`로 잇는다. 계정·설정 계획이 E4를 만들 때까지 `/settings`는 준비 중 화면이다.
+- Task 7·8: 입찰 오퍼는 2번 오퍼와 같은 `OFFER_RECEIVED`(`{가게 이름}{이/가} {형식} {편 수}편 오퍼를 보냈어요.`), 입찰 결과는 `OFFER_ACCEPTED`·`OFFER_DECLINED`.
+- 소개 글(`bio`)과 B5 꼬리표는 이 계획대로 만든다. 계정·설정 계획 Task 1이 E6을 위해 크리에이터의 자유 꼬리표를 원칙 꼬리표 앞에 붙이고, `bio`를 `PATCH /creators/me`로도 고칠 수 있게 한다.
+
 ## Review Focus
 
 1. **같은 가게의 두 입찰이 거의 동시에 들어와 합이 예산을 넘음** → 하나만 저장되고 다른 하나는 409 `남은 예산이 부족해요.` (Task 8)
@@ -143,14 +152,14 @@ it('removes the files and drops the likes from the total on delete', ...);  // t
 - Produces:
   - `PUT /portfolio-items/:id/like` 본문 `{ liked: boolean }` → 200 `{ liked: boolean }`. `STORE`·`BRAND`만(크리에이터 403). 콘텐츠가 숨겨졌거나 지워졌거나 올린 사람이 나에게 보이지 않으면 404. 한 트랜잭션에서 `item_likes`를 조건부로 바꾸고, 바뀐 행이 있을 때만 `likeCount`를 ±1 한다(같은 값을 두 번 보내도 수가 변하지 않는다). `operationId: setPortfolioItemLike`
   - `VisibilityService.recommendationExclusions(viewer): Promise<Set<string>>` — 공통 규칙 5장 가운데 필터가 아닌 것: 나와 끝나지 않은 협업이 있는 크리에이터, (브랜드면) 진행 중 캠페인에서 내가 넘긴 크리에이터와 그 캠페인에서 `DROPPED`된 크리에이터. 5번 계획의 차단은 `creatorVisibleTo`에 들어가므로 여기서 다루지 않는다.
-  - `portfolio-rules.ts`에 추가: `profileTags(p: Principles): string[]` — `faceOk`면 `얼굴출연가능` 아니면 `얼굴출연없음`, `scriptOk`가 false면 `대본낭독없음`, `honestReview`면 `솔직후기`; `feeSentence(band: FeeBand): string` — `희망 제작비는 20만 원대예요.`, `…30만 원대예요.`, `…40만 원대예요.`, `희망 제작비는 50만 원 이상이에요.`
+  - `portfolio-rules.ts`에 추가: `profileTags(p: Principles): string[]` — 4번 발견 카드와 같은 목록(4번의 `principleTags`)을 돌려준다. `얼굴출연가능`은 만들지 않는다(2026-11-11 소유자 결정: 발견 카드·B5·E6이 같은 목록); `feeSentence(band: FeeBand): string` — `희망 제작비는 20만 원대예요.`, `…30만 원대예요.`, `…40만 원대예요.`, `희망 제작비는 50만 원 이상이에요.`
   - `PublicPortfolioItemModel { id; kind; mediaUrl; posterUrl; durationSec; description; fields; likedByMe: boolean }`(`likeCount` 칸이 없다). `GET /creators/:id/profile` → 200 `CreatorPublicProfileModel { creatorId; displayName; photoUrl; instagramHandle: string | null; fieldLabels: string[]; tags: string[]; followers: number | null; totalLikes; completedCollaborations; bio: string | null; feeSentence: string | null; cover: PublicPortfolioItemModel | null; items: PublicPortfolioItemModel[]; viewer: { kind: 'STORE' | 'BRAND'; hasOpenOffer: boolean; hasActiveCampaign: boolean; myDecision: 'LIKE' | 'HOLD' | null } }` — `STORE`·`BRAND`만, `VisibilityService.creatorVisibleTo`를 통과해야 한다(아니면 404). `instagramHandle`·`followers`는 연결된 계정의 값만 쓴다(본인이 적은 아이디는 쓰지 않는다). `fieldLabels`·`tags`·`feeSentence`는 원칙이 없으면 빈 배열과 null. 숨긴 콘텐츠는 `items`·`cover`·`totalLikes` 모두에서 빠진다. `operationId: getCreatorPublicProfile`
   - `CreatorCardModel`에 `cover: { itemId; kind; posterUrl } | null` 추가. `headline`은 `cover`의 설명 → `cardHeadline` → null, `photoUrl`은 `cover`의 첫 화면 그림 → `cardPhotoPath` → 프로필 사진 순으로 채운다(대체 경로는 남긴다). 4번의 `PUT /discovery/decisions`에서 `note`가 있는 `LIKE`의 `contentTitle`·`contentPhotoPath` 사본도 같은 순서(대표 콘텐츠 → `cardHeadline`/`cardPhotoPath`)로 만든다.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
 ```ts
-it('builds profile tags and the fee sentence from principles', ...);          // ['얼굴출연가능','솔직후기'], '희망 제작비는 30만 원대예요.'
+it('builds profile tags and the fee sentence from principles', ...);          // 4번 principleTags와 같은 목록, '희망 제작비는 30만 원대예요.'
 it('likes and unlikes an item and keeps the count right on repeats', ...);    // true,true → likeCount 1; false → 0
 it('returns 404 when a store whose industry the creator avoids likes an item', ...);
 it('counts one like when two requests with liked=true race', ...);            // Promise.all → likeCount 1
@@ -590,7 +599,7 @@ test('describes a declined bid with its reason for the store', ...);          //
 ## 이 계획이 구체화한 것
 
 - 콘텐츠별 좋아요 수는 올린 크리에이터에게만 보인다. 맡기는 쪽은 B5의 합계만 보고, B1의 좋아요 버튼에는 숫자가 없다(캔버스 B1의 수 표시와 다르다).
-- B5의 좋아요 버튼은 대표 콘텐츠에 누르는 것이다. 꼬리표는 `얼굴출연가능`/`얼굴출연없음`, `대본낭독없음`, `솔직후기`로 만들고, 희망 제작비 문장은 `희망 제작비는 {띠}예요.`(50만 원 이상은 `…이상이에요.`)로 붙인다.
+- B5의 좋아요 버튼은 대표 콘텐츠에 누르는 것이다. 꼬리표는 4번 발견 카드와 같은 목록(`principleTags` — 2026-11-11 소유자 결정)이고, 희망 제작비 문장은 `희망 제작비는 {띠}예요.`(50만 원 이상은 `…이상이에요.`)로 붙인다.
 - 피드의 "본 것"은 순환 번호(`feed_states.cycle`)로 관리하고, 커서는 기준 시각을 담아 이어 읽는 동안 순서가 흔들리지 않게 했다. 본 것으로 치는 시간은 1초.
 - 영상 길이는 서버가 파일을 열지 않으므로 앱이 보낸 값을 믿는다. 크기는 서버가 저장소에서 실제 크기를 확인한다. 첫 화면 그림은 JPEG 2MB까지, 사진은 앱이 긴 변 2048로 줄인다.
 - 인스타그램에서 가져온 콘텐츠의 분야는 협업 원칙의 분야 앞 3개(없으면 `기타`), 설명이 비면 `인스타그램 게시물`. 지운 콘텐츠의 원본 게시물은 다시 가져올 수 있다. 한 번에 10개까지.

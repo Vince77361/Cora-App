@@ -26,6 +26,16 @@
 - 새 테이블 8개(`production_guides`, `draft_versions`, `draft_pieces`, `draft_files`, `draft_comments`, `draft_approvals`, `retrospectives`, `keep_entries`)에 RLS를 켠다.
 - 작업 브랜치를 만들지 않고 `main`에 바로 커밋한다. 커밋마다 테스트가 통과한 상태여야 한다. push는 소유자 확인 후에만 한다.
 
+## 2026-11-11 소유자 결정으로 더한 것 (E3~E8 계정·알림 화면)
+
+설계: `specs/2026-11-11-account-notify-settings-design.md`. 알림 기반은 3번 계획 Task 3A, 알림함·설정·정산 화면은 3번 Task 13A~13D, 설정·프로필 수정·고객센터는 `plans/2026-11-11-account-settings.md`(7번 다음)가 만든다. 아래가 이 계획의 작업에 더해진다.
+
+- 이 계획의 모든 알림은 `PushPort`가 아니라 3번 Task 3A의 `NotificationsService.notify`로 보낸다. 새 알림 종류는 `NOTIFICATION_CATALOG`에 탭·스위치·그림·문구를 더하고(설계 3.2 표), 앱의 `locationFor`(3번 Task 13C)에 가는 곳을 더한다. 작업 처리기에서 보내는 알림은 `dedupeKey`를 넘긴다.
+- Task 4~6·8: 이 계획의 알림은 모두 끌 수 없는 협업 알림(탭 협업, 그림 `PEN` ✎)이다. 가는 곳 `GUIDE` → 13, `DRAFT_REVIEW` → 14.
+- Task 6: 초안 댓글의 `{위치}`는 영상이면 `m:ss`(캔버스 "초안 0:12 구간에 댓글이 달렸어요."). 카드뉴스는 `초안 {n}번째 장에 댓글이 달렸어요.`, 블로그 글은 `초안 본문에 댓글이 달렸어요.`·`초안 {n}번째 사진에 댓글이 달렸어요.`(캔버스 밖 — 설계 10장 확인 목록).
+- Task 8: 기한 알림 작업은 그날 한국 시간 10:00에 실행되게 등록한다(방해 금지에 걸려 사라지지 않게).
+- Task 9: 보관함 모듈은 `KeepService`를 export하고 `countFor(userId): Promise<number>`(전체 탭의 수)를 더한다. 계정·설정 계획 Task 2가 E4의 "다시 만나고 싶은 브랜드" 수에 쓴다.
+
 ## Review Focus
 
 1. **상대가 내 회고나 보관함을 엿봄** → 상대의 협업·대화·계약·초안·보관함 응답 어디에도 값이 없고, ID로 요청하면 404다. (Task 9)
@@ -271,7 +281,7 @@ it('hides the uploading version from the brand', ...);
 - Consumes: `validateAnchor`, `maxDraftVersions` (Task 3), Task 5, 3번 `CollaborationsRepository.advance`·`JobScheduler`, `PushPort`
 - Produces:
   - `DraftCommentModel { id; pieceIndex; positionKind: 'SECOND' | 'IMAGE' | 'BODY'; position: number | null; authorRole: 'COMMISSIONER' | 'CREATOR'; authorName; mine: boolean; text; createdAt }` — 편, 위치, 작성 시각 순
-  - `POST /drafts/:draftId/comments` 본문 `{ pieceIndex; positionKind; position?: number; text: string(1~300) }` → 201 `DraftCommentModel` — 당사자만, 최신 버전이고 단계 `REVIEWING`일 때만(아니면 409). 상대에게 푸시 `{이름}님이 초안 v{n}에 댓글을 남겼어요.` 브랜드가 쓰면 `lastBrandActivityAt = now`. `operationId: createDraftComment`
+  - `POST /drafts/:draftId/comments` 본문 `{ pieceIndex; positionKind; position?: number; text: string(1~300) }` → 201 `DraftCommentModel` — 당사자만, 최신 버전이고 단계 `REVIEWING`일 때만(아니면 409). 상대에게 `초안 {위치} 구간에 댓글이 달렸어요.`(E3 캔버스 문구 (2026-11-11 소유자 결정)) 브랜드가 쓰면 `lastBrandActivityAt = now`. `operationId: createDraftComment`
   - `PUT /drafts/:draftId/ad-disclosure` 본문 `{ confirmed: boolean }` → 200 `DraftVersionModel` — 내 쪽 시각만 채우거나 지운다. 최신 버전·`REVIEWING`·확정 전일 때만. `operationId: setDraftAdDisclosure`
   - `POST /drafts/:draftId/approve` → 200 `DraftVersionModel` — 브랜드만. 한 트랜잭션에서 `UPDATE draft_approvals SET approved_at = now WHERE draft_version_id = ? AND creator_ad_confirmed_at IS NOT NULL AND brand_ad_confirmed_at IS NOT NULL AND approved_at IS NULL`, 그 버전이 여전히 최신인지 확인, `REVIEWING → APPROVED`. 하나라도 0행이면 409 `양쪽이 광고 표시를 확인해야 초안을 확정할 수 있어요.`(최신이 아니면 `새 초안이 올라왔어요. 최신 초안을 확인해 주세요.`). 반응 알림 취소, 크리에이터에게 푸시 `초안이 확정됐어요. 게시하고 링크를 제출해 주세요.` `operationId: approveDraftVersion`
   - `POST /collaborations/:id/drafts/allow-extra` → 200 `DraftOverviewModel` — 브랜드만, `REVIEWING`이고 허용 수를 다 썼을 때만. `UPDATE collaborations SET extra_revisions_allowed = extra_revisions_allowed + 1 WHERE id = ? AND extra_revisions_allowed = <읽은 값> AND stage = 'REVIEWING'`. 크리에이터에게 푸시 `{브랜드 이름}이 수정을 한 번 더 허용했어요. 초안을 다시 올릴 수 있어요.` `operationId: allowExtraDraftRevision`
@@ -591,7 +601,7 @@ testWidgets('does not overflow at 1.3x text scale', ...);
 | 초안 규칙 | 영상 길이는 앱이 읽은 값을 서버가 검사한다(서버에서 영상을 처리하지 않으므로). 댓글은 최신 버전에만. 브랜드의 "수정 한 번 더 허용"은 허용 수를 다 썼을 때만. 업로드 중인 버전은 하나이고 새로 시작하면 이전 것을 버린다. |
 | 초안 문구 | 상대 확인 상태 두 줄, `양쪽 모두 광고 표시를 확인하면 누를 수 있어요.`, `초안이 확정됐어요.`, `새 버전 올리기`, 허용 확인 문구, 빈 상태 두 줄, 정리된 파일 문구, 지난 버전 띠, 올리기 화면의 안내·진행·끊김·오류·떠날 때 확인 문구(Task 11), `300자까지 남길 수 있어요.`, 카드뉴스·블로그의 입력란 문구 |
 | 오류 | `기획 방향을 더 고칠 수 없어요.`, `기획 방향을 먼저 저장해 주세요.`, `확정된 뒤에는 초안을 올릴 수 없어요.`, `기획 방향을 다시 저장한 뒤 초안을 올릴 수 있어요.`, `아직 다 올라가지 않았어요.`, `양쪽이 광고 표시를 확인해야 초안을 확정할 수 있어요.`, `새 초안이 올라왔어요. 최신 초안을 확인해 주세요.`, `정산이 끝난 뒤에 회고를 남길 수 있어요.`, `대화가 종료돼 메시지를 만들 수 없어요.`, `메시지를 만들지 못했어요. 잠시 뒤 다시 시도해 주세요.` |
-| 알림 | `{활동 이름}님이 기획 방향을 저장했어요.`, `{브랜드 이름}이 기획 방향 수정을 요청했어요. 대화에서 의견을 확인해 주세요.`, `{활동 이름}님이 초안 v{n}을 올렸어요.`, `{이름}님이 초안 v{n}에 댓글을 남겼어요.`, `{브랜드 이름}이 수정을 한 번 더 허용했어요. 초안을 다시 올릴 수 있어요.`, `제작 시작일에서 14일이 지났어요. 초안을 올려 주세요.`, `{활동 이름}님의 초안 v{n}이 확인을 기다리고 있어요.` |
+| 알림 | `{활동 이름}님이 기획 방향을 저장했어요.`, `{브랜드 이름}이 기획 방향 수정을 요청했어요. 대화에서 의견을 확인해 주세요.`, `{활동 이름}님이 초안 v{n}을 올렸어요.`, `초안 {위치} 구간에 댓글이 달렸어요.`, `{브랜드 이름}이 수정을 한 번 더 허용했어요. 초안을 다시 올릴 수 있어요.`, `제작 시작일에서 14일이 지났어요. 초안을 올려 주세요.`, `{활동 이름}님의 초안 v{n}이 확인을 기다리고 있어요.` |
 | 기한 기준 | "제작 시작일"은 계약 사본의 시작일 한국 시간 0시. "브랜드의 반응"은 댓글, 광고 표시 확인, 확정, 수정 허용. |
 | 보관함 규칙 | 무산 사유는 그만둔 본인에게만 보이고 상대 줄은 `협의가 끝나 무산`. `INQUIRY`에서 끝난 협업, 요청 거절, 차단으로 끝난 협업은 줄을 만들지 않는다. 브랜드 계약이 운영자 환급으로 끝나면 `진행 중 중단`. `전체` 탭은 `이번만 할래요`를 고른 완료 줄을 뺀다. 브랜드·크리에이터의 다음 걸음은 그 줄의 캠페인과 다른 진행 중 캠페인이 있을 때만. 보관함 편집은 완료 줄에도 되고, 회고를 저장하면 회고 값이 덮어쓴다. |
 | 회고 | 사장님의 `브랜드 이해`는 `가게 이해`로 쓴다. 질문은 상대에 따라 `이 브랜드와` / `이 가게와` / `이 크리에이터와`. `회고 저장`, `회고를 저장했어요.`, `회고 고치기`. |
