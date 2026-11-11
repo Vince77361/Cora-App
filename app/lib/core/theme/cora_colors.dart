@@ -13,6 +13,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     required this.surfaceSelected,
     required this.onSurfaceSelected,
     required this.surfaceMuted,
+    required this.onSurfaceMuted,
     required this.line,
     required this.primaryAction,
     required this.onPrimaryAction,
@@ -29,6 +30,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
   final Color surfaceSelected;
   final Color onSurfaceSelected;
   final Color surfaceMuted;
+  final Color onSurfaceMuted;
   final Color line;
   final Color primaryAction;
   final Color onPrimaryAction;
@@ -45,6 +47,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     surfaceSelected: Color(0xFFE3E5E9),
     onSurfaceSelected: Color(0xFF17181C),
     surfaceMuted: Color(0xFFF2F3F5),
+    onSurfaceMuted: Color(0xFF17181C),
     line: Color(0xFFE6E8EB),
     primaryAction: Color(0xFFC6FF3D),
     onPrimaryAction: Color(0xFF1F2A00),
@@ -54,6 +57,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
 
   // 다크의 surface, surfaceMuted, onAccent는 DarkPrinciples/DarkNEscrow/DarkNStoreHome에서
   // 라이트와 같은 자리에 쓰인 색을 그대로 옮겼다.
+  // surfaceMuted는 다크에서도 밝은 채움(#F2F3F5)이다. DarkPrinciples `다시 고르기`
+  // (background #F2F3F5, color #17181C)와 DarkNStoreHome `릴스로 찾기`가 다크에서도
+  // 밝은 보조 버튼을 그대로 쓴다. 그래서 그 위 글자는 `text`(다크에서 #F2F3F5)가 아니라
+  // 어두운 onSurfaceMuted(#17181C)여야 한다. `text`를 쓰면 글자가 안 보인다.
   static const dark = CoraColors(
     background: Color(0xFF0F1012),
     text: Color(0xFFF2F3F5),
@@ -64,6 +71,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     surfaceSelected: Color(0xFFF2F3F5),
     onSurfaceSelected: Color(0xFF0F1012),
     surfaceMuted: Color(0xFFF2F3F5),
+    onSurfaceMuted: Color(0xFF17181C),
     line: Color(0xFF2A2D33),
     primaryAction: Color(0xFFF2F3F5),
     onPrimaryAction: Color(0xFF17181C),
@@ -82,6 +90,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? surfaceSelected,
     Color? onSurfaceSelected,
     Color? surfaceMuted,
+    Color? onSurfaceMuted,
     Color? line,
     Color? primaryAction,
     Color? onPrimaryAction,
@@ -98,6 +107,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
       surfaceSelected: surfaceSelected ?? this.surfaceSelected,
       onSurfaceSelected: onSurfaceSelected ?? this.onSurfaceSelected,
       surfaceMuted: surfaceMuted ?? this.surfaceMuted,
+      onSurfaceMuted: onSurfaceMuted ?? this.onSurfaceMuted,
       line: line ?? this.line,
       primaryAction: primaryAction ?? this.primaryAction,
       onPrimaryAction: onPrimaryAction ?? this.onPrimaryAction,
@@ -120,6 +130,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
       surfaceSelected: mix(surfaceSelected, other.surfaceSelected),
       onSurfaceSelected: mix(onSurfaceSelected, other.onSurfaceSelected),
       surfaceMuted: mix(surfaceMuted, other.surfaceMuted),
+      onSurfaceMuted: mix(onSurfaceMuted, other.onSurfaceMuted),
       line: mix(line, other.line),
       primaryAction: mix(primaryAction, other.primaryAction),
       onPrimaryAction: mix(onPrimaryAction, other.onPrimaryAction),
