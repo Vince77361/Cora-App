@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 로그인(Supabase)과 API 요청에 필요하다. 템플릿은 debug/profile에만 두어 release 빌드가 네트워크를 못 쓴다. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="cora"
         android:name="${applicationName}"

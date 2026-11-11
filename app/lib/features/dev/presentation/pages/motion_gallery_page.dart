@@ -15,9 +15,14 @@ import '../../../../core/ui/cora_select_card.dart';
 
 /// 개발용 모션 갤러리. 소유자가 실제 기기에서 전환 속도·곡선과 공용 위젯을 보고 승인한다.
 ///
-/// 앱과 똑같은 [CoraTransitions] 페이지를 쓰도록 안에 작은 GoRouter를 따로 둔다.
-/// 라이트·다크 스위치는 이 안의 테마만 바꾼다. 실행 설정값(`--dart-define`)이 없어도 뜬다.
-/// 운영 빌드에는 들어가지 않는다(Task 9가 개발 환경에서만 `/dev/motion`에 등록한다).
+/// 앱 라우터의 `/dev/motion`(개발 환경 전용)에 있다. 앱과 똑같은 [CoraTransitions] 페이지를
+/// 쓰도록 안에 작은 GoRouter를 따로 두고, 라이트·다크 스위치는 이 안의 테마만 바꾼다.
+///
+/// 안쪽 라우터가 뒤로 가기를 먼저 받는다. [NavigatorPopHandler]가 안쪽에 쌓인 화면이 있는
+/// 동안 바깥 경로(`/dev/motion`)의 닫힘을 막고 그 요청을 안쪽으로 돌린다. 그래서 Android
+/// 뒤로 가기와 iOS 가장자리 밀기 모두 시연 화면부터 닫고, 갤러리 첫 화면에서만 갤러리를 나간다.
+/// (ChildBackButtonDispatcher만 쓰면 Android는 맞지만, iOS에서는 바깥 경로의 밀기 감지가
+/// 먼저 이겨 갤러리 전체가 닫힌다.)
 class MotionGalleryPage extends StatefulWidget {
   const MotionGalleryPage({super.key});
 
@@ -27,8 +32,10 @@ class MotionGalleryPage extends StatefulWidget {
 
 class _MotionGalleryPageState extends State<MotionGalleryPage> {
   final _themeMode = ValueNotifier(ThemeMode.system);
+  final _navigatorKey = GlobalKey<NavigatorState>();
 
   late final GoRouter _router = GoRouter(
+    navigatorKey: _navigatorKey,
     routes: [
       GoRoute(
         path: '/',
@@ -60,17 +67,36 @@ class _MotionGalleryPageState extends State<MotionGalleryPage> {
     super.dispose();
   }
 
+  // MaterialApp의 themeMode와 같은 규칙. 시스템이면 기기 설정을 따른다.
+  // 스위치는 밝기만 바꾼다. 플랫폼(iOS 뒤로 밀기 여부를 정함)은 바깥 테마를 그대로 따른다.
+  ThemeData _themeFor(BuildContext context, ThemeMode mode) {
+    final dark = switch (mode) {
+      ThemeMode.dark => true,
+      ThemeMode.light => false,
+      ThemeMode.system =>
+        MediaQuery.platformBrightnessOf(context) == Brightness.dark,
+    };
+    return (dark ? coraDarkTheme : coraLightTheme).copyWith(
+      platform: Theme.of(context).platform,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: _themeMode,
-      builder: (context, mode, _) => MaterialApp.router(
-        title: '모션 갤러리',
-        debugShowCheckedModeBanner: false,
-        theme: coraLightTheme,
-        darkTheme: coraDarkTheme,
-        themeMode: mode,
-        routerConfig: _router,
+      builder: (context, mode, child) =>
+          AnimatedTheme(data: _themeFor(context, mode), child: child!),
+      child: NavigatorPopHandler<Object?>(
+        onPopWithResult: (_) => _navigatorKey.currentState?.maybePop(),
+        // 두 번째 MaterialApp.router 대신 맨 Router를 둔다. 앱의 MaterialApp은 하나이고,
+        // 뒤로 가기는 위의 NavigatorPopHandler가 안쪽으로 넘긴다(두 번째 루트 dispatcher 없음).
+        // 공유 요소 전환의 HeroController는 go_router가 자기 Navigator에 따로 붙인다.
+        child: Router(
+          routerDelegate: _router.routerDelegate,
+          routeInformationParser: _router.routeInformationParser,
+          routeInformationProvider: _router.routeInformationProvider,
+        ),
       ),
     );
   }

@@ -36,6 +36,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^3.5.0
   go_router: ^18.1.4
+  # API 클라이언트의 401 처리기가 http.BaseClient를 직접 감싼다. 생성 클라이언트의 범위(>=0.13 <2)가
+  # 넓어서 앱에서 1.x로 고정한다.
+  http: ^1.6.0
   supabase_flutter: ^2.18.3
   cora_api:
     path: packages/cora_api
