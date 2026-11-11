@@ -187,6 +187,39 @@ void main() {
     },
   );
 
+  testWidgets('a sheet over a push page scales that page to 96%', (
+    tester,
+  ) async {
+    // 밑이 push 화면이면 그 화면 자신의 밀림 전환은 멈추고 시트의 위임 전환만 보인다.
+    final router = await _pumpRouter(tester);
+    router.push('/push');
+    await tester.pumpAndSettle();
+    router.push('/sheet');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 190));
+    final midScale = 1 - 0.04 * 0.875;
+    expect(
+      tester.getTopLeft(find.text('B')),
+      offsetMoreOrLessEquals(
+        Offset(_width * (1 - midScale) / 2, _height * (1 - midScale) / 2),
+        epsilon: 0.5,
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(find.text('B')),
+      offsetMoreOrLessEquals(
+        const Offset(_width * 0.02, _height * 0.02),
+        epsilon: 0.01,
+      ),
+    );
+
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('B')), Offset.zero);
+  });
+
   testWidgets('sheet closes when the dimmed area above it is tapped', (
     tester,
   ) async {
@@ -343,6 +376,68 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
       expect(find.text('B'), findsOneWidget);
+    });
+
+    testWidgets('the back swipe settles instantly when reducing motion', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      final router = await _pumpRouter(tester, platform: TargetPlatform.iOS);
+      router.push('/push');
+      await tester.pump();
+      await tester.pump();
+
+      // 절반을 넘겨 천천히 끌고 놓으면 남은 움직임 없이 바로 돌아간다.
+      final gesture = await tester.startGesture(const Offset(5, 300));
+      await gesture.moveBy(
+        const Offset(20, 0),
+        timeStamp: const Duration(milliseconds: 100),
+      );
+      await tester.pump();
+      await gesture.moveBy(
+        const Offset(440, 0),
+        timeStamp: const Duration(milliseconds: 2000),
+      );
+      await tester.pump();
+      await gesture.up(timeStamp: const Duration(milliseconds: 2100));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('B'), findsNothing);
+      expect(router.canPop(), isFalse);
+    });
+
+    testWidgets('a short swipe snaps back instantly when reducing motion', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      final router = await _pumpRouter(tester, platform: TargetPlatform.iOS);
+      router.push('/push');
+      await tester.pump();
+      await tester.pump();
+
+      final gesture = await tester.startGesture(const Offset(5, 300));
+      await gesture.moveBy(
+        const Offset(20, 0),
+        timeStamp: const Duration(milliseconds: 100),
+      );
+      await tester.pump();
+      await gesture.moveBy(
+        const Offset(100, 0),
+        timeStamp: const Duration(milliseconds: 2000),
+      );
+      await tester.pump();
+      await gesture.up(timeStamp: const Duration(milliseconds: 2100));
+      await tester.pump();
+      expect(tester.getTopLeft(find.text('B')).dx, 0);
+      expect(router.canPop(), isTrue);
     });
 
     testWidgets('sheets cannot be swiped back from the edge', (tester) async {

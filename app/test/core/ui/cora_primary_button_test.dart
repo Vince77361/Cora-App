@@ -23,14 +23,14 @@ BoxDecoration _decoration(WidgetTester tester) {
 TextStyle _labelStyle(WidgetTester tester, String label) =>
     tester.renderObject<RenderParagraph>(find.text(label)).text.style!;
 
-double _scale(WidgetTester tester) => tester
-    .widget<AnimatedScale>(
-      find.descendant(
-        of: find.byType(CoraPrimaryButton),
-        matching: find.byType(AnimatedScale),
-      ),
-    )
-    .scale;
+/// 화면에 실제로 그려진 너비 ÷ 배치 너비. 누르는 동안 1보다 작다.
+double _scale(WidgetTester tester) {
+  final surface = find.descendant(
+    of: find.byType(CoraPrimaryButton),
+    matching: find.byType(DecoratedBox),
+  );
+  return tester.getRect(surface).width / tester.getSize(surface).width;
+}
 
 void main() {
   testWidgets('primary button is 58 tall and calls onPressed', (tester) async {
@@ -186,10 +186,11 @@ void main() {
       tester.getCenter(find.byType(CoraPrimaryButton)),
     );
     await tester.pump(kPressTimeout);
-    expect(_scale(tester), CoraMotion.pressedScale);
+    await tester.pump(CoraMotion.pressDuration);
+    expect(_scale(tester), moreOrLessEquals(CoraMotion.pressedScale));
 
     await gesture.up();
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(_scale(tester), 1);
   });
 
@@ -203,6 +204,7 @@ void main() {
       tester.getCenter(find.byType(CoraPrimaryButton)),
     );
     await tester.pump(kPressTimeout);
+    await tester.pump(CoraMotion.pressDuration);
     expect(_scale(tester), 1);
     await gesture.up();
   });

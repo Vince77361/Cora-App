@@ -218,15 +218,17 @@ void main() {
       tester.getCenter(find.byType(CoraSelectCard)),
     );
     await tester.pump(kPressTimeout);
-    final scale = tester
-        .widget<AnimatedScale>(
-          find.descendant(
-            of: find.byType(CoraSelectCard),
-            matching: find.byType(AnimatedScale),
-          ),
+    await tester.pump(CoraMotion.pressDuration);
+    // 화면에 실제로 그려진 너비 ÷ 배치 너비.
+    final surface = find
+        .descendant(
+          of: find.byType(CoraSelectCard),
+          matching: find.byType(DecoratedBox),
         )
-        .scale;
-    expect(scale, CoraMotion.pressedScale);
+        .first;
+    final scale = tester.getRect(surface).width / tester.getSize(surface).width;
+    expect(scale, moreOrLessEquals(CoraMotion.pressedScale));
     await gesture.up();
+    await tester.pumpAndSettle();
   });
 }

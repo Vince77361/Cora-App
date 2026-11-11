@@ -291,32 +291,42 @@ abstract class _CoraTransition extends StatefulWidget {
 }
 
 class _CoraTransitionState extends State<_CoraTransition> {
-  late CurvedAnimation _curved;
+  // 이 State가 만든 곡선. 만든 것만 정리한다.
+  CurvedAnimation? _ownCurve;
+  late Animation<double> _curved;
 
-  static CurvedAnimation _curve(Animation<double> parent) => CurvedAnimation(
-    parent: parent,
-    curve: CoraMotion.standardCurve,
-    reverseCurve: CoraMotion.standardCurve.flipped,
-  );
+  void _attach(Animation<double> parent) {
+    _ownCurve?.dispose();
+    _ownCurve = null;
+    // 위에 다른 종류의 화면이 올라와 위임 전환이 쓰이는 동안, Flutter는 이 화면 자신의
+    // 전환에 부모 없는 ProxyAnimation(값 0에 멈춤)을 프레임마다 새로 넘긴다. 곡선을 입혀도
+    // 0이므로 그대로 써서 프레임마다 곡선을 만들고 버리지 않는다.
+    if (parent is ProxyAnimation && parent.parent == null) {
+      _curved = parent;
+      return;
+    }
+    _curved = _ownCurve = CurvedAnimation(
+      parent: parent,
+      curve: CoraMotion.standardCurve,
+      reverseCurve: CoraMotion.standardCurve.flipped,
+    );
+  }
 
   @override
   void initState() {
     super.initState();
-    _curved = _curve(widget.animation);
+    _attach(widget.animation);
   }
 
   @override
   void didUpdateWidget(_CoraTransition oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.animation != widget.animation) {
-      _curved.dispose();
-      _curved = _curve(widget.animation);
-    }
+    if (oldWidget.animation != widget.animation) _attach(widget.animation);
   }
 
   @override
   void dispose() {
-    _curved.dispose();
+    _ownCurve?.dispose();
     super.dispose();
   }
 
@@ -788,10 +798,11 @@ class _BackSwipeController {
       stay = _animation.value > 0.5;
     }
 
+    // 경로의 전환 길이를 쓴다. 동작 줄이기를 켜면 0이라 손을 떼는 즉시 끝난다.
     if (stay) {
       _animation.animateTo(
         1,
-        duration: CoraMotion.pushDuration,
+        duration: route.transitionDuration,
         curve: CoraMotion.standardCurve,
       );
     } else {
@@ -799,7 +810,7 @@ class _BackSwipeController {
       if (_animation.isAnimating) {
         _animation.animateBack(
           0,
-          duration: CoraMotion.pushDuration,
+          duration: route.reverseTransitionDuration,
           curve: CoraMotion.standardCurve,
         );
       }
