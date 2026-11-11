@@ -577,7 +577,7 @@ class _CreatorDiscoverPageState extends State<CreatorDiscoverPage> {
     final holdOp = _dx.abs() < 60 ? _clamp(-_dy / 120) : 0.0;
     return Positioned.fill(
       key: ValueKey('card$idx'),
-      child: GestureDetector(
+      child: DemoCardGestures(
         behavior: HitTestBehavior.opaque,
         onTap: () {
           if (!_busy) demoGo(context, _cards[idx].href);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
@@ -211,6 +212,81 @@ class DemoFrame extends StatelessWidget {
     return Scaffold(
       backgroundColor: background,
       body: SafeArea(bottom: false, child: Stack(children: children)),
+    );
+  }
+}
+
+/// 화면 왼쪽 가장자리에서 시작한 끌기는 받지 않는 끌기 인식기. iOS 뒤로 밀기가 카드보다 먼저다.
+class _EdgeSafePanRecognizer extends PanGestureRecognizer {
+  _EdgeSafePanRecognizer({super.debugOwner});
+
+  static const double edge = 24;
+
+  @override
+  bool isPointerAllowed(PointerEvent event) =>
+      event.position.dx > edge && super.isPointerAllowed(event);
+}
+
+/// 카드 넘기기 화면의 손짓. [GestureDetector]와 같은 이름의 인자를 받는다.
+/// 왼쪽 가장자리 끌기는 뒤로 밀기에 넘기고, 화면에 들어온 직후(0.7초)의 누르기는 무시한다
+/// — 목록에서 누른 손가락이 새 화면의 카드를 누른 것으로 잡히지 않게.
+class DemoCardGestures extends StatefulWidget {
+  const DemoCardGestures({
+    super.key,
+    required this.child,
+    this.behavior,
+    this.onTap,
+    this.onPanDown,
+    this.onPanUpdate,
+    this.onPanEnd,
+    this.onPanCancel,
+  });
+
+  final Widget child;
+  final HitTestBehavior? behavior;
+  final VoidCallback? onTap;
+  final GestureDragDownCallback? onPanDown;
+  final GestureDragUpdateCallback? onPanUpdate;
+  final GestureDragEndCallback? onPanEnd;
+  final GestureDragCancelCallback? onPanCancel;
+
+  @override
+  State<DemoCardGestures> createState() => _DemoCardGesturesState();
+}
+
+class _DemoCardGesturesState extends State<DemoCardGestures> {
+  final _shownAt = DateTime.now();
+
+  @override
+  Widget build(BuildContext context) {
+    return RawGestureDetector(
+      behavior: widget.behavior,
+      gestures: {
+        _EdgeSafePanRecognizer:
+            GestureRecognizerFactoryWithHandlers<_EdgeSafePanRecognizer>(
+              () => _EdgeSafePanRecognizer(debugOwner: this),
+              (r) => r
+                ..onDown = widget.onPanDown
+                ..onUpdate = widget.onPanUpdate
+                ..onEnd = widget.onPanEnd
+                ..onCancel = widget.onPanCancel,
+            ),
+        TapGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+              () => TapGestureRecognizer(debugOwner: this),
+              (r) => r
+                ..onTap = widget.onTap == null
+                    ? null
+                    : () {
+                        if (DateTime.now().difference(_shownAt) <
+                            const Duration(milliseconds: 700)) {
+                          return;
+                        }
+                        widget.onTap!();
+                      },
+            ),
+      },
+      child: widget.child,
     );
   }
 }

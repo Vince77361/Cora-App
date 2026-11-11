@@ -537,7 +537,7 @@ class _BrandDiscoverPageState extends State<BrandDiscoverPage> {
     );
 
     if (top) {
-      content = GestureDetector(
+      content = DemoCardGestures(
         behavior: HitTestBehavior.opaque,
         onPanDown: _down,
         onPanUpdate: _move,
