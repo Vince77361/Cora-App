@@ -9,6 +9,7 @@ import { loadEnv } from './config/env';
 import { HealthModule } from './health/health.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { JobsModule } from './jobs/jobs.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { OffersModule } from './offers/offers.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StoresModule } from './stores/stores.module';
@@ -24,6 +25,7 @@ import { UsersModule } from './users/users.module';
     HealthModule,
     IntegrationsModule,
     JobsModule,
+    NotificationsModule,
     UsersModule,
     UploadsModule,
     CreatorsModule,

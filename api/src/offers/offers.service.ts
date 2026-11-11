@@ -9,7 +9,10 @@ import { CollaborationsRepository } from '../collaborations/collaborations.repos
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
-import { PushPort } from '../integrations/push/push.port';
+import {
+  NotificationsService,
+  NotifyInput,
+} from '../notifications/notifications.service';
 import { StoresService } from '../stores/stores.service';
 import { buildTerms } from '../stores/offer-terms';
 import { UsersService } from '../users/users.service';
@@ -44,7 +47,7 @@ export class OffersService {
     private readonly applications: ApplicationsService,
     private readonly creators: CreatorsService,
     private readonly collaborations: CollaborationsRepository,
-    private readonly push: PushPort,
+    private readonly notifications: NotificationsService,
     private readonly clock: Clock,
   ) {}
 
@@ -99,10 +102,21 @@ export class OffersService {
       throw this.alreadySent();
     }
 
-    await this.notify(
-      creator.userId,
-      `${store.name ?? '가게'}에서 오퍼가 왔어요.`,
-    );
+    await this.notify({
+      userId: creator.userId,
+      role: 'CREATOR',
+      kind: 'OFFER_RECEIVED',
+      // 오퍼는 지금 한 편짜리다(편 수를 고르는 화면이 없다).
+      params: { format: created.format, pieceCount: 1 },
+      actor: {
+        userId,
+        name: store.name ?? '가게',
+        photoPath: store.coverPhotoPath,
+      },
+      target: { kind: 'OFFER_INBOX', id: created.id },
+      // 요청이 다시 와도 같은 오퍼에는 알림이 한 번만 간다.
+      dedupeKey: `offer-received:${created.id}`,
+    });
     return this.toSent(created, creator, now, null);
   }
 
@@ -253,12 +267,26 @@ export class OffersService {
       throw this.alreadyHandled();
     }
 
-    const creator = await this.creators.getSummary(userId);
-    await this.notify(
-      card.ownerId,
-      `${creator?.displayName ?? '크리에이터'}님이 오퍼를 수락했어요.`,
-    );
-    return this.reload(userId, row.id, card, now);
+    const collaboration = await this.collaborations.findByOfferId(row.id);
+    const actor = (await this.creators.getActor(userId)) ?? {
+      userId,
+      name: '크리에이터',
+      photoPath: null,
+    };
+    await this.notify({
+      userId: card.ownerId,
+      role: 'STORE',
+      kind: 'OFFER_ACCEPTED',
+      actor,
+      // 결제할 것이 있으면 결제 화면으로, 식사권만 있어 바로 FUNDED면 협업 화면으로 보낸다.
+      target: {
+        kind:
+          initial.stage === 'AWAITING_PAYMENT' ? 'PAYMENT' : 'COLLABORATION',
+        id: collaboration?.id ?? null,
+      },
+      dedupeKey: `offer-accepted:${row.id}`,
+    });
+    return this.reload(userId, row.id, card, now, collaboration);
   }
 
   // 거절은 누르는 즉시 저장한다. 연결된 지원은 30초가 지나 확정된 뒤 목록을 읽을 때 닫는다.
@@ -398,10 +426,13 @@ export class OffersService {
     id: string,
     card: NonNullable<Awaited<ReturnType<typeof this.card>>>,
     now: Date,
+    // 이미 읽은 협업이 있으면 다시 읽지 않는다.
+    known?: { id: string } | null,
   ): Promise<ReceivedOfferModel> {
     const fresh = await this.offers.findForCreator(id, userId);
     if (!fresh) throw this.notFound();
-    const collaboration = await this.collaborations.findByOfferId(fresh.id);
+    const collaboration =
+      known ?? (await this.collaborations.findByOfferId(fresh.id));
     return this.toReceived(fresh, card, now, collaboration?.id ?? null);
   }
 
@@ -426,12 +457,12 @@ export class OffersService {
   }
 
   // 알림이 실패해도 이미 저장된 변경은 유효하다. 목록에서 볼 수 있다.
-  private async notify(userId: string, body: string): Promise<void> {
+  private async notify(input: NotifyInput): Promise<void> {
     try {
-      await this.push.send({ userId, title: 'Cora', body });
+      await this.notifications.notify(input);
     } catch (error) {
       this.logger.warn(
-        `오퍼 알림을 보내지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        `오퍼 알림을 남기지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
       );
     }
   }

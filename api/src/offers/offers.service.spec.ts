@@ -6,7 +6,10 @@ import { AppError } from '../common/errors/app-error';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { CreatorsService } from '../creators/creators.service';
 import type { CreatorSummaryModel } from '../creators/dto/creator-profile.model';
-import { PushPort } from '../integrations/push/push.port';
+import {
+  NotifyInput,
+  NotificationsService,
+} from '../notifications/notifications.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { FakeClock } from '../../test/support/fake-clock';
@@ -250,6 +253,7 @@ class FakeStores extends StoresService {
   getOfferCard(): ReturnType<StoresService['getOfferCard']> {
     return Promise.resolve({
       ownerId: this.store.ownerId,
+      coverPhotoPath: this.store.coverPhotoPath,
       intro: null,
       bestShootingTime: null,
       summary: {
@@ -308,6 +312,13 @@ class FakeCreators extends CreatorsService {
   constructor() {
     super(null as never, null as never, null as never, null as never);
   }
+  getActor(userId: string): ReturnType<CreatorsService['getActor']> {
+    return Promise.resolve(
+      userId === CREATOR
+        ? { userId, name: '하루 한 컵', photoPath: 'creators/haru.jpg' }
+        : null,
+    );
+  }
   getSummary(userId: string): Promise<CreatorSummaryModel | null> {
     return Promise.resolve(
       userId === CREATOR
@@ -324,11 +335,15 @@ class FakeCreators extends CreatorsService {
   }
 }
 
-class FakePush extends PushPort {
-  readonly sent: { userId: string; title: string; body: string }[] = [];
+// 알림 서비스는 따로 시험한다. 여기서는 오퍼 서비스가 어떤 알림을 부르는지만 기록한다.
+class FakeNotifications extends NotificationsService {
+  readonly sent: NotifyInput[] = [];
   fail = false;
-  send(input: { userId: string; title: string; body: string }): Promise<void> {
-    if (this.fail) return Promise.reject(new Error('push down'));
+  constructor() {
+    super(null as never, null as never, null as never);
+  }
+  notify(input: NotifyInput): Promise<void> {
+    if (this.fail) return Promise.reject(new Error('notify down'));
     this.sent.push(input);
     return Promise.resolve();
   }
@@ -340,6 +355,7 @@ function makeStore(): Store {
     ownerId: OWNER,
     status: 'PUBLISHED',
     name: '한그릇 라멘',
+    coverPhotoPath: 'stores/ramen.jpg',
   } as Store;
 }
 
@@ -349,7 +365,7 @@ describe('OffersService', () => {
   let users: FakeUsers;
   let stores: FakeStores;
   let applications: FakeApplications;
-  let push: FakePush;
+  let push: FakeNotifications;
   let clock: FakeClock;
   let service: OffersService;
   const REELS = {
@@ -364,7 +380,7 @@ describe('OffersService', () => {
     users = new FakeUsers();
     stores = new FakeStores(makeStore());
     applications = new FakeApplications();
-    push = new FakePush();
+    push = new FakeNotifications();
     clock = new FakeClock(T0);
     service = new OffersService(
       repo,
@@ -476,17 +492,25 @@ describe('OffersService', () => {
     const sent = await service.send(OWNER, { ...REELS });
     expect(sent.view).toBe('WAITING');
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(warn.mock.calls)).not.toContain('push down');
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('notify down');
     warn.mockRestore();
   });
 
-  it('notifies the creator with the store name', async () => {
-    await service.send(OWNER, { ...REELS });
+  it('notifies the creator with the store as the actor and the offer terms', async () => {
+    const sent = await service.send(OWNER, { ...REELS });
     expect(push.sent).toEqual([
       {
         userId: CREATOR,
-        title: 'Cora',
-        body: '한그릇 라멘에서 오퍼가 왔어요.',
+        role: 'CREATOR',
+        kind: 'OFFER_RECEIVED',
+        params: { format: 'REELS', pieceCount: 1 },
+        actor: {
+          userId: OWNER,
+          name: '한그릇 라멘',
+          photoPath: 'stores/ramen.jpg',
+        },
+        target: { kind: 'OFFER_INBOX', id: sent.id },
+        dedupeKey: `offer-received:${sent.id}`,
       },
     ]);
   });
@@ -504,15 +528,42 @@ describe('OffersService', () => {
       expect(push.sent).toEqual([]);
     });
 
-    it('notifies the owner with the activity name when accepted', async () => {
+    it('notifies the owner with the creator as the actor, pointing at the collaboration', async () => {
+      // 식사권만 있는 오퍼는 바로 FUNDED로 시작해 결제할 것이 없다.
       await service.accept(CREATOR, id);
       expect(push.sent).toEqual([
         {
           userId: OWNER,
-          title: 'Cora',
-          body: '하루 한 컵님이 오퍼를 수락했어요.',
+          role: 'STORE',
+          kind: 'OFFER_ACCEPTED',
+          actor: {
+            userId: CREATOR,
+            name: '하루 한 컵',
+            photoPath: 'creators/haru.jpg',
+          },
+          target: { kind: 'COLLABORATION', id: collaborations.rows[0].id },
+          dedupeKey: `offer-accepted:${id}`,
         },
       ]);
+    });
+
+    it('points the accepted notification at payment while the collaboration awaits payment', async () => {
+      users.role = 'STORE';
+      await service.cancel(OWNER, id);
+      const perView = await service.send(OWNER, {
+        creatorId: CREATOR,
+        format: 'REELS',
+        rewardType: 'PER_VIEW',
+      });
+      push.sent.length = 0;
+      users.role = 'CREATOR';
+      await service.accept(CREATOR, perView.id);
+      expect(collaborations.rows[0].stage).toBe('AWAITING_PAYMENT');
+      expect(push.sent).toHaveLength(1);
+      expect(push.sent[0].target).toEqual({
+        kind: 'PAYMENT',
+        id: collaborations.rows[0].id,
+      });
     });
 
     it('creates the collaboration in the accept transaction with a copy of the terms', async () => {

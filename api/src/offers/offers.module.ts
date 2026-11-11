@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ApplicationsModule } from '../applications/applications.module';
 import { CollaborationsModule } from '../collaborations/collaborations.module';
 import { CreatorsModule } from '../creators/creators.module';
-import { IntegrationsModule } from '../integrations/integrations.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { StoresModule } from '../stores/stores.module';
 import { UsersModule } from '../users/users.module';
 import { OffersController } from './offers.controller';
@@ -11,7 +11,7 @@ import { OffersService } from './offers.service';
 
 @Module({
   imports: [
-    IntegrationsModule,
+    NotificationsModule,
     UsersModule,
     StoresModule,
     CreatorsModule,

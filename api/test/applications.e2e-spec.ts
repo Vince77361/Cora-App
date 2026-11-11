@@ -187,14 +187,30 @@ describe('applications', () => {
 
     it('notifies the store owner on a new application', async () => {
       const store = await seedStore();
-      await apply(store.id).expect(201);
+      const res = await apply(store.id).expect(201);
+      const applicationId = (res.body as ApplicationBody).id;
       expect(push.sent).toEqual([
         {
           userId: store.ownerId,
-          title: 'Cora',
+          title: '',
           body: '하루 한 컵님이 지원했어요.',
+          data: {
+            notificationId: expect.any(String) as string,
+            targetKind: 'STORE_APPLICANTS',
+            targetId: null,
+            role: 'STORE',
+          },
         },
       ]);
+      expect(await prisma.notification.findFirstOrThrow()).toMatchObject({
+        userId: store.ownerId,
+        role: 'STORE',
+        kind: 'APPLICATION_RECEIVED',
+        tab: 'MATCHING',
+        actorUserId: USER_A,
+        actorName: '하루 한 컵',
+        dedupeKey: `application-received:${applicationId}`,
+      });
     });
 
     it('requires a creator profile before applying', async () => {
@@ -239,6 +255,7 @@ describe('applications', () => {
       expect(statuses).toEqual([201, 409, 409, 409, 409]);
       expect(await prisma.application.count()).toBe(1);
       expect(push.sent).toHaveLength(1);
+      expect(await prisma.notification.count()).toBe(1);
     });
 
     it('returns 404 for a draft store, a missing store and a malformed id', async () => {

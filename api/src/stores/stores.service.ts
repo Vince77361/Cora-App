@@ -257,6 +257,8 @@ export class StoresService {
   // 오퍼 모듈이 받은 오퍼 카드와 알림 대상을 만들 때 쓴다. 공개된 가게가 아니면 null.
   async getOfferCard(storeId: string): Promise<{
     ownerId: string;
+    // 알림이 가게 사진 경로를 사본으로 저장할 때 쓴다(응답에는 URL만 나간다).
+    coverPhotoPath: string | null;
     summary: StoreSummaryModel;
     intro: string | null;
     bestShootingTime: string | null;
@@ -267,6 +269,7 @@ export class StoresService {
     if (!store) return null;
     return {
       ownerId: store.ownerId,
+      coverPhotoPath: store.coverPhotoPath,
       summary: this.toSummary(store),
       intro: store.intro,
       bestShootingTime: store.bestShootingTime,

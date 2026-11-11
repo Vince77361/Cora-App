@@ -7,7 +7,10 @@ import type {
   CreatorProfileModel,
   CreatorSummaryModel,
 } from '../creators/dto/creator-profile.model';
-import { PushPort } from '../integrations/push/push.port';
+import {
+  NotifyInput,
+  NotificationsService,
+} from '../notifications/notifications.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { ApplicationsRepository } from './applications.repository';
@@ -164,6 +167,19 @@ class FakeCreatorsService extends CreatorsService {
     return Promise.resolve(this.profiles.get(userId) ?? null);
   }
 
+  getActor(userId: string): ReturnType<CreatorsService['getActor']> {
+    const profile = this.profiles.get(userId);
+    return Promise.resolve(
+      profile
+        ? {
+            userId,
+            name: profile.displayName,
+            photoPath: `creators/${userId.slice(0, 1)}.jpg`,
+          }
+        : null,
+    );
+  }
+
   requireProfile(userId: string): Promise<CreatorProfileModel> {
     const profile = this.profiles.get(userId);
     if (!profile) {
@@ -173,12 +189,17 @@ class FakeCreatorsService extends CreatorsService {
   }
 }
 
-class FakePush extends PushPort {
-  readonly sent: { userId: string; title: string; body: string }[] = [];
+// 알림 서비스는 따로 시험한다. 여기서는 지원 서비스가 어떤 알림을 부르는지만 기록한다.
+class FakeNotifications extends NotificationsService {
+  readonly sent: NotifyInput[] = [];
   fail = false;
 
-  send(input: { userId: string; title: string; body: string }): Promise<void> {
-    if (this.fail) return Promise.reject(new Error('push down'));
+  constructor() {
+    super(null as never, null as never, null as never);
+  }
+
+  notify(input: NotifyInput): Promise<void> {
+    if (this.fail) return Promise.reject(new Error('notify down'));
     this.sent.push(input);
     return Promise.resolve();
   }
@@ -229,7 +250,7 @@ describe('ApplicationsService', () => {
   let users: FakeUsersService;
   let stores: FakeStoresService;
   let creators: FakeCreatorsService;
-  let push: FakePush;
+  let push: FakeNotifications;
   let service: ApplicationsService;
   let store: Store;
 
@@ -238,7 +259,7 @@ describe('ApplicationsService', () => {
     users = new FakeUsersService();
     stores = new FakeStoresService();
     creators = new FakeCreatorsService();
-    push = new FakePush();
+    push = new FakeNotifications();
     service = new ApplicationsService(repo, users, stores, creators, push);
     store = makeStore();
     stores.store = store;
@@ -254,7 +275,18 @@ describe('ApplicationsService', () => {
         status: 'APPLIED',
       });
       expect(push.sent).toEqual([
-        { userId: OWNER, title: 'Cora', body: '활동 2님이 지원했어요.' },
+        {
+          userId: OWNER,
+          role: 'STORE',
+          kind: 'APPLICATION_RECEIVED',
+          actor: {
+            userId: CREATOR,
+            name: '활동 2',
+            photoPath: 'creators/2.jpg',
+          },
+          target: { kind: 'STORE_APPLICANTS', id: null },
+          dedupeKey: `application-received:${result.id}`,
+        },
       ]);
     });
 

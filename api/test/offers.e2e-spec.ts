@@ -452,17 +452,74 @@ describe('offers', () => {
       await send({ creatorId, ...REELS_VOUCHER }).expect(201);
     });
 
-    it('notifies the creator on send', async () => {
+    it('notifies the creator with the canvas wording when an offer is sent', async () => {
+      await prisma.store.update({
+        where: { id: storeId },
+        data: { name: '한그릇 라멘', coverPhotoPath: 'stores/ramen.jpg' },
+      });
       const creatorId = await seedCreator();
-      await send({ creatorId, ...REELS_VOUCHER }).expect(201);
+      const res = await send({ creatorId, ...REELS_VOUCHER }).expect(201);
+      const offerId = (res.body as SentBody).id;
+
       expect(push.sent).toEqual([
         {
           userId: creatorId,
-          title: 'Cora',
-          body: expect.stringMatching(/에서 오퍼가 왔어요\.$/) as string,
+          title: '',
+          body: '한그릇 라멘이 릴스 1편 오퍼를 보냈어요.',
+          data: {
+            notificationId: expect.any(String) as string,
+            targetKind: 'OFFER_INBOX',
+            targetId: offerId,
+            role: 'CREATOR',
+          },
         },
       ]);
-      expect(push.sent[0].body.startsWith('에서')).toBe(false);
+      // 알림함에도 줄이 생기고, 상대(가게)의 이름과 사진 경로는 사본이다.
+      const rows = await prisma.notification.findMany();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        id: push.sent[0].data?.notificationId,
+        userId: creatorId,
+        role: 'CREATOR',
+        kind: 'OFFER_RECEIVED',
+        tab: 'MATCHING',
+        params: { format: 'REELS', pieceCount: 1 },
+        actorUserId: USER_A,
+        actorName: '한그릇 라멘',
+        actorPhotoPath: 'stores/ramen.jpg',
+        targetKind: 'OFFER_INBOX',
+        targetId: offerId,
+        dedupeKey: `offer-received:${offerId}`,
+        readAt: null,
+      });
+    });
+
+    it('records the inbox row but does not push when the creator turned offer pushes off', async () => {
+      const creatorId = await seedCreator();
+      await prisma.notificationSetting.create({
+        data: { userId: creatorId, offers: false },
+      });
+      await send({ creatorId, ...REELS_VOUCHER }).expect(201);
+      expect(push.sent).toEqual([]);
+      expect(await prisma.notification.count()).toBe(1);
+    });
+
+    it('records the inbox row but does not push during quiet hours', async () => {
+      // 한국 시간 23:30.
+      clock.set(new Date('2026-12-01T14:30:00.000Z'));
+      const creatorId = await seedCreator();
+      await send({ creatorId, ...REELS_VOUCHER }).expect(201);
+      expect(push.sent).toEqual([]);
+      expect(await prisma.notification.count()).toBe(1);
+    });
+
+    it('keeps the offer when the push fails', async () => {
+      push.fail = true;
+      const creatorId = await seedCreator();
+      await send({ creatorId, ...REELS_VOUCHER }).expect(201);
+      push.fail = false;
+      expect(await prisma.offer.count()).toBe(1);
+      expect(await prisma.notification.count()).toBe(1);
     });
 
     it('lists sent offers most recent first', async () => {
@@ -1023,13 +1080,51 @@ describe('offers', () => {
     it('notifies the store owner on accept', async () => {
       const offer = await seedOffer(store.id, USER_A);
       await accept(offer.id).expect(200);
+      const collaboration = await prisma.collaboration.findUniqueOrThrow({
+        where: { offerId: offer.id },
+      });
+      // 식사권만 있는 오퍼는 바로 FUNDED라 결제 화면이 아니라 협업 화면으로 보낸다.
       expect(push.sent).toEqual([
         {
           userId: store.ownerId,
-          title: 'Cora',
+          title: '',
           body: '하루 한 컵님이 오퍼를 수락했어요.',
+          data: {
+            notificationId: expect.any(String) as string,
+            targetKind: 'COLLABORATION',
+            targetId: collaboration.id,
+            role: 'STORE',
+          },
         },
       ]);
+      expect(await prisma.notification.findFirstOrThrow()).toMatchObject({
+        userId: store.ownerId,
+        role: 'STORE',
+        kind: 'OFFER_ACCEPTED',
+        tab: 'MATCHING',
+        actorUserId: USER_A,
+        actorName: '하루 한 컵',
+        dedupeKey: `offer-accepted:${offer.id}`,
+      });
+    });
+
+    it('sends the store owner to payment when the accepted offer awaits payment', async () => {
+      const offer = await seedOffer(store.id, USER_A, {
+        rewardType: 'PER_VIEW',
+        voucherName: null,
+        voucherValue: null,
+        perViewAmount: 10,
+        perViewCap: 100000,
+      });
+      await accept(offer.id).expect(200);
+      const collaboration = await prisma.collaboration.findUniqueOrThrow({
+        where: { offerId: offer.id },
+      });
+      expect(collaboration.stage).toBe('AWAITING_PAYMENT');
+      expect(push.sent[0].data).toMatchObject({
+        targetKind: 'PAYMENT',
+        targetId: collaboration.id,
+      });
     });
 
     it('refuses to accept an expired offer and stores EXPIRED', async () => {

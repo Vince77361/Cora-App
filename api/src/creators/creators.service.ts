@@ -62,6 +62,18 @@ export class CreatorsService {
     return row ? this.toSummary(row) : null;
   }
 
+  // 알림이 상대의 이름과 사진 경로를 사본으로 저장할 때 쓴다. 프로필이 없거나 지워졌으면 null.
+  async getActor(userId: string): Promise<{
+    userId: string;
+    name: string;
+    photoPath: string | null;
+  } | null> {
+    const row = await this.creators.findActiveByUserId(userId);
+    return row
+      ? { userId, name: row.displayName, photoPath: row.photoPath }
+      : null;
+  }
+
   // 지원처럼 프로필이 있어야 하는 동작이 앞에서 부른다.
   async requireProfile(userId: string): Promise<CreatorProfileModel> {
     const row = await this.creators.findActiveByUserId(userId);

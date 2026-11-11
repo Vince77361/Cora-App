@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Store } from '@prisma/client';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
-import { PushPort } from '../integrations/push/push.port';
+import { NotificationsService } from '../notifications/notifications.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { ApplicationsRepository } from './applications.repository';
@@ -32,7 +32,7 @@ export class ApplicationsService {
     private readonly users: UsersService,
     private readonly stores: StoresService,
     private readonly creators: CreatorsService,
-    private readonly push: PushPort,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // 검사 순서: 역할 → 공개된 가게 → 내 가게 아님 → 프로필 → 중복. 화면이 가장 알맞은 안내를 고르게 한다.
@@ -52,14 +52,24 @@ export class ApplicationsService {
 
     // 알림이 실패해도 이미 저장된 지원은 유효하다. 사장님은 지원자 목록에서 볼 수 있다.
     try {
-      await this.push.send({
+      // 사진 경로는 요약에 없어 따로 읽는다. 이름은 이미 읽은 프로필의 것을 쓴다.
+      const photoPath = (await this.creators.getActor(userId))?.photoPath;
+      await this.notifications.notify({
         userId: store.ownerId,
-        title: 'Cora',
-        body: `${profile.displayName}님이 지원했어요.`,
+        role: 'STORE',
+        kind: 'APPLICATION_RECEIVED',
+        actor: {
+          userId,
+          name: profile.displayName,
+          photoPath: photoPath ?? null,
+        },
+        target: { kind: 'STORE_APPLICANTS', id: null },
+        // 요청이 다시 와도 같은 지원에는 알림이 한 번만 간다.
+        dedupeKey: `application-received:${created.id}`,
       });
     } catch (error) {
       this.logger.warn(
-        `지원 알림을 보내지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        `지원 알림을 남기지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
       );
     }
     return {
