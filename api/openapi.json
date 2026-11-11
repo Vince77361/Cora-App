@@ -111,6 +111,28 @@
         ],
         "type": "string"
       },
+      "BankModel": {
+        "properties": {
+          "code": {
+            "description": "금융결제원 은행 코드(세 자리).",
+            "type": "string"
+          },
+          "fullName": {
+            "description": "계좌 화면에 보이는 이름. 예: 국민은행",
+            "type": "string"
+          },
+          "name": {
+            "description": "고르는 목록에 쓰는 이름. 예: 국민",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "fullName"
+        ],
+        "type": "object"
+      },
       "CompleteInstagramConnectDto": {
         "properties": {
           "code": {
@@ -704,6 +726,36 @@
         ],
         "type": "object"
       },
+      "PayoutAccountModel": {
+        "properties": {
+          "accountLast4": {
+            "description": "계좌번호 뒤 4자리. 전체 번호는 응답에 나가지 않는다. 화면은 뒤 2자리만 보여 준다.",
+            "type": "string"
+          },
+          "bankCode": {
+            "type": "string"
+          },
+          "bankFullName": {
+            "description": "계좌 화면에 보이는 은행 이름. 예: 국민은행",
+            "type": "string"
+          },
+          "bankName": {
+            "description": "고르는 목록에 쓰는 은행 이름. 예: 국민",
+            "type": "string"
+          },
+          "holderName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bankCode",
+          "bankName",
+          "bankFullName",
+          "accountLast4",
+          "holderName"
+        ],
+        "type": "object"
+      },
       "PhotoUploadModel": {
         "properties": {
           "path": {
@@ -1256,6 +1308,53 @@
         "required": [
           "displayName",
           "regionSido"
+        ],
+        "type": "object"
+      },
+      "UpsertPayoutAccountDto": {
+        "properties": {
+          "accountNumber": {
+            "description": "계좌번호. 하이픈은 떼고 저장한다. 숫자 10~14자리.",
+            "example": "110123456789",
+            "type": "string"
+          },
+          "bankCode": {
+            "description": "은행 코드. GET /payout-account/banks의 code 중 하나.",
+            "enum": [
+              "004",
+              "088",
+              "020",
+              "081",
+              "011",
+              "003",
+              "090",
+              "092",
+              "089",
+              "045",
+              "071",
+              "023",
+              "032",
+              "031",
+              "034",
+              "037",
+              "039",
+              "035",
+              "007",
+              "048"
+            ],
+            "type": "string"
+          },
+          "holderName": {
+            "description": "예금주 이름.",
+            "maxLength": 20,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "bankCode",
+          "accountNumber",
+          "holderName"
         ],
         "type": "object"
       },
@@ -1907,6 +2006,98 @@
         "summary": "",
         "tags": [
           "Payments"
+        ]
+      }
+    },
+    "/payout-account": {
+      "get": {
+        "operationId": "getPayoutAccount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutAccountModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "PayoutAccounts"
+        ]
+      },
+      "put": {
+        "operationId": "upsertPayoutAccount",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertPayoutAccountDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutAccountModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "PayoutAccounts"
+        ]
+      }
+    },
+    "/payout-account/banks": {
+      "get": {
+        "operationId": "listBanks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BankModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "PayoutAccounts"
         ]
       }
     },

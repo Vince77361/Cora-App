@@ -88,6 +88,9 @@ Class | Method | HTTP request | Description
 *PaymentsApi* | [**createPayment**](doc//PaymentsApi.md#createpayment) | **POST** /collaborations/{id}/payments | 
 *PaymentsApi* | [**getPayment**](doc//PaymentsApi.md#getpayment) | **GET** /payments/{id} | 
 *PaymentsApi* | [**getPaymentQuote**](doc//PaymentsApi.md#getpaymentquote) | **GET** /collaborations/{id}/payment-quote | 
+*PayoutAccountsApi* | [**getPayoutAccount**](doc//PayoutAccountsApi.md#getpayoutaccount) | **GET** /payout-account | 
+*PayoutAccountsApi* | [**listBanks**](doc//PayoutAccountsApi.md#listbanks) | **GET** /payout-account/banks | 
+*PayoutAccountsApi* | [**upsertPayoutAccount**](doc//PayoutAccountsApi.md#upsertpayoutaccount) | **PUT** /payout-account | 
 *StoresApi* | [**advanceMyStoreOnboarding**](doc//StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
 *StoresApi* | [**analyzeMyStoreLinks**](doc//StoresApi.md#analyzemystorelinks) | **POST** /stores/me/analyze | 
 *StoresApi* | [**getMyStore**](doc//StoresApi.md#getmystore) | **GET** /stores/me | 
@@ -110,6 +113,7 @@ Class | Method | HTTP request | Description
  - [ApplicantModel](doc//ApplicantModel.md)
  - [ApplicationModel](doc//ApplicationModel.md)
  - [ApplicationStatus](doc//ApplicationStatus.md)
+ - [BankModel](doc//BankModel.md)
  - [CompleteInstagramConnectDto](doc//CompleteInstagramConnectDto.md)
  - [ContentDraftKind](doc//ContentDraftKind.md)
  - [ContentDraftModel](doc//ContentDraftModel.md)
@@ -133,6 +137,7 @@ Class | Method | HTTP request | Description
  - [PaymentQuoteModel](doc//PaymentQuoteModel.md)
  - [PaymentStatus](doc//PaymentStatus.md)
  - [PaymentStatusModel](doc//PaymentStatusModel.md)
+ - [PayoutAccountModel](doc//PayoutAccountModel.md)
  - [PhotoUploadModel](doc//PhotoUploadModel.md)
  - [ReceivedOfferModel](doc//ReceivedOfferModel.md)
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)
@@ -151,6 +156,7 @@ Class | Method | HTTP request | Description
  - [UpdateRoleDto](doc//UpdateRoleDto.md)
  - [UpdateStoreDto](doc//UpdateStoreDto.md)
  - [UpsertCreatorProfileDto](doc//UpsertCreatorProfileDto.md)
+ - [UpsertPayoutAccountDto](doc//UpsertPayoutAccountDto.md)
  - [UserRole](doc//UserRole.md)
 
 

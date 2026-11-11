@@ -218,6 +218,8 @@ class ApiClient {
           return ApplicationModel.fromJson(value);
         case 'ApplicationStatus':
           return ApplicationStatusTypeTransformer().decode(value);
+        case 'BankModel':
+          return BankModel.fromJson(value);
         case 'CompleteInstagramConnectDto':
           return CompleteInstagramConnectDto.fromJson(value);
         case 'ContentDraftKind':
@@ -264,6 +266,8 @@ class ApiClient {
           return PaymentStatusTypeTransformer().decode(value);
         case 'PaymentStatusModel':
           return PaymentStatusModel.fromJson(value);
+        case 'PayoutAccountModel':
+          return PayoutAccountModel.fromJson(value);
         case 'PhotoUploadModel':
           return PhotoUploadModel.fromJson(value);
         case 'ReceivedOfferModel':
@@ -300,6 +304,8 @@ class ApiClient {
           return UpdateStoreDto.fromJson(value);
         case 'UpsertCreatorProfileDto':
           return UpsertCreatorProfileDto.fromJson(value);
+        case 'UpsertPayoutAccountDto':
+          return UpsertPayoutAccountDto.fromJson(value);
         case 'UserRole':
           return UserRoleTypeTransformer().decode(value);
         default:

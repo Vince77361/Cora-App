@@ -9,6 +9,7 @@ doc/ApplicantModel.md
 doc/ApplicationModel.md
 doc/ApplicationStatus.md
 doc/ApplicationsApi.md
+doc/BankModel.md
 doc/CompleteInstagramConnectDto.md
 doc/ContentDraftKind.md
 doc/ContentDraftModel.md
@@ -38,6 +39,8 @@ doc/PaymentQuoteModel.md
 doc/PaymentStatus.md
 doc/PaymentStatusModel.md
 doc/PaymentsApi.md
+doc/PayoutAccountModel.md
+doc/PayoutAccountsApi.md
 doc/PhotoUploadModel.md
 doc/ReceivedOfferModel.md
 doc/ReceivedOfferTab.md
@@ -58,6 +61,7 @@ doc/UpdateRoleDto.md
 doc/UpdateStoreDto.md
 doc/UploadsApi.md
 doc/UpsertCreatorProfileDto.md
+doc/UpsertPayoutAccountDto.md
 doc/UserRole.md
 doc/UsersApi.md
 lib/api.dart
@@ -68,6 +72,7 @@ lib/api/health_api.dart
 lib/api/instagram_api.dart
 lib/api/offers_api.dart
 lib/api/payments_api.dart
+lib/api/payout_accounts_api.dart
 lib/api/stores_api.dart
 lib/api/uploads_api.dart
 lib/api/users_api.dart
@@ -86,6 +91,7 @@ lib/model/analyze_store_links_result_model.dart
 lib/model/applicant_model.dart
 lib/model/application_model.dart
 lib/model/application_status.dart
+lib/model/bank_model.dart
 lib/model/complete_instagram_connect_dto.dart
 lib/model/content_draft_kind.dart
 lib/model/content_draft_model.dart
@@ -109,6 +115,7 @@ lib/model/payment_method.dart
 lib/model/payment_quote_model.dart
 lib/model/payment_status.dart
 lib/model/payment_status_model.dart
+lib/model/payout_account_model.dart
 lib/model/photo_upload_model.dart
 lib/model/received_offer_model.dart
 lib/model/received_offer_tab.dart
@@ -127,6 +134,7 @@ lib/model/store_summary_model.dart
 lib/model/update_role_dto.dart
 lib/model/update_store_dto.dart
 lib/model/upsert_creator_profile_dto.dart
+lib/model/upsert_payout_account_dto.dart
 lib/model/user_role.dart
 pubspec.yaml
 test/advance_onboarding_dto_test.dart
@@ -137,6 +145,7 @@ test/applicant_model_test.dart
 test/application_model_test.dart
 test/application_status_test.dart
 test/applications_api_test.dart
+test/bank_model_test.dart
 test/complete_instagram_connect_dto_test.dart
 test/content_draft_kind_test.dart
 test/content_draft_model_test.dart
@@ -166,6 +175,8 @@ test/payment_quote_model_test.dart
 test/payment_status_model_test.dart
 test/payment_status_test.dart
 test/payments_api_test.dart
+test/payout_account_model_test.dart
+test/payout_accounts_api_test.dart
 test/photo_upload_model_test.dart
 test/received_offer_model_test.dart
 test/received_offer_tab_test.dart
@@ -186,5 +197,6 @@ test/update_role_dto_test.dart
 test/update_store_dto_test.dart
 test/uploads_api_test.dart
 test/upsert_creator_profile_dto_test.dart
+test/upsert_payout_account_dto_test.dart
 test/user_role_test.dart
 test/users_api_test.dart

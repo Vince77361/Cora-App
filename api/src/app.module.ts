@@ -14,6 +14,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { OffersModule } from './offers/offers.module';
 import { PaymentsDevModule } from './payments/payments-dev.module';
 import { PaymentsModule } from './payments/payments.module';
+import { PayoutAccountsModule } from './payout-accounts/payout-accounts.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StoresModule } from './stores/stores.module';
 import { UploadsModule } from './uploads/uploads.module';
@@ -38,6 +39,7 @@ import { UsersModule } from './users/users.module';
     InstagramModule,
     OffersModule,
     PaymentsModule,
+    PayoutAccountsModule,
     PaymentsDevModule.register(process.env),
   ],
 })
