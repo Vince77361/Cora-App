@@ -12,6 +12,7 @@ import '../../features/onboarding/domain/me.dart';
 import '../../features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
+import '../../features/store_onboarding/presentation/pages/default_terms_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_edit_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_links_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_page_preview_page.dart';
@@ -106,7 +107,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       _roleRoute(AppRoutes.storeOnboardingDrafts, '소개 글', entry: true),
-      _roleRoute(AppRoutes.storeOnboardingTerms, '약관', entry: true),
+      GoRoute(
+        path: AppRoutes.storeOnboardingTerms,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const DefaultTermsPage()),
+      ),
       _roleRoute(AppRoutes.storePage, '가게 페이지'),
       _roleRoute(AppRoutes.storeDrafts, '소개 글'),
       _roleRoute('/store/offers/new/:creatorId', '오퍼 보내기'),

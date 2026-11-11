@@ -219,7 +219,17 @@ class _Field extends StatelessWidget {
                 ),
                 cursorColor: c.text,
                 inputFormatters: formatters,
-                decoration: const InputDecoration.collapsed(hintText: null),
+                // 앱 테마의 입력칸 테두리를 쓰지 않는다. 칸 모양은 바깥 상자가 그린다.
+                // `InputDecoration.collapsed`도 테마의 테두리를 물려받아 직접 끈다.
+                decoration: const InputDecoration(
+                  isCollapsed: true,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                ),
               ),
             ],
           ),

@@ -270,6 +270,21 @@ void main() {
     expect(find.byKey(const ValueKey('voucherEdit.name')), findsOneWidget);
   });
 
+  testWidgets('draws no theme border inside the voucher inputs', (
+    tester,
+  ) async {
+    await _pump(tester, _Harness());
+    await _next(tester);
+    await tester.tap(find.text('식사권 고치기'));
+    await tester.pumpAndSettle();
+
+    for (final key in ['voucherEdit.name', 'voucherEdit.value']) {
+      final field = tester.widget<TextField>(find.byKey(ValueKey(key)));
+      expect(field.decoration!.border, InputBorder.none, reason: key);
+      expect(field.decoration!.focusedBorder, InputBorder.none, reason: key);
+    }
+  });
+
   testWidgets('rejects an empty voucher name', (tester) async {
     await _pump(tester, _Harness());
     await _next(tester);
