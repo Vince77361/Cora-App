@@ -59,13 +59,29 @@ class SecureGotrueAsyncStorage extends GotrueAsyncStorage {
   /// 세션 키와 겹치지 않게 접두어를 붙인다.
   static String _scoped(String key) => 'cora.gotrue.$key';
 
+  // 읽기·지우기는 best-effort다. gotrue의 signOut은 PKCE 값을 지우다 던지면 signedOut을
+  // 보내지 못한 채 끝나, 기기의 세션은 지워졌는데 화면은 로그인 상태로 남는다. 이 값은
+  // 로그인 도중의 임시값이라 읽지 못하면 없는 것으로 보면 된다. 값은 로그에 남기지 않는다.
   @override
-  Future<String?> getItem({required String key}) => _store.read(_scoped(key));
+  Future<String?> getItem({required String key}) async {
+    try {
+      return await _store.read(_scoped(key));
+    } catch (error) {
+      if (kDebugMode) debugPrint('[auth] PKCE 값 읽기 실패: ${error.runtimeType}');
+      return null;
+    }
+  }
 
   @override
   Future<void> setItem({required String key, required String value}) =>
       _store.write(_scoped(key), value);
 
   @override
-  Future<void> removeItem({required String key}) => _store.delete(_scoped(key));
+  Future<void> removeItem({required String key}) async {
+    try {
+      await _store.delete(_scoped(key));
+    } catch (error) {
+      if (kDebugMode) debugPrint('[auth] PKCE 값 지우기 실패: ${error.runtimeType}');
+    }
+  }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -6,6 +7,7 @@ import 'app.dart';
 import 'core/config/app_config.dart';
 import 'core/config/app_config_provider.dart';
 import 'core/network/api_client_provider.dart';
+import 'core/network/timeout_http_client.dart';
 import 'features/auth/data/secure_key_value_store.dart';
 import 'features/auth/data/fake_sign_in_adapter.dart';
 import 'features/auth/data/secure_session_storage.dart';
@@ -29,6 +31,8 @@ Future<void> main() async {
   await Supabase.initialize(
     url: config.supabaseUrl,
     publishableKey: config.supabaseAnonKey,
+    // 응답이 없는 연결에서 로그인 화면의 버튼이 안내 없이 꺼진 채 남지 않게 API와 같은 제한을 건다.
+    httpClient: TimeoutHttpClient(http.Client()),
     // 세션(리프레시 토큰 포함)을 일반 설정 파일이 아니라 Keychain/Keystore에 둔다.
     authOptions: FlutterAuthClientOptions(
       localStorage: SecureSessionStorage(

@@ -7,6 +7,9 @@ class FakeSecureKeyValueStore implements SecureKeyValueStore {
   /// null이 아니면 읽기가 이 오류를 던진다(잠긴 키체인 흉내).
   Object? readError;
 
+  /// null이 아니면 지우기가 이 오류를 던진다.
+  Object? deleteError;
+
   @override
   Future<String?> read(String key) async {
     final error = readError;
@@ -18,5 +21,9 @@ class FakeSecureKeyValueStore implements SecureKeyValueStore {
   Future<void> write(String key, String value) async => values[key] = value;
 
   @override
-  Future<void> delete(String key) async => values.remove(key);
+  Future<void> delete(String key) async {
+    final error = deleteError;
+    if (error != null) throw error;
+    values.remove(key);
+  }
 }

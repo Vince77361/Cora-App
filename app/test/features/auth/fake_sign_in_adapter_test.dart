@@ -28,24 +28,24 @@ void main() {
   });
 
   test('requesting a code sends nothing and signs nobody in', () async {
-    await adapter.requestPhoneCode('01012342841');
+    await adapter.requestPhoneCode('01000000001');
 
     expect(signIns, isEmpty);
   });
 
   test('only the fixed code passes for a phone number', () async {
     await expectLater(
-      adapter.verifyPhoneCode(phoneDigits: '01012342841', code: '123456'),
+      adapter.verifyPhoneCode(phoneDigits: '01000000001', code: '123456'),
       invalidCode(),
     );
     await expectLater(
-      adapter.verifyPhoneCode(phoneDigits: '01012342841', code: ''),
+      adapter.verifyPhoneCode(phoneDigits: '01000000001', code: ''),
       invalidCode(),
     );
     expect(signIns, isEmpty);
 
     await adapter.verifyPhoneCode(
-      phoneDigits: '01012342841',
+      phoneDigits: '01000000001',
       code: FakeSignInAdapter.devCode,
     );
 
@@ -57,12 +57,12 @@ void main() {
     () async {
       for (var i = 0; i < 2; i++) {
         await adapter.verifyPhoneCode(
-          phoneDigits: '01012342841',
+          phoneDigits: '01000000001',
           code: FakeSignInAdapter.devCode,
         );
       }
       await adapter.verifyPhoneCode(
-        phoneDigits: '01099998888',
+        phoneDigits: '01000000002',
         code: FakeSignInAdapter.devCode,
       );
 
@@ -74,7 +74,7 @@ void main() {
 
   test('dev accounts use the reserved dev email domain', () async {
     await adapter.verifyPhoneCode(
-      phoneDigits: '01012342841',
+      phoneDigits: '01000000001',
       code: FakeSignInAdapter.devCode,
     );
     await adapter.signInWithKakao();
@@ -85,7 +85,7 @@ void main() {
       expect(signIn.password.length, greaterThanOrEqualTo(6));
       expect(signIn.password, isNot(signIn.email));
     }
-    expect(signIns[0].email, contains('01012342841'));
+    expect(signIns[0].email, contains('01000000001'));
   });
 
   test('kakao and naver are fixed, different dev accounts', () async {
@@ -99,12 +99,15 @@ void main() {
     expect(signIns[2].email, isNot(signIns[0].email));
   });
 
-  test('a phone number that is not 010 plus 8 digits is refused', () async {
+  test('only the dev band 010-0000-XXXX is accepted', () async {
     for (final phone in [
       '',
-      '0101234284',
-      '01112342841',
-      '010123428411',
+      '0100000000',
+      '010000000011',
+      '01012342841',
+      '01000010000',
+      '01100000001',
+      '0100000abcd',
       'abc',
     ]) {
       await expectLater(
@@ -112,10 +115,25 @@ void main() {
           phoneDigits: phone,
           code: FakeSignInAdapter.devCode,
         ),
-        throwsA(isA<AuthFailure>()),
+        // 인증번호가 틀린 것이 아니므로 invalidCode가 아니라 번호 형식 실패다.
+        throwsA(
+          isA<AuthFailure>()
+              .having((e) => e.kind, 'kind', AuthFailureKind.unknown)
+              .having((e) => e.code, 'code', 'invalid_phone'),
+        ),
         reason: phone,
       );
     }
     expect(signIns, isEmpty);
+  });
+
+  test('the seeded dev numbers are accepted', () async {
+    for (final phone in ['01000000001', '01000000002', '01000000003']) {
+      await adapter.verifyPhoneCode(
+        phoneDigits: phone,
+        code: FakeSignInAdapter.devCode,
+      );
+    }
+    expect(signIns, hasLength(3));
   });
 }

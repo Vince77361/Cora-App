@@ -34,6 +34,17 @@ describe('devCredentials', () => {
     expect(() => devCredentials('02-000-0000')).toThrow(/010/);
   });
 
+  it('rejects a real-looking number outside the 010-0000-XXXX band', () => {
+    expect(() => devCredentials('010-1234-5678')).toThrow(/010-0000/);
+  });
+
+  it('keeps every seeded phone inside the dev band', () => {
+    for (const account of DEV_ACCOUNTS) {
+      expect(account.phone).toMatch(/^010-0000-\d{4}$/);
+      expect(() => devCredentials(account.phone)).not.toThrow();
+    }
+  });
+
   it('defines one STORE, one BRAND and one CREATOR account', () => {
     expect(DEV_ACCOUNTS.map((a) => a.role)).toEqual([
       'STORE',

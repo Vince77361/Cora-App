@@ -13,6 +13,9 @@ typedef DevAccountSignIn =
 ///
 /// - 인증번호 요청은 아무것도 보내지 않는다.
 /// - 인증번호는 고정값 [devCode]만 통과한다.
+/// - 휴대폰 번호는 개발 대역 010-0000-XXXX만 받는다. 다른 번호는 번호 형식 실패
+///   (`AuthFailure.unknown('invalid_phone')`)로 돌려보내고, 화면에는 기존 실패 문구
+///   `잠시 후 다시 시도해 주세요.`가 보인다.
 /// - 휴대폰 번호마다, 그리고 카카오·네이버마다 고정된 개발용 계정(이메일)으로 로그인한다.
 ///
 /// **개발용 Supabase 프로젝트에서만 쓴다.** 비밀번호는 번호(또는 `kakao`·`naver`)로 정해지는
@@ -39,8 +42,9 @@ class FakeSignInAdapter implements SignInAdapter {
   // 개발 전용 상수. 계정마다 달라지게 키(번호 등)를 붙인다. 비밀이 아니다.
   static const _devPasswordBase = 'cora-dev-only';
 
-  // 한국 휴대폰 번호: 010 + 8자리.
-  static final _phonePattern = RegExp(r'^010\d{8}$');
+  // 개발 전용 번호 대역 010-0000-XXXX만 받는다. 아무 번호나 받으면 실제 사람의 번호로
+  // 개발 Supabase에 계정이 만들어진다(시드 계정 010-0000-0001/2/3도 이 대역이다).
+  static final _phonePattern = RegExp(r'^0100000\d{4}$');
 
   @override
   Future<void> requestPhoneCode(String phoneDigits) async {

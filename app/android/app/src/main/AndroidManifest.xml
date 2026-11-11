@@ -1,8 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- 로그인(Supabase)과 API 요청에 필요하다. 템플릿은 debug/profile에만 두어 release 빌드가 네트워크를 못 쓴다. -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- allowBackup="false": 로그인 세션을 담은 보안 저장소 파일이 클라우드·기기 이전 백업에 실려 나가지 않게 한다.
-         Keystore 키는 기기 밖으로 못 나가서 복원해 봐야 읽지도 못하고, 토큰이 백업 사본에 남을 이유도 없다. -->
+    <!-- allowBackup="false": 로그인 세션을 담은 보안 저장소 파일이 클라우드 백업에 실려 나가지 않게 한다.
+         다만 targetSdk 31 이상인 기기의 기기 간 이전(device-to-device transfer)은 allowBackup으로 막히지 않는다.
+         그 경로는 android:dataExtractionRules로 막아야 하며 9번 계획(출시 준비)에서 한다.
+         Keystore 키는 기기 밖으로 못 나가서 복원해 봐야 읽지도 못하지만, 토큰이 백업 사본에 남을 이유도 없다. -->
     <application
         android:label="cora"
         android:allowBackup="false"

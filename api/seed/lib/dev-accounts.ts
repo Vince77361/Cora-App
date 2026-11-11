@@ -20,8 +20,9 @@ export const DEV_ACCOUNTS: readonly DevAccount[] = [
 export const DEV_EMAIL_DOMAIN = 'example.com';
 export const DEV_PASSWORD_BASE = 'cora-dev-only';
 
-// 한국 휴대폰 번호: 010 + 8자리(하이픈은 있어도 없어도 된다).
-export const PHONE_PATTERN = /^010\d{8}$/;
+// 개발 전용 번호 대역 010-0000-XXXX(하이픈은 있어도 없어도 된다).
+// 앱의 가짜 로그인이 이 대역만 받는다. 아무 번호나 받으면 실제 번호로 개발 계정이 생긴다.
+export const PHONE_PATTERN = /^0100000\d{4}$/;
 
 export interface DevCredentials {
   email: string;
@@ -33,7 +34,7 @@ export interface DevCredentials {
 export function devCredentials(phone: string): DevCredentials {
   const digits = phone.replace(/\D/g, '');
   if (!PHONE_PATTERN.test(digits)) {
-    throw new Error('개발 계정 번호는 010으로 시작하는 11자리여야 해요.');
+    throw new Error('개발 계정 번호는 010-0000-XXXX 대역이어야 해요.');
   }
   const key = `phone-${digits}`;
   return {

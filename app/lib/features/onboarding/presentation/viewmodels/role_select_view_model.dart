@@ -55,9 +55,10 @@ class RoleSelectViewModel extends AsyncNotifier<RoleSelectState> {
   FutureOr<RoleSelectState> build() {
     // 내 정보가 이미 있으면 첫 프레임부터 카드를 그린다(빈 화면이 한 번 비치지 않게).
     // 내 정보가 바뀌어도(저장 직후) 이 화면은 다시 만들지 않으므로 watch가 아니라 read다.
+    // AsyncData일 때만 쓴다. 다른 사용자로 바뀐 뒤 불러오기가 실패하면 AsyncError가 옛
+    // 사용자의 값을 그대로 들고 있어서, `value`를 읽으면 옛 사용자의 역할이 그려진다.
     final current = ref.read(meViewModelProvider);
-    final me = current.value;
-    if (!current.isLoading && me != null) return _initial(me);
+    if (current case AsyncData(value: final me?)) return _initial(me);
     return _waitForMe();
   }
 

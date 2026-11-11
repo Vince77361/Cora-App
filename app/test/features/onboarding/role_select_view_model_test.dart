@@ -203,4 +203,34 @@ void main() {
       expect(fake.fetchCalls, 2);
     },
   );
+
+  test(
+    'never draws the previous user when /me fails for the next user',
+    () async {
+      // 이전 사용자는 브랜드 역할을 저장해 두었다.
+      final fake = FakeMeRepository(role: UserRole.brand);
+      final auth = FakeAuthRepository(
+        session: FakeAuthRepository.signedInSession,
+      );
+      final container = await _signedIn(fake, auth: auth);
+      expect(
+        (await container.read(meViewModelProvider.future))!.role,
+        UserRole.brand,
+      );
+
+      // 다른 사용자로 바뀌었고 이번에는 내 정보를 불러오지 못한다.
+      fake.failFetch = true;
+      auth.setSession(
+        const AuthSession(userId: 'user-2', accessToken: 'token-2'),
+      );
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(meViewModelProvider).hasError, isTrue);
+
+      await expectLater(
+        container.read(roleSelectViewModelProvider.future),
+        throwsA(isA<MeFailure>()),
+      );
+    },
+  );
 }

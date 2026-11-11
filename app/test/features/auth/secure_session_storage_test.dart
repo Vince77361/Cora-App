@@ -71,6 +71,17 @@ void main() {
       expect(await pkce.getItem(key: 'verifier'), isNull);
     });
 
+    test('reads as empty and removes silently when the store throws', () async {
+      await pkce.setItem(key: 'verifier', value: 'abc');
+      store
+        ..readError = StateError('keychain locked')
+        ..deleteError = StateError('keychain locked');
+
+      expect(await pkce.getItem(key: 'verifier'), isNull);
+      // 던지면 gotrue의 signOut이 signedOut을 보내지 못한 채 끝난다.
+      await pkce.removeItem(key: 'verifier');
+    });
+
     test('keeps its keys apart from the session key', () async {
       await storage.persistSession('session');
       await pkce.setItem(key: 'sb-proj-auth-token', value: 'verifier');

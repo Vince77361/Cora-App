@@ -1,11 +1,15 @@
 import 'dart:async';
 
 import 'package:cora/core/navigation/app_routes.dart';
+import 'package:cora/core/network/api_client_provider.dart';
+import 'package:cora/core/network/timeout_http_client.dart';
 import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/core/ui/cora_logo.dart';
 import 'package:cora/core/ui/cora_primary_button.dart';
 import 'package:cora/core/ui/cora_select_card.dart';
 import 'package:cora/features/auth/presentation/pages/login_page.dart';
+import 'package:cora/features/onboarding/data/api_me_repository.dart';
+import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
@@ -13,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/fake_http_client.dart';
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
 import '../auth/fake_auth_repository.dart';
@@ -186,6 +191,34 @@ void main() {
     expect(find.text(_storeTitle), findsOneWidget);
     expect(find.text('다시 시도'), findsNothing);
     expect(me.fetchCalls, 2);
+  });
+
+  testWidgets('shows an error with retry when the server never answers', (
+    tester,
+  ) async {
+    usePhone(tester);
+    // 서버가 연결은 받았지만 응답을 주지 않는다.
+    final http = FakeHttpClient()..gate = Completer<void>();
+    await tester.pumpWidget(
+      coraAppWith(
+        _signedIn(),
+        overrides: [httpClientProvider.overrideWithValue(http)],
+        meRepositoryOverride: meRepositoryProvider.overrideWith(
+          (ref) => ApiMeRepository(ref.watch(apiClientProvider)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 기다리는 동안은 빈 첫 화면이다.
+    expect(find.text('다시 시도'), findsNothing);
+
+    await tester.pump(apiRequestTimeout);
+    await tester.pumpAndSettle();
+
+    expect(find.text(_serverDown), findsOneWidget);
+    expect(find.text('다시 시도'), findsOneWidget);
+    expect(find.byType(LoginPage), findsNothing);
   });
 
   testWidgets('a user with a saved role goes home after a successful retry', (

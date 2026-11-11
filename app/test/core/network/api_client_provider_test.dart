@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cora/core/config/app_config.dart';
 import 'package:cora/core/config/app_config_provider.dart';
 import 'package:cora/core/network/api_client_provider.dart';
+import 'package:cora/core/network/timeout_http_client.dart';
 import 'package:cora/features/auth/domain/auth_session.dart';
 import 'package:cora/features/auth/domain/auth_repository_provider.dart';
 import 'package:cora_api/api.dart';
@@ -176,4 +177,43 @@ void main() {
 
     expect(auth.signOutCalls, 0);
   });
+
+  testWidgets(
+    'fails a request that gets no answer instead of waiting forever',
+    (tester) async {
+      fakeHttp.gate = Completer<void>();
+
+      final result = expectLater(users().getMe(), throwsA(isA<ApiException>()));
+      await tester.pump(apiRequestTimeout);
+      await result;
+
+      // 응답이 없었던 것이지 토큰이 틀린 것이 아니므로 로그아웃하지 않는다.
+      expect(auth.signOutCalls, 0);
+    },
+  );
+
+  testWidgets(
+    'sends the request without a token when the token refresh hangs, and does not sign out on 401',
+    (tester) async {
+      auth.holdValidToken = Completer<void>();
+      fakeHttp
+        ..statusCode = 401
+        ..body = unauthenticatedBody;
+
+      final result = expectLater(
+        users().getMe(),
+        throwsA(isA<ApiException>().having((e) => e.code, 'code', 401)),
+      );
+      await tester.pump(apiRequestTimeout);
+      await result;
+
+      expect(
+        fakeHttp.requests.single.headers.containsKey('Authorization'),
+        isFalse,
+      );
+      // 헤더 없이 나간 요청의 401은 지금 세션의 토큰에 대한 답이 아니다.
+      expect(auth.signOutCalls, 0);
+      expect(auth.currentSession, isNotNull);
+    },
+  );
 }

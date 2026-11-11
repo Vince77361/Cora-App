@@ -26,16 +26,20 @@ AppConfig testConfig(CoraEnv env) => AppConfig(
 ///
 /// [me]는 서버가 가진 내 정보 흉내다(주지 않으면 역할을 아직 안 고른 사용자).
 /// [overrides]로 다른 provider(예: 가짜 HTTP 클라이언트)도 바꿔 끼운다.
+/// [meRepositoryOverride]를 주면 가짜 내 정보 저장소 대신 이것을 쓴다(실제 `ApiMeRepository`를
+/// 가짜 HTTP 위에 올릴 때).
 Widget coraAppWith(
   FakeAuthRepository auth, {
   FakeMeRepository? me,
   CoraEnv env = CoraEnv.dev,
   List<Override> overrides = const [],
+  Override? meRepositoryOverride,
 }) {
   return ProviderScope(
     overrides: [
       authRepositoryProvider.overrideWithValue(auth),
-      meRepositoryProvider.overrideWithValue(me ?? FakeMeRepository()),
+      meRepositoryOverride ??
+          meRepositoryProvider.overrideWithValue(me ?? FakeMeRepository()),
       appConfigProvider.overrideWithValue(testConfig(env)),
       ...overrides,
     ],

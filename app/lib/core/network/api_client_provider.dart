@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import '../../features/auth/domain/auth_repository.dart';
 import '../../features/auth/domain/auth_repository_provider.dart';
 import '../config/app_config_provider.dart';
+import 'timeout_http_client.dart';
 
 /// 실제로 요청을 보내는 HTTP 클라이언트. 테스트가 가짜로 바꿔 끼운다.
 final httpClientProvider = Provider<http.Client>((ref) {
@@ -26,9 +27,14 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   final config = ref.watch(appConfigProvider);
   final auth = ref.watch(authRepositoryProvider);
   return ApiClient(
-    basePath: config.apiBaseUrl,
-    authentication: _SessionBearerAuth(auth),
-  )..client = _SignOutOnUnauthorizedClient(ref.watch(httpClientProvider), auth);
+      basePath: config.apiBaseUrl,
+      authentication: _SessionBearerAuth(auth),
+    )
+    ..client = _SignOutOnUnauthorizedClient(
+      // 응답이 없는 연결에서 요청이 끝나지 않고 첫 화면이 빈 채로 남지 않게 시간을 제한한다.
+      TimeoutHttpClient(ref.watch(httpClientProvider)),
+      auth,
+    );
 });
 
 /// 요청을 보낼 때마다 유효한 토큰을 받아 붙인다.
@@ -43,8 +49,13 @@ class _SessionBearerAuth implements Authentication {
     Map<String, String> headerParams,
   ) async {
     // 만료된 토큰이면 갱신이 끝난 뒤의 토큰을 받는다. 만료 토큰을 보내 401을 받고 멀쩡한
-    // 세션을 로그아웃하는 일을 막는다.
-    final token = await _auth.validAccessToken();
+    // 세션을 로그아웃하는 일을 막는다. 갱신 요청이 멈추면 제한 시간 뒤에 토큰 없이 보낸다.
+    // 그 요청이 401을 받아도 지금 세션의 토큰으로 보낸 것이 아니라서 로그아웃하지 않고,
+    // 호출한 쪽은 오류 화면과 "다시 시도"를 보게 된다.
+    final token = await _auth.validAccessToken().timeout(
+      apiRequestTimeout,
+      onTimeout: () => null,
+    );
     if (token != null && token.isNotEmpty) {
       headerParams['Authorization'] = 'Bearer $token';
     }

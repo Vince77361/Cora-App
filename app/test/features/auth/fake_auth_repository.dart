@@ -44,6 +44,9 @@ class FakeAuthRepository implements AuthRepository {
     accessToken: 'token-refreshed',
   );
 
+  /// 설정하면 [validAccessToken]이 이 Completer가 끝날 때까지 기다린다(갱신이 멈춘 상황 흉내).
+  Completer<void>? holdValidToken;
+
   /// 실제로 갱신이 시작된 횟수. 동시에 부른 갱신은 SDK처럼 하나로 합쳐진다.
   int refreshCalls = 0;
 
@@ -63,6 +66,8 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<String?> validAccessToken() async {
+    final hold = holdValidToken;
+    if (hold != null) await hold.future;
     if (expired) {
       if (_refreshing == null) {
         refreshCalls++;
