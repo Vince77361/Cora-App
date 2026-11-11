@@ -212,12 +212,18 @@ class ApiClient {
           return AnalyzeLinksDto.fromJson(value);
         case 'AnalyzeStoreLinksResultModel':
           return AnalyzeStoreLinksResultModel.fromJson(value);
+        case 'ContentDraftKind':
+          return ContentDraftKindTypeTransformer().decode(value);
+        case 'ContentDraftModel':
+          return ContentDraftModel.fromJson(value);
         case 'ContentFormat':
           return ContentFormatTypeTransformer().decode(value);
         case 'CreatePhotoUploadDto':
           return CreatePhotoUploadDto.fromJson(value);
         case 'CreatorProfileModel':
           return CreatorProfileModel.fromJson(value);
+        case 'DraftSceneModel':
+          return DraftSceneModel.fromJson(value);
         case 'HealthModel':
           return HealthModel.fromJson(value);
         case 'IndustryCategory':

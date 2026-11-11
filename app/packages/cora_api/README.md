@@ -47,13 +47,13 @@ import 'package:cora_api/api.dart';
 // String yourTokenGeneratorFunction() { ... }
 //defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = CreatorsApi();
+final api_instance = ContentDraftsApi();
 
 try {
-    final result = api_instance.getMyCreatorProfile();
+    final result = api_instance.listMyContentDrafts();
     print(result);
 } catch (e) {
-    print('Exception when calling CreatorsApi->getMyCreatorProfile: $e\n');
+    print('Exception when calling ContentDraftsApi->listMyContentDrafts: $e\n');
 }
 
 ```
@@ -64,6 +64,8 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*ContentDraftsApi* | [**listMyContentDrafts**](doc//ContentDraftsApi.md#listmycontentdrafts) | **GET** /stores/me/content-drafts | 
+*ContentDraftsApi* | [**regenerateMyContentDraft**](doc//ContentDraftsApi.md#regeneratemycontentdraft) | **POST** /stores/me/content-drafts/{kind}/regenerate | 
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
 *CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
 *HealthApi* | [**getHealth**](doc//HealthApi.md#gethealth) | **GET** /health | 
@@ -86,9 +88,12 @@ Class | Method | HTTP request | Description
  - [AdvanceOnboardingStep](doc//AdvanceOnboardingStep.md)
  - [AnalyzeLinksDto](doc//AnalyzeLinksDto.md)
  - [AnalyzeStoreLinksResultModel](doc//AnalyzeStoreLinksResultModel.md)
+ - [ContentDraftKind](doc//ContentDraftKind.md)
+ - [ContentDraftModel](doc//ContentDraftModel.md)
  - [ContentFormat](doc//ContentFormat.md)
  - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
  - [CreatorProfileModel](doc//CreatorProfileModel.md)
+ - [DraftSceneModel](doc//DraftSceneModel.md)
  - [HealthModel](doc//HealthModel.md)
  - [IndustryCategory](doc//IndustryCategory.md)
  - [MeModel](doc//MeModel.md)

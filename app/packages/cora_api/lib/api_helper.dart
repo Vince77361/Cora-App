@@ -68,6 +68,9 @@ String parameterToString(dynamic value) {
   if (value is AdvanceOnboardingStep) {
     return AdvanceOnboardingStepTypeTransformer().encode(value).toString();
   }
+  if (value is ContentDraftKind) {
+    return ContentDraftKindTypeTransformer().encode(value).toString();
+  }
   if (value is ContentFormat) {
     return ContentFormatTypeTransformer().encode(value).toString();
   }

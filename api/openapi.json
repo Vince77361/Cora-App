@@ -55,6 +55,50 @@
         ],
         "type": "object"
       },
+      "ContentDraftKind": {
+        "enum": [
+          "CARD_NEWS",
+          "REELS_SCRIPT",
+          "BLOG"
+        ],
+        "type": "string"
+      },
+      "ContentDraftModel": {
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "bodyLabel": {
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentDraftKind"
+              }
+            ]
+          },
+          "regenerationsLeftToday": {
+            "maximum": 10,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "scenes": {
+            "items": {
+              "$ref": "#/components/schemas/DraftSceneModel"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "bodyLabel",
+          "body",
+          "scenes",
+          "regenerationsLeftToday"
+        ],
+        "type": "object"
+      },
       "ContentFormat": {
         "enum": [
           "SHORTS",
@@ -131,6 +175,25 @@
           "regionSido",
           "regionSigungu",
           "instagramHandle"
+        ],
+        "type": "object"
+      },
+      "DraftSceneModel": {
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "usesPhoto": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "label",
+          "text",
+          "usesPhoto"
         ],
         "type": "object"
       },
@@ -1021,6 +1084,72 @@
         "summary": "",
         "tags": [
           "Stores"
+        ]
+      }
+    },
+    "/stores/me/content-drafts": {
+      "get": {
+        "operationId": "listMyContentDrafts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ContentDraftModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "ContentDrafts"
+        ]
+      }
+    },
+    "/stores/me/content-drafts/{kind}/regenerate": {
+      "post": {
+        "operationId": "regenerateMyContentDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ContentDraftKind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentDraftModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "ContentDrafts"
         ]
       }
     },
