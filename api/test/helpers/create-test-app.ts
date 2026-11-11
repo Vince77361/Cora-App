@@ -5,9 +5,12 @@ import { AppModule } from '../../src/app.module';
 import { setupApp } from '../../src/app.setup';
 import { Clock } from '../../src/common/clock';
 import { TokenVerifier } from '../../src/auth/token-verifier';
+import { JobHandlerRegistry } from '../../src/jobs/job-handler-registry';
+import { JobScheduler } from '../../src/jobs/job-scheduler';
 import { PushPort } from '../../src/integrations/push/push.port';
 import { StoragePort } from '../../src/integrations/storage/storage.port';
 import { FakeClock } from '../support/fake-clock';
+import { FakeJobScheduler } from '../support/fake-job-scheduler';
 import { FakePushPort } from '../support/fake-push.port';
 import { FakeStoragePort } from '../support/fake-storage.port';
 import { FakeTokenVerifier } from '../support/fake-token-verifier';
@@ -16,6 +19,8 @@ import { FakeTokenVerifier } from '../support/fake-token-verifier';
 // 토큰 검증은 네트워크가 필요 없는 가짜로, 시계는 손으로 움직이는 FakeClock으로 바꿔 끼운다.
 // 테스트에서 시계는 app.get<FakeClock>(Clock)으로, Storage는 app.get<FakeStoragePort>(StoragePort)로 꺼내 쓴다.
 // Storage는 원격 Supabase에 닿지 않도록 항상 가짜로 바꾼다. 푸시는 app.get<FakePushPort>(PushPort).sent로 확인한다.
+// 작업 큐는 Redis 없이 FakeJobScheduler로 바꾼다: app.get<FakeJobScheduler>(JobScheduler).runDue(시각).
+// 결제·송금·조회수·인스타그램·운영자 알림은 NODE_ENV=test에서 가짜 구현이 그대로 쓰이므로 app.get(PaymentPort) 등으로 꺼내 확인한다.
 export async function createTestApp(
   extraControllers: Type<unknown>[] = [],
 ): Promise<INestApplication> {
@@ -31,6 +36,11 @@ export async function createTestApp(
     .useValue(new FakeStoragePort())
     .overrideProvider(PushPort)
     .useValue(new FakePushPort())
+    .overrideProvider(JobScheduler)
+    .useFactory({
+      factory: (registry: JobHandlerRegistry) => new FakeJobScheduler(registry),
+      inject: [JobHandlerRegistry],
+    })
     .compile();
   const app = moduleRef.createNestApplication();
   // 예상된 오류 로그가 테스트 출력을 어지럽히지 않게 한다.

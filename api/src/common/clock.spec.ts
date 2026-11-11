@@ -1,3 +1,4 @@
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { FakeClock } from '../../test/support/fake-clock';
 import { Clock, SystemClock } from './clock';
@@ -43,5 +44,50 @@ describe('Clock', () => {
     const clock = new FakeClock(new Date('2026-01-01T00:00:00Z'));
     clock.now().setFullYear(1999);
     expect(clock.now().getUTCFullYear()).toBe(2026);
+  });
+
+  describe('FAKE_CLOCK_OFFSET_DAYS', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+
+    async function clockFor(config: Record<string, unknown>): Promise<Clock> {
+      const moduleRef = await Test.createTestingModule({
+        imports: [
+          ConfigModule.forRoot({
+            isGlobal: true,
+            ignoreEnvFile: true,
+            ignoreEnvVars: true,
+            load: [() => config],
+          }),
+          CommonModule,
+        ],
+      }).compile();
+      return moduleRef.get(Clock);
+    }
+
+    it('adds the offset days to the system time in development', async () => {
+      const clock = await clockFor({
+        NODE_ENV: 'development',
+        FAKE_CLOCK_OFFSET_DAYS: 3,
+      });
+      const diff = clock.now().getTime() - Date.now();
+      expect(diff).toBeGreaterThan(3 * DAY - 5000);
+      expect(diff).toBeLessThan(3 * DAY + 5000);
+    });
+
+    it.each(['test', 'production'])(
+      'ignores the offset when NODE_ENV is %s',
+      async (nodeEnv) => {
+        const clock = await clockFor({
+          NODE_ENV: nodeEnv,
+          FAKE_CLOCK_OFFSET_DAYS: 3,
+        });
+        expect(Math.abs(clock.now().getTime() - Date.now())).toBeLessThan(5000);
+      },
+    );
+
+    it('does not move the clock when the offset is 0 or unset', async () => {
+      const clock = await clockFor({ NODE_ENV: 'development' });
+      expect(Math.abs(clock.now().getTime() - Date.now())).toBeLessThan(5000);
+    });
   });
 });

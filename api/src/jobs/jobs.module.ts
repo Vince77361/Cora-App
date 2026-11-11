@@ -1,0 +1,52 @@
+import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Clock } from '../common/clock';
+import { BullMqJobScheduler } from './bullmq-job-scheduler';
+import { JobHandlerRegistry } from './job-handler-registry';
+import { JobScheduler } from './job-scheduler';
+import { redisConnectionFromUrl } from './redis-connection';
+
+// 테스트(NODE_ENV=test)에서는 Redis에 연결하지 않는다. 이 구현이 그대로 쓰이면 FakeJobScheduler로
+// 바꿔 끼우지 않은 것이므로, 작업이 조용히 사라지지 않게 오류로 알려 준다.
+class UnconfiguredJobScheduler extends JobScheduler {
+  schedule(): Promise<void> {
+    return Promise.reject(this.error());
+  }
+  cancel(): Promise<void> {
+    return Promise.reject(this.error());
+  }
+  private error(): Error {
+    return new Error(
+      '테스트에서는 JobScheduler를 FakeJobScheduler로 바꿔 끼워야 해요. createTestApp을 쓰세요.',
+    );
+  }
+}
+
+// 기능 모듈은 이 모듈을 import해서 JobScheduler(작업 등록)와 JobHandlerRegistry(onModuleInit에서 처리기 등록)를 쓴다.
+@Module({
+  providers: [
+    JobHandlerRegistry,
+    {
+      provide: JobScheduler,
+      inject: [ConfigService, Clock, JobHandlerRegistry],
+      useFactory: (
+        config: ConfigService,
+        clock: Clock,
+        registry: JobHandlerRegistry,
+      ): JobScheduler => {
+        if (config.get<string>('NODE_ENV') === 'test') {
+          return new UnconfiguredJobScheduler();
+        }
+        const url = config.get<string>('REDIS_URL');
+        if (!url) throw new Error('REDIS_URL이 없어요.');
+        return BullMqJobScheduler.create(
+          redisConnectionFromUrl(url),
+          clock,
+          registry,
+        );
+      },
+    },
+  ],
+  exports: [JobScheduler, JobHandlerRegistry],
+})
+export class JobsModule {}
