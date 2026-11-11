@@ -26,6 +26,7 @@ const CREATOR = '22222222-2222-4222-8222-222222222222';
 const COLLAB = '33333333-3333-4333-8333-333333333333';
 const OFFER = '44444444-4444-4444-8444-444444444444';
 const PAYMENT = '55555555-5555-4555-8555-555555555555';
+const SECOND_PAYMENT = '66666666-6666-4666-8666-666666666666';
 // 한국 시간 2026-12-01 12:00.
 const T0 = new Date('2026-12-01T03:00:00.000Z');
 const MINUTE = 60 * 1000;
@@ -71,7 +72,10 @@ class FakePaymentsRepository extends PaymentsRepository {
     }
   }
   markApproved(id: string, pgTransactionId: string, approvedAt: Date) {
-    const row = this.rows.find((p) => p.id === id && p.status === 'PENDING');
+    const row = this.rows.find(
+      (p) =>
+        p.id === id && (p.status === 'PENDING' || p.status === 'CANCELLED'),
+    );
     if (row) {
       row.status = 'APPROVED';
       row.pgTransactionId = pgTransactionId;
@@ -110,7 +114,9 @@ class FakeCollaborationsRepository extends CollaborationsRepository {
 
 class FakeOperatorAlert extends OperatorAlertPort {
   readonly alerts: { subject: string; body: string }[] = [];
+  fails = false;
   alert(input: { subject: string; body: string }) {
+    if (this.fails) return Promise.reject(new Error('alert down'));
     this.alerts.push(input);
     return Promise.resolve();
   }
@@ -177,10 +183,15 @@ function build(feeRate = 10) {
   const ledgerPosts: { key: string; postings: Posting[] }[] = [];
   const notified: NotifyInput[] = [];
   const cancelledDueJobs: string[] = [];
-  const state = { clearPaymentDue: true, notifyFails: false };
+  const state = {
+    clearPaymentDue: true,
+    offerAccepted: true,
+    notifyFails: false,
+  };
   const offers = {
     expireUnpaid: () => Promise.resolve(),
     clearPaymentDue: () => Promise.resolve(state.clearPaymentDue),
+    lockAcceptedForPayment: () => Promise.resolve(state.offerAccepted),
     cancelPaymentDueJob: (offerId: string) => {
       cancelledDueJobs.push(offerId);
       return Promise.resolve();
@@ -195,6 +206,10 @@ function build(feeRate = 10) {
   const notifications = {
     notify: (input: NotifyInput) => {
       if (state.notifyFails) return Promise.reject(new Error('inbox down'));
+      // 실제 notify처럼 같은 중복 방지 키의 두 번째 알림은 만들지 않는다.
+      if (notified.some((n) => n.dedupeKey === input.dedupeKey)) {
+        return Promise.resolve();
+      }
       notified.push(input);
       return Promise.resolve();
     },
@@ -310,6 +325,15 @@ describe('PaymentsService', () => {
       expect(job?.runAt).toEqual(new Date(T0.getTime() + 10 * MINUTE));
     });
 
+    it('answers 409 when the offer or the collaboration changed after the first check', async () => {
+      const t = build();
+      t.state.offerAccepted = false;
+      await expect(
+        t.service.create(OWNER, COLLAB, 'CARD'),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+      expect(t.payments.rows).toHaveLength(0);
+    });
+
     it('still creates the payment when the recheck job cannot be scheduled', async () => {
       const t = build();
       jest
@@ -392,10 +416,54 @@ describe('PaymentsService', () => {
       expect(t.alerts.alerts).toEqual([
         {
           subject:
-            '협업이 끝난 뒤 결제가 승인됐어요. 운영 명령으로 환불해 주세요.',
+            '협업에 반영하지 못한 결제가 승인됐어요. 운영 명령으로 환불해 주세요.',
           body: `결제 ID: ${PAYMENT}`,
         },
       ]);
+    });
+
+    it('funds the collaboration when a payment that was replaced by a newer one is approved', async () => {
+      const t = build();
+      t.payments.rows.push(payment({ status: 'CANCELLED' }));
+      t.payments.rows.push(payment({ id: SECOND_PAYMENT, status: 'PENDING' }));
+      await t.service.applyResult(approved());
+      expect(t.payments.rows.map((p) => p.status)).toEqual([
+        'APPROVED',
+        'PENDING',
+      ]);
+      expect(t.collaborations.row.stage).toBe('FUNDED');
+      expect(t.ledgerPosts.map((p) => p.key)).toEqual([`payment:${PAYMENT}`]);
+      expect(t.alerts.alerts).toHaveLength(0);
+      // 남은 대기 결제가 나중에 승인되면 이미 보관 중이라 늦은 승인이다: 장부는 그대로.
+      await t.service.applyResult({
+        paymentId: SECOND_PAYMENT,
+        pgTransactionId: 'tx-2',
+        status: 'APPROVED',
+      });
+      expect(t.ledgerPosts).toHaveLength(1);
+      expect(t.alerts.alerts).toHaveLength(1);
+    });
+
+    it('alerts the operator, and does not fund, when an approval arrives for a failed payment', async () => {
+      const t = build();
+      t.payments.rows.push(payment({ status: 'FAILED' }));
+      await t.service.applyResult(approved());
+      expect(t.payments.rows[0].status).toBe('FAILED');
+      expect(t.collaborations.row.stage).toBe('AWAITING_PAYMENT');
+      expect(t.alerts.alerts).toHaveLength(1);
+    });
+
+    it('alerts before it records a late approval so a failed alert is sent again when the PG resends', async () => {
+      const t = build();
+      t.collaborations.row = collaboration({ stage: 'CANCELLED' });
+      t.payments.rows.push(payment());
+      t.alerts.fails = true;
+      await expect(t.service.applyResult(approved())).rejects.toThrow('alert');
+      expect(t.payments.rows[0].status).toBe('PENDING');
+      t.alerts.fails = false;
+      await t.service.applyResult(approved());
+      expect(t.payments.rows[0].status).toBe('APPROVED');
+      expect(t.alerts.alerts).toHaveLength(1);
     });
 
     it('treats an offer that is no longer accepted as a late approval too', async () => {
@@ -489,6 +557,35 @@ describe('PaymentsService', () => {
       const spy = jest.spyOn(t.pg, 'fetchStatus');
       await t.service.recheck(PAYMENT, 1);
       expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('finishes the steps after funding when a failed recheck job is run again', async () => {
+      const t = build();
+      t.payments.rows.push(payment());
+      t.pg.recordResult({ paymentId: PAYMENT, status: 'APPROVED' });
+      t.state.notifyFails = true;
+      // 첫 실행: 승인은 커밋됐지만 알림이 실패해 작업이 던진다.
+      await expect(t.service.recheck(PAYMENT, 1)).rejects.toThrow('inbox');
+      expect(t.collaborations.row.stage).toBe('FUNDED');
+      expect(t.notified).toHaveLength(0);
+      // 큐가 같은 작업을 다시 돌린다: 결제는 이미 APPROVED지만 남은 단계를 마친다.
+      t.state.notifyFails = false;
+      await t.service.recheck(PAYMENT, 1);
+      expect(t.notified).toHaveLength(1);
+      expect(t.ledgerPosts).toHaveLength(1);
+      expect(
+        t.scheduler
+          .pending()
+          .map((j) => j.jobKey)
+          .sort(),
+      ).toEqual([
+        `refund-unsubmitted:${COLLAB}`,
+        `submit-reminder:${COLLAB}:1`,
+        `submit-reminder:${COLLAB}:3`,
+      ]);
+      // 세 번째 실행은 아무것도 더하지 않는다.
+      await t.service.recheck(PAYMENT, 1);
+      expect(t.notified).toHaveLength(1);
     });
 
     it('passes the transaction id the PG reports on to the approval', async () => {

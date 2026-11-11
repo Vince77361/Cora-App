@@ -411,6 +411,15 @@ export class OffersService {
     return this.offers.clearPaymentDue(offerId, tx);
   }
 
+  // 결제를 만드는 트랜잭션이 가장 먼저 부른다(승인과 같은 오퍼 → 결제 순서). 오퍼 행을 잠가, 이 트랜잭션이 끝날
+  // 때까지 취소·만료·승인이 끼어들지 못하게 한다. 이미 ACCEPTED가 아니면 false다.
+  lockAcceptedForPayment(
+    offerId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    return this.offers.lockAccepted(offerId, tx);
+  }
+
   // 결제가 승인되면 결제 기한 작업은 필요 없다. 지우지 못해도 처리기가 결제 기한이 없는 오퍼를 건드리지 않으므로 무해하다.
   cancelPaymentDueJob(offerId: string): Promise<void> {
     return this.cancelJob(`payment-due:${offerId}`);

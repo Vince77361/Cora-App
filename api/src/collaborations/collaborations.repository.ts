@@ -42,8 +42,11 @@ export class CollaborationsRepository {
     return tx ?? this.prisma;
   }
 
-  findById(id: string): Promise<Collaboration | null> {
-    return this.prisma.collaboration.findFirst({
+  findById(
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Collaboration | null> {
+    return this.client(tx).collaboration.findFirst({
       where: { id, deletedAt: null },
     });
   }

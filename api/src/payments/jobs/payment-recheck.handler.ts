@@ -3,7 +3,8 @@ import type { JobPayload } from '../../jobs/job-scheduler';
 import { PaymentsService } from '../payments.service';
 
 // 결제 대기 재확인 작업. 무엇을 할지는 서비스가 정한다(웹훅과 같은 applyResult 길).
-// 오류는 그대로 던져 큐가 다시 시도하게 한다: 같은 결과를 다시 넣어도 장부와 단계는 한 번만 바뀐다.
+// 오류는 그대로 던져 큐가 다시 시도하게 한다. 다시 돌 때 결제가 이미 승인돼 있으면 서비스가 같은 통지가 또 온 것처럼
+// 남은 단계(작업 등록·알림)만 마친다: 장부와 단계는 한 번만 바뀌고, 이미 된 일은 같은 키라 그대로다.
 @Injectable()
 export class PaymentRecheckHandler {
   constructor(private readonly payments: PaymentsService) {}

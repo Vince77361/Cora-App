@@ -235,6 +235,19 @@ export class OffersRepository {
     return count === 1;
   }
 
+  // 오퍼 행을 잠그고 아직 ACCEPTED인지 본다. 결제를 만드는 트랜잭션이 단계를 확인하고 쓰는 사이에
+  // 취소·만료·승인이 끼어들지 못하게 하려고, 승인과 같은 순서(오퍼 → 결제)로 가장 먼저 잡는다.
+  async lockAccepted(
+    id: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const rows = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM offers
+      WHERE id = ${id}::uuid AND status = 'ACCEPTED' AND deleted_at IS NULL
+      FOR UPDATE`;
+    return rows.length === 1;
+  }
+
   // 오퍼 갱신(조건부)과 alongWith를 한 트랜잭션으로 묶는다. 갱신이 0행이면 alongWith는 부르지 않는다.
   // alongWith가 없으면 문장 하나짜리 갱신이라 트랜잭션을 열지 않는다: 목록을 읽을 때 여러 오퍼를
   // 동시에 정리하므로, 불필요한 대화형 트랜잭션이 연결을 붙잡아 풀이 마르는 것을 막는다.

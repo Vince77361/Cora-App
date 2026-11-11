@@ -33,10 +33,11 @@ export const RECHECK_MAX_ATTEMPTS = 6;
 const REMINDER_DAYS_BEFORE = [3, 1] as const;
 const REMINDER_HOUR_KST = 10;
 
+// 협업이 이미 끝났거나(만료·취소), 같은 협업의 다른 결제가 이미 보관을 시작해서 이 승인을 반영하지 못한 경우 모두.
 export const LATE_APPROVAL_SUBJECT =
-  '협업이 끝난 뒤 결제가 승인됐어요. 운영 명령으로 환불해 주세요.';
+  '협업에 반영하지 못한 결제가 승인됐어요. 운영 명령으로 환불해 주세요.';
 export const UNEXPECTED_APPROVAL_SUBJECT =
-  '실패하거나 취소로 기록된 결제에 승인 통지가 왔어요. PG에서 확인하고 환불해 주세요.';
+  '실패로 기록된 결제에 승인 통지가 왔어요. PG에서 확인하고 환불해 주세요.';
 
 // PG가 알려 준 결제 결과. 직접 조회(fetchStatus)로 얻은 결과는 거래 번호가 없을 수 있다.
 export interface PaymentResult {
@@ -96,14 +97,35 @@ export class PaymentsService {
     const collaboration = await this.requirePayable(userId, collaborationId);
     const quote = await this.quoteOf(collaboration);
     const now = this.clock.now();
-    const payment = await this.payments.replacePending({
-      collaborationId,
-      amountEscrow: quote.escrow,
-      amountFee: quote.fee,
-      feeRate: quote.feeRate,
-      method,
-      requestedAt: now,
-    });
+    // 오퍼 행을 먼저 잠그고(승인과 같은 오퍼 → 결제 순서) 오퍼와 협업이 아직 결제를 기다리는지 다시 본다:
+    // 위의 확인과 쓰기 사이에 취소·만료·승인이 끼어들거나, 같은 협업에 동시에 만드는 요청이 대기 결제를 둘 만들지 못하게.
+    const created = await this.payments.transaction<Payment, 'not-payable'>(
+      async (tx, rollback) => {
+        if (
+          collaboration.offerId &&
+          !(await this.offers.lockAcceptedForPayment(collaboration.offerId, tx))
+        ) {
+          return rollback('not-payable');
+        }
+        const current = await this.collaborations.findById(collaborationId, tx);
+        if (current?.stage !== 'AWAITING_PAYMENT') {
+          return rollback('not-payable');
+        }
+        return this.payments.replacePending(
+          {
+            collaborationId,
+            amountEscrow: quote.escrow,
+            amountFee: quote.fee,
+            feeRate: quote.feeRate,
+            method,
+            requestedAt: now,
+          },
+          tx,
+        );
+      },
+    );
+    if (created === 'not-payable') throw this.notPayable();
+    const payment = created;
     const { checkoutUrl } = await this.paymentPort.createCheckout({
       paymentId: payment.id,
       amount: quote.total,
@@ -165,7 +187,8 @@ export class PaymentsService {
       await this.payments.markFailed(payment.id);
       return;
     }
-    if (payment.status !== 'PENDING') {
+    // 대기 중이거나 새 결제에 밀려 취소된 결제는 승인 트랜잭션을 탄다. 이미 승인됐거나 실패한 결제만 따로 본다.
+    if (payment.status === 'APPROVED' || payment.status === 'FAILED') {
       await this.reactToSettledPayment(payment, options);
       return;
     }
@@ -181,7 +204,18 @@ export class PaymentsService {
     const payment = UUID.test(paymentId)
       ? await this.payments.findById(paymentId)
       : null;
-    if (payment?.status !== 'PENDING') return;
+    if (!payment) return;
+    // 이미 승인됐다: 앞선 실행이 승인을 커밋한 뒤 남은 단계(작업 등록·알림)에서 던졌을 수 있다. 같은 통지가 또 온 것처럼
+    // 다시 태워 남은 단계를 마친다(같은 키라 이미 된 일은 그대로다).
+    if (payment.status === 'APPROVED') {
+      await this.applyResult({
+        paymentId: payment.id,
+        pgTransactionId: payment.pgTransactionId,
+        status: 'APPROVED',
+      });
+      return;
+    }
+    if (payment.status !== 'PENDING') return;
     const found = await this.paymentPort.fetchStatus(payment.id);
     if (found.status === 'PENDING') {
       if (attempt < RECHECK_MAX_ATTEMPTS) {
@@ -275,7 +309,7 @@ export class PaymentsService {
     }
     if (outcome === 'already-handled') {
       const fresh = await this.payments.findById(payment.id);
-      if (fresh && fresh.status !== 'PENDING') {
+      if (fresh?.status === 'APPROVED' || fresh?.status === 'FAILED') {
         await this.reactToSettledPayment(fresh, options);
       }
       return;
@@ -283,25 +317,25 @@ export class PaymentsService {
     await this.recordLateApproval(payment, pgTransactionId, now);
   }
 
-  // 협업이 이미 끝났다(결제 기한 만료·취소). 돈은 PG에서 빠져나갔으므로 결제만 승인으로 기록하고,
-  // 단계와 장부는 건드리지 않은 채 운영자에게 환불을 부탁한다(운영 명령은 10번 작업).
+  // 이 승인을 협업에 반영할 수 없다(협업이 이미 끝났거나, 같은 협업의 다른 결제가 이미 보관을 시작했다).
+  // 돈은 PG에서 빠져나갔으므로 결제만 승인으로 기록하고, 단계와 장부는 건드리지 않은 채 운영자에게 환불을 부탁한다
+  // (운영 명령은 10번 작업). 알림을 먼저 보낸다: 알림이 실패하면 결제가 아직 승인으로 기록되지 않아 PG가 다시 보낼 때
+  // 신호가 다시 나간다(동시에 오면 두 번 갈 수 있지만 한 번도 안 가는 것보다 낫다).
   private async recordLateApproval(
     payment: Payment,
     pgTransactionId: string,
     now: Date,
   ): Promise<void> {
-    if (!(await this.payments.markApproved(payment.id, pgTransactionId, now))) {
-      return;
-    }
     await this.operatorAlert.alert({
       subject: LATE_APPROVAL_SUBJECT,
       body: `결제 ID: ${payment.id}`,
     });
+    await this.payments.markApproved(payment.id, pgTransactionId, now);
   }
 
-  // 이미 처리된 결제에 승인 통지가 또 왔다.
+  // 이미 승인됐거나 실패한 결제에 승인 통지가 또 왔다.
   // 승인된 결제이고 협업이 아직 FUNDED면 후속 단계를 다시 시도한다(같은 키라 이미 된 일은 그대로다).
-  // 실패·취소로 기록된 결제에 승인이 오면 돈이 나간 것이므로 운영자에게 알린다.
+  // 실패로 기록된 결제에 승인이 오면 돈이 나간 것이므로 운영자에게 알린다.
   private async reactToSettledPayment(
     payment: Payment,
     options: ApplyResultOptions,
@@ -444,7 +478,7 @@ export class PaymentsService {
     }
     const fresh = await this.collaborations.findById(collaboration.id);
     if (fresh?.stage !== 'AWAITING_PAYMENT') {
-      throw new AppError('CONFLICT', '결제할 수 있는 협업이 아니에요.');
+      throw this.notPayable();
     }
     return fresh;
   }
@@ -486,6 +520,10 @@ export class PaymentsService {
     if ((await this.users.getRole(userId)) !== 'STORE') {
       throw new AppError('FORBIDDEN', '가게 계정만 쓸 수 있어요.');
     }
+  }
+
+  private notPayable(): AppError {
+    return new AppError('CONFLICT', '결제할 수 있는 협업이 아니에요.');
   }
 
   private paymentNotFound(): AppError {

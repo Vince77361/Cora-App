@@ -11,7 +11,9 @@ import { FakePaymentAdapter } from '../src/integrations/payment/fake-payment.ada
 import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
 import { PaymentPort } from '../src/integrations/payment/payment.port';
 import { PushPort } from '../src/integrations/push/push.port';
+import { JobHandlerRegistry } from '../src/jobs/job-handler-registry';
 import { JobScheduler } from '../src/jobs/job-scheduler';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
@@ -330,6 +332,32 @@ describe('payments', () => {
       await pay(s.collaborationId, 'CRYPTO').expect(400);
     });
 
+    it('leaves exactly one pending payment when two creates arrive at the same time', async () => {
+      const s = await seed();
+      const results = await Promise.all([
+        pay(s.collaborationId),
+        pay(s.collaborationId),
+        pay(s.collaborationId),
+      ]);
+      expect(results.map((r) => r.status)).toEqual([201, 201, 201]);
+      const rows = await prisma.payment.findMany({
+        where: { collaborationId: s.collaborationId },
+      });
+      expect(rows.filter((p) => p.status === 'PENDING')).toHaveLength(1);
+      expect(rows.filter((p) => p.status === 'CANCELLED')).toHaveLength(2);
+    });
+
+    it('answers 409 and creates nothing when the owner cancels the offer first', async () => {
+      const s = await seed();
+      await request(server)
+        .post(`/offers/${s.offerId}/cancel`)
+        .set(auth)
+        .send()
+        .expect(200);
+      await pay(s.collaborationId).expect(409);
+      expect(await prisma.payment.count()).toBe(0);
+    });
+
     it('replaces a pending payment when the owner starts again', async () => {
       const s = await seed();
       const first = await startPayment(s.collaborationId);
@@ -567,7 +595,7 @@ describe('payments', () => {
       expect(alert).toHaveBeenCalledTimes(1);
       expect(alert).toHaveBeenCalledWith({
         subject:
-          '협업이 끝난 뒤 결제가 승인됐어요. 운영 명령으로 환불해 주세요.',
+          '협업에 반영하지 못한 결제가 승인됐어요. 운영 명령으로 환불해 주세요.',
         body: expect.stringContaining(paymentId) as string,
       });
       // 같은 통지가 또 와도 운영자에게 다시 알리지 않는다.
@@ -575,12 +603,45 @@ describe('payments', () => {
       expect(alert).toHaveBeenCalledTimes(1);
     });
 
-    it('alerts the operator when an approval arrives for a payment that was cancelled', async () => {
+    // 계획의 "다시 시도" 흐름: 결제창을 닫고(결제가 완료되지 않았어요) 다시 결제하면 첫 결제는 취소로 바뀐다.
+    // 그런데 첫 결제창에서 낸 돈의 승인이 뒤늦게 온다. 돈이 나갔으므로 보관이 시작돼야 한다.
+    it('funds the collaboration when the approval arrives for a payment that a newer one replaced', async () => {
       const s = await seed();
       const first = await startPayment(s.collaborationId);
-      await startPayment(s.collaborationId);
-      await webhook(first, 'APPROVED').expect(200);
+      const second = await startPayment(s.collaborationId);
       expect(await paymentStatus(first)).toBe('CANCELLED');
+      await webhook(first, 'APPROVED').expect(200);
+
+      expect(await paymentStatus(first)).toBe('APPROVED');
+      expect(await paymentStatus(second)).toBe('PENDING');
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('FUNDED');
+      const ledger = await ledgerOf(s.collaborationId);
+      expect(
+        ledger.map((e) => [e.debitAccount, e.creditAccount, e.amount]).sort(),
+      ).toEqual([
+        ['PG_IN', 'ESCROW', 100000],
+        ['PG_IN', 'FEE_REVENUE', 10000],
+      ]);
+      expect(new Set(ledger.map((e) => e.idempotencyKey))).toEqual(
+        new Set([`payment:${first}`]),
+      );
+      expect(await prisma.notification.count()).toBe(1);
+      expect(alert).not.toHaveBeenCalled();
+
+      // 남은 두 번째 결제가 나중에 승인되면 이미 보관 중이라 늦은 승인이다: 장부는 늘지 않고 운영자에게 알린다.
+      await webhook(second, 'APPROVED').expect(200);
+      expect(await paymentStatus(second)).toBe('APPROVED');
+      expect(await ledgerOf(s.collaborationId)).toHaveLength(2);
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('FUNDED');
+    });
+
+    it('alerts the operator and does not fund when an approval arrives for a failed payment', async () => {
+      const s = await seed();
+      const paymentId = await startPayment(s.collaborationId);
+      await webhook(paymentId, 'FAILED').expect(200);
+      await webhook(paymentId, 'APPROVED').expect(200);
+      expect(await paymentStatus(paymentId)).toBe('FAILED');
       expect((await collaborationOf(s.collaborationId)).stage).toBe(
         'AWAITING_PAYMENT',
       );
@@ -698,6 +759,43 @@ describe('payments', () => {
       );
     });
 
+    it('finishes the steps after funding when the job that failed on the notification is run again', async () => {
+      const s = await seed();
+      const paymentId = await startPayment(s.collaborationId);
+      pg.recordFakeResult({ paymentId, status: 'APPROVED' });
+      const registry = app.get(JobHandlerRegistry);
+      const job = { paymentId, attempt: 1 };
+      const notify = jest
+        .spyOn(app.get(NotificationsService), 'notify')
+        .mockRejectedValueOnce(new Error('inbox down'));
+      try {
+        // 승인은 커밋됐지만 알림이 실패해 작업이 던진다.
+        await expect(registry.run('payment-recheck', job)).rejects.toThrow(
+          'inbox down',
+        );
+        expect((await collaborationOf(s.collaborationId)).stage).toBe('FUNDED');
+        expect(await prisma.notification.count()).toBe(0);
+        // 큐가 같은 작업을 다시 돌린다.
+        await registry.run('payment-recheck', job);
+      } finally {
+        notify.mockRestore();
+      }
+      expect(await prisma.notification.count()).toBe(1);
+      expect(push.sent).toHaveLength(1);
+      expect(await ledgerOf(s.collaborationId)).toHaveLength(2);
+      expect(
+        scheduler
+          .pending()
+          .filter((j) => j.name !== 'payment-recheck')
+          .map((j) => j.jobKey)
+          .sort(),
+      ).toEqual([
+        `refund-unsubmitted:${s.collaborationId}`,
+        `submit-reminder:${s.collaborationId}:1`,
+        `submit-reminder:${s.collaborationId}:3`,
+      ]);
+    });
+
     it('does nothing for a payment that was already settled', async () => {
       const s = await seed();
       const paymentId = await startPayment(s.collaborationId);
@@ -719,6 +817,16 @@ describe('payments', () => {
   });
 
   describe('dev routes in the test app', () => {
+    // AppModule이 실제 환경(NODE_ENV=test, PAYMENT_ADAPTER=fake)을 PaymentsDevModule에 넘기는지 확인한다.
+    // 라우트가 없으면 404, 있으면 로그인이 없을 때 인증 가드가 401로 막는다.
+    it('registers the dev routes through the real app wiring (401 without a token, not 404)', async () => {
+      const id = randomUUID();
+      await request(server)
+        .post(`/dev/fake-payments/${id}/approve`)
+        .expect(401);
+      await request(server).post(`/dev/fake-payments/${id}/fail`).expect(401);
+    });
+
     it('approves through the dev route without signing and funds the collaboration', async () => {
       const s = await seed();
       const paymentId = await startPayment(s.collaborationId);
