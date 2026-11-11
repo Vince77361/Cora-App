@@ -21,7 +21,7 @@ export const DEV_EMAIL_DOMAIN = 'example.com';
 export const DEV_PASSWORD_BASE = 'cora-dev-only';
 
 // 한국 휴대폰 번호: 010 + 8자리(하이픈은 있어도 없어도 된다).
-const PHONE_PATTERN = /^010\d{8}$/;
+export const PHONE_PATTERN = /^010\d{8}$/;
 
 export interface DevCredentials {
   email: string;

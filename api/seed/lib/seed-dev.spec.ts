@@ -14,12 +14,24 @@ class FakeDevUsers implements DevUsers {
   }
 }
 
-function setup(nodeEnv: string | undefined = 'development') {
+const REF = 'abcdefghijklmnopqrst';
+
+// nodeEnv에 undefined를 주면 "NODE_ENV가 없는 경우"이므로 기본값으로 바꾸지 않는다.
+function setup(options: { nodeEnv?: string; supabaseUrl?: string } = {}) {
+  const nodeEnv = 'nodeEnv' in options ? options.nodeEnv : 'development';
+  const supabaseUrl = options.supabaseUrl ?? `https://${REF}.supabase.co`;
   const admin = new FakeSupabaseAdmin();
   const users = new FakeDevUsers();
   const lines: string[] = [];
   const run = () =>
-    runSeedDev({ nodeEnv, admin, users, log: (l) => lines.push(l) });
+    runSeedDev({
+      nodeEnv,
+      supabaseUrl,
+      devProjectRef: REF,
+      admin,
+      users,
+      log: (l) => lines.push(l),
+    });
   return { admin, users, lines, run };
 }
 
@@ -49,12 +61,41 @@ describe('runSeedDev', () => {
     expect(users.rows.size).toBe(3);
   });
 
-  it('refuses to run in production before touching anything', async () => {
-    const { admin, users, run } = setup('production');
+  it.each([undefined, '', 'test', 'staging', 'production'])(
+    'refuses NODE_ENV=%p before touching anything',
+    async (nodeEnv) => {
+      const { admin, users, run } = setup({ nodeEnv });
+
+      await expect(run()).rejects.toThrow(SeedError);
+      expect(admin.calls).toBe(0);
+      expect(users.rows.size).toBe(0);
+    },
+  );
+
+  it('refuses a SUPABASE_URL that is not the dev project before touching anything', async () => {
+    const { admin, users, run } = setup({
+      supabaseUrl: 'https://zzzzzzzzzzzzzzzzzzzz.supabase.co',
+    });
 
     await expect(run()).rejects.toThrow(SeedError);
     expect(admin.calls).toBe(0);
     expect(users.rows.size).toBe(0);
+  });
+
+  it('resets the password of an existing account and says so', async () => {
+    const { admin, lines, run } = setup();
+    await run();
+    for (const account of admin.users.values()) account.password = 'changed';
+
+    const second = await run();
+
+    expect(second.every((r) => r.passwordReset)).toBe(true);
+    for (const account of admin.users.values()) {
+      expect(account.password).toMatch(/^cora-dev-only-phone-010\d{8}$/);
+    }
+    expect(lines.slice(-3).every((l) => l.includes('비밀번호 맞춤'))).toBe(
+      true,
+    );
   });
 
   it('logs only the last four digits and the result', async () => {

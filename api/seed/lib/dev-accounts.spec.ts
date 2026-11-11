@@ -5,6 +5,7 @@ import {
   DEV_EMAIL_DOMAIN,
   DEV_PASSWORD_BASE,
   devCredentials,
+  PHONE_PATTERN,
 } from './dev-accounts';
 
 const dartAdapter = readFileSync(
@@ -43,22 +44,44 @@ describe('devCredentials', () => {
 });
 
 // 앱(FakeSignInAdapter)과 규칙이 어긋나면 E1에서 이 계정으로 로그인되지 않는다.
+// dart format이 줄바꿈과 들여쓰기를 바꿔도 깨지지 않게 공백을 모두 한 칸으로 줄여 비교한다.
+const squash = (text: string) => text.replace(/\s+/g, ' ');
+const dart = squash(dartAdapter);
+
 describe('rule shared with the app FakeSignInAdapter', () => {
   it('uses the same email domain', () => {
-    expect(dartAdapter).toContain(
-      `static const devEmailDomain = '${DEV_EMAIL_DOMAIN}';`,
+    expect(dart).toContain(
+      squash(`static const devEmailDomain = '${DEV_EMAIL_DOMAIN}';`),
     );
   });
 
   it('uses the same password base', () => {
-    expect(dartAdapter).toContain(
-      `static const _devPasswordBase = '${DEV_PASSWORD_BASE}';`,
+    expect(dart).toContain(
+      squash(`static const _devPasswordBase = '${DEV_PASSWORD_BASE}';`),
     );
   });
 
   it('builds the key, email and password the same way', () => {
-    expect(dartAdapter).toContain(`_signInAs('phone-$phoneDigits')`);
-    expect(dartAdapter).toContain(`email: '$key@$devEmailDomain'`);
-    expect(dartAdapter).toContain(`password: '$_devPasswordBase-$key'`);
+    expect(dart).toContain(squash(`_signInAs('phone-$phoneDigits')`));
+    expect(dart).toContain(squash(`email: '$key@$devEmailDomain'`));
+    expect(dart).toContain(squash(`password: '$_devPasswordBase-$key'`));
+  });
+
+  it('accepts the same phone pattern', () => {
+    expect(dart).toContain(
+      squash(
+        `static final _phonePattern = RegExp(r'${PHONE_PATTERN.source}');`,
+      ),
+    );
+    expect(dart).toContain(squash('_phonePattern.hasMatch(phoneDigits)'));
+  });
+
+  it('receives digits only, like the seed after stripping non-digits', () => {
+    expect(dart).toContain(
+      squash('Future<void> verifyPhoneCode({ required String phoneDigits,'),
+    );
+    expect(devCredentials('010-0000-0003')).toEqual(
+      devCredentials('01000000003'),
+    );
   });
 });

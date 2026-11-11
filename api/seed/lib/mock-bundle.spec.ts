@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEV_ACCOUNTS } from './dev-accounts';
 
-const root = join(__dirname, '../../seed/mock');
+const root = join(__dirname, '../mock');
 const mock = JSON.parse(readFileSync(join(root, 'mock.json'), 'utf8')) as {
   devAccounts: { phone: string; role: string }[];
   images: { file: string }[];

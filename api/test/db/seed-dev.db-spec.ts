@@ -1,12 +1,15 @@
-import { PrismaDevUsers } from '../../src/dev-seed/dev-users';
+import { PrismaDevUsers } from '../../seed/lib/dev-users';
 import { FakeSupabaseAdmin } from '../support/fake-supabase-admin';
-import { runSeedDev } from '../../src/dev-seed/seed-dev';
+import { readDevProjectRef } from '../../seed/lib/dev-target';
+import { runSeedDev } from '../../seed/lib/seed-dev';
 import { prisma } from './setup-db';
 
 describe('seed:dev users upsert', () => {
   const run = (admin = new FakeSupabaseAdmin()) =>
     runSeedDev({
-      nodeEnv: 'test',
+      nodeEnv: 'development',
+      supabaseUrl: `https://${readDevProjectRef()}.supabase.co`,
+      devProjectRef: readDevProjectRef(),
       admin,
       users: new PrismaDevUsers(prisma),
       log: () => undefined,

@@ -42,6 +42,7 @@ describe('HttpSupabaseAdmin', () => {
     await expect(admin.ensureUser(CREDS)).resolves.toEqual({
       id: ID,
       created: true,
+      passwordReset: false,
     });
     expect(calls[0].url).toBe(`${URL_BASE}/auth/v1/admin/users`);
     expect(calls[0].method).toBe('POST');
@@ -63,14 +64,22 @@ describe('HttpSupabaseAdmin', () => {
           { id: ID, email: CREDS.email },
         ],
       }),
+      json(200, { id: ID }),
     ]);
     const admin = new HttpSupabaseAdmin(URL_BASE, 'a.b.c', fn);
 
     await expect(admin.ensureUser(CREDS)).resolves.toEqual({
       id: ID,
       created: false,
+      passwordReset: true,
     });
     expect(calls[1].method).toBe('GET');
+    expect(calls[2].method).toBe('PUT');
+    expect(calls[2].url).toBe(`${URL_BASE}/auth/v1/admin/users/${ID}`);
+    expect(JSON.parse(calls[2].body ?? '{}')).toEqual({
+      password: CREDS.password,
+      email_confirm: true,
+    });
   });
 
   it('sends only the apikey header for an sb_secret_ key', async () => {
