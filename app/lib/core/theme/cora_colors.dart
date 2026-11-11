@@ -19,6 +19,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     required this.onPrimaryAction,
     required this.selectionDot,
     required this.onSelectionDot,
+    required this.glass,
+    required this.scrim,
   });
 
   final Color background;
@@ -37,6 +39,13 @@ class CoraColors extends ThemeExtension<CoraColors> {
   final Color selectionDot;
   final Color onSelectionDot;
 
+  /// 유리 카드(`CoraGlassCard`)의 반투명 채움. 뒤를 흐리게 비춘다.
+  final Color glass;
+
+  /// 화면 전환 중 뒤 화면을 어둡게 덮는 색과 시트 뒤 바탕색. 알파는 `CoraMotion`이 정한다.
+  /// 다크에서 `text`(#F2F3F5)를 쓰면 오히려 밝아지므로 따로 둔다.
+  final Color scrim;
+
   static const light = CoraColors(
     background: Color(0xFFFFFFFF),
     text: Color(0xFF17181C),
@@ -53,6 +62,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
     onPrimaryAction: Color(0xFF1F2A00),
     selectionDot: Color(0xFFC6FF3D),
     onSelectionDot: Color(0xFF1F2A00),
+    // Principles 유리 카드 rgba(255,255,255,0.75)
+    glass: Color(0xBFFFFFFF),
+    // 캔버스의 그림자·사진 덮개 잉크 rgba(23,24,28)
+    scrim: Color(0xFF17181C),
   );
 
   // 다크의 surface, surfaceMuted, onAccent는 DarkPrinciples/DarkNEscrow/DarkNStoreHome에서
@@ -77,6 +90,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
     onPrimaryAction: Color(0xFF17181C),
     selectionDot: Color(0xFF0F1012),
     onSelectionDot: Color(0xFFF2F3F5),
+    // DarkPrinciples 유리 카드 rgba(28,30,34,0.85)
+    glass: Color(0xD91C1E22),
+    // 다크 배경(#0F1012)보다 어두워야 덮었을 때 어두워진다. 캔버스의 rgba(0,0,0,…) 그림자와 같은 검정.
+    scrim: Color(0xFF000000),
   );
 
   @override
@@ -96,6 +113,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? onPrimaryAction,
     Color? selectionDot,
     Color? onSelectionDot,
+    Color? glass,
+    Color? scrim,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -113,6 +132,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
       onPrimaryAction: onPrimaryAction ?? this.onPrimaryAction,
       selectionDot: selectionDot ?? this.selectionDot,
       onSelectionDot: onSelectionDot ?? this.onSelectionDot,
+      glass: glass ?? this.glass,
+      scrim: scrim ?? this.scrim,
     );
   }
 
@@ -136,6 +157,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
       onPrimaryAction: mix(onPrimaryAction, other.onPrimaryAction),
       selectionDot: mix(selectionDot, other.selectionDot),
       onSelectionDot: mix(onSelectionDot, other.onSelectionDot),
+      glass: mix(glass, other.glass),
+      scrim: mix(scrim, other.scrim),
     );
   }
 }

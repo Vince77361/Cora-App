@@ -80,4 +80,14 @@ abstract final class CoraTextStyles {
     height: _normal,
     leadingDistribution: _even,
   );
+
+  /// 로고 글자 "cora". A1의 26px, 900, -0.05em.
+  static const wordmark = TextStyle(
+    fontFamily: _family,
+    fontSize: 26,
+    fontWeight: FontWeight.w900,
+    letterSpacing: -1.3,
+    height: _normal,
+    leadingDistribution: _even,
+  );
 }

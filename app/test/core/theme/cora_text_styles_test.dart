@@ -19,24 +19,29 @@ void main() {
     ('label', CoraTextStyles.label, 13, FontWeight.w500, 0, normal),
     ('caption', CoraTextStyles.caption, 12, FontWeight.w500, 0, normal),
     ('button', CoraTextStyles.button, 16, FontWeight.w700, 0, normal),
+    // A1 로고 글자: 26px, 900, -0.05em
+    ('wordmark', CoraTextStyles.wordmark, 26, FontWeight.w900, -1.3, normal),
   ];
 
-  test('every text style pins family, size, weight, letterSpacing and height', () {
-    for (final (name, s, size, weight, spacing, height) in expected) {
-      expect(s.fontFamily, 'NotoSansKR', reason: name);
-      expect(s.fontSize, size, reason: name);
-      expect(s.fontWeight, weight, reason: name);
-      expect(s.letterSpacing, isNotNull, reason: '$name letterSpacing');
-      expect(s.letterSpacing, spacing, reason: name);
-      expect(s.height, isNotNull, reason: '$name height');
-      expect(s.height, height, reason: name);
-      expect(
-        s.leadingDistribution,
-        TextLeadingDistribution.even,
-        reason: '$name leadingDistribution',
-      );
-    }
-  });
+  test(
+    'every text style pins family, size, weight, letterSpacing and height',
+    () {
+      for (final (name, s, size, weight, spacing, height) in expected) {
+        expect(s.fontFamily, 'NotoSansKR', reason: name);
+        expect(s.fontSize, size, reason: name);
+        expect(s.fontWeight, weight, reason: name);
+        expect(s.letterSpacing, isNotNull, reason: '$name letterSpacing');
+        expect(s.letterSpacing, spacing, reason: name);
+        expect(s.height, isNotNull, reason: '$name height');
+        expect(s.height, height, reason: name);
+        expect(
+          s.leadingDistribution,
+          TextLeadingDistribution.even,
+          reason: '$name leadingDistribution',
+        );
+      }
+    },
+  );
 
   test('shadow blur converts CSS blur to the Flutter blur radius', () {
     // CSS blur B는 시그마 B/2, Flutter blurRadius r은 시그마 0.57735*r+0.5다.

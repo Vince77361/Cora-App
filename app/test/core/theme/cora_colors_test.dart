@@ -5,22 +5,24 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// 모든 필드를 이름과 함께 나열한다. 필드가 바뀌어 짝이 어긋나면 아래 테스트가 잡는다.
 Map<String, Color> _fields(CoraColors c) => {
-      'background': c.background,
-      'text': c.text,
-      'textSecondary': c.textSecondary,
-      'accent': c.accent,
-      'onAccent': c.onAccent,
-      'surface': c.surface,
-      'surfaceSelected': c.surfaceSelected,
-      'onSurfaceSelected': c.onSurfaceSelected,
-      'surfaceMuted': c.surfaceMuted,
-      'onSurfaceMuted': c.onSurfaceMuted,
-      'line': c.line,
-      'primaryAction': c.primaryAction,
-      'onPrimaryAction': c.onPrimaryAction,
-      'selectionDot': c.selectionDot,
-      'onSelectionDot': c.onSelectionDot,
-    };
+  'background': c.background,
+  'text': c.text,
+  'textSecondary': c.textSecondary,
+  'accent': c.accent,
+  'onAccent': c.onAccent,
+  'surface': c.surface,
+  'surfaceSelected': c.surfaceSelected,
+  'onSurfaceSelected': c.onSurfaceSelected,
+  'surfaceMuted': c.surfaceMuted,
+  'onSurfaceMuted': c.onSurfaceMuted,
+  'line': c.line,
+  'primaryAction': c.primaryAction,
+  'onPrimaryAction': c.onPrimaryAction,
+  'selectionDot': c.selectionDot,
+  'onSelectionDot': c.onSelectionDot,
+  'glass': c.glass,
+  'scrim': c.scrim,
+};
 
 /// 이름으로 필드 하나만 [color]로 바꾼 사본을 만든다.
 CoraColors _copyWithField(CoraColors c, String name, Color color) {
@@ -55,6 +57,10 @@ CoraColors _copyWithField(CoraColors c, String name, Color color) {
       return c.copyWith(selectionDot: color);
     case 'onSelectionDot':
       return c.copyWith(onSelectionDot: color);
+    case 'glass':
+      return c.copyWith(glass: color);
+    case 'scrim':
+      return c.copyWith(scrim: color);
   }
   throw ArgumentError(name);
 }
@@ -85,6 +91,10 @@ void main() {
     expect(c.onPrimaryAction, const Color(0xFF1F2A00));
     expect(c.selectionDot, const Color(0xFFC6FF3D));
     expect(c.onSelectionDot, const Color(0xFF1F2A00));
+    // Principles 유리 카드 rgba(255,255,255,0.75)
+    expect(c.glass, const Color(0xBFFFFFFF));
+    // 캔버스 그림자 잉크 rgba(23,24,28)
+    expect(c.scrim, const Color(0xFF17181C));
   });
 
   test('dark palette matches the design canvas', () {
@@ -105,6 +115,10 @@ void main() {
     expect(c.onPrimaryAction, const Color(0xFF17181C));
     expect(c.selectionDot, const Color(0xFF0F1012));
     expect(c.onSelectionDot, const Color(0xFFF2F3F5));
+    // DarkPrinciples 유리 카드 rgba(28,30,34,0.85)
+    expect(c.glass, const Color(0xD91C1E22));
+    // 다크 배경(#0F1012)보다 어두워야 덮었을 때 화면이 어두워진다.
+    expect(c.scrim, const Color(0xFF000000));
   });
 
   test('copyWith with no arguments keeps every field', () {
@@ -128,8 +142,14 @@ void main() {
   });
 
   test('lerp returns the endpoints field by field', () {
-    _expectSameFields(CoraColors.light.lerp(CoraColors.dark, 0), CoraColors.light);
-    _expectSameFields(CoraColors.light.lerp(CoraColors.dark, 1), CoraColors.dark);
+    _expectSameFields(
+      CoraColors.light.lerp(CoraColors.dark, 0),
+      CoraColors.light,
+    );
+    _expectSameFields(
+      CoraColors.light.lerp(CoraColors.dark, 1),
+      CoraColors.dark,
+    );
   });
 
   test('lerp moves every field to the midpoint', () {
