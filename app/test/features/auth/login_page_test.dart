@@ -9,7 +9,7 @@ import 'package:cora/features/auth/domain/auth_repository.dart';
 import 'package:cora/features/auth/presentation/pages/login_page.dart';
 import 'package:cora/features/auth/presentation/pages/phone_verify_page.dart';
 import 'package:cora/features/dev/presentation/pages/motion_gallery_page.dart';
-import 'package:cora/features/onboarding/presentation/pages/role_select_placeholder_page.dart';
+import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -208,7 +208,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(auth.kakaoCalls, 1);
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
     expect(currentPath(tester), AppRoutes.role);
   });
 
@@ -220,7 +220,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(auth.naverCalls, 1);
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
   });
 
   testWidgets('all three buttons are off while signing in', (tester) async {
@@ -241,7 +241,7 @@ void main() {
 
     hold.complete();
     await tester.pumpAndSettle();
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
   });
 
   testWidgets('a failed sign in shows a retry message and re-enables', (
@@ -262,7 +262,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(auth.naverCalls, 2);
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
   });
 
   testWidgets(

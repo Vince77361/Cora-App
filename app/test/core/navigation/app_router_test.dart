@@ -4,14 +4,17 @@ import 'package:cora/features/auth/presentation/pages/login_page.dart';
 import 'package:cora/features/auth/presentation/pages/phone_verify_page.dart';
 import 'package:cora/core/ui/cora_logo.dart';
 import 'package:cora/features/dev/presentation/pages/motion_gallery_page.dart';
-import 'package:cora/features/onboarding/presentation/pages/role_select_placeholder_page.dart';
+import 'package:cora/features/onboarding/domain/user_role.dart';
+import 'package:cora/features/onboarding/presentation/pages/role_home_placeholder_page.dart';
+import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
 import 'package:cora/core/network/api_client_provider.dart';
-import 'package:cora_api/api.dart';
+import 'package:cora_api/api.dart' hide UserRole;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/fake_auth_repository.dart';
+import '../../features/onboarding/fake_me_repository.dart';
 import '../../support/fake_http_client.dart';
 import '../../support/pump_cora_app.dart';
 
@@ -54,7 +57,7 @@ void main() {
     routerOf(tester).go(AppRoutes.role);
     await tester.pumpAndSettle();
 
-    expect(find.byType(RoleSelectPlaceholderPage), findsNothing);
+    expect(find.byType(RoleSelectPage), findsNothing);
     expect(find.byType(LoginPage), findsOneWidget);
   });
 
@@ -67,7 +70,7 @@ void main() {
 
     expect(auth.kakaoCalls, 1);
     expect(find.byType(LoginPage), findsNothing);
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
     expect(currentPath(tester), AppRoutes.role);
   });
 
@@ -96,7 +99,7 @@ void main() {
       auth: fake,
       overrides: [httpClientProvider.overrideWithValue(fakeHttp)],
     );
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
 
     // 서버가 지금 세션의 토큰을 거부한다. 요청한 쪽은 오류를 받고, 앱은 로그인 화면으로 간다.
     await expectLater(
@@ -107,7 +110,7 @@ void main() {
 
     expect(fake.signOutCalls, 1);
     expect(find.byType(LoginPage), findsOneWidget);
-    expect(find.byType(RoleSelectPlaceholderPage), findsNothing);
+    expect(find.byType(RoleSelectPage), findsNothing);
   });
 
   testWidgets('returns to /login when the session ends', (tester) async {
@@ -115,28 +118,112 @@ void main() {
       session: FakeAuthRepository.signedInSession,
     );
     await pumpCoraApp(tester, auth: fake);
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
 
     fake.endSession();
     await tester.pumpAndSettle();
 
     expect(find.byType(LoginPage), findsOneWidget);
-    expect(find.byType(RoleSelectPlaceholderPage), findsNothing);
+    expect(find.byType(RoleSelectPage), findsNothing);
   });
 
-  testWidgets('logging out from the placeholder returns to /login', (
-    tester,
-  ) async {
+  testWidgets('logging out from a home returns to /login', (tester) async {
     final fake = FakeAuthRepository(
       session: FakeAuthRepository.signedInSession,
     );
-    await pumpCoraApp(tester, auth: fake);
+    await pumpCoraApp(
+      tester,
+      auth: fake,
+      me: FakeMeRepository(role: UserRole.store),
+    );
 
     await tester.tap(find.text('로그아웃'));
     await tester.pumpAndSettle();
 
     expect(fake.signOutCalls, 1);
     expect(find.byType(LoginPage), findsOneWidget);
+  });
+
+  testWidgets('sends a signed-in user with a role from /login to their home', (
+    tester,
+  ) async {
+    final auth = FakeAuthRepository();
+    await pumpCoraApp(
+      tester,
+      auth: auth,
+      me: FakeMeRepository(role: UserRole.creator),
+    );
+
+    await tester.tap(find.text('카카오로 계속하기'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RoleHomePlaceholderPage), findsOneWidget);
+    expect(currentPath(tester), AppRoutes.creator);
+  });
+
+  testWidgets('keeps /role reachable when a role exists', (tester) async {
+    await pumpCoraApp(
+      tester,
+      auth: FakeAuthRepository(session: FakeAuthRepository.signedInSession),
+      me: FakeMeRepository(role: UserRole.brand),
+    );
+    expect(currentPath(tester), AppRoutes.brand);
+
+    routerOf(tester).go(AppRoutes.role);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RoleSelectPage), findsOneWidget);
+    expect(currentPath(tester), AppRoutes.role);
+  });
+
+  testWidgets('keeps a user on the home of their own role only', (
+    tester,
+  ) async {
+    await pumpCoraApp(
+      tester,
+      auth: FakeAuthRepository(session: FakeAuthRepository.signedInSession),
+      me: FakeMeRepository(role: UserRole.store),
+    );
+
+    routerOf(tester).go(AppRoutes.creator);
+    await tester.pumpAndSettle();
+
+    expect(currentPath(tester), AppRoutes.store);
+    expect(find.text('가게 홈'), findsOneWidget);
+  });
+
+  testWidgets('sends a user without a role from a home to /role', (
+    tester,
+  ) async {
+    await pumpCoraApp(
+      tester,
+      auth: FakeAuthRepository(session: FakeAuthRepository.signedInSession),
+    );
+
+    routerOf(tester).go(AppRoutes.store);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RoleSelectPage), findsOneWidget);
+    expect(currentPath(tester), AppRoutes.role);
+  });
+
+  testWidgets('sends any location to /login when the session ends at a home', (
+    tester,
+  ) async {
+    final fake = FakeAuthRepository(
+      session: FakeAuthRepository.signedInSession,
+    );
+    await pumpCoraApp(
+      tester,
+      auth: fake,
+      me: FakeMeRepository(role: UserRole.brand),
+    );
+
+    fake.endSession();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginPage), findsOneWidget);
+    expect(find.byType(RoleHomePlaceholderPage), findsNothing);
   });
 
   testWidgets('a cold start with a stored session never shows /login', (
@@ -153,7 +240,7 @@ void main() {
     }
     await tester.pumpAndSettle();
 
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
   });
 
   testWidgets('keeps one router across auth changes', (tester) async {
@@ -216,7 +303,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MotionGalleryPage), findsNothing);
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
   });
 
   testWidgets('dev build registers /dev/motion', (tester) async {

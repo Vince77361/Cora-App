@@ -63,6 +63,25 @@ void main() {
     },
   );
 
+  testWidgets('primary button label is 500 in dark and 700 in light', (
+    tester,
+  ) async {
+    for (final (theme, weight) in [
+      (coraLightTheme, FontWeight.w700),
+      (coraDarkTheme, FontWeight.w500),
+    ]) {
+      await tester.pumpWidget(
+        coraTestApp(
+          CoraPrimaryButton(label: '다음', onPressed: () {}),
+          theme: theme,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(_labelStyle(tester, '다음').fontWeight, weight);
+      expect(_labelStyle(tester, '다음').fontSize, 16);
+    }
+  });
+
   testWidgets('primary button fills the available width', (tester) async {
     await tester.pumpWidget(
       coraTestApp(

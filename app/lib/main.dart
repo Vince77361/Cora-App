@@ -5,12 +5,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
 import 'core/config/app_config.dart';
 import 'core/config/app_config_provider.dart';
+import 'core/network/api_client_provider.dart';
 import 'features/auth/data/secure_key_value_store.dart';
 import 'features/auth/data/fake_sign_in_adapter.dart';
 import 'features/auth/data/secure_session_storage.dart';
 import 'features/auth/data/sign_in_adapter.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/domain/auth_repository_provider.dart';
+import 'features/onboarding/data/api_me_repository.dart';
+import 'features/onboarding/domain/me_repository_provider.dart';
 
 /// 앱 시작점이자 실제 구현을 조립하는 곳. Supabase SDK는 여기서 초기화만 하고,
 /// 기능 코드는 [SupabaseAuthRepository]를 거쳐서만 쓴다.
@@ -51,6 +54,9 @@ Future<void> main() async {
           SupabaseAuthRepository(auth, signInAdapter: signInAdapter),
         ),
         appConfigProvider.overrideWithValue(config),
+        meRepositoryProvider.overrideWith(
+          (ref) => ApiMeRepository(ref.watch(apiClientProvider)),
+        ),
       ],
       child: const CoraApp(),
     ),

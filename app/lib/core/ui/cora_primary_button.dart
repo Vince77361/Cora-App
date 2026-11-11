@@ -42,9 +42,14 @@ class CoraPrimaryButton extends StatelessWidget {
     final onColor = accent ? c.accent : c.primaryAction;
     final onForeground = accent ? c.onAccent : c.onPrimaryAction;
     final offColor = accent ? c.surface : c.line;
+    // 다크의 기본 버튼은 밝은 회색 바탕이라 글자를 한 단계 가볍게(500) 쓴다(DarkNRole 등).
+    // 라이트의 라임 바탕은 700이다.
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final textStyle = accent && !enabled
         ? CoraTextStyles.bodyLarge
-        : CoraTextStyles.button;
+        : (!accent && dark
+              ? CoraTextStyles.button.copyWith(fontWeight: FontWeight.w500)
+              : CoraTextStyles.button);
     return Semantics(
       container: true,
       button: true,

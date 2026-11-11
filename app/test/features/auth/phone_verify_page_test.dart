@@ -6,7 +6,7 @@ import 'package:cora/core/time/clock.dart';
 import 'package:cora/features/auth/domain/auth_repository.dart';
 import 'package:cora/features/auth/presentation/pages/login_page.dart';
 import 'package:cora/features/auth/presentation/pages/phone_verify_page.dart';
-import 'package:cora/features/onboarding/presentation/pages/role_select_placeholder_page.dart';
+import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -246,7 +246,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_auth.verifyAttempts, [(_phone, FakeAuthRepository.acceptedCode)]);
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
     expect(currentPath(tester), AppRoutes.role);
   });
 
@@ -289,7 +289,7 @@ void main() {
     _auth.signInError = null;
     await tester.tap(find.text('확인'));
     await tester.pumpAndSettle();
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
   });
 
   testWidgets('confirm is off while verifying', (tester) async {
@@ -307,7 +307,7 @@ void main() {
 
     hold.complete();
     await tester.pumpAndSettle();
-    expect(find.byType(RoleSelectPlaceholderPage), findsOneWidget);
+    expect(find.byType(RoleSelectPage), findsOneWidget);
   });
 
   testWidgets('a failed request keeps the number and 다시 보내기 retries', (
