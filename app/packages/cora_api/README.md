@@ -99,6 +99,7 @@ Class | Method | HTTP request | Description
 *StoresApi* | [**publishMyStore**](doc//StoresApi.md#publishmystore) | **POST** /stores/me/publish | 
 *StoresApi* | [**setMyStoreDefaultTerms**](doc//StoresApi.md#setmystoredefaultterms) | **PUT** /stores/me/default-terms | 
 *StoresApi* | [**updateMyStore**](doc//StoresApi.md#updatemystore) | **PATCH** /stores/me | 
+*SubmissionsApi* | [**submitContentLink**](doc//SubmissionsApi.md#submitcontentlink) | **POST** /collaborations/{id}/submission | 
 *UploadsApi* | [**createPhotoUpload**](doc//UploadsApi.md#createphotoupload) | **POST** /uploads/photos | 
 *UsersApi* | [**getMe**](doc//UsersApi.md#getme) | **GET** /me | 
 *UsersApi* | [**updateMyRole**](doc//UsersApi.md#updatemyrole) | **PATCH** /me/role | 
@@ -114,6 +115,7 @@ Class | Method | HTTP request | Description
  - [ApplicationModel](doc//ApplicationModel.md)
  - [ApplicationStatus](doc//ApplicationStatus.md)
  - [BankModel](doc//BankModel.md)
+ - [CollaborationStage](doc//CollaborationStage.md)
  - [CompleteInstagramConnectDto](doc//CompleteInstagramConnectDto.md)
  - [ContentDraftKind](doc//ContentDraftKind.md)
  - [ContentDraftModel](doc//ContentDraftModel.md)
@@ -153,6 +155,8 @@ Class | Method | HTTP request | Description
  - [StoreSourceLinkModel](doc//StoreSourceLinkModel.md)
  - [StoreStatus](doc//StoreStatus.md)
  - [StoreSummaryModel](doc//StoreSummaryModel.md)
+ - [SubmissionResultModel](doc//SubmissionResultModel.md)
+ - [SubmitContentDto](doc//SubmitContentDto.md)
  - [UpdateRoleDto](doc//UpdateRoleDto.md)
  - [UpdateStoreDto](doc//UpdateStoreDto.md)
  - [UpsertCreatorProfileDto](doc//UpsertCreatorProfileDto.md)

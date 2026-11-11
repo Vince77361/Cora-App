@@ -10,6 +10,7 @@ doc/ApplicationModel.md
 doc/ApplicationStatus.md
 doc/ApplicationsApi.md
 doc/BankModel.md
+doc/CollaborationStage.md
 doc/CompleteInstagramConnectDto.md
 doc/ContentDraftKind.md
 doc/ContentDraftModel.md
@@ -57,6 +58,9 @@ doc/StoreSourceLinkModel.md
 doc/StoreStatus.md
 doc/StoreSummaryModel.md
 doc/StoresApi.md
+doc/SubmissionResultModel.md
+doc/SubmissionsApi.md
+doc/SubmitContentDto.md
 doc/UpdateRoleDto.md
 doc/UpdateStoreDto.md
 doc/UploadsApi.md
@@ -74,6 +78,7 @@ lib/api/offers_api.dart
 lib/api/payments_api.dart
 lib/api/payout_accounts_api.dart
 lib/api/stores_api.dart
+lib/api/submissions_api.dart
 lib/api/uploads_api.dart
 lib/api/users_api.dart
 lib/api_client.dart
@@ -92,6 +97,7 @@ lib/model/applicant_model.dart
 lib/model/application_model.dart
 lib/model/application_status.dart
 lib/model/bank_model.dart
+lib/model/collaboration_stage.dart
 lib/model/complete_instagram_connect_dto.dart
 lib/model/content_draft_kind.dart
 lib/model/content_draft_model.dart
@@ -131,6 +137,8 @@ lib/model/store_onboarding_step.dart
 lib/model/store_source_link_model.dart
 lib/model/store_status.dart
 lib/model/store_summary_model.dart
+lib/model/submission_result_model.dart
+lib/model/submit_content_dto.dart
 lib/model/update_role_dto.dart
 lib/model/update_store_dto.dart
 lib/model/upsert_creator_profile_dto.dart
@@ -146,6 +154,7 @@ test/application_model_test.dart
 test/application_status_test.dart
 test/applications_api_test.dart
 test/bank_model_test.dart
+test/collaboration_stage_test.dart
 test/complete_instagram_connect_dto_test.dart
 test/content_draft_kind_test.dart
 test/content_draft_model_test.dart
@@ -193,6 +202,9 @@ test/store_source_link_model_test.dart
 test/store_status_test.dart
 test/store_summary_model_test.dart
 test/stores_api_test.dart
+test/submission_result_model_test.dart
+test/submissions_api_test.dart
+test/submit_content_dto_test.dart
 test/update_role_dto_test.dart
 test/update_store_dto_test.dart
 test/uploads_api_test.dart

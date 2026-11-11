@@ -16,6 +16,7 @@ import { PaymentsDevModule } from './payments/payments-dev.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PayoutAccountsModule } from './payout-accounts/payout-accounts.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { SettlementsModule } from './settlements/settlements.module';
 import { StoresModule } from './stores/stores.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
@@ -40,6 +41,7 @@ import { UsersModule } from './users/users.module';
     OffersModule,
     PaymentsModule,
     PayoutAccountsModule,
+    SettlementsModule,
     PaymentsDevModule.register(process.env),
   ],
 })

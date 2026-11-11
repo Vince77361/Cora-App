@@ -133,6 +133,29 @@
         ],
         "type": "object"
       },
+      "CollaborationStage": {
+        "description": "제출 뒤의 단계. 조회수 보상이 있으면 COUNTING, 식사권만 있으면 SETTLED.",
+        "enum": [
+          "AWAITING_PAYMENT",
+          "FUNDED",
+          "COUNTING",
+          "SETTLED",
+          "REFUNDED",
+          "CANCELLED",
+          "INQUIRY",
+          "MATCHED",
+          "NEGOTIATING",
+          "AGREED",
+          "CONTRACTED",
+          "GUIDED",
+          "REVIEWING",
+          "APPROVED",
+          "PUBLISHED",
+          "DROPPED",
+          "HALTED"
+        ],
+        "type": "string"
+      },
       "CompleteInstagramConnectDto": {
         "properties": {
           "code": {
@@ -1203,6 +1226,40 @@
         ],
         "type": "object"
       },
+      "SubmissionResultModel": {
+        "properties": {
+          "collaborationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "stage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CollaborationStage"
+              }
+            ],
+            "description": "제출 뒤의 단계. 조회수 보상이 있으면 COUNTING, 식사권만 있으면 SETTLED."
+          }
+        },
+        "required": [
+          "collaborationId",
+          "stage"
+        ],
+        "type": "object"
+      },
+      "SubmitContentDto": {
+        "properties": {
+          "url": {
+            "description": "올린 콘텐츠의 주소. 형식(쇼츠·릴스·카드뉴스·블로그)에 맞는 https 주소만 받는다.",
+            "maxLength": 2000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
       "UpdateRoleDto": {
         "properties": {
           "role": {
@@ -1462,6 +1519,52 @@
         "summary": "",
         "tags": [
           "Payments"
+        ]
+      }
+    },
+    "/collaborations/{id}/submission": {
+      "post": {
+        "operationId": "submitContentLink",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitContentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionResultModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Submissions"
         ]
       }
     },

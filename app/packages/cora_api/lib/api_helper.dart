@@ -71,6 +71,9 @@ String parameterToString(dynamic value) {
   if (value is ApplicationStatus) {
     return ApplicationStatusTypeTransformer().encode(value).toString();
   }
+  if (value is CollaborationStage) {
+    return CollaborationStageTypeTransformer().encode(value).toString();
+  }
   if (value is ContentDraftKind) {
     return ContentDraftKindTypeTransformer().encode(value).toString();
   }

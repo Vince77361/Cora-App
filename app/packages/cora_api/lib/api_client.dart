@@ -220,6 +220,8 @@ class ApiClient {
           return ApplicationStatusTypeTransformer().decode(value);
         case 'BankModel':
           return BankModel.fromJson(value);
+        case 'CollaborationStage':
+          return CollaborationStageTypeTransformer().decode(value);
         case 'CompleteInstagramConnectDto':
           return CompleteInstagramConnectDto.fromJson(value);
         case 'ContentDraftKind':
@@ -298,6 +300,10 @@ class ApiClient {
           return StoreStatusTypeTransformer().decode(value);
         case 'StoreSummaryModel':
           return StoreSummaryModel.fromJson(value);
+        case 'SubmissionResultModel':
+          return SubmissionResultModel.fromJson(value);
+        case 'SubmitContentDto':
+          return SubmitContentDto.fromJson(value);
         case 'UpdateRoleDto':
           return UpdateRoleDto.fromJson(value);
         case 'UpdateStoreDto':
