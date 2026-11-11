@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 빈 레포에서, 개발용 이메일로 로그인해 역할을 고르면 서버에 저장되고 역할별 빈 홈 화면으로 넘어가는 앱과 서버를 만든다. 이후 모든 기능이 올라설 뼈대다.
+**Goal:** 빈 레포에서, 로그인 화면(휴대폰 번호·카카오·네이버, 개발 중에는 같은 화면 뒤의 가짜 인증)으로 로그인해 역할을 고르면 서버에 저장되고 역할별 빈 홈 화면으로 넘어가는 앱과 서버를 만든다. 이후 모든 기능이 올라설 뼈대다.
 
 **Architecture:** Flutter 앱은 데이터를 NestJS API로만 읽고 쓰고, 로그인만 Supabase Auth에 직접 붙는다. NestJS는 Supabase가 발급한 토큰을 검증하고 Prisma로 Supabase PostgreSQL에 접근한다. API 계약은 Swagger에서 Dart 클라이언트를 생성해 맞춘다.
 
@@ -28,7 +28,7 @@
 
 여유 주차가 없다. 한 묶음이 밀리면 뒤가 모두 밀린다.
 
-**이 계획에서 하지 않는 것:** CI, 서버 호스팅과 배포, 작업 큐(첫 예약 작업이 생기는 3번 계획에서 추가), 파일 업로드(2번 계획), 카카오·Apple 로그인(9번 계획).
+**이 계획에서 하지 않는 것:** CI, 서버 호스팅과 배포, 작업 큐(첫 예약 작업이 생기는 3번 계획에서 추가), 파일 업로드(2번 계획), 실제 로그인(휴대폰 OTP·카카오·네이버, 9번 계획. Apple은 출시 전에 다시 판단. 2026-11-11 소유자 결정).
 
 ## Global Constraints
 
