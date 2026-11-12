@@ -414,65 +414,6 @@ class _CreatorDiscoverPageState extends State<CreatorDiscoverPage> {
                 ),
               ],
             ),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: p.card,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => demoGo(context, 'Main.dc.html'),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      child: Text(
-                        '브랜드',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: p.sub,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: p.dark
-                          ? const Color(0xFFF2F3F5)
-                          : const Color(0xFFFFFFFF),
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: p.dark
-                          ? null
-                          : const [
-                              BoxShadow(
-                                color: Color(0x1A17181C),
-                                offset: Offset(0, 2),
-                                blurRadius: 8,
-                              ),
-                            ],
-                    ),
-                    child: const Text(
-                      '크리에이터',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: g3Ink,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),

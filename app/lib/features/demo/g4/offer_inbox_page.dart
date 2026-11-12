@@ -90,56 +90,6 @@ class _Header extends StatelessWidget {
               em: -0.04,
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: c.fill,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: c.pillOn,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: c.dark
-                        ? null
-                        : const [
-                            BoxShadow(
-                              color: Color.fromRGBO(23, 24, 28, 0.10),
-                              offset: Offset(0, 2),
-                              blurRadius: 8,
-                            ),
-                          ],
-                  ),
-                  child: Text(
-                    '새 오퍼 2',
-                    style: g4Style(
-                      13,
-                      weight: FontWeight.w500,
-                      color: G4Colors.ink,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  child: Text(
-                    '진행 중',
-                    style: g4Style(13, weight: FontWeight.w500, color: c.sub),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

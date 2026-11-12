@@ -293,51 +293,8 @@ class _BrandDiscoverPageState extends State<BrandDiscoverPage> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: p.surface,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: p.dark
-                              ? const Color(0xFFF2F3F5)
-                              : const Color(0xFFFFFFFF),
-                          borderRadius: BorderRadius.circular(999),
-                          boxShadow: p.dark
-                              ? null
-                              : const [
-                                  BoxShadow(
-                                    color: Color(0x1A17181C),
-                                    offset: Offset(0, 2),
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                        ),
-                        child: Text('브랜드', style: g1Text(13, 500, g1Ink)),
-                      ),
-                      const SizedBox(width: 2),
-                      G1Tap(
-                        onTap: () => demoGo(context, 'CreatorDiscover.dc.html'),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          child: Text('크리에이터', style: g1Text(13, 500, p.sub)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // 전환 알약을 지운 자리. 종 아이콘 위치가 그대로이도록 같은 폭을 비워 둔다.
+                const SizedBox(width: 161.7),
               ],
             ),
           ],
