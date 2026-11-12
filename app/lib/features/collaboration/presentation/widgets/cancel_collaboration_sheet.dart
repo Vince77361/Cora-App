@@ -1,0 +1,101 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import '../../../../core/theme/cora_colors.dart';
+import '../../../../core/theme/cora_shapes.dart';
+import '../../../../core/theme/cora_text_styles.dart';
+import '../../../../core/ui/cora_primary_button.dart';
+import '../../../../core/ui/cora_secondary_button.dart';
+
+/// 오른쪽 위 메뉴의 `협업 그만두기`를 누르면 아래에서 올라오는 시트(캔버스에 없는 화면). 누르면 같은 시트
+/// 안에서 확인 문구로 바뀐다. [onConfirm]이 false를 돌려주면(실패) 시트를 닫고 A7이 안내를 보인다.
+Future<void> showCancelCollaborationSheet(
+  BuildContext context, {
+  required Future<bool> Function() onConfirm,
+}) {
+  final c = context.colors;
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: c.background,
+    barrierColor: c.scrim.withValues(alpha: 0.4),
+    elevation: 0,
+    showDragHandle: false,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(CoraRadius.xxl)),
+    ),
+    builder: (_) => CancelCollaborationSheet(onConfirm: onConfirm),
+  );
+}
+
+class CancelCollaborationSheet extends StatefulWidget {
+  const CancelCollaborationSheet({super.key, required this.onConfirm});
+
+  final Future<bool> Function() onConfirm;
+
+  static const menu = '협업 그만두기';
+  static const confirmTitle = '협업을 그만둘까요? 가게에 결제 금액을 모두 돌려드려요.';
+  static const confirm = '그만두기';
+  static const keep = '계속하기';
+
+  @override
+  State<CancelCollaborationSheet> createState() =>
+      _CancelCollaborationSheetState();
+}
+
+class _CancelCollaborationSheetState extends State<CancelCollaborationSheet> {
+  bool _confirming = false;
+  bool _busy = false;
+
+  Future<void> _confirm() async {
+    setState(() => _busy = true);
+    await widget.onConfirm();
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 28, 16, bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!_confirming)
+            CoraSecondaryButton(
+              label: CancelCollaborationSheet.menu,
+              tone: CoraSecondaryTone.muted,
+              onPressed: () => setState(() => _confirming = true),
+            )
+          else ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Semantics(
+                header: true,
+                liveRegion: true,
+                child: Text(
+                  CancelCollaborationSheet.confirmTitle,
+                  style: CoraTextStyles.heading.copyWith(color: c.text),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            CoraPrimaryButton(
+              label: CancelCollaborationSheet.confirm,
+              onPressed: _busy ? null : _confirm,
+            ),
+            const SizedBox(height: 8),
+            CoraSecondaryButton(
+              label: CancelCollaborationSheet.keep,
+              onPressed: _busy ? null : () => Navigator.of(context).pop(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

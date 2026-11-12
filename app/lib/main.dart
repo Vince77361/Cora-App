@@ -16,6 +16,8 @@ import 'features/auth/data/secure_session_storage.dart';
 import 'features/auth/data/sign_in_adapter.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/domain/auth_repository_provider.dart';
+import 'features/collaboration/data/api_collaboration_repository.dart';
+import 'features/collaboration/domain/collaboration_repository.dart';
 import 'features/creator_profile/data/api_creator_profile_repository.dart';
 import 'features/creator_profile/domain/creator_profile_repository.dart';
 import 'features/onboarding/data/api_me_repository.dart';
@@ -94,6 +96,9 @@ Future<void> main() async {
         ),
         paymentRepositoryProvider.overrideWith(
           (ref) => ApiPaymentRepository(ref.watch(apiClientProvider)),
+        ),
+        collaborationRepositoryProvider.overrideWith(
+          (ref) => ApiCollaborationRepository(ref.watch(apiClientProvider)),
         ),
         receivedOffersRepositoryProvider.overrideWith(
           (ref) => ApiReceivedOffersRepository(ref.watch(apiClientProvider)),

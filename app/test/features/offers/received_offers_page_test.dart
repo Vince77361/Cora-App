@@ -158,10 +158,9 @@ void main() {
       await tester.tap(find.text('확인'));
       await tester.pumpAndSettle();
 
-      // 진행 중 탭: 가게 줄과 결제 대기 문구.
-      expect(find.text('한그릇 라멘'), findsOneWidget);
-      expect(find.text('결제를 기다리고 있어요'), findsOneWidget);
+      // 진행 중 탭으로 간다(줄 내용은 received_offers_active_tab_test가 본다).
       expect(find.text('수락했어요.'), findsNothing);
+      expect(find.text('아직 진행 중인 협업이 없어요.'), findsOneWidget);
       // 남은 새 오퍼는 하나.
       expect(find.text('새 오퍼 1'), findsOneWidget);
     });

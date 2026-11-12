@@ -26,11 +26,15 @@ class CoraPrimaryButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.look = CoraPrimaryButtonLook.standard,
+    this.fitLabel = false,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final CoraPrimaryButtonLook look;
+
+  /// true이면 좁은 자리에서 글자를 말줄임표 대신 줄여서 한 줄에 맞춘다(A7처럼 버튼이 둘 나란히 있는 곳).
+  final bool fitLabel;
 
   static const double height = 58;
 
@@ -75,15 +79,25 @@ class CoraPrimaryButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(CoraRadius.pill),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: EdgeInsets.symmetric(horizontal: fitLabel ? 12 : 24),
                   child: Center(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: textStyle.copyWith(color: foreground),
-                    ),
+                    child: fitLabel
+                        ? FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              label,
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
+                              style: textStyle.copyWith(color: foreground),
+                            ),
+                          )
+                        : Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: textStyle.copyWith(color: foreground),
+                          ),
                   ),
                 ),
               ),

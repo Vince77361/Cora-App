@@ -53,6 +53,20 @@ abstract final class AppRoutes {
   static const creatorOffers = '/creator/offers';
   static String creatorStore(String storeId) =>
       '/creator/stores/${Uri.encodeComponent(storeId)}';
+
+  /// 크리에이터의 협업 진행(A7)과 거기서 여는 링크 제출·식사권 화면.
+  static String creatorCollaboration(String id) =>
+      '/creator/collaborations/${Uri.encodeComponent(id)}';
+  static String creatorCollaborationSubmit(String id) =>
+      '${creatorCollaboration(id)}/submit';
+  static String creatorVoucher(String id) =>
+      '${creatorCollaboration(id)}/voucher';
+  static const creatorCollaborationPattern = '/creator/collaborations/:id';
+
+  /// 지급받을 계좌와 인스타그램 연동. 협업 화면과 받은 오퍼 카드에서 밀려 들어온다.
+  static const creatorPayoutAccount = '/creator/payout-account';
+  static const creatorInstagram = '/creator/instagram';
+
   static String creatorComingSoon(String title) =>
       '/creator/coming-soon/${Uri.encodeComponent(title)}';
 
@@ -78,6 +92,9 @@ abstract final class AppRoutes {
 
   /// 개발 환경 전용 가짜 결제창. 서버의 가짜 PG(`cora-dev://fake-pay`)를 앱 안에서 연다.
   static const devFakeCheckout = '/dev/fake-checkout';
+
+  /// 개발 환경 전용 가짜 인스타그램 연결 화면(아이디를 직접 입력한다).
+  static const devFakeInstagram = '/dev/fake-instagram';
 
   /// 이 경로 아래는 개발 도구다. 로그인 없이 열 수 있다.
   static const devPrefix = '/dev/';

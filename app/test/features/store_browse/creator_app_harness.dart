@@ -1,16 +1,20 @@
 import 'package:cora/core/time/clock.dart';
+import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
+import 'package:cora/features/collaboration/presentation/mail_launcher.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile_repository.dart';
 import 'package:cora/features/offers/domain/received_offers_repository.dart';
 import 'package:cora/features/offers/presentation/viewmodels/received_offers_view_model.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/store_browse/domain/store_browse_repository.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_clock.dart';
 import '../../support/pump_cora_app.dart';
 import '../auth/fake_auth_repository.dart';
 import '../creator_profile/fake_creator_profile_repository.dart';
+import '../collaboration/fake_collaboration_repository.dart';
 import '../offers/fake_received_offers_repository.dart';
 import '../onboarding/fake_me_repository.dart';
 import 'fake_store_browse_repository.dart';
@@ -21,11 +25,14 @@ Future<void> pumpCreatorApp(
   WidgetTester tester, {
   FakeStoreBrowseRepository? stores,
   FakeReceivedOffersRepository? offers,
+  FakeCollaborationRepository? collaborations,
+  MailLauncher? mail,
   String mySido = '서울특별시',
   Duration undoWindow = const Duration(seconds: 30),
   bool profileFails = false,
   bool smallPhoneLargeText = false,
   FakeClock? clock,
+  List<Override> overrides = const [],
 }) async {
   if (smallPhoneLargeText) {
     useSmallPhoneWithLargeText(tester);
@@ -48,8 +55,13 @@ Future<void> pumpCreatorApp(
       receivedOffersRepositoryProvider.overrideWithValue(
         offers ?? FakeReceivedOffersRepository(),
       ),
+      collaborationRepositoryProvider.overrideWithValue(
+        collaborations ?? FakeCollaborationRepository(),
+      ),
+      if (mail != null) mailLauncherProvider.overrideWithValue(mail),
       undoDeclineWindowProvider.overrideWithValue(undoWindow),
       clockProvider.overrideWithValue(clock ?? FakeClock()),
+      ...overrides,
     ],
   );
 }

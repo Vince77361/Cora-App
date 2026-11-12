@@ -6,6 +6,9 @@ import '../../features/auth/domain/auth_session.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/phone_verify_page.dart';
 import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
+import '../../features/collaboration/presentation/pages/collaboration_page.dart';
+import '../../features/collaboration/presentation/pages/submit_link_page.dart';
+import '../../features/collaboration/presentation/pages/voucher_page.dart';
 import '../../features/creator_profile/presentation/pages/creator_profile_setup_page.dart';
 import '../../features/dev/presentation/pages/motion_gallery_page.dart';
 import '../../features/onboarding/domain/me.dart';
@@ -194,6 +197,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.creatorOffers,
         pageBuilder: (context, state) =>
             _entryPage(state, const ReceivedOffersPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.creatorCollaborationPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          CollaborationPage(collaborationId: state.pathParameters['id']!),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.creatorCollaborationPattern}/submit',
+        pageBuilder: (context, state) => CoraTransitions.push(
+          SubmitLinkPage(collaborationId: state.pathParameters['id']!),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.creatorCollaborationPattern}/voucher',
+        pageBuilder: (context, state) => CoraTransitions.push(
+          VoucherPage(collaborationId: state.pathParameters['id']!),
+          key: state.pageKey,
+        ),
       ),
       GoRoute(
         path: '/creator/coming-soon/:title',

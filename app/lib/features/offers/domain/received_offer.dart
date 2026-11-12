@@ -13,6 +13,7 @@ class ReceivedOffer {
     this.storeIntro,
     this.bestShootingTime,
     this.canUndoDecline = false,
+    this.needsInstagram = false,
   });
 
   final String id;
@@ -26,6 +27,10 @@ class ReceivedOffer {
   /// 방금 거절해 30초 안에 되돌릴 수 있다.
   final bool canUndoDecline;
 
+  /// 조회수 보상을 받으려면 인스타그램 연동이 필요한데 아직 연동하지 않았다. 이 오퍼는 수락할 수 없다.
+  /// 서버는 답을 기다리는 오퍼에서만 true로 보낸다.
+  final bool needsInstagram;
+
   ReceivedOffer copyWith({OfferView? view, bool? canUndoDecline}) =>
       ReceivedOffer(
         id: id,
@@ -36,5 +41,6 @@ class ReceivedOffer {
         view: view ?? this.view,
         receivedAt: receivedAt,
         canUndoDecline: canUndoDecline ?? this.canUndoDecline,
+        needsInstagram: needsInstagram,
       );
 }

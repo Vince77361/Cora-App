@@ -16,19 +16,14 @@ class ApiReceivedOffersRepository implements ReceivedOffersRepository {
 
   final api.OffersApi _offers;
 
+  /// 진행 중 탭은 오퍼가 아니라 협업 목록을 쓴다(`collaboration` 기능). 서버의 `tab=active`는 앱이 더는
+  /// 부르지 않는다.
   @override
-  Future<List<ReceivedOffer>> fetchNew() => _list(api.ReceivedOfferTab.new_);
-
-  @override
-  Future<List<ReceivedOffer>> fetchActive() =>
-      _list(api.ReceivedOfferTab.active);
-
-  Future<List<ReceivedOffer>> _list(api.ReceivedOfferTab tab) =>
-      _guard(() async {
-        final rows = await _offers.listReceivedOffers(tab);
-        if (rows == null) throw const ReceivedOffersFailure();
-        return [for (final m in rows) _fromModel(m)];
-      });
+  Future<List<ReceivedOffer>> fetchNew() => _guard(() async {
+    final rows = await _offers.listReceivedOffers(api.ReceivedOfferTab.new_);
+    if (rows == null) throw const ReceivedOffersFailure();
+    return [for (final m in rows) _fromModel(m)];
+  });
 
   @override
   Future<void> accept(String id) => _guard(() => _offers.acceptOffer(id));
@@ -65,5 +60,6 @@ class ApiReceivedOffersRepository implements ReceivedOffersRepository {
     },
     receivedAt: m.receivedAt,
     canUndoDecline: m.canUndoDecline,
+    needsInstagram: m.needsInstagram,
   );
 }

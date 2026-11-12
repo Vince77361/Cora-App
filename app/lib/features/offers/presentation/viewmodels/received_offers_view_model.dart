@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../collaboration/presentation/viewmodels/collaboration_list_view_model.dart';
 import '../../domain/offer_view.dart';
 import '../../domain/received_offer.dart';
 import '../../domain/received_offers_repository.dart';
@@ -31,7 +32,6 @@ enum ReceivedOffersNotice {
 class ReceivedOffersState {
   const ReceivedOffersState({
     required this.newOffers,
-    required this.activeOffers,
     this.tab = ReceivedOffersTab.newOffers,
     this.busy = false,
     this.accepted = false,
@@ -41,7 +41,6 @@ class ReceivedOffersState {
   /// 새 오퍼. 도착한 순서이고 맨 앞이 지금 보이는 카드다. 방금 거절한 오퍼는 되돌릴 수 있는 동안
   /// 맨 앞에 `declined`로 남는다.
   final List<ReceivedOffer> newOffers;
-  final List<ReceivedOffer> activeOffers;
   final ReceivedOffersTab tab;
 
   /// 수락·거절·되돌리기를 서버에 보내는 중. 그동안은 다시 누르지 못한다.
@@ -59,7 +58,6 @@ class ReceivedOffersState {
 
   ReceivedOffersState copyWith({
     List<ReceivedOffer>? newOffers,
-    List<ReceivedOffer>? activeOffers,
     ReceivedOffersTab? tab,
     bool? busy,
     bool? accepted,
@@ -67,7 +65,6 @@ class ReceivedOffersState {
     bool clearNotice = false,
   }) => ReceivedOffersState(
     newOffers: newOffers ?? this.newOffers,
-    activeOffers: activeOffers ?? this.activeOffers,
     tab: tab ?? this.tab,
     busy: busy ?? this.busy,
     accepted: accepted ?? this.accepted,
@@ -88,8 +85,7 @@ class ReceivedOffersViewModel extends AsyncNotifier<ReceivedOffersState> {
 
   Future<ReceivedOffersState> _load() async {
     final repo = ref.read(receivedOffersRepositoryProvider);
-    final results = await Future.wait([repo.fetchNew(), repo.fetchActive()]);
-    return ReceivedOffersState(newOffers: results[0], activeOffers: results[1]);
+    return ReceivedOffersState(newOffers: await repo.fetchNew());
   }
 
   /// 맨 앞 카드가 방금 거절한 오퍼이면 되돌리기 시간을 센다.
@@ -177,8 +173,11 @@ class ReceivedOffersViewModel extends AsyncNotifier<ReceivedOffersState> {
       final next = apply(latest.copyWith(busy: false));
       state = AsyncData(next);
       _armIfDeclined(next);
-      // 수락하면 진행 중 목록이 바뀐다. 못 받아도 안내는 이미 떴으므로 조용히 둔다.
-      if (next.accepted && !latest.accepted) unawaited(_reloadActive());
+      // 수락하면 서버가 협업을 만든다. 진행 중 탭은 열릴 때 새로 읽지만, 이미 열려 있던 목록이
+      // 있으면 낡지 않게 무효화한다.
+      if (next.accepted && !latest.accepted) {
+        ref.invalidate(collaborationListViewModelProvider);
+      }
     } on ReceivedOffersFailure catch (error) {
       if (!ref.mounted) return;
       if (error.conflict) {
@@ -215,16 +214,26 @@ class ReceivedOffersViewModel extends AsyncNotifier<ReceivedOffersState> {
     }
   }
 
-  Future<void> _reloadActive() async {
+  /// 연동하고 돌아온 뒤처럼 서버의 지금 상태로 새 오퍼 목록을 다시 맞춘다. 실패하면 보던 내용을 둔다.
+  Future<void> refresh() async {
+    final current = state.value;
+    if (current == null) return;
     try {
-      final active = await ref
-          .read(receivedOffersRepositoryProvider)
-          .fetchActive();
-      final s = state.value;
-      if (!ref.mounted || s == null) return;
-      state = AsyncData(s.copyWith(activeOffers: active));
+      final fresh = await ref.read(receivedOffersRepositoryProvider).fetchNew();
+      if (!ref.mounted) return;
+      final latest = state.value ?? current;
+      // 거절을 되돌릴 수 있는 동안의 맨 앞 카드는 서버 목록과 다르게 로컬에서만 들고 있다.
+      final head = latest.current;
+      final keepHead = head != null && head.view == OfferView.declined;
+      final next = latest.copyWith(
+        newOffers: keepHead
+            ? [head, ...fresh.where((o) => o.id != head.id)]
+            : fresh,
+      );
+      state = AsyncData(next);
+      _armIfDeclined(next);
     } catch (_) {
-      // 진행 중 탭을 열 때 목록이 비어 있을 수 있다. 다음에 화면을 열면 다시 받는다.
+      // 못 읽어도 보던 카드는 그대로다.
     }
   }
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shadows.dart';
 import '../../../../core/theme/cora_shapes.dart';
@@ -13,6 +15,8 @@ import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pill_button.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
+import '../../../collaboration/presentation/collaboration_text.dart';
+import '../../../collaboration/presentation/viewmodels/collaboration_list_view_model.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart';
 import '../../../store_browse/presentation/widgets/creator_bottom_nav.dart';
 import '../../../store_browse/presentation/widgets/photo_overlays.dart';
@@ -39,7 +43,7 @@ class ReceivedOffersPage extends ConsumerWidget {
   static const confirm = '확인';
   static const noNewOffers = '새 오퍼가 없어요. 가게에 지원하면 오퍼가 도착해요.';
   static const noActive = '아직 진행 중인 협업이 없어요.';
-  static const waitingForPayment = '결제를 기다리고 있어요';
+  static const activeLoadFailed = '진행 중인 협업을 불러오지 못했어요.';
   static const alreadyHandled = '이미 처리된 오퍼예요.';
   static const actionFailed = '처리하지 못했어요. 다시 시도해 주세요.';
   static const loadFailed = '받은 오퍼를 불러오지 못했어요.';
@@ -68,7 +72,7 @@ class ReceivedOffersPage extends ConsumerWidget {
                   Expanded(
                     child: value.tab == ReceivedOffersTab.newOffers
                         ? _NewTab(state: value, vm: vm)
-                        : _ActiveTab(offers: value.activeOffers),
+                        : const _ActiveTab(),
                   ),
                 ],
               ),
@@ -546,30 +550,43 @@ class _TextAction extends StatelessWidget {
   }
 }
 
-/// 진행 중 탭: 수락한 오퍼의 가게 줄과 `결제를 기다리고 있어요`.
-class _ActiveTab extends StatelessWidget {
-  const _ActiveTab({required this.offers});
-
-  final List<ReceivedOffer> offers;
+/// 진행 중 탭: 수락한 오퍼가 만든 협업의 가게 줄. 설명은 단계에 따라 `결제를 기다리고 있어요` /
+/// `방문하고 촬영해 주세요 · {기한}까지` / `집계 중 · {n}일 남음`이고, 누르면 협업 진행(A7)이 열린다.
+class _ActiveTab extends ConsumerWidget {
+  const _ActiveTab();
 
   @override
-  Widget build(BuildContext context) {
-    if (offers.isEmpty) {
-      return const Padding(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(collaborationListViewModelProvider);
+    final now = ref.watch(clockProvider).now();
+    return switch (async) {
+      AsyncData(:final value) when value.isEmpty => const Padding(
         padding: EdgeInsets.fromLTRB(12, 0, 12, 100),
         child: _MessagePanel(body: ReceivedOffersPage.noActive),
-      );
-    }
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 112),
-      children: [
-        for (final offer in offers)
-          CoraListRow(
-            photoUrl: offer.store.coverPhotoUrl,
-            title: offer.store.name,
-            subtitle: ReceivedOffersPage.waitingForPayment,
-          ),
-      ],
-    );
+      ),
+      AsyncData(:final value) => ListView(
+        padding: const EdgeInsets.fromLTRB(8, 0, 8, 112),
+        children: [
+          for (final collaboration in value)
+            CoraListRow(
+              photoUrl: collaboration.counterpartPhotoUrl,
+              title: collaboration.counterpartName,
+              subtitle: activeRowSubtitle(collaboration, now),
+              onTap: () async {
+                await context.push(
+                  AppRoutes.creatorCollaboration(collaboration.id),
+                );
+                // A7에서 제출하거나 그만두고 돌아오면 줄이 낡을 수 있다.
+                ref.invalidate(collaborationListViewModelProvider);
+              },
+            ),
+        ],
+      ),
+      AsyncError() => CoraErrorView(
+        message: ReceivedOffersPage.activeLoadFailed,
+        onRetry: () => ref.invalidate(collaborationListViewModelProvider),
+      ),
+      _ => const SizedBox.expand(),
+    };
   }
 }

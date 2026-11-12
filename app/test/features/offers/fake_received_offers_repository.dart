@@ -26,16 +26,12 @@ ReceivedOffer receivedOffer({
   canUndoDecline: canUndoDecline,
 );
 
-/// 손으로 쓴 가짜 받은 오퍼 저장소. 서버의 새 오퍼·진행 중 목록과 거절 되돌리기를 흉내 낸다.
+/// 손으로 쓴 가짜 받은 오퍼 저장소. 서버의 새 오퍼·거절 되돌리기를 흉내 낸다.
 class FakeReceivedOffersRepository implements ReceivedOffersRepository {
-  FakeReceivedOffersRepository({
-    List<ReceivedOffer>? newOffers,
-    List<ReceivedOffer>? activeOffers,
-  }) : newOffers = newOffers ?? [],
-       activeOffers = activeOffers ?? [];
+  FakeReceivedOffersRepository({List<ReceivedOffer>? newOffers})
+    : newOffers = newOffers ?? [];
 
   List<ReceivedOffer> newOffers;
-  List<ReceivedOffer> activeOffers;
 
   bool failFetch = false;
 
@@ -55,12 +51,6 @@ class FakeReceivedOffersRepository implements ReceivedOffersRepository {
     return List.of(newOffers);
   }
 
-  @override
-  Future<List<ReceivedOffer>> fetchActive() async {
-    if (failFetch) throw const ReceivedOffersFailure();
-    return List.of(activeOffers);
-  }
-
   void _check() {
     if (conflictOnAnswer) throw const ReceivedOffersFailure(conflict: true);
     if (failAnswer) throw const ReceivedOffersFailure();
@@ -74,10 +64,8 @@ class FakeReceivedOffersRepository implements ReceivedOffersRepository {
   @override
   Future<void> accept(String id) async {
     _check();
-    final offer = _find(id);
     accepted.add(id);
     newOffers = newOffers.where((o) => o.id != id).toList();
-    activeOffers = [...activeOffers, offer.copyWith(view: OfferView.accepted)];
   }
 
   @override

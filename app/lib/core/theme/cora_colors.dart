@@ -53,6 +53,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
     required this.onSlideNeutral,
     required this.onSlidePhoto,
     this.creatorPhotoPlaceholder = const Color(0xFFF3E3D3),
+    this.stepDotDone = const Color(0xFFE6E8EB),
+    this.onStepDotDone = const Color(0xFF17181C),
+    this.stepDotNow = const Color(0xFFC6FF3D),
+    this.onStepDotNow = const Color(0xFF1F2A00),
   });
 
   final Color background;
@@ -142,6 +146,14 @@ class CoraColors extends ThemeExtension<CoraColors> {
 
   /// A8 결제 화면 머리의 크리에이터 사진이 뜨기 전·없을 때의 바탕(NPay). 라이트·다크가 같다.
   final Color creatorPhotoPlaceholder;
+
+  /// A7 협업 진행의 단계 점(NEscrow): 끝난 단계와 지금 단계의 바탕과 그 안의 글자. 남은 단계는
+  /// `surface`/`textSecondary`다. 라이트는 끝남 #E6E8EB/#17181C, 지금 라임/#1F2A00이고, 다크는
+  /// 끝남이 #F2F3F5에 라임 ✓, 지금이 #F2F3F5에 #0F1012다(DarkNEscrow).
+  final Color stepDotDone;
+  final Color onStepDotDone;
+  final Color stepDotNow;
+  final Color onStepDotNow;
 
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
@@ -271,6 +283,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
     slideNeutral: Color(0xFFF2F3F5),
     onSlideNeutral: Color(0xFF0F1012),
     onSlidePhoto: Color(0xFF0F1012),
+    stepDotDone: Color(0xFFF2F3F5),
+    onStepDotDone: Color(0xFFC6FF3D),
+    stepDotNow: Color(0xFFF2F3F5),
+    onStepDotNow: Color(0xFF0F1012),
   );
 
   @override
@@ -324,6 +340,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? onSlideNeutral,
     Color? onSlidePhoto,
     Color? creatorPhotoPlaceholder,
+    Color? stepDotDone,
+    Color? onStepDotDone,
+    Color? stepDotNow,
+    Color? onStepDotNow,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -376,6 +396,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
       onSlidePhoto: onSlidePhoto ?? this.onSlidePhoto,
       creatorPhotoPlaceholder:
           creatorPhotoPlaceholder ?? this.creatorPhotoPlaceholder,
+      stepDotDone: stepDotDone ?? this.stepDotDone,
+      onStepDotDone: onStepDotDone ?? this.onStepDotDone,
+      stepDotNow: stepDotNow ?? this.stepDotNow,
+      onStepDotNow: onStepDotNow ?? this.onStepDotNow,
     );
   }
 
@@ -436,6 +460,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
         creatorPhotoPlaceholder,
         other.creatorPhotoPlaceholder,
       ),
+      stepDotDone: mix(stepDotDone, other.stepDotDone),
+      onStepDotDone: mix(onStepDotDone, other.onStepDotDone),
+      stepDotNow: mix(stepDotNow, other.stepDotNow),
+      onStepDotNow: mix(onStepDotNow, other.onStepDotNow),
     );
   }
 }

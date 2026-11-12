@@ -20,6 +20,7 @@ class AppConfig {
     required this.supabaseAnonKey,
     required this.apiBaseUrl,
     required this.authAdapter,
+    this.operatorEmail = '',
   });
 
   /// `String.fromEnvironment`는 상수로만 평가되므로 const 리터럴로 읽는다.
@@ -35,6 +36,7 @@ class AppConfig {
         const String.fromEnvironment('AUTH_ADAPTER'),
         env,
       ),
+      operatorEmail: const String.fromEnvironment('OPERATOR_EMAIL'),
     );
   }
 
@@ -43,6 +45,10 @@ class AppConfig {
   final String supabaseAnonKey;
   final String apiBaseUrl;
   final AuthAdapter authAdapter;
+
+  /// `문의하기`가 메일을 보낼 운영자 주소(`--dart-define=OPERATOR_EMAIL`). 비어 있으면 받는 사람 없이
+  /// 메일 작성 화면만 연다.
+  final String operatorEmail;
 
   bool get isDev => env == CoraEnv.dev;
 
