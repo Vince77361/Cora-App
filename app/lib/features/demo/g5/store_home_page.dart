@@ -141,7 +141,16 @@ class _StoreHomePageState extends State<StoreHomePage> {
                         const SizedBox(width: 8),
                         Expanded(child: _stat(pal, '보낸 오퍼', '3', pal.sub)),
                         const SizedBox(width: 8),
-                        Expanded(child: _stat(pal, '진행 중', '1', pal.sub)),
+                        // 협업 줄이 따로 없어 "진행 중" 칸이 G1 7일 결과의 입구다(소유자 결정).
+                        Expanded(
+                          child: _stat(
+                            pal,
+                            '진행 중',
+                            '1',
+                            pal.sub,
+                            onTap: () => demoGo(context, 'NResult.dc.html'),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -285,8 +294,14 @@ class _StoreHomePageState extends State<StoreHomePage> {
     );
   }
 
-  Widget _stat(G5Palette pal, String term, String value, Color termColor) {
-    return Container(
+  Widget _stat(
+    G5Palette pal,
+    String term,
+    String value,
+    Color termColor, {
+    VoidCallback? onTap,
+  }) {
+    final card = Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: pal.card,
@@ -300,6 +315,12 @@ class _StoreHomePageState extends State<StoreHomePage> {
           Text(value, style: g5Text(24, pal.text, weight: FontWeight.w900)),
         ],
       ),
+    );
+    if (onTap == null) return card;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: card,
     );
   }
 

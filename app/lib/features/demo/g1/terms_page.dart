@@ -125,10 +125,7 @@ class _TermsPageState extends State<TermsPage> {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       alignment: Alignment.center,
-                      child: Text(
-                        '이 판본 수락',
-                        style: g1Text(15, 700, g1OnLime),
-                      ),
+                      child: Text('이 판본 수락', style: g1Text(15, 700, g1OnLime)),
                     ),
                   ),
                 ),
@@ -218,7 +215,10 @@ class _TermsPageState extends State<TermsPage> {
                         color: g1Lime,
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: Text('내가 응답할 차례', style: g1Text(12, 500, g1OnLime)),
+                      child: Text(
+                        '내가 응답할 차례',
+                        style: g1Text(12, 500, g1OnLime),
+                      ),
                     ),
                   ],
                 ),

@@ -148,12 +148,7 @@ class _StoreLinkPageState extends State<StoreLinkPage> {
     );
   }
 
-  Widget _inputCard(
-    G5Palette pal,
-    FocusNode focus,
-    String label,
-    String hint,
-  ) {
+  Widget _inputCard(G5Palette pal, FocusNode focus, String label, String hint) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: focus.requestFocus,

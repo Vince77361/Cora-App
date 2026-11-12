@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../shared/demo_ui.dart';
 import 'g9_common.dart';
@@ -24,7 +25,10 @@ class ResultPage extends StatelessWidget {
                 G9Header(
                   pal: pal,
                   title: '7일 결과',
-                  onBack: () => g9Back(context, 'NStoreHome.dc.html'),
+                  // 직접 연 화면이면 A9를 쌓지 않고 새로 시작한다(g9Back은 push라 G1이 아래에 남는다).
+                  onBack: () => context.canPop()
+                      ? demoBack(context)
+                      : demoReset(context, 'NStoreHome.dc.html'),
                 ),
                 const SizedBox(height: 4),
                 _hero(),

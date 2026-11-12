@@ -14,7 +14,10 @@ class PassPage extends StatefulWidget {
 }
 
 const List<(String, String)> _reasons = [
-  ('표현 분위기가 달라요', 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 14s1.5 2 4 2 4-2 4-2'),
+  (
+    '표현 분위기가 달라요',
+    'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 14s1.5 2 4 2 4-2 4-2',
+  ),
   (
     '지역·방문이 어려워요',
     'M12 21s-6-5.4-6-11a6 6 0 0 1 12 0c0 5.6-6 11-6 11zM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4',
@@ -156,7 +159,10 @@ class _PassPageState extends State<PassPage> {
                             child: Container(
                               height: 44,
                               alignment: Alignment.center,
-                              child: Text('되돌리기', style: g1Text(14, 500, p.sub)),
+                              child: Text(
+                                '되돌리기',
+                                style: g1Text(14, 500, p.sub),
+                              ),
                             ),
                           ),
                         ],

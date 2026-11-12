@@ -142,9 +142,7 @@ class _PayPageState extends State<PayPage> {
                                 _methods[i],
                                 style: g6Text(
                                   14,
-                                  p.dark || i != _method
-                                      ? p.unselFg
-                                      : p.selFg,
+                                  p.dark || i != _method ? p.unselFg : p.selFg,
                                   weight: FontWeight.w500,
                                 ),
                               ),

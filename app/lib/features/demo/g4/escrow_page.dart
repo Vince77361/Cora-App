@@ -56,7 +56,10 @@ class EscrowPage extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('조회 자료와 보상 계산 확인', style: g4Style(14, color: c.text)),
+                        Text(
+                          '조회 자료와 보상 계산 확인',
+                          style: g4Style(14, color: c.text),
+                        ),
                         Text('미확인', style: g4Style(14, color: c.sub)),
                       ],
                     ),
@@ -170,7 +173,10 @@ class _Summary extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text('+ 식사권 40,000원 · 2인 (방문 때 사용)', style: g4Style(14, color: c.sub)),
+          Text(
+            '+ 식사권 40,000원 · 2인 (방문 때 사용)',
+            style: g4Style(14, color: c.sub),
+          ),
           const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.only(top: 16),

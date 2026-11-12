@@ -204,7 +204,12 @@ class DemoBottomNav extends StatelessWidget {
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Color.fromRGBO(23, 24, 28, dark ? darkShadowOpacity : 0.12),
+              color: Color.fromRGBO(
+                23,
+                24,
+                28,
+                dark ? darkShadowOpacity : 0.12,
+              ),
               offset: const Offset(0, 12),
               blurRadius: 32,
             ),

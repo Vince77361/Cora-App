@@ -289,9 +289,7 @@ class _RetroPageState extends State<RetroPage> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: on.contains(i) && !p.dark
-                        ? p.onChipOn
-                        : p.onChipOff,
+                    color: on.contains(i) && !p.dark ? p.onChipOn : p.onChipOff,
                   ),
                 ),
               ),
