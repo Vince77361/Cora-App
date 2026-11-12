@@ -17,6 +17,8 @@ import '../../features/payment/presentation/pages/store_payment_page.dart';
 import '../../features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
+import '../../features/instagram_connect/presentation/pages/fake_instagram_connect_page.dart';
+import '../../features/instagram_connect/presentation/pages/instagram_connect_page.dart';
 import '../../features/offers/presentation/pages/received_offers_page.dart';
 import '../../features/payout_account/presentation/pages/payout_account_page.dart';
 import '../../features/offers/presentation/pages/send_offer_page.dart';
@@ -226,6 +228,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             CoraTransitions.push(const PayoutAccountPage(), key: state.pageKey),
       ),
       GoRoute(
+        path: AppRoutes.creatorInstagram,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const InstagramConnectPage(),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
         path: '/creator/coming-soon/:title',
         pageBuilder: (context, state) => _entryPage(
           state,
@@ -237,6 +246,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           path: AppRoutes.devMotion,
           pageBuilder: (context, state) => CoraTransitions.push(
             const MotionGalleryPage(),
+            key: state.pageKey,
+          ),
+        ),
+      // 가짜 인스타그램 연결 화면도 개발 환경에서만 있다(서버가 가짜 어댑터일 때 아이디를 직접 입력한다).
+      if (kDevScreensCompiledIn && config.isDev)
+        GoRoute(
+          path: AppRoutes.devFakeInstagram,
+          pageBuilder: (context, state) => CoraTransitions.push(
+            const FakeInstagramConnectPage(),
             key: state.pageKey,
           ),
         ),

@@ -8,7 +8,7 @@ import 'cora_pressable.dart';
 
 /// 입력 칸(NEditProfile 칸과 같은 모양): 모서리 20, `surface` 바탕, 안쪽 14/18, 라벨 12 보조색 →
 /// 4 → 값 16. 캔버스에 없는 화면(링크 제출, 계좌, 인스타그램 아이디)이 같은 칸을 쓴다.
-class CoraFieldBox extends StatelessWidget {
+class CoraFieldBox extends StatefulWidget {
   const CoraFieldBox({
     super.key,
     required this.label,
@@ -37,57 +37,76 @@ class CoraFieldBox extends StatelessWidget {
   final TextInputAction textInputAction;
 
   @override
+  State<CoraFieldBox> createState() => _CoraFieldBoxState();
+}
+
+class _CoraFieldBoxState extends State<CoraFieldBox> {
+  final _focus = FocusNode();
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: BorderRadius.circular(CoraRadius.field),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        child: MergeSemantics(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: CoraTextStyles.fieldLabel.copyWith(
-                  color: c.textSecondary,
+    // 칸 어디를 눌러도 입력이 시작되게 한다(라벨과 안쪽 여백까지가 칸이다).
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.enabled ? _focus.requestFocus : null,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(CoraRadius.field),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          child: MergeSemantics(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.label,
+                  style: CoraTextStyles.fieldLabel.copyWith(
+                    color: c.textSecondary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              TextField(
-                key: fieldKey,
-                controller: controller,
-                onChanged: onChanged,
-                onSubmitted: onSubmitted,
-                enabled: enabled,
-                keyboardType: keyboardType,
-                textInputAction: textInputAction,
-                autofillHints: autofillHints,
-                style: CoraTextStyles.bodyLarge.copyWith(
-                  fontWeight: FontWeight.w400,
-                  color: c.text,
+                const SizedBox(height: 4),
+                TextField(
+                  key: widget.fieldKey,
+                  focusNode: _focus,
+                  controller: widget.controller,
+                  onChanged: widget.onChanged,
+                  onSubmitted: widget.onSubmitted,
+                  enabled: widget.enabled,
+                  keyboardType: widget.keyboardType,
+                  textInputAction: widget.textInputAction,
+                  autofillHints: widget.autofillHints,
+                  style: CoraTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: c.text,
+                  ),
+                  cursorColor: c.text,
+                  inputFormatters: [
+                    ?(widget.maxLength == null
+                        ? null
+                        : LengthLimitingTextInputFormatter(widget.maxLength)),
+                    ...widget.inputFormatters,
+                  ],
+                  decoration: const InputDecoration(
+                    isCollapsed: true,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                  ),
                 ),
-                cursorColor: c.text,
-                inputFormatters: [
-                  ?(maxLength == null
-                      ? null
-                      : LengthLimitingTextInputFormatter(maxLength)),
-                  ...inputFormatters,
-                ],
-                decoration: const InputDecoration(
-                  isCollapsed: true,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

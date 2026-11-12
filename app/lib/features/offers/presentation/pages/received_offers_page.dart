@@ -34,6 +34,8 @@ class ReceivedOffersPage extends ConsumerWidget {
   static const badge = '소상공인';
   static const decline = '거절';
   static const accept = '수락하기';
+  static const needsInstagram = '인스타그램을 연동하면 수락할 수 있어요';
+  static const connectInstagram = '연동하기';
   static const declinedTitle = '거절했어요.';
   static const declinedBody = '가게에는 정중한 거절 알림만 가요. 다음 오퍼를 보여드릴게요.';
   static const undo = '되돌리기';
@@ -264,6 +266,11 @@ class _NewTab extends StatelessWidget {
         busy: state.busy,
         onDecline: vm.decline,
         onAccept: vm.accept,
+        onConnect: () async {
+          await context.push(AppRoutes.creatorInstagram);
+          // 연동하고 돌아오면 서버가 `needsInstagram`을 바꿨으므로 카드가 `수락하기`가 된다.
+          await vm.refresh();
+        },
       );
     }
     return Padding(
@@ -298,12 +305,16 @@ class _OfferCard extends ConsumerWidget {
     required this.busy,
     required this.onDecline,
     required this.onAccept,
+    required this.onConnect,
   });
 
   final ReceivedOffer offer;
   final bool busy;
   final VoidCallback onDecline;
   final VoidCallback onAccept;
+
+  /// 인스타그램 연동이 필요한 오퍼의 `연동하기`.
+  final VoidCallback onConnect;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -407,6 +418,14 @@ class _OfferCard extends ConsumerWidget {
                         Text(tag, style: muted),
                     ],
                   ),
+                  if (offer.needsInstagram)
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        ReceivedOffersPage.needsInstagram,
+                        style: muted.copyWith(color: c.onPhoto),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -428,8 +447,12 @@ class _OfferCard extends ConsumerWidget {
                   ),
                   Expanded(
                     child: CoraPillButton(
-                      label: ReceivedOffersPage.accept,
-                      onPressed: busy ? null : onAccept,
+                      label: offer.needsInstagram
+                          ? ReceivedOffersPage.connectInstagram
+                          : ReceivedOffersPage.accept,
+                      onPressed: busy
+                          ? null
+                          : (offer.needsInstagram ? onConnect : onAccept),
                       background: c.accent,
                       foreground: c.onAccent,
                       textStyle: CoraTextStyles.button,

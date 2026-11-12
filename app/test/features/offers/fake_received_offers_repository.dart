@@ -14,6 +14,7 @@ ReceivedOffer receivedOffer({
   String? storeIntro = '김이 오르는 첫 숟가락 장면을 원해요.',
   String? bestShootingTime = '오후 3시',
   bool canUndoDecline = false,
+  bool needsInstagram = false,
   OfferTerms? terms,
 }) => ReceivedOffer(
   id: id,
@@ -24,6 +25,7 @@ ReceivedOffer receivedOffer({
   view: view,
   receivedAt: receivedAt ?? DateTime.utc(2026, 11, 11, 3),
   canUndoDecline: canUndoDecline,
+  needsInstagram: needsInstagram,
 );
 
 /// 손으로 쓴 가짜 받은 오퍼 저장소. 서버의 새 오퍼·거절 되돌리기를 흉내 낸다.

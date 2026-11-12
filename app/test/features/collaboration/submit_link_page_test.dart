@@ -51,6 +51,17 @@ void main() {
     expect(find.text('4,320회'), findsNothing);
   });
 
+  testWidgets('starts typing when the label of the field is tapped', (
+    tester,
+  ) async {
+    await _openSubmit(tester);
+
+    await tester.tap(find.text('콘텐츠 링크'));
+    await tester.pump();
+
+    expect(tester.testTextInput.isVisible, isTrue);
+  });
+
   testWidgets('shows the server message for a link that is not mine', (
     tester,
   ) async {
