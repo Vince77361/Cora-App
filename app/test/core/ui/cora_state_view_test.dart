@@ -6,19 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/cora_test_app.dart';
 
-/// 카드 바탕의 색. 카드는 `CoraStateView` 안의 첫 `DecoratedBox`다.
-Color _cardColor(WidgetTester tester) {
-  final box = tester.widget<DecoratedBox>(
-    find
-        .descendant(
-          of: find.byType(CoraStateView),
-          matching: find.byType(DecoratedBox),
-        )
-        .first,
-  );
-  return (box.decoration as BoxDecoration).color!;
-}
-
 void main() {
   testWidgets('shows the five canvas states with their exact wording', (
     tester,
@@ -148,35 +135,148 @@ void main() {
   testWidgets('draws each state the same in light and dark tokens', (
     tester,
   ) async {
-    final states = <Widget>[
-      CoraStateView.loading(),
-      CoraStateView.allSeen(onOpenSaved: () {}),
-      CoraStateView.loadFailed(onRetry: () {}),
-      CoraStateView.empty(title: '아직 받은 제안이 없어요'),
-      CoraStateView.staleVersion(version: 3, onOpen: () {}),
+    // 상태마다 (보여 줄 위젯, 제목, 설명, 단추 글자). 불러오는 중은 제목이 곧 오른쪽 글자다.
+    final cases =
+        <
+          ({
+            CoraStateKind kind,
+            Widget view,
+            String title,
+            String? description,
+            String? action,
+          })
+        >[
+          (
+            kind: CoraStateKind.loading,
+            view: CoraStateView.loading(),
+            title: '불러오는 중',
+            description: null,
+            action: null,
+          ),
+          (
+            kind: CoraStateKind.allSeen,
+            view: CoraStateView.allSeen(onOpenSaved: () {}),
+            title: '오늘 추천을 모두 봤어요',
+            description: '관심과 저장에 담은 후보를 비교해 보세요. 내일 새 추천이 올라와요.',
+            action: '저장한 후보 보기',
+          ),
+          (
+            kind: CoraStateKind.loadFailed,
+            view: CoraStateView.loadFailed(onRetry: () {}),
+            title: '영상을 불러오지 못했어요',
+            description: '연결이 불안정해요. 잠시 뒤 다시 시도해 주세요.',
+            action: '다시 시도',
+          ),
+          (
+            kind: CoraStateKind.empty,
+            view: CoraStateView.empty(
+              title: '아직 받은 제안이 없어요',
+              description: '포트폴리오를 채우면 가게와 브랜드의 추천에 더 자주 보여요.',
+              actionLabel: '콘텐츠 올리기',
+              onAction: () {},
+            ),
+            title: '아직 받은 제안이 없어요',
+            description: '포트폴리오를 채우면 가게와 브랜드의 추천에 더 자주 보여요.',
+            action: '콘텐츠 올리기',
+          ),
+          (
+            kind: CoraStateKind.staleVersion,
+            view: CoraStateView.staleVersion(version: 3, onOpen: () {}),
+            title: '이전 판본이라 수락할 수 없어요',
+            description: '상대가 판본 3을 보냈어요. 바뀐 조건을 확인한 뒤 수락해 주세요.',
+            action: '판본 3 보기',
+          ),
+        ];
+    // 캔버스 F8 / DarkNStates의 값과 같은지 토큰 값으로 본다(라이트 · 다크 각각).
+    final expected = <(String, ThemeData, CoraColors)>[
+      ('light', coraLightTheme, CoraColors.light),
+      ('dark', coraDarkTheme, CoraColors.dark),
     ];
-    for (final (theme, colors) in [
-      (coraLightTheme, CoraColors.light),
-      (coraDarkTheme, CoraColors.dark),
-    ]) {
-      for (final view in states) {
-        await tester.pumpWidget(coraTestApp(view, theme: theme));
-        // 테마가 바뀔 때 AnimatedTheme이 색을 섞는 동안을 기다린다.
+    for (final (name, theme, c) in expected) {
+      for (final item in cases) {
+        final reason = '$name ${item.kind.name}';
+        await tester.pumpWidget(coraTestApp(item.view, theme: theme));
         await tester.pumpAndSettle();
-        // 카드 바탕 `surface`, 글자 `text`·`textSecondary`, 단추 글자 `onChipAction`.
-        expect(_cardColor(tester), colors.surface);
-        for (final t in tester.widgetList<Text>(find.byType(Text))) {
-          final color = t.style!.color;
+
+        final boxes = tester
+            .widgetList<DecoratedBox>(
+              find.descendant(
+                of: find.byType(CoraStateView),
+                matching: find.byType(DecoratedBox),
+              ),
+            )
+            .map((b) => b.decoration as BoxDecoration)
+            .toList();
+
+        if (item.kind == CoraStateKind.loading) {
+          // 카드 surface, 사진 자리와 막대 둘 line.
+          expect(boxes.map((b) => b.color).toList(), [
+            c.surface,
+            c.line,
+            c.line,
+            c.line,
+          ], reason: reason);
+          // 라이트 #F8F9FA/#E6E8EB, 다크 #1C1E22/#2A2D33(캔버스 값).
           expect(
-            [
-              colors.text,
-              colors.textSecondary,
-              colors.onChipAction,
-            ].contains(color),
-            isTrue,
-            reason: '"${t.data}" uses $color',
+            boxes.map((b) => b.color).toList(),
+            name == 'light'
+                ? const [
+                    Color(0xFFF8F9FA),
+                    Color(0xFFE6E8EB),
+                    Color(0xFFE6E8EB),
+                    Color(0xFFE6E8EB),
+                  ]
+                : const [
+                    Color(0xFF1C1E22),
+                    Color(0xFF2A2D33),
+                    Color(0xFF2A2D33),
+                    Color(0xFF2A2D33),
+                  ],
+            reason: reason,
           );
+          expect(
+            tester.widget<Text>(find.text(item.title)).style!.color,
+            c.textSecondary,
+            reason: reason,
+          );
+          continue;
         }
+
+        // 카드 surface, 그림 원 background(라이트 #FFFFFF, 다크 #0F1012), 단추 chipAction(흰색).
+        expect(boxes.map((b) => b.color).toList(), [
+          c.surface,
+          c.background,
+          c.chipAction,
+        ], reason: reason);
+        expect(boxes[1].shape, BoxShape.circle, reason: reason);
+        expect(
+          boxes.map((b) => b.color).toList(),
+          name == 'light'
+              ? const [Color(0xFFF8F9FA), Color(0xFFFFFFFF), Color(0xFFFFFFFF)]
+              : const [Color(0xFF1C1E22), Color(0xFF0F1012), Color(0xFFFFFFFF)],
+          reason: reason,
+        );
+        // 글자: 제목 text, 설명 textSecondary, 단추 onChipAction(#17181C).
+        Color? colorOf(String text) =>
+            tester.widget<Text>(find.text(text)).style!.color;
+        expect(colorOf(item.title), c.text, reason: reason);
+        expect(colorOf(item.description!), c.textSecondary, reason: reason);
+        expect(colorOf(item.action!), c.onChipAction, reason: reason);
+        expect(colorOf(item.action!), const Color(0xFF17181C), reason: reason);
+        // 그림 선 색: 라이트 #5C6068, 다크 #A0A4AD(textSecondary).
+        final painter = tester
+            .widget<CustomPaint>(
+              find.descendant(
+                of: find.byType(CoraStateView),
+                matching: find.byType(CustomPaint),
+              ),
+            )
+            .painter!;
+        expect(
+          (painter as dynamic).color as Color,
+          name == 'light' ? const Color(0xFF5C6068) : const Color(0xFFA0A4AD),
+          reason: reason,
+        );
       }
     }
   });
