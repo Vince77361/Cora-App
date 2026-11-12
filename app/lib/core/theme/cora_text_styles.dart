@@ -230,4 +230,34 @@ abstract final class CoraTextStyles {
     height: _normal,
     leadingDistribution: _even,
   );
+
+  /// F8 상태 카드의 제목. 15px, 700, 줄 높이 normal.
+  static const stateTitle = TextStyle(
+    fontFamily: _family,
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
+
+  /// F8 상태 카드의 설명. 13px, 400, 줄 높이 1.5.
+  static const stateDescription = TextStyle(
+    fontFamily: _family,
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: 1.5,
+    leadingDistribution: _even,
+  );
+
+  /// F8 불러오는 중 카드 오른쪽의 `불러오는 중`. 12px, 400, 줄 높이 normal(`caption`은 500).
+  static const stateLoading = TextStyle(
+    fontFamily: _family,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
 }
