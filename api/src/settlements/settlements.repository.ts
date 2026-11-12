@@ -149,6 +149,14 @@ export class SettlementsRepository {
     return map;
   }
 
+  // 그 크리에이터가 받을(받은) 지급 전부. 정산 내역(지갑)이 읽는다.
+  listPayoutsForCreator(creatorId: string): Promise<Payout[]> {
+    return this.prisma.payout.findMany({
+      where: { deletedAt: null, collaboration: { creatorId } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+  }
+
   findSettlement(collaborationId: string): Promise<Settlement | null> {
     return this.prisma.settlement.findFirst({
       where: { collaborationId, deletedAt: null },

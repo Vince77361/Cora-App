@@ -21,6 +21,7 @@ import { SettlementsModule } from './settlements/settlements.module';
 import { StoresModule } from './stores/stores.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { UsersModule } from './users/users.module';
     PayoutAccountsModule,
     SettlementsModule,
     CollaborationsApiModule,
+    WalletModule,
     PaymentsDevModule.register(process.env),
   ],
 })

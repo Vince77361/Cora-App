@@ -77,4 +77,40 @@ export class LedgerRepository {
     const out = await sum('debitAccount');
     return into - out;
   }
+
+  // 협업 여러 개의 ESCROW 잔액을 한 번에. 읽는 도중 다른 줄이 끼어 합이 어긋나지 않게 한 스냅샷(REPEATABLE READ)에서 읽는다.
+  // 줄이 없는 협업은 0이다.
+  async escrowBalances(
+    collaborationIds: string[],
+  ): Promise<Map<string, number>> {
+    const balances = new Map<string, number>(
+      collaborationIds.map((id) => [id, 0]),
+    );
+    if (collaborationIds.length === 0) return balances;
+    await this.prisma.$transaction(
+      async (tx) => {
+        const sum = async (side: 'creditAccount' | 'debitAccount') =>
+          tx.ledgerEntry.groupBy({
+            by: ['collaborationId'],
+            where: {
+              collaborationId: { in: collaborationIds },
+              deletedAt: null,
+              [side]: 'ESCROW',
+            },
+            _sum: { amount: true },
+          });
+        for (const row of await sum('creditAccount')) {
+          balances.set(row.collaborationId, row._sum.amount ?? 0);
+        }
+        for (const row of await sum('debitAccount')) {
+          balances.set(
+            row.collaborationId,
+            (balances.get(row.collaborationId) ?? 0) - (row._sum.amount ?? 0),
+          );
+        }
+      },
+      { isolationLevel: 'RepeatableRead' },
+    );
+    return balances;
+  }
 }

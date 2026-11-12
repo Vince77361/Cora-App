@@ -64,12 +64,18 @@ export class PayoutAccountsService {
   }
 
   async getMine(userId: string): Promise<PayoutAccountModel> {
-    await this.assertCreator(userId);
-    const row = await this.accounts.findByCreatorId(userId);
-    if (!row) {
+    const model = await this.findMine(userId);
+    if (!model) {
       throw new AppError('NOT_FOUND', '등록된 지급 계좌가 없어요.');
     }
-    return this.toModel(row, findBank(row.bankCode));
+    return model;
+  }
+
+  // 정산 내역처럼 계좌가 없어도 화면이 있는 곳이 쓴다. 번호는 열지 않고 저장된 뒤 4자리만 쓴다.
+  async findMine(userId: string): Promise<PayoutAccountModel | null> {
+    await this.assertCreator(userId);
+    const row = await this.accounts.findByCreatorId(userId);
+    return row ? this.toModel(row, findBank(row.bankCode)) : null;
   }
 
   // 협업 조회 화면이 "계좌 등록이 필요해요"를 가릴 때 쓴다. 번호는 열지 않는다.

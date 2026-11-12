@@ -1,8 +1,11 @@
 import {
+  kstDateString,
   kstTimeOnDate,
   kstWeekdayFromMonday,
   startOfKstDay,
+  startOfKstMonth,
   startOfKstWeek,
+  startOfNextKstMonth,
 } from './kst';
 
 describe('startOfKstDay', () => {
@@ -98,6 +101,38 @@ describe('startOfKstWeek', () => {
     );
     expect(startOfKstWeek(new Date('2026-11-15T23:59:59.999+09:00'))).toEqual(
       new Date('2026-11-09T00:00:00+09:00'),
+    );
+  });
+});
+
+describe('kstDateString', () => {
+  it('formats the Korean date, not the UTC date', () => {
+    // 2026-11-17 15:00 UTC는 한국 시간으로 11월 18일 0시다.
+    expect(kstDateString(new Date('2026-11-17T15:00:00.000Z'))).toBe(
+      '2026-11-18',
+    );
+    expect(kstDateString(new Date('2026-11-17T14:59:59.999Z'))).toBe(
+      '2026-11-17',
+    );
+  });
+});
+
+describe('startOfKstMonth and startOfNextKstMonth', () => {
+  it('puts 23:00 KST on Oct 31 in October, not in November', () => {
+    // 2026-10-31 23:00 KST = 14:00 UTC.
+    const at = new Date('2026-10-31T14:00:00.000Z');
+    expect(startOfKstMonth(at)).toEqual(new Date('2026-09-30T15:00:00.000Z'));
+    expect(startOfNextKstMonth(at)).toEqual(
+      new Date('2026-10-31T15:00:00.000Z'),
+    );
+  });
+
+  it('starts November at midnight Nov 1 KST and rolls the year in December', () => {
+    expect(startOfKstMonth(new Date('2026-10-31T15:00:00.000Z'))).toEqual(
+      new Date('2026-10-31T15:00:00.000Z'),
+    );
+    expect(startOfNextKstMonth(new Date('2026-12-15T03:00:00.000Z'))).toEqual(
+      new Date('2026-12-31T15:00:00.000Z'),
     );
   });
 });

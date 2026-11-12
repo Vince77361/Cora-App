@@ -114,6 +114,7 @@ Class | Method | HTTP request | Description
 *UploadsApi* | [**createPhotoUpload**](doc//UploadsApi.md#createphotoupload) | **POST** /uploads/photos | 
 *UsersApi* | [**getMe**](doc//UsersApi.md#getme) | **GET** /me | 
 *UsersApi* | [**updateMyRole**](doc//UsersApi.md#updatemyrole) | **PATCH** /me/role | 
+*WalletApi* | [**getWallet**](doc//WalletApi.md#getwallet) | **GET** /wallet | 
 
 
 ## Documentation For Models
@@ -194,6 +195,11 @@ Class | Method | HTTP request | Description
  - [UpsertCreatorProfileDto](doc//UpsertCreatorProfileDto.md)
  - [UpsertPayoutAccountDto](doc//UpsertPayoutAccountDto.md)
  - [UserRole](doc//UserRole.md)
+ - [WalletAccountModel](doc//WalletAccountModel.md)
+ - [WalletEntryKind](doc//WalletEntryKind.md)
+ - [WalletEntryModel](doc//WalletEntryModel.md)
+ - [WalletModel](doc//WalletModel.md)
+ - [WalletNextPayoutModel](doc//WalletNextPayoutModel.md)
 
 
 ## Documentation For Authorization

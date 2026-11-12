@@ -146,6 +146,44 @@ describe('LedgerService', () => {
     expect(await ledger.escrowBalance(collaborationId)).toBe(40000);
   });
 
+  it('reads escrow balances of several collaborations in one call', async () => {
+    const store = await prisma.store.findFirstOrThrow();
+    const other = await prisma.collaboration.create({
+      data: {
+        kind: 'STORE_OFFER',
+        stage: 'AWAITING_PAYMENT',
+        commissionerId: OWNER,
+        creatorId: CREATOR,
+        storeId: store.id,
+        terms: { format: 'REELS', rewardType: 'PER_VIEW' },
+        settlementMethod: 'PER_VIEW',
+      },
+    });
+    await ledger.post(collaborationId, payment(), 'payment:1');
+    await ledger.post(
+      collaborationId,
+      postingsForSettlement({ payout: 43200, refund: 56800 }),
+      'settle:1',
+    );
+    await ledger.post(
+      other.id,
+      postingsForPaymentApproved({ escrow: 70000, fee: 7000 }),
+      'payment:2',
+    );
+    const balances = await ledger.escrowBalances([
+      collaborationId,
+      other.id,
+      '66666666-6666-4666-8666-666666666699',
+    ]);
+    // 정산으로 모두 나간 협업은 0, 보관 중인 협업은 맡긴 금액, 줄이 없는 협업은 0이다.
+    expect(Object.fromEntries(balances)).toEqual({
+      [collaborationId]: 0,
+      [other.id]: 70000,
+      '66666666-6666-4666-8666-666666666699': 0,
+    });
+    await expect(ledger.escrowBalances([])).resolves.toEqual(new Map());
+  });
+
   it('skips zero amounts and writes nothing when nothing is left', async () => {
     await expect(
       ledger.post(

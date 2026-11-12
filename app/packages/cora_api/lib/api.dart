@@ -43,6 +43,7 @@ part 'api/stores_api.dart';
 part 'api/submissions_api.dart';
 part 'api/uploads_api.dart';
 part 'api/users_api.dart';
+part 'api/wallet_api.dart';
 
 part 'model/advance_onboarding_dto.dart';
 part 'model/advance_onboarding_step.dart';
@@ -120,6 +121,11 @@ part 'model/update_store_dto.dart';
 part 'model/upsert_creator_profile_dto.dart';
 part 'model/upsert_payout_account_dto.dart';
 part 'model/user_role.dart';
+part 'model/wallet_account_model.dart';
+part 'model/wallet_entry_kind.dart';
+part 'model/wallet_entry_model.dart';
+part 'model/wallet_model.dart';
+part 'model/wallet_next_payout_model.dart';
 
 /// An [ApiClient] instance that uses the default values obtained from
 /// the OpenAPI specification file.

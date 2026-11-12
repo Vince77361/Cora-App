@@ -39,3 +39,26 @@ export function startOfKstWeek(at: Date): Date {
     startOfKstDay(at).getTime() - kstWeekdayFromMonday(at) * DAY_MS,
   );
 }
+
+// 그 순간이 속한 한국 날짜를 'YYYY-MM-DD'로. 화면이 날짜만 보여 줄 때(지급일 등) 쓴다.
+export function kstDateString(at: Date): string {
+  return new Date(at.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+// 그 순간이 속한 한국 시간의 달이 시작하는 1일 0시(UTC 시각). "이번 달"의 경계다.
+export function startOfKstMonth(at: Date): Date {
+  const shifted = new Date(at.getTime() + KST_OFFSET_MS);
+  return new Date(
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), 1) -
+      KST_OFFSET_MS,
+  );
+}
+
+// 그 순간이 속한 한국 시간의 달 다음 달 1일 0시(UTC 시각). 이번 달 범위의 끝(포함하지 않음)이다.
+export function startOfNextKstMonth(at: Date): Date {
+  const shifted = new Date(at.getTime() + KST_OFFSET_MS);
+  return new Date(
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, 1) -
+      KST_OFFSET_MS,
+  );
+}

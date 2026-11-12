@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Collaboration, Settlement } from '@prisma/client';
+import { Collaboration, Payout, Settlement } from '@prisma/client';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { postingsForSettlement } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
@@ -43,6 +43,15 @@ export class SettlementsService {
     private readonly refunds: RefundsService,
     private readonly clock: Clock,
   ) {}
+
+  // 크리에이터의 정산 내역(지갑)이 읽는 값. 쓰지 않는다.
+  payoutsOfCreator(creatorId: string): Promise<Payout[]> {
+    return this.repository.listPayoutsForCreator(creatorId);
+  }
+
+  settlementsOf(collaborationIds: string[]): Promise<Map<string, Settlement>> {
+    return this.repository.settlementsFor(collaborationIds);
+  }
 
   // view-snapshot 작업: 그날의 조회수를 읽어 저장한다. 같은 날 작업이 다시 돌아도 한 번만 읽고 한 줄만 남는다.
   // 가장 최근 세 줄이 모두 null이면(읽지 못한 날이 연속 3일) 정산하지 않고 멈춘다.

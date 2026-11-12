@@ -356,6 +356,16 @@ class ApiClient {
           return UpsertPayoutAccountDto.fromJson(value);
         case 'UserRole':
           return UserRoleTypeTransformer().decode(value);
+        case 'WalletAccountModel':
+          return WalletAccountModel.fromJson(value);
+        case 'WalletEntryKind':
+          return WalletEntryKindTypeTransformer().decode(value);
+        case 'WalletEntryModel':
+          return WalletEntryModel.fromJson(value);
+        case 'WalletModel':
+          return WalletModel.fromJson(value);
+        case 'WalletNextPayoutModel':
+          return WalletNextPayoutModel.fromJson(value);
         default:
           dynamic match;
           if (value is List &&

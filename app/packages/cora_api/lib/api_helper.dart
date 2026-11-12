@@ -143,6 +143,9 @@ String parameterToString(dynamic value) {
   if (value is UserRole) {
     return UserRoleTypeTransformer().encode(value).toString();
   }
+  if (value is WalletEntryKind) {
+    return WalletEntryKindTypeTransformer().encode(value).toString();
+  }
   return value.toString();
 }
 

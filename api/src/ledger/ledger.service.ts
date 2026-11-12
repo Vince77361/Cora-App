@@ -62,6 +62,11 @@ export class LedgerService {
   ): Promise<number> {
     return this.repository.escrowBalance(collaborationId, tx);
   }
+
+  // 지갑처럼 여러 협업의 보관액을 한꺼번에 보여 줄 때 쓴다(한 스냅샷에서 읽는다).
+  escrowBalances(collaborationIds: string[]): Promise<Map<string, number>> {
+    return this.repository.escrowBalances(collaborationIds);
+  }
 }
 
 function assertValidPosting(p: Posting): void {

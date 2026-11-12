@@ -92,6 +92,12 @@ doc/UpsertCreatorProfileDto.md
 doc/UpsertPayoutAccountDto.md
 doc/UserRole.md
 doc/UsersApi.md
+doc/WalletAccountModel.md
+doc/WalletApi.md
+doc/WalletEntryKind.md
+doc/WalletEntryModel.md
+doc/WalletModel.md
+doc/WalletNextPayoutModel.md
 lib/api.dart
 lib/api/applications_api.dart
 lib/api/collaborations_api.dart
@@ -108,6 +114,7 @@ lib/api/stores_api.dart
 lib/api/submissions_api.dart
 lib/api/uploads_api.dart
 lib/api/users_api.dart
+lib/api/wallet_api.dart
 lib/api_client.dart
 lib/api_exception.dart
 lib/api_helper.dart
@@ -192,6 +199,11 @@ lib/model/update_store_dto.dart
 lib/model/upsert_creator_profile_dto.dart
 lib/model/upsert_payout_account_dto.dart
 lib/model/user_role.dart
+lib/model/wallet_account_model.dart
+lib/model/wallet_entry_kind.dart
+lib/model/wallet_entry_model.dart
+lib/model/wallet_model.dart
+lib/model/wallet_next_payout_model.dart
 pubspec.yaml
 test/advance_onboarding_dto_test.dart
 test/advance_onboarding_step_test.dart
@@ -284,3 +296,9 @@ test/upsert_creator_profile_dto_test.dart
 test/upsert_payout_account_dto_test.dart
 test/user_role_test.dart
 test/users_api_test.dart
+test/wallet_account_model_test.dart
+test/wallet_api_test.dart
+test/wallet_entry_kind_test.dart
+test/wallet_entry_model_test.dart
+test/wallet_model_test.dart
+test/wallet_next_payout_model_test.dart

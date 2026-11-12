@@ -1944,6 +1944,185 @@
           "CREATOR"
         ],
         "type": "string"
+      },
+      "WalletAccountModel": {
+        "properties": {
+          "accountLast4": {
+            "description": "계좌번호 뒤 4자리. 전체 번호는 나가지 않는다.",
+            "type": "string"
+          },
+          "bankFullName": {
+            "description": "화면에 보이는 은행 이름. 예: 국민은행",
+            "type": "string"
+          },
+          "bankName": {
+            "description": "짧은 은행 이름. 예: 국민",
+            "type": "string"
+          },
+          "holderName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bankName",
+          "bankFullName",
+          "accountLast4",
+          "holderName"
+        ],
+        "type": "object"
+      },
+      "WalletEntryKind": {
+        "description": "PAYOUT_SCHEDULED: 정산이 확정되고 송금 전, PAYOUT_DONE: 송금 끝, PAYOUT_FAILED: 송금 실패(운영팀이 확인), HELD: Cora가 보관 중, VOUCHER: 식사권.",
+        "enum": [
+          "PAYOUT_SCHEDULED",
+          "PAYOUT_DONE",
+          "PAYOUT_FAILED",
+          "HELD",
+          "VOUCHER"
+        ],
+        "type": "string"
+      },
+      "WalletEntryModel": {
+        "properties": {
+          "amount": {
+            "description": "금액(원). 식사권 줄은 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "at": {
+            "description": "줄의 기준 시각. 지급 예정은 정산 시각, 지급 완료는 송금 시각, 보관 중은 보관 시작.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "collaborationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "counterpartName": {
+            "description": "크리에이터에게는 가게 이름. 읽을 수 없으면 \"가게\"(브랜드 계약은 \"브랜드\").",
+            "type": "string"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WalletEntryKind"
+              }
+            ],
+            "description": "PAYOUT_SCHEDULED: 정산이 확정되고 송금 전, PAYOUT_DONE: 송금 끝, PAYOUT_FAILED: 송금 실패(운영팀이 확인), HELD: Cora가 보관 중, VOUCHER: 식사권."
+          },
+          "pieces": {
+            "description": "콘텐츠 편 수. 오퍼는 지금 한 편이다.",
+            "type": "integer"
+          },
+          "stage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CollaborationStage"
+              }
+            ]
+          },
+          "views": {
+            "description": "정산에 쓴 최종 조회수. 지급 줄에서만 값이 있다.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "voucherName": {
+            "description": "식사권 이름. 식사권 줄에서만 값이 있다.",
+            "nullable": true,
+            "type": "string"
+          },
+          "voucherUsed": {
+            "description": "링크를 제출해 식사권을 쓴 것으로 보면 true. 식사권 줄에서만 값이 있다.",
+            "nullable": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "collaborationId",
+          "counterpartName",
+          "format",
+          "pieces",
+          "kind",
+          "amount",
+          "views",
+          "voucherName",
+          "voucherUsed",
+          "stage",
+          "at"
+        ],
+        "type": "object"
+      },
+      "WalletModel": {
+        "properties": {
+          "account": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WalletAccountModel"
+              }
+            ],
+            "description": "등록 전이면 null.",
+            "nullable": true,
+            "type": "object"
+          },
+          "entries": {
+            "description": "기준 시각 최신순. 식사권 줄은 같은 협업의 돈 줄 바로 아래.",
+            "items": {
+              "$ref": "#/components/schemas/WalletEntryModel"
+            },
+            "type": "array"
+          },
+          "heldAmount": {
+            "description": "지금 Cora가 보관 중인 내 협업들의 금액 합(원).",
+            "type": "integer"
+          },
+          "nextPayout": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WalletNextPayoutModel"
+              }
+            ],
+            "description": "지급 예정이 없으면 null.",
+            "nullable": true,
+            "type": "object"
+          },
+          "receivedThisMonth": {
+            "description": "이번 달(한국 시간) 송금이 끝난 지급의 합(원).",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "nextPayout",
+          "account",
+          "receivedThisMonth",
+          "heldAmount",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "WalletNextPayoutModel": {
+        "properties": {
+          "amount": {
+            "description": "그날 한국 시간으로 나갈 지급의 합(원).",
+            "type": "integer"
+          },
+          "date": {
+            "description": "가장 이른 지급 예정일(한국 시간 YYYY-MM-DD). 지급은 수요일 10:00에 나간다.",
+            "example": "2026-11-18",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "amount"
+        ],
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -3590,6 +3769,33 @@
         "summary": "",
         "tags": [
           "Uploads"
+        ]
+      }
+    },
+    "/wallet": {
+      "get": {
+        "operationId": "getWallet",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Wallet"
         ]
       }
     }
