@@ -21,6 +21,29 @@ export function settle(p: {
   return { payout, refund: p.cap - payout };
 }
 
+// 새 보상 계산: 고정 현금은 그대로 지급하고, 조회수 수당(1,000회당 단가)은 상한까지만 지급한다.
+// 환불은 상한에서 수당을 뺀 값이다. 고정 현금은 환불에 섞이지 않는다.
+// 지급액 + 환불액은 항상 고정 현금 + 상한이라 에스크로 잔액이 0이 된다.
+export function settleReward(p: {
+  views: number;
+  ratePerThousand: number;
+  cap: number;
+  fixedCash: number;
+}): { viewPay: number; payout: number; refund: number; capApplied: boolean } {
+  assertWholeWon(p.views, '조회수');
+  assertWholeWon(p.ratePerThousand, '1,000회당 단가');
+  assertWholeWon(p.cap, '상한');
+  assertWholeWon(p.fixedCash, '고정 현금');
+  const raw = Math.floor((p.views * p.ratePerThousand) / 1000);
+  const viewPay = Math.min(raw, p.cap);
+  return {
+    viewPay,
+    payout: p.fixedCash + viewPay,
+    refund: p.cap - viewPay,
+    capApplied: raw > p.cap,
+  };
+}
+
 function assertWholeWon(value: number, label: string): void {
   if (!Number.isInteger(value) || value < 0) {
     throw new Error(`${label}은(는) 0 이상의 정수여야 해요: ${value}`);
