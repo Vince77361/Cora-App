@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
+import '../shared/demo_role_nav.dart';
 import '../shared/demo_ui.dart';
 import 'g4_style.dart';
 
@@ -297,36 +299,11 @@ class _ReelsPageState extends State<ReelsPage> {
             ),
           ),
         ),
-        DemoBottomNav(
+        demoRoleNav(
+          // 브랜드에게 릴스는 "발견" 탭의 한 보기(공통 모델 14장)다.
+          current: demoRole.value == DemoRole.brand ? 0 : 1,
+          fallback: DemoRole.store,
           activeColor: c.navActive,
-          items: const [
-            DemoNavItem(
-              label: '홈',
-              svg: G4Icons.home,
-              canvasFile: 'NStoreHome.dc.html',
-            ),
-            DemoNavItem(
-              label: '찾기',
-              svg: G4Icons.discover,
-              canvasFile: 'NReels.dc.html',
-              current: true,
-            ),
-            DemoNavItem(
-              label: '대화',
-              svg: G4Icons.chat,
-              canvasFile: 'NChatThread.dc.html',
-            ),
-            DemoNavItem(
-              label: '오퍼',
-              svg: G4Icons.plus,
-              canvasFile: 'NOffer.dc.html',
-            ),
-            DemoNavItem(
-              label: 'AI 글',
-              svg: G4Icons.sparkle,
-              canvasFile: 'NStoreAI.dc.html',
-            ),
-          ],
         ),
       ],
     );

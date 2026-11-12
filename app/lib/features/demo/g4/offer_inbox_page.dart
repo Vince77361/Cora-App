@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
+import '../shared/demo_role_nav.dart';
 import '../shared/demo_ui.dart';
 import 'g4_style.dart';
 
@@ -33,36 +35,10 @@ class _OfferInboxPageState extends State<OfferInboxPage> {
                 )
               : _OfferCard(onDecline: () => setState(() => _declined = true)),
         ),
-        DemoBottomNav(
+        demoRoleNav(
+          current: 3,
+          fallback: DemoRole.creator,
           activeColor: c.navActive,
-          items: const [
-            DemoNavItem(
-              label: '발견',
-              svg: G4Icons.discover,
-              canvasFile: 'Main.dc.html',
-            ),
-            DemoNavItem(
-              label: '관심',
-              svg: G4Icons.heart,
-              canvasFile: 'Likes.dc.html',
-            ),
-            DemoNavItem(
-              label: '대화',
-              svg: G4Icons.chat,
-              canvasFile: 'Chat.dc.html',
-            ),
-            DemoNavItem(
-              label: '협업',
-              svg: G4Icons.work,
-              canvasFile: 'Progress.dc.html',
-              current: true,
-            ),
-            DemoNavItem(
-              label: '프로필',
-              svg: G4Icons.person,
-              canvasFile: 'Principles.dc.html',
-            ),
-          ],
         ),
       ],
     );

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/features/demo/demo_paths.dart';
+import 'package:cora/features/demo/demo_role.dart';
 import 'package:cora/features/demo/demo_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,6 +21,7 @@ Future<void> _loadFonts() async {
 void main() {
   final shots = Platform.environment['SHOTS'] == '1';
   setUpAll(_loadFonts);
+  setUp(() => demoRole.value = null);
   for (final mode in [ThemeMode.light, ThemeMode.dark]) {
     for (final path in DemoPaths.all) {
       testWidgets('${mode.name} $path renders', (tester) async {

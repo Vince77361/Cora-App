@@ -1,5 +1,6 @@
 import 'package:cora/features/demo/demo_app.dart';
 import 'package:cora/features/demo/demo_paths.dart';
+import 'package:cora/features/demo/demo_role.dart';
 import 'package:cora/features/demo/demo_router.dart';
 import 'package:cora/features/demo/g7/g7_ui.dart';
 import 'package:flutter/gestures.dart';
@@ -18,6 +19,8 @@ Future<void> _loadFonts() async {
 
 void main() {
   setUpAll(_loadFonts);
+  // 역할은 전역 값이라 앞 시험에서 고른 역할이 남지 않게 매번 비운다.
+  setUp(() => demoRole.value = null);
 
   Future<void> settle(WidgetTester tester) async {
     await tester.pump();

@@ -4,6 +4,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
+import '../shared/demo_role_nav.dart';
 import '../shared/demo_ui.dart';
 import 'g3_common.dart';
 
@@ -348,41 +350,10 @@ class _CreatorDiscoverPageState extends State<CreatorDiscoverPage> {
             ),
           ),
         ),
-        DemoBottomNav(
+        demoRoleNav(
+          current: 0,
+          fallback: DemoRole.creator,
           activeColor: p.dark ? _lime : null,
-          items: const [
-            DemoNavItem(
-              label: '발견',
-              canvasFile: 'CreatorDiscover.dc.html',
-              current: true,
-              svg:
-                  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="6" y="3" width="12" height="17" rx="3"></rect><path d="M3 7v10M21 7v10"></path></svg>',
-            ),
-            DemoNavItem(
-              label: '관심',
-              canvasFile: 'Likes.dc.html',
-              svg:
-                  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg>',
-            ),
-            DemoNavItem(
-              label: '대화',
-              canvasFile: 'Chat.dc.html',
-              svg:
-                  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H10l-6 4z"></path></svg>',
-            ),
-            DemoNavItem(
-              label: '협업',
-              canvasFile: 'Agreement.dc.html',
-              svg:
-                  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V4h8v3"></path></svg>',
-            ),
-            DemoNavItem(
-              label: '프로필',
-              canvasFile: 'Principles.dc.html',
-              svg:
-                  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg>',
-            ),
-          ],
         ),
       ],
     );

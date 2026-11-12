@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g2_palette.dart';
 
@@ -365,7 +366,9 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _menuItem(p, '내 콘텐츠 카드', 'NUpload.dc.html'),
+                  // 콘텐츠 올리기(B6)는 크리에이터 화면이라 다른 역할의 첨부 메뉴에서는 뺀다.
+                  if (demoCanOpen('NUpload.dc.html'))
+                    _menuItem(p, '내 콘텐츠 카드', 'NUpload.dc.html'),
                   _menuItem(p, '조건 수정 제안', 'Agreement.dc.html'),
                 ],
               ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
+import '../shared/demo_role_nav.dart';
 import '../shared/demo_ui.dart';
 import 'g4_style.dart';
 
@@ -186,36 +188,10 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
         ),
-        DemoBottomNav(
+        demoRoleNav(
+          current: 4,
+          fallback: DemoRole.creator,
           activeColor: c.navActive,
-          items: const [
-            DemoNavItem(
-              label: '발견',
-              svg: G4Icons.discover,
-              canvasFile: 'NReels.dc.html',
-            ),
-            DemoNavItem(
-              label: '관심',
-              svg: G4Icons.heart,
-              canvasFile: 'Likes.dc.html',
-            ),
-            DemoNavItem(
-              label: '오퍼',
-              svg: G4Icons.chat,
-              canvasFile: 'NOfferInbox.dc.html',
-            ),
-            DemoNavItem(
-              label: '협업',
-              svg: G4Icons.work,
-              canvasFile: 'NEscrow.dc.html',
-            ),
-            DemoNavItem(
-              label: '프로필',
-              svg: G4Icons.person,
-              canvasFile: 'NProfile.dc.html',
-              current: true,
-            ),
-          ],
         ),
       ],
     );

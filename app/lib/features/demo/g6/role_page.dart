@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g6_ui.dart';
 
@@ -124,7 +125,11 @@ class _RolePageState extends State<RolePage> {
             fg: dark ? const Color(0xFF17181C) : G6Palette.onLime,
             weight: dark ? FontWeight.w500 : FontWeight.w700,
             // 역할의 첫 화면에 들어가면 로그인 쪽 화면을 비운다. 홈에서 뒤로 밀어 로그인으로 돌아가지 않게.
-            onTap: () => demoReset(context, cur.href),
+            onTap: () {
+              // 고른 역할을 기억한다. 이 뒤의 링크와 하단 메뉴는 이 역할의 화면 안에서만 돈다.
+              demoRole.value = DemoRole.values[_pick];
+              demoReset(context, cur.href);
+            },
           ),
         ),
       ],

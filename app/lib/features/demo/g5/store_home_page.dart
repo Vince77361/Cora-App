@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
+import '../shared/demo_role_nav.dart';
 import '../shared/demo_ui.dart';
 import 'g5_common.dart';
 
@@ -104,9 +106,6 @@ const List<List<_Row>> _lists = [
 
 const List<String> _tabLabels = ['지원한 크리에이터 5', '보낸 오퍼 3'];
 
-String _navSvg(String inner, {String extra = 'stroke-linejoin="round"'}) =>
-    '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" $extra>$inner</svg>';
-
 /// A9 사장님 홈 (`NStoreHome.dc.html`)
 class StoreHomePage extends StatefulWidget {
   const StoreHomePage({super.key});
@@ -204,43 +203,10 @@ class _StoreHomePageState extends State<StoreHomePage> {
             ),
           ),
         ),
-        DemoBottomNav(
+        demoRoleNav(
+          current: 0,
+          fallback: DemoRole.store,
           activeColor: pal.dark ? G5Palette.lime : null,
-          items: [
-            DemoNavItem(
-              label: '홈',
-              svg: _navSvg('<path d="M4 10l8-6 8 6v10H4z"></path>'),
-              canvasFile: 'NStoreHome.dc.html',
-              current: true,
-            ),
-            DemoNavItem(
-              label: '찾기',
-              svg: _navSvg(
-                '<rect x="6" y="3" width="12" height="17" rx="3"></rect><path d="M3 7v10M21 7v10"></path>',
-              ),
-              canvasFile: 'NReels.dc.html',
-            ),
-            DemoNavItem(
-              label: '대화',
-              svg: _navSvg('<path d="M4 5h16v11H10l-6 4z"></path>'),
-              canvasFile: 'NChatThread.dc.html',
-            ),
-            DemoNavItem(
-              label: '오퍼',
-              svg: _navSvg(
-                '<path d="M12 5v14M5 12h14"></path>',
-                extra: 'stroke-linecap="round"',
-              ),
-              canvasFile: 'NOffer.dc.html',
-            ),
-            DemoNavItem(
-              label: 'AI 글',
-              svg: _navSvg(
-                '<path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"></path>',
-              ),
-              canvasFile: 'NStoreAI.dc.html',
-            ),
-          ],
         ),
       ],
     );

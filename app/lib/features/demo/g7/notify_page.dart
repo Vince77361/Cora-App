@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g7_ui.dart';
 
@@ -92,7 +93,10 @@ class _NotifyPageState extends State<NotifyPage> {
   @override
   Widget build(BuildContext context) {
     final c = G7Colors.of(context);
-    final rows = _items.where((x) => _tab == 0 || x.k == _tab).toList();
+    // 알림은 내 역할이 열 수 있는 화면으로 가는 것만 보인다(캔버스의 알림 목록은 역할이 섞여 있다).
+    final rows = _items
+        .where((x) => demoCanOpen(x.href) && (_tab == 0 || x.k == _tab))
+        .toList();
     final selChip = c.dark ? const Color(0xFF33363D) : const Color(0xFFE3E5E9);
     return DemoFrame(
       background: c.bg,

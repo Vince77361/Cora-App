@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
+import '../shared/demo_role_nav.dart';
 import '../shared/demo_ui.dart';
 import 'g6_ui.dart';
 
@@ -162,41 +164,10 @@ class _DirectoryPageState extends State<DirectoryPage> {
             ),
           ),
         ),
-        DemoBottomNav(
+        demoRoleNav(
+          current: 1,
+          fallback: DemoRole.store,
           activeColor: dark ? G6Palette.lime : null,
-          items: [
-            DemoNavItem(
-              label: '홈',
-              canvasFile: 'NStoreHome.dc.html',
-              svg:
-                  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10l8-6 8 6v10H4z"></path></svg>',
-            ),
-            DemoNavItem(
-              label: '찾기',
-              canvasFile: 'NReels.dc.html',
-              current: true,
-              svg:
-                  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="6" y="3" width="12" height="17" rx="3"></rect><path d="M3 7v10M21 7v10"></path></svg>',
-            ),
-            DemoNavItem(
-              label: '대화',
-              canvasFile: 'NChatThread.dc.html',
-              svg:
-                  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H10l-6 4z"></path></svg>',
-            ),
-            DemoNavItem(
-              label: '오퍼',
-              canvasFile: 'NOffer.dc.html',
-              svg:
-                  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>',
-            ),
-            DemoNavItem(
-              label: 'AI 글',
-              canvasFile: 'NStoreAI.dc.html',
-              svg:
-                  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"></path></svg>',
-            ),
-          ],
         ),
       ],
     );

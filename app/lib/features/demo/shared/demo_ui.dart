@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../demo_paths.dart';
+import '../demo_role.dart';
 
 /// 시연 화면이 함께 쓰는 작은 도구. 이 파일은 조율 세션만 고친다.
 /// 묶음마다 필요한 위젯은 그 묶음 폴더 안에 만든다.
@@ -99,9 +100,12 @@ List<String> _stackPaths(BuildContext context) => [
 /// artifact 링크(`href="X.dc.html"`)를 따라간다. 같은 화면이면 아무것도 하지 않는다.
 /// 가려는 화면이 이미 아래에 쌓여 있으면(저장 뒤 설정으로, 닫기 뒤 홈으로 같은 "돌아가기") 같은 화면을
 /// 한 번 더 쌓지 않고 거기까지 닫는다. 실제 앱이 같은 화면을 겹쳐 쌓지 않는 것과 같다.
+///
+/// 지금 역할이 열 수 없는 화면(다른 역할의 화면)으로 가는 링크는 [demoResolvePath]가 같은 역할의 화면으로 바꾼다.
 void demoGo(BuildContext context, String canvasFile) {
-  final path = DemoPaths.forCanvas(canvasFile);
   final stack = _stackPaths(context);
+  final wanted = DemoPaths.forCanvas(canvasFile);
+  final path = demoResolvePath(stack.isEmpty ? '' : stack.last, wanted);
   if (stack.isNotEmpty && stack.last == path) return;
   final at = stack.lastIndexOf(path);
   if (at >= 0) {
@@ -111,14 +115,23 @@ void demoGo(BuildContext context, String canvasFile) {
     }
     return;
   }
+  // 다른 역할 화면으로 가던 링크가 역할 홈으로 바뀌었으면(오퍼를 보낸 뒤 홈) 쌓지 않고 홈에서 새로 시작한다.
+  final role = demoRole.value;
+  if (path != wanted && role != null && path == demoHomePath(role)) {
+    context.go(path);
+    return;
+  }
   context.push(path);
 }
 
 /// 쌓인 화면을 비우고 그 화면에서 새로 시작한다. 로그인·역할 고르기 뒤 첫 화면, 로그아웃, 하단 메뉴 탭 이동처럼
 /// 뒤로 가도 이전 화면이 나오면 안 되는 이동에 쓴다.
 void demoReset(BuildContext context, String canvasFile) {
-  final path = DemoPaths.forCanvas(canvasFile);
   final stack = _stackPaths(context);
+  final path = demoResolvePath(
+    stack.isEmpty ? '' : stack.last,
+    DemoPaths.forCanvas(canvasFile),
+  );
   if (stack.length == 1 && stack.last == path) return;
   context.go(path);
 }
@@ -135,6 +148,7 @@ class DemoNavItem {
     required this.svg,
     required this.canvasFile,
     this.current = false,
+    this.stack = false,
   });
 
   final String label;
@@ -145,6 +159,9 @@ class DemoNavItem {
   /// 누르면 갈 artifact 화면 파일 이름.
   final String canvasFile;
   final bool current;
+
+  /// 도착한 화면에 하단 메뉴가 없으면 true. 화면을 바꾸지 않고 쌓아, 뒤로 가면 이 탭으로 돌아온다.
+  final bool stack;
 }
 
 /// artifact의 떠 있는 하단 메뉴(`nav aria-label="주요 메뉴"`).
@@ -196,9 +213,10 @@ class DemoBottomNav extends StatelessWidget {
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 // 탭 이동은 화면을 쌓지 않고 바꾼다. 실제 앱의 하단 메뉴처럼 뒤로 가도 이전 탭이 나오지 않는다.
-                onTap: it.current
-                    ? null
-                    : () => demoReset(context, it.canvasFile),
+                // 켜진 칸을 다시 눌러도, 같은 화면이면 demoReset이 아무 일도 하지 않는다.
+                onTap: () => it.stack
+                    ? demoGo(context, it.canvasFile)
+                    : demoReset(context, it.canvasFile),
                 child: SizedBox(
                   width: 58,
                   height: 52,
