@@ -211,6 +211,7 @@ function build() {
   const ledgerPosts: { key: string; postings: Posting[] }[] = [];
   const refundRequests: { amount: number; key: string }[] = [];
   const executed: string[] = [];
+  const executeContexts: { finalAttempt: boolean }[] = [];
   const notified: NotifyInput[] = [];
   const state = { funded: true, executeFails: false, notifyFails: false };
 
@@ -225,7 +226,8 @@ function build() {
           ? ({ id: 'refund-1' } as Refund)
           : null,
       ),
-    execute: (id: string) => {
+    execute: (id: string, context?: { finalAttempt: boolean }) => {
+      executeContexts.push(context ?? { finalAttempt: true });
       if (state.executeFails) return Promise.reject(new Error('pg down'));
       executed.push(id);
       return Promise.resolve();
@@ -298,10 +300,21 @@ function build() {
     ledgerPosts,
     refundRequests,
     executed,
+    executeContexts,
     notified,
     state,
   };
 }
+
+const messageOf = async (promise: Promise<unknown>): Promise<string> => {
+  try {
+    await promise;
+  } catch (error) {
+    if (error instanceof AppError) return error.message;
+    throw error;
+  }
+  return 'NO_ERROR';
+};
 
 const codeOf = async (promise: Promise<unknown>): Promise<string> => {
   try {
@@ -386,6 +399,62 @@ describe('CollaborationsService', () => {
       expect(t.collaborations.row.stage).toBe('COUNTING');
       expect(t.ledgerPosts).toEqual([]);
       expect(t.notified).toEqual([]);
+    });
+
+    it('says submitting blocks the cancel only when a link was submitted', async () => {
+      const submitted = '링크를 제출한 뒤에는 협업을 그만둘 수 없어요.';
+      const other = '지금은 협업을 그만둘 수 없어요.';
+      const t = build();
+      t.collaborations.row = collaboration({ stage: 'COUNTING' });
+      expect(await messageOf(t.service.cancel(CREATOR, COLLAB))).toBe(
+        submitted,
+      );
+      // 조회수 집계 중에 멈춘 협업은 제출한 것이다.
+      t.collaborations.row = collaboration({
+        stage: 'HALTED',
+        stageBeforeHalt: 'COUNTING',
+        submittedAt: T0,
+      });
+      expect(await messageOf(t.service.cancel(CREATOR, COLLAB))).toBe(
+        submitted,
+      );
+      // 제출 전(FUNDED)에 멈춘 협업에는 제출 이야기를 하지 않는다.
+      t.collaborations.row = collaboration({
+        stage: 'HALTED',
+        stageBeforeHalt: 'FUNDED',
+      });
+      expect(await messageOf(t.service.cancel(CREATOR, COLLAB))).toBe(other);
+      t.collaborations.row = collaboration({ stage: 'SETTLED' });
+      expect(await messageOf(t.service.cancel(CREATOR, COLLAB))).toBe(other);
+    });
+
+    it('schedules a retry job right away and keeps it when the first attempt fails', async () => {
+      const t = build();
+      t.state.executeFails = true;
+      jest.spyOn(Logger.prototype, 'error').mockImplementation();
+      jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+      await t.service.cancel(CREATOR, COLLAB);
+      // 인라인 시도가 실패하면 작업이 남는다. 이 시도는 마지막이 아니라 경보를 내지 않는다.
+      expect(t.scheduler.pending()).toMatchObject([
+        {
+          name: 'cancel-refund',
+          jobKey: `cancel-refund:${COLLAB}`,
+          runAt: T0,
+          payload: { collaborationId: COLLAB },
+        },
+      ]);
+      expect(t.executeContexts).toEqual([{ finalAttempt: false }]);
+    });
+
+    it('retries the refund in the job and does nothing without a pending row', async () => {
+      const t = build();
+      await t.service.retryCancelRefund('77777777-7777-4777-8777-777777777777');
+      expect(t.executed).toEqual([]);
+      await t.service.cancel(CREATOR, COLLAB);
+      t.executed.length = 0;
+      await t.service.retryCancelRefund(COLLAB, { finalAttempt: true });
+      expect(t.executed).toEqual(['refund-1']);
+      expect(t.executeContexts.at(-1)).toEqual({ finalAttempt: true });
     });
 
     it('answers 403 to the owner and 404 to a stranger', async () => {

@@ -1114,6 +1114,8 @@ describe('offers', () => {
         commissionerId: store.ownerId,
         creatorId: USER_A,
         storeId: store.id,
+        // 협업이 만들어진 시각(진행 막대의 "오퍼 수락" 시각)은 DB 시각이 아니라 Clock이다(원장 판단 R42).
+        createdAt: T0,
         fundedAt: null,
         submitDueAt: null,
       });
@@ -1139,6 +1141,7 @@ describe('offers', () => {
       expect(collaboration).toMatchObject({
         stage: 'FUNDED',
         settlementMethod: 'NONE',
+        createdAt: T0,
         fundedAt: T0,
         submitDueAt: new Date(T0.getTime() + 14 * DAY),
       });

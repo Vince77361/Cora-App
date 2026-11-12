@@ -462,6 +462,38 @@ describe('collaborations', () => {
       expect(await list('active')).toMatchObject({ body: [] });
     });
 
+    it('does not expire anything for a non-party reading an unpaid collaboration', async () => {
+      const s = await seed({
+        stage: 'AWAITING_PAYMENT',
+        paymentDueAt: new Date(T0.getTime() - MINUTE),
+      });
+      await prisma.collaboration.update({
+        where: { id: s.collaborationId },
+        data: {
+          creatorId: (
+            await prisma.user.create({
+              data: { id: randomUUID(), role: 'CREATOR' },
+            })
+          ).id,
+        },
+      });
+      // 당사자가 아닌 크리에이터(user-a)는 404이고, 읽기가 오퍼나 협업을 바꾸지 않는다.
+      expect(codeOf(await get(s.collaborationId).expect(404))).toBe(
+        'NOT_FOUND',
+      );
+      expect(
+        (await prisma.offer.findUniqueOrThrow({ where: { id: s.offerId } }))
+          .status,
+      ).toBe('ACCEPTED');
+      expect((await collaborationOf(s.collaborationId)).stage).toBe(
+        'AWAITING_PAYMENT',
+      );
+      // 당사자(사장님)가 읽으면 그때 만료된다.
+      expect(
+        bodyOf(await get(s.collaborationId, ownerAuth).expect(200)).stage,
+      ).toBe('CANCELLED');
+    });
+
     it('lists only my collaborations by scope, newest first', async () => {
       const first = await seed();
       // 같은 크리에이터의 두 번째 협업(다른 가게).
@@ -692,6 +724,71 @@ describe('collaborations', () => {
       });
     });
 
+    it('retries a failed cancel refund with a job and refunds once', async () => {
+      const s = await seed();
+      const alert = jest
+        .spyOn(app.get(OperatorAlertPort), 'alert')
+        .mockResolvedValue(undefined);
+      jest.spyOn(pg, 'refund').mockRejectedValueOnce(new Error('pg down'));
+      // 첫 시도가 실패해도 취소는 이미 커밋됐다.
+      await cancel(s.collaborationId).expect(200);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe(
+        'CANCELLED',
+      );
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { amount: 110000, status: 'PENDING' },
+      ]);
+      expect(pg.refunds).toHaveLength(0);
+      // 재시도 작업이 남아 있고, 재시도할 수 있는 실패라 운영자에게는 아직 알리지 않는다.
+      expect(jobKeys()).toContain(`cancel-refund:${s.collaborationId}`);
+      expect(alert).not.toHaveBeenCalled();
+
+      await scheduler.runDue(clock.now());
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { amount: 110000, status: 'DONE' },
+      ]);
+      expect(pg.refunds).toHaveLength(1);
+      expect(pg.refunds[0].amount).toBe(110000);
+      // 장부는 결제 두 줄과 취소 두 줄뿐이다.
+      expect(await ledgerOf(s.collaborationId)).toHaveLength(4);
+      expect(await accountOf(s.collaborationId, 'STORE_REFUND')).toBe(110000);
+
+      // 작업이 다시 돌아도 환급은 한 번이다.
+      await scheduler.schedule(
+        'cancel-refund',
+        { collaborationId: s.collaborationId },
+        clock.now(),
+        `cancel-refund:${s.collaborationId}`,
+      );
+      await scheduler.runDue(clock.now());
+      expect(pg.refunds).toHaveLength(1);
+    });
+
+    it('leaves no retry job behind when the refund goes through at once', async () => {
+      const s = await seed();
+      await cancel(s.collaborationId).expect(200);
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { status: 'DONE' },
+      ]);
+      expect(jobKeys().filter((k) => k.startsWith('cancel-refund'))).toEqual(
+        [],
+      );
+    });
+
+    it('does nothing in the retry job when there is no refund row', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      await cancel(s.collaborationId).expect(200);
+      await scheduler.schedule(
+        'cancel-refund',
+        { collaborationId: s.collaborationId },
+        clock.now(),
+        `cancel-refund:${s.collaborationId}`,
+      );
+      await scheduler.runDue(clock.now());
+      expect(pg.refunds).toHaveLength(0);
+      expect(await prisma.refund.count()).toBe(0);
+    });
+
     it('refuses to cancel twice and does not move money twice', async () => {
       const s = await seed();
       await cancel(s.collaborationId).expect(200);
@@ -750,17 +847,21 @@ describe('collaborations', () => {
       expect(await prisma.refund.count()).toBe(0);
     });
 
-    it('alerts the operator and keeps the refund pending when the PG refund fails during the cancel', async () => {
+    it('alerts the operator only when the retry job gives up on the PG refund', async () => {
       const s = await seed();
       const alert = jest
         .spyOn(app.get(OperatorAlertPort), 'alert')
         .mockResolvedValue(undefined);
       jest.spyOn(pg, 'refund').mockRejectedValue(new Error('pg down'));
-      // 취소 요청 안에서 환급을 한 번만 시도한다(작업이 아니라 시도 횟수 정보가 없다): 실패는 바로 운영자에게 알린다.
+      // 바로 보내려던 첫 시도는 재시도할 수 있는 실패라 경보 없이 작업에 맡긴다.
       await cancel(s.collaborationId).expect(200);
       expect((await collaborationOf(s.collaborationId)).stage).toBe(
         'CANCELLED',
       );
+      expect(alert).not.toHaveBeenCalled();
+      expect(jobKeys()).toContain(`cancel-refund:${s.collaborationId}`);
+      // 가짜 큐는 시도 횟수를 알리지 않아 이 실행을 마지막 시도로 본다: 실패하면 운영자에게 알린다.
+      await scheduler.runDue(clock.now(), { allowFailures: true });
       expect(await prisma.refund.findMany()).toMatchObject([
         { amount: 110000, status: 'PENDING' },
       ]);
@@ -785,14 +886,14 @@ describe('collaborations', () => {
   });
 
   describe('owner cancel request', () => {
-    it('alerts the operator when the PG refund fails while the creator accepts a cancel request', async () => {
+    it('leaves a failed refund to the retry job when the creator accepts a cancel request', async () => {
       const s = await seed();
       const created = await requestCancel(s.collaborationId).expect(201);
       const requestId = bodyOf(created).cancelRequest?.id as string;
       const alert = jest
         .spyOn(app.get(OperatorAlertPort), 'alert')
         .mockResolvedValue(undefined);
-      jest.spyOn(pg, 'refund').mockRejectedValue(new Error('pg down'));
+      jest.spyOn(pg, 'refund').mockRejectedValueOnce(new Error('pg down'));
       await accept(s.collaborationId, requestId).expect(200);
       expect((await collaborationOf(s.collaborationId)).stage).toBe(
         'CANCELLED',
@@ -800,7 +901,12 @@ describe('collaborations', () => {
       expect(await prisma.refund.findMany()).toMatchObject([
         { status: 'PENDING' },
       ]);
-      expect(alert).toHaveBeenCalledTimes(1);
+      expect(alert).not.toHaveBeenCalled();
+      await scheduler.runDue(clock.now());
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { status: 'DONE' },
+      ]);
+      expect(pg.refunds).toHaveLength(1);
     });
 
     it('lets the owner request a cancel and the creator accept it', async () => {

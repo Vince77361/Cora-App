@@ -283,6 +283,8 @@ export class OffersService {
             settlementMethod: initial.settlementMethod,
             fundedAt: initial.fundedAt,
             submitDueAt: initial.submitDueAt,
+            // 수락한 시각을 DB 기본값이 아니라 Clock으로 남긴다(R42).
+            createdAt: now,
           },
           tx,
         );

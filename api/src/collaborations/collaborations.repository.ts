@@ -30,6 +30,8 @@ export interface NewCollaboration {
   settlementMethod: SettlementMethod;
   fundedAt: Date | null;
   submitDueAt: Date | null;
+  // 만든 시각을 DB 기본값이 아니라 Clock으로 정할 때 준다(진행 막대의 "오퍼 수락" 시각, 원장 판단 R42).
+  createdAt?: Date;
 }
 
 // 다른 기능 모듈이 협업을 읽고 바꿀 때 거치는 유일한 곳이다. 이 모듈은 다른 기능 모듈을 import하지 않는다.

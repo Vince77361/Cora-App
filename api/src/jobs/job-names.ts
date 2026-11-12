@@ -8,6 +8,7 @@ export const JOB_NAMES = [
   'payment-due-expiry',
   'payment-recheck',
   'cancel-request-expiry',
+  'cancel-refund',
   'brand-halt-check',
   'payout-send',
 ] as const;

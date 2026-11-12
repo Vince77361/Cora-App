@@ -13,6 +13,7 @@ import { CancelRequestsRepository } from './cancel-requests.repository';
 import { CollaborationsController } from './collaborations.controller';
 import { CollaborationsModule } from './collaborations.module';
 import { CollaborationsService } from './collaborations.service';
+import { CancelRefundHandler } from './jobs/cancel-refund.handler';
 import { CancelRequestExpiryHandler } from './jobs/cancel-request-expiry.handler';
 import { SubmissionsController } from './submissions.controller';
 
@@ -36,18 +37,23 @@ import { SubmissionsController } from './submissions.controller';
     CollaborationsService,
     CancelRequestsRepository,
     CancelRequestExpiryHandler,
+    CancelRefundHandler,
   ],
 })
 export class CollaborationsApiModule implements OnModuleInit {
   constructor(
     private readonly registry: JobHandlerRegistry,
     private readonly cancelRequestExpiry: CancelRequestExpiryHandler,
+    private readonly cancelRefund: CancelRefundHandler,
   ) {}
 
-  // 취소 요청 만료 작업의 처리기를 작업 큐의 표에 올린다(jobs 모듈은 기능 모듈을 모른다).
+  // 취소 요청 만료와 취소 환급 재시도 작업의 처리기를 작업 큐의 표에 올린다(jobs 모듈은 기능 모듈을 모른다).
   onModuleInit(): void {
     this.registry.register('cancel-request-expiry', (p) =>
       this.cancelRequestExpiry.run(p),
+    );
+    this.registry.register('cancel-refund', (p, context) =>
+      this.cancelRefund.run(p, context),
     );
   }
 }

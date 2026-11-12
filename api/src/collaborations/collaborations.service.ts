@@ -3,7 +3,7 @@ import { CancelRequest, Collaboration } from '@prisma/client';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
-import { JobScheduler } from '../jobs/job-scheduler';
+import { JobRunContext, JobScheduler } from '../jobs/job-scheduler';
 import { postingsForFullRefund } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -33,6 +33,9 @@ export const CANCEL_REQUEST_DAYS = 3;
 
 export const cancelRequestJobKey = (requestId: string): string =>
   `cancel-request:${requestId}`;
+// 취소 환급 재시도 작업의 키. 환급 행의 중복 방지 키와 같은 글자지만 서로 다른 곳(작업 큐, 환급 표)의 키다.
+export const cancelRefundKey = (collaborationId: string): string =>
+  `cancel-refund:${collaborationId}`;
 
 type CancelOutcome = 'cancelled' | 'not-funded' | 'request-closed';
 
@@ -186,6 +189,18 @@ export class CollaborationsService {
     await this.cancelRequests.expire(requestId);
   }
 
+  // cancel-refund 작업: 취소로 만든 환급 행을 PG로 보낸다. 행이 없거나(식사권만 있음) 이미 DONE이면 아무 일도 하지 않는다.
+  // 오류는 던져 큐가 다시 시도하게 하고, 운영자 경보는 마지막 시도에서만 RefundsService가 낸다.
+  async retryCancelRefund(
+    collaborationId: string,
+    context?: JobRunContext,
+  ): Promise<void> {
+    const refund = await this.refunds.findByKey(
+      cancelRefundKey(collaborationId),
+    );
+    if (refund) await this.refunds.execute(refund.id, context);
+  }
+
   // FUNDED → CANCELLED. 단계, 장부(수수료까지 전액 환급), 환급 행, (동의라면) 요청의 ACCEPTED가 한 트랜잭션이다.
   // 커밋 뒤에 PG 환급, 제출 기한 작업 취소, 사장님 알림을 한다. 이미 저장된 취소는 그 단계가 실패해도 유효하다(원장 판단 R22).
   private async cancelFunded(
@@ -193,7 +208,7 @@ export class CollaborationsService {
     requestId: string | null,
   ): Promise<void> {
     const key = `cancel:${collaboration.id}`;
-    const refundKey = `cancel-refund:${collaboration.id}`;
+    const refundKey = cancelRefundKey(collaboration.id);
     // 식사권만 있는 오퍼는 낸 돈이 없다. 돈이 있는 협업의 결제를 못 찾으면 상태가 어긋난 것이라 던진다.
     let amounts: { escrow: number; fee: number } | null = null;
     if (collaboration.settlementMethod !== 'NONE') {
@@ -261,19 +276,48 @@ export class CollaborationsService {
     }
 
     const refunded = amounts ? amounts.escrow + amounts.fee : 0;
-    await this.executeRefund(refundKey);
+    if (amounts) await this.refundAfterCommit(collaboration.id);
     await this.cancelDeadlineJobs(collaboration.id);
     await this.notifyCancelled(collaboration, refunded);
   }
 
-  // PG 환급. 실패해도 취소는 이미 커밋됐다: RefundsService가 운영자에게 알렸고 환급 행은 PENDING으로 남아 운영 명령으로 다시 보낸다.
-  private async executeRefund(refundKey: string): Promise<void> {
+  // 커밋 뒤의 PG 환급. 재시도 작업을 먼저 올려 두고 한 번 바로 시도한다(빠른 길).
+  // 바로 시도가 실패해도 취소는 이미 커밋됐다: 작업이 큐의 규칙대로 다시 시도하고, 운영자 경보는 마지막 시도에서만 나간다.
+  // 작업을 올리지 못했다면 이 시도가 마지막이라 실패 경보가 바로 나간다. 바로 성공하면 작업은 지운다.
+  private async refundAfterCommit(collaborationId: string): Promise<void> {
+    const key = cancelRefundKey(collaborationId);
+    let scheduled = false;
     try {
-      const refund = await this.refunds.findByKey(refundKey);
-      if (refund) await this.refunds.execute(refund.id);
+      await this.jobs.schedule(
+        'cancel-refund',
+        { collaborationId },
+        this.clock.now(),
+        key,
+      );
+      scheduled = true;
+    } catch (error) {
+      this.logger.warn(
+        `취소 환급 재시도 작업을 올리지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
+    try {
+      const refund = await this.refunds.findByKey(key);
+      if (refund) {
+        await this.refunds.execute(refund.id, { finalAttempt: !scheduled });
+      }
     } catch (error) {
       this.logger.error(
-        `취소 환급을 보내지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        `취소 환급을 바로 보내지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+      return;
+    }
+    if (!scheduled) return;
+    try {
+      await this.jobs.cancel(key);
+    } catch (error) {
+      // 남아도 무해하다: 작업은 이미 DONE인 환급 행을 보고 아무 일도 하지 않는다.
+      this.logger.warn(
+        `취소 환급 재시도 작업을 지우지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
       );
     }
   }
@@ -363,17 +407,18 @@ export class CollaborationsService {
     }
   }
 
-  // 당사자가 아니면 없는 협업과 같게 404.
+  // 당사자가 아니면 없는 협업과 같게 404다. 당사자인지 먼저 보고, 그 뒤에야 읽을 때 만료를 한다
+  // (당사자가 아닌 사람의 읽기가 오퍼나 협업을 바꾸지 않게).
   private async requireParty(
     userId: string,
     id: string,
   ): Promise<Collaboration> {
     let row = UUID.test(id) ? await this.collaborations.findById(id) : null;
-    if (row?.stage === 'AWAITING_PAYMENT' && (await this.expireUnpaid([row]))) {
-      row = await this.collaborations.findById(id);
-    }
     if (!row || (row.commissionerId !== userId && row.creatorId !== userId)) {
       throw new AppError('NOT_FOUND', '협업을 찾을 수 없어요.');
+    }
+    if (row.stage === 'AWAITING_PAYMENT' && (await this.expireUnpaid([row]))) {
+      row = (await this.collaborations.findById(id)) ?? row;
     }
     return row;
   }
@@ -391,12 +436,20 @@ export class CollaborationsService {
     }
   }
 
+  // 링크를 제출한 협업(집계 중이거나, 집계 중에 멈춘 협업)에는 그 사정을 알려 준다.
+  // 제출 전(FUNDED)에 멈춘 협업에는 제출 이야기를 하지 않는다.
   private cannotCancel(collaboration: Collaboration): AppError {
-    const message =
-      collaboration.stage === 'COUNTING' || collaboration.stage === 'HALTED'
+    const submitted =
+      collaboration.stage === 'COUNTING' ||
+      (collaboration.stage === 'HALTED' &&
+        (collaboration.submittedAt !== null ||
+          collaboration.stageBeforeHalt === 'COUNTING'));
+    return new AppError(
+      'CONFLICT',
+      submitted
         ? '링크를 제출한 뒤에는 협업을 그만둘 수 없어요.'
-        : '지금은 협업을 그만둘 수 없어요.';
-    return new AppError('CONFLICT', message);
+        : '지금은 협업을 그만둘 수 없어요.',
+    );
   }
 
   // 결제 기한이 지난 오퍼를 만료로 저장한다(오퍼의 읽을 때 만료와 같은 길). 하나라도 시도했으면 true.
