@@ -12,6 +12,7 @@ class CoraPageHeader extends StatelessWidget {
     this.title,
     required this.onBack,
     this.trailing,
+    this.extent,
   });
 
   final String? title;
@@ -20,13 +21,16 @@ class CoraPageHeader extends StatelessWidget {
   /// 오른쪽 60 칸에 오른쪽 정렬로 놓인다(예: 더보기 버튼).
   final Widget? trailing;
 
+  /// 머리 높이. 비우면 [height](56)다. E5·E7(NNotifySettings·NWallet)은 캔버스가 64로 그린다.
+  final double? extent;
+
   static const double height = 56;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return SizedBox(
-      height: height,
+      height: extent ?? height,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(

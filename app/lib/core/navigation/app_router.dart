@@ -12,6 +12,7 @@ import '../../features/collaboration/presentation/pages/submit_link_page.dart';
 import '../../features/collaboration/presentation/pages/voucher_page.dart';
 import '../../features/creator_profile/presentation/pages/creator_profile_setup_page.dart';
 import '../../features/dev/presentation/pages/motion_gallery_page.dart';
+import '../../features/notification_settings/presentation/pages/notification_settings_page.dart';
 import '../../features/notifications/presentation/notification_routes.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/onboarding/domain/me.dart';
@@ -205,6 +206,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: NotificationRoutes.notifications,
         pageBuilder: (context, state) =>
             CoraTransitions.push(const NotificationsPage(), key: state.pageKey),
+      ),
+      // 알림 설정(E5). 알림함의 설정 아이콘이 연다(E4 설정은 새 계획이 만든다).
+      GoRoute(
+        path: NotificationRoutes.settings,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const NotificationSettingsPage(),
+          key: state.pageKey,
+        ),
       ),
       // 크리에이터 흐름. 10번 작업이 실제 화면으로 바꾼다.
       GoRoute(

@@ -22,6 +22,8 @@ import 'features/creator_profile/data/api_creator_profile_repository.dart';
 import 'features/creator_profile/domain/creator_profile_repository.dart';
 import 'features/instagram_connect/data/api_instagram_repository.dart';
 import 'features/instagram_connect/domain/instagram_repository.dart';
+import 'features/notification_settings/data/api_notification_settings_repository.dart';
+import 'features/notification_settings/domain/notification_settings_repository.dart';
 import 'features/notifications/data/api_notification_repository.dart';
 import 'features/notifications/domain/notification_repository.dart';
 import 'features/onboarding/data/api_me_repository.dart';
@@ -108,6 +110,10 @@ Future<void> main() async {
         ),
         notificationRepositoryProvider.overrideWith(
           (ref) => ApiNotificationRepository(ref.watch(apiClientProvider)),
+        ),
+        notificationSettingsRepositoryProvider.overrideWith(
+          (ref) =>
+              ApiNotificationSettingsRepository(ref.watch(apiClientProvider)),
         ),
         instagramRepositoryProvider.overrideWith(
           (ref) => ApiInstagramRepository(ref.watch(apiClientProvider)),

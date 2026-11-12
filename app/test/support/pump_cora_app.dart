@@ -4,6 +4,7 @@ import 'package:cora/core/config/app_config_provider.dart';
 import 'package:cora/core/navigation/app_router.dart';
 import 'package:cora/features/auth/domain/auth_repository_provider.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
+import 'package:cora/features/notification_settings/domain/notification_settings_repository.dart';
 import 'package:cora/features/notifications/domain/notification_repository.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
 import 'package:cora/features/store_home/domain/store_home_repository.dart';
@@ -18,6 +19,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/fake_auth_repository.dart';
 import '../features/collaboration/fake_collaboration_repository.dart';
+import '../features/notification_settings/fake_notification_settings_repository.dart';
 import '../features/notifications/fake_notification_repository.dart';
 import '../features/onboarding/fake_me_repository.dart';
 import '../features/store_home/fake_store_home_repository.dart';
@@ -71,6 +73,11 @@ Widget coraAppWith(
       if (!_overrides(overrides, notificationRepositoryProvider))
         notificationRepositoryProvider.overrideWithValue(
           FakeNotificationRepository(),
+        ),
+      // 알림함의 설정 아이콘이 알림 설정(E5)을 연다.
+      if (!_overrides(overrides, notificationSettingsRepositoryProvider))
+        notificationSettingsRepositoryProvider.overrideWithValue(
+          FakeNotificationSettingsRepository(),
         ),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(

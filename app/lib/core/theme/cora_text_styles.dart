@@ -192,4 +192,42 @@ abstract final class CoraTextStyles {
     height: 1.5,
     leadingDistribution: _even,
   );
+
+  /// 목록 줄 제목(E5 스위치 이름). 15px, 400, 줄 높이 normal. `body`는 줄 높이가 1.6이다.
+  static const listLabel = TextStyle(
+    fontFamily: _family,
+    fontSize: 15,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
+
+  /// E7 큰 금액. 36px, 900, 자간 -0.05em.
+  static const bigAmount = TextStyle(
+    fontFamily: _family,
+    fontSize: 36,
+    fontWeight: FontWeight.w900,
+    letterSpacing: -1.8,
+    height: _normal,
+    leadingDistribution: _even,
+  );
+
+  /// E7 작은 상자의 금액(18/700)과 내역 줄 금액(15/700)처럼 굵은 숫자.
+  static const amountMedium = TextStyle(
+    fontFamily: _family,
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
+  static const amountSmall = TextStyle(
+    fontFamily: _family,
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+    height: _normal,
+    leadingDistribution: _even,
+  );
 }

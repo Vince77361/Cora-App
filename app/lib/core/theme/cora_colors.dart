@@ -62,6 +62,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
     this.iconMuted = const Color(0xFFA0A4AD),
     this.notifyTabSelected = const Color(0xFFE3E5E9),
     this.unreadDot = const Color(0xFF17181C),
+    this.switchTrackOff = const Color(0xFFE6E8EB),
+    this.switchKnob = const Color(0xFFFFFFFF),
+    this.quietSelected = const Color(0xFFFFFFFF),
   });
 
   final Color background;
@@ -174,6 +177,14 @@ class CoraColors extends ThemeExtension<CoraColors> {
   /// E3 읽지 않은 줄의 오른쪽 점(NNotify #17181C, DarkNNotify #0F1012). 다크에서는 `surface` 줄
   /// 위에서 잘 보이지 않지만 캔버스 그대로다(설계 6장).
   final Color unreadDot;
+
+  /// E5 스위치의 꺼진 바탕과 손잡이(NNotifySettings). 켜진 바탕은 두 모드 모두 `accent`(#C6FF3D)다.
+  /// 꺼진 바탕은 라이트 #E6E8EB, 다크 #2A2D33이고 손잡이는 늘 흰색이다.
+  final Color switchTrackOff;
+  final Color switchKnob;
+
+  /// E5 방해 금지 시간에서 고른 것의 바탕(라이트 #FFFFFF, 다크 #2A2D33). 나머지는 투명하다.
+  final Color quietSelected;
 
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
@@ -309,6 +320,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     onStepDotNow: Color(0xFF0F1012),
     notifyTabSelected: Color(0xFF33363D),
     unreadDot: Color(0xFF0F1012),
+    switchTrackOff: Color(0xFF2A2D33),
+    quietSelected: Color(0xFF2A2D33),
   );
 
   @override
@@ -371,6 +384,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? iconMuted,
     Color? notifyTabSelected,
     Color? unreadDot,
+    Color? switchTrackOff,
+    Color? switchKnob,
+    Color? quietSelected,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -432,6 +448,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
       iconMuted: iconMuted ?? this.iconMuted,
       notifyTabSelected: notifyTabSelected ?? this.notifyTabSelected,
       unreadDot: unreadDot ?? this.unreadDot,
+      switchTrackOff: switchTrackOff ?? this.switchTrackOff,
+      switchKnob: switchKnob ?? this.switchKnob,
+      quietSelected: quietSelected ?? this.quietSelected,
     );
   }
 
@@ -501,6 +520,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
       iconMuted: mix(iconMuted, other.iconMuted),
       notifyTabSelected: mix(notifyTabSelected, other.notifyTabSelected),
       unreadDot: mix(unreadDot, other.unreadDot),
+      switchTrackOff: mix(switchTrackOff, other.switchTrackOff),
+      switchKnob: mix(switchKnob, other.switchKnob),
+      quietSelected: mix(quietSelected, other.quietSelected),
     );
   }
 }

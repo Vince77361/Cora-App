@@ -70,4 +70,13 @@ abstract final class CoraShadows {
       blurRadius: blurRadiusFor(40),
     ),
   ];
+
+  /// E5 스위치 손잡이: 0 1px 3px rgba(0,0,0,0.2). 라이트·다크가 같다.
+  static final switchKnob = [
+    BoxShadow(
+      color: const Color.fromRGBO(0, 0, 0, 0.2),
+      offset: const Offset(0, 1),
+      blurRadius: blurRadiusFor(3),
+    ),
+  ];
 }
