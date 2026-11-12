@@ -160,6 +160,17 @@ void main() {
     },
   );
 
+  test('requires the clock when a collaboration is passed', () {
+    final offer = sentOffer(view: OfferView.accepted, collaborationId: 'c');
+
+    // 앱 시계 대신 `DateTime.now()`로 남은 날짜를 세지 않는다.
+    expect(
+      () => sentOfferMeta(offer, collaboration: _owned('c')),
+      throwsAssertionError,
+    );
+    expect(sentOfferMeta(offer), '수락함, 결제를 기다려요');
+  });
+
   test('describes the progress of a paid collaboration', () {
     final now = DateTime.utc(2026, 11, 11, 12);
     final offer = sentOffer(view: OfferView.accepted, collaborationId: 'c');

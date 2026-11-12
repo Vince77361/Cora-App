@@ -12,6 +12,8 @@ import '../../features/collaboration/presentation/pages/submit_link_page.dart';
 import '../../features/collaboration/presentation/pages/voucher_page.dart';
 import '../../features/creator_profile/presentation/pages/creator_profile_setup_page.dart';
 import '../../features/dev/presentation/pages/motion_gallery_page.dart';
+import '../../features/notifications/presentation/notification_routes.dart';
+import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/onboarding/domain/me.dart';
 import '../../features/payment/presentation/pages/fake_checkout_page.dart';
 import '../../features/payment/presentation/pages/store_payment_page.dart';
@@ -27,6 +29,7 @@ import '../../features/store_browse/presentation/pages/store_detail_page.dart';
 import '../../features/store_browse/presentation/pages/store_list_page.dart';
 import '../../features/store_home/presentation/pages/store_home_page.dart';
 import '../../features/store_home/presentation/pages/store_me_page.dart';
+import '../../features/store_home/presentation/viewmodels/store_home_view_model.dart';
 import '../../features/store_onboarding/presentation/pages/content_drafts_page.dart';
 import '../../features/store_onboarding/presentation/pages/default_terms_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_edit_page.dart';
@@ -102,8 +105,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // 가게 사장님 흐름.
       GoRoute(
         path: AppRoutes.store,
-        pageBuilder: (context, state) =>
-            _entryPage(state, const StoreHomePage()),
+        pageBuilder: (context, state) => _entryPage(
+          state,
+          // 알림함이 `?tab=`으로 열 탭을 알려 준다.
+          StoreHomePage(
+            initialTab: switch (state.uri.queryParameters[NotificationRoutes
+                .tabParam]) {
+              NotificationRoutes.applicantsTab => StoreHomeTab.applicants,
+              NotificationRoutes.sentOffersTab => StoreHomeTab.sentOffers,
+              _ => null,
+            },
+          ),
+        ),
       ),
       GoRoute(
         path: AppRoutes.storeOnboardingLinks,
@@ -186,6 +199,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           state,
           CoraComingSoonPage(title: state.pathParameters['title']!),
         ),
+      ),
+      // 알림함(E3). 역할 홈 위로 밀려 들어온다.
+      GoRoute(
+        path: NotificationRoutes.notifications,
+        pageBuilder: (context, state) =>
+            CoraTransitions.push(const NotificationsPage(), key: state.pageKey),
       ),
       // 크리에이터 흐름. 10번 작업이 실제 화면으로 바꾼다.
       GoRoute(

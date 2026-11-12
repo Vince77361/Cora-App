@@ -35,14 +35,20 @@ bool sentOfferPaid(SentOffer offer, Collaboration? collaboration) =>
     collaboration != null &&
     collaboration.stage != CollaborationStage.awaitingPayment;
 
-/// 보낸 오퍼 줄 설명. 결제가 끝난 오퍼는 [collaboration]의 단계로 말한다.
+/// 보낸 오퍼 줄 설명. 결제가 끝난 오퍼는 [collaboration]의 단계로 말하고, 남은 날짜를 세려고 앱의
+/// 시계([now], `clockProvider`)가 필요하다. 협업을 넘기면서 [now]를 빼면 안 된다(테스트가 시각을
+/// 못 정하게 되므로 `DateTime.now()`로 대신하지 않는다).
 String sentOfferMeta(
   SentOffer offer, {
   Collaboration? collaboration,
   DateTime? now,
 }) {
+  assert(
+    collaboration == null || now != null,
+    'sentOfferMeta needs now when a collaboration is passed',
+  );
   if (sentOfferPaid(offer, collaboration)) {
-    return _collaborationMeta(collaboration!, now ?? DateTime.now());
+    return _collaborationMeta(collaboration!, now!);
   }
   return switch (offer.view) {
     OfferView.waiting => '답을 기다려요',

@@ -15,6 +15,8 @@ import '../../../../core/ui/cora_list_row.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_segmented_tabs.dart';
+import '../../../notifications/presentation/viewmodels/unread_count_view_model.dart';
+import '../../../notifications/presentation/widgets/notification_bell.dart';
 import '../../../offers/domain/offer_view.dart';
 import '../../../store_onboarding/presentation/viewmodels/my_store_view_model.dart';
 import '../../domain/sent_offer.dart';
@@ -25,7 +27,10 @@ import '../widgets/cancel_offer_sheet.dart';
 /// A9 사장님 홈(NStoreHome / DarkNStoreHome). 숫자 세 칸, 바로가기, `지원한 크리에이터`와
 /// `보낸 오퍼` 목록. 아래로 당기면 숫자와 두 목록을 함께 새로 읽는다.
 class StoreHomePage extends ConsumerStatefulWidget {
-  const StoreHomePage({super.key});
+  const StoreHomePage({super.key, this.initialTab});
+
+  /// 열면서 고를 탭. 알림함이 `지원` 알림과 `보낸 오퍼` 알림에서 이 탭으로 보낸다. 없으면 그대로 둔다.
+  final StoreHomeTab? initialTab;
 
   static const title = '사장님 홈';
   static const storePage = '가게 페이지';
@@ -59,6 +64,38 @@ class StoreHomePage extends ConsumerStatefulWidget {
 
 class _StoreHomePageState extends ConsumerState<StoreHomePage> {
   Timer? _noticeTimer;
+
+  /// 홈을 아직 읽는 중에 받은 [StoreHomePage.initialTab]. 다 읽으면 고른다.
+  StoreHomeTab? _pendingTab;
+
+  @override
+  void initState() {
+    super.initState();
+    _pendingTab = widget.initialTab;
+    if (_pendingTab != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _applyPendingTab());
+    }
+  }
+
+  @override
+  void didUpdateWidget(StoreHomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 라우터가 같은 값으로 페이지를 다시 만들 때마다 고른 탭을 되돌리지 않도록, 값이 바뀔 때만 따른다.
+    if (widget.initialTab != null &&
+        widget.initialTab != oldWidget.initialTab) {
+      _pendingTab = widget.initialTab;
+      // 위젯을 짓는 도중에는 provider를 바꿀 수 없어서 프레임이 끝난 뒤에 고른다.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _applyPendingTab());
+    }
+  }
+
+  void _applyPendingTab() {
+    final tab = _pendingTab;
+    if (tab == null || !mounted) return;
+    if (!ref.read(storeHomeViewModelProvider).hasValue) return;
+    _pendingTab = null;
+    ref.read(storeHomeViewModelProvider.notifier).selectTab(tab);
+  }
 
   @override
   void dispose() {
@@ -132,6 +169,7 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
   @override
   Widget build(BuildContext context) {
     ref.listen(storeHomeNoticeProvider, (_, next) => _onNotice(next));
+    ref.listen(storeHomeViewModelProvider, (_, _) => _applyPendingTab());
     final c = context.colors;
     final async = ref.watch(storeHomeViewModelProvider);
     final notice = ref.watch(storeHomeNoticeProvider);
@@ -204,7 +242,11 @@ class _Body extends ConsumerWidget {
     final summary = state.summary;
     final sentTab = state.tab == StoreHomeTab.sentOffers;
     return RefreshIndicator(
-      onRefresh: vm.refresh,
+      onRefresh: () {
+        // 당겨 새로 읽을 때 종의 점도 서버 값으로 다시 맞춘다.
+        ref.invalidate(unreadCountViewModelProvider);
+        return vm.refresh();
+      },
       color: c.text,
       backgroundColor: c.background,
       child: ListView(
@@ -289,7 +331,8 @@ class _Body extends ConsumerWidget {
   }
 }
 
-/// 머리(높이 72, 좌우 20): 가게 사진 44, 가게 이름, 오른쪽 `가게 페이지`. 사진을 누르면 내 가게.
+/// 머리(높이 72, 좌우 20): 가게 사진 44, 가게 이름, 종 아이콘, 오른쪽 `가게 페이지`. 사진을 누르면 내 가게.
+/// 종은 캔버스 NStoreHome에 없다(2026-11-11 소유자 결정). `가게 페이지` 왼쪽에 둔다.
 class _Header extends ConsumerWidget {
   const _Header();
 
@@ -348,6 +391,7 @@ class _Header extends ConsumerWidget {
                 ],
               ),
             ),
+            const NotificationBell(),
             Semantics(
               container: true,
               button: true,

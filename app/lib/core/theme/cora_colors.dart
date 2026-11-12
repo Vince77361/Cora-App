@@ -59,6 +59,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
     this.onStepDotNow = const Color(0xFF1F2A00),
     this.chipAction = const Color(0xFFFFFFFF),
     this.onChipAction = const Color(0xFF17181C),
+    this.iconMuted = const Color(0xFFA0A4AD),
+    this.notifyTabSelected = const Color(0xFFE3E5E9),
+    this.unreadDot = const Color(0xFF17181C),
   });
 
   final Color background;
@@ -160,6 +163,17 @@ class CoraColors extends ThemeExtension<CoraColors> {
   /// `surface` 카드 안의 작은 알약 버튼(NWallet `계좌 변경`). 라이트·다크 모두 흰 바탕에 #17181C 글자다.
   final Color chipAction;
   final Color onChipAction;
+
+  /// 화살표, 질문의 +/−처럼 흐린 아이콘(NNotifySettings 등). 라이트·다크가 같다(#A0A4AD).
+  final Color iconMuted;
+
+  /// E3 알림 탭 중 고른 것의 바탕(NNotify #E3E5E9, DarkNNotify #33363D). `CoraSegmentedTabs`의
+  /// 다크 고른 탭(#F2F3F5 바탕)과 달라서 따로 둔다. 고르지 않은 탭은 `surface`, 글자는 `text`다.
+  final Color notifyTabSelected;
+
+  /// E3 읽지 않은 줄의 오른쪽 점(NNotify #17181C, DarkNNotify #0F1012). 다크에서는 `surface` 줄
+  /// 위에서 잘 보이지 않지만 캔버스 그대로다(설계 6장).
+  final Color unreadDot;
 
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
@@ -293,6 +307,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     onStepDotDone: Color(0xFFC6FF3D),
     stepDotNow: Color(0xFFF2F3F5),
     onStepDotNow: Color(0xFF0F1012),
+    notifyTabSelected: Color(0xFF33363D),
+    unreadDot: Color(0xFF0F1012),
   );
 
   @override
@@ -352,6 +368,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? onStepDotNow,
     Color? chipAction,
     Color? onChipAction,
+    Color? iconMuted,
+    Color? notifyTabSelected,
+    Color? unreadDot,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -410,6 +429,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
       onStepDotNow: onStepDotNow ?? this.onStepDotNow,
       chipAction: chipAction ?? this.chipAction,
       onChipAction: onChipAction ?? this.onChipAction,
+      iconMuted: iconMuted ?? this.iconMuted,
+      notifyTabSelected: notifyTabSelected ?? this.notifyTabSelected,
+      unreadDot: unreadDot ?? this.unreadDot,
     );
   }
 
@@ -476,6 +498,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
       onStepDotNow: mix(onStepDotNow, other.onStepDotNow),
       chipAction: mix(chipAction, other.chipAction),
       onChipAction: mix(onChipAction, other.onChipAction),
+      iconMuted: mix(iconMuted, other.iconMuted),
+      notifyTabSelected: mix(notifyTabSelected, other.notifyTabSelected),
+      unreadDot: mix(unreadDot, other.unreadDot),
     );
   }
 }
