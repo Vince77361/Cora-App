@@ -109,44 +109,7 @@ class _BiddingPageState extends State<BiddingPage> {
                             ),
                           ),
                         ),
-                        Expanded(
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: dark
-                                    ? const Color(0xFFF2F3F5)
-                                    : const Color(0xFFFFFFFF),
-                                borderRadius: BorderRadius.circular(999),
-                                boxShadow: dark
-                                    ? null
-                                    : const [
-                                        BoxShadow(
-                                          color: Color.fromRGBO(
-                                            23,
-                                            24,
-                                            28,
-                                            0.10,
-                                          ),
-                                          offset: Offset(0, 2),
-                                          blurRadius: 8,
-                                        ),
-                                      ],
-                              ),
-                              child: Text(
-                                '빠른 입찰',
-                                style: g6Text(
-                                  13,
-                                  const Color(0xFF17181C),
-                                  weight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                        const Expanded(child: SizedBox.shrink()),
                         SizedBox(
                           width: 88,
                           child: Align(

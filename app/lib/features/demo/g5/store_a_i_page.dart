@@ -86,7 +86,7 @@ class _StoreAIPageState extends State<StoreAIPage> {
                 G5Header(
                   pal: pal,
                   onBack: () => demoBack(context),
-                  center: G5Pill(pal: pal, child: const Text('가게 등록')),
+                  center: const SizedBox.shrink(),
                   right: '3 / 3',
                 ),
                 G5Progress(pal: pal, fraction: 1),

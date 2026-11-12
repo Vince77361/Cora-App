@@ -87,27 +87,7 @@ class _OfferPageState extends State<OfferPage> {
                   pal: pal,
                   onBack: _prev,
                   backOpacity: _step > 0 ? 1 : 0.3,
-                  center: G5Pill(
-                    pal: pal,
-                    padding: const EdgeInsets.fromLTRB(4, 4, 14, 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFF3E3D3),
-                            shape: BoxShape.circle,
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: DemoPhoto(DemoImages.onecup, x: 50, y: 25),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text('하루 한 컵에게 오퍼'),
-                      ],
-                    ),
-                  ),
+                  center: const SizedBox.shrink(),
                   right: '${_step + 1} / 3',
                 ),
                 G5Progress(pal: pal, fraction: [0.33, 0.67, 1.0][_step]),

@@ -180,35 +180,7 @@ class _PrinciplesPageState extends State<PrinciplesPage> {
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: p.dark
-                        ? const Color(0xFFF2F3F5)
-                        : const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: p.dark
-                        ? null
-                        : const [
-                            BoxShadow(
-                              color: Color.fromRGBO(23, 24, 28, 0.10),
-                              offset: Offset(0, 2),
-                              blurRadius: 8,
-                            ),
-                          ],
-                  ),
-                  child: Text(
-                    '나의 협업 원칙',
-                    style: g2Text(
-                      13,
-                      color: const Color(0xFF17181C),
-                      weight: FontWeight.w500,
-                    ),
-                  ),
-                ),
+                const SizedBox.shrink(),
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => demoGo(context, 'CreatorDiscover.dc.html'),

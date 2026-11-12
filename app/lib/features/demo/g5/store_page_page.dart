@@ -24,7 +24,7 @@ class StorePagePage extends StatelessWidget {
                 G5Header(
                   pal: pal,
                   onBack: () => demoBack(context),
-                  center: G5Pill(pal: pal, child: const Text('가게 등록')),
+                  center: const SizedBox.shrink(),
                   right: '2 / 3',
                 ),
                 G5Progress(pal: pal, fraction: 0.67),

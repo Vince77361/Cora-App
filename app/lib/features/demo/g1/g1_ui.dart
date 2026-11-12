@@ -101,28 +101,17 @@ class G1Logo extends StatelessWidget {
   }
 }
 
-/// 관심·보류, 진행 단계의 머리글: 로고 + `브랜드 관점` 알약.
+/// 관심·보류, 진행 단계의 머리글: 로고만 둔다(화면 이름 알약은 뺐다).
 class G1Header extends StatelessWidget {
   const G1Header({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final p = G1Palette.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const G1Logo(fontSize: 25),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: p.surface,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text('브랜드 관점', style: g1Text(12, 500, p.text)),
-          ),
-        ],
+        children: [const G1Logo(fontSize: 25), const SizedBox.shrink()],
       ),
     );
   }
