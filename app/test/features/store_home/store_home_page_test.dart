@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_colors.dart';
+import 'package:cora/core/ui/cora_state_view.dart';
 import 'package:cora/features/offers/domain/offer_view.dart';
 import 'package:cora/features/payment/domain/payment_repository.dart';
 import 'package:cora/features/store_home/presentation/pages/store_home_page.dart';
@@ -9,8 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
-import '../payment/fake_payment_repository.dart';
 import '../../support/pump_cora_app.dart';
+import '../payment/fake_payment_repository.dart';
 import 'fake_store_home_repository.dart';
 import 'store_home_harness.dart';
 
@@ -76,14 +79,18 @@ void main() {
     expect(find.text('면'), findsOneWidget);
   });
 
-  testWidgets('shows the empty message on each tab', (tester) async {
+  testWidgets('shows the shared empty state on each tab', (tester) async {
     await pumpStoreHome(tester, home: FakeStoreHomeRepository());
 
-    expect(find.text('아직 지원한 크리에이터가 없어요. 가게가 공개되면 지원이 도착해요.'), findsOneWidget);
+    // 두 문장이면 첫 문장이 제목, 둘째가 설명이다.
+    expect(find.byType(CoraStateView), findsOneWidget);
+    expect(find.text('아직 지원한 크리에이터가 없어요.'), findsOneWidget);
+    expect(find.text('가게가 공개되면 지원이 도착해요.'), findsOneWidget);
     await tester.tap(find.text('보낸 오퍼 0'));
     await tester.pumpAndSettle();
+    expect(find.byType(CoraStateView), findsOneWidget);
     expect(find.text('아직 보낸 오퍼가 없어요.'), findsOneWidget);
-    expect(find.text('아직 지원한 크리에이터가 없어요. 가게가 공개되면 지원이 도착해요.'), findsNothing);
+    expect(find.text('아직 지원한 크리에이터가 없어요.'), findsNothing);
   });
 
   testWidgets('shows the sent offers with their state and action', (
@@ -274,12 +281,34 @@ void main() {
     expect(find.text('하루 한 컵'), findsOneWidget);
   });
 
-  testWidgets('shows an error with retry when loading fails', (tester) async {
+  testWidgets('store home shows the shared loading state before data arrives', (
+    tester,
+  ) async {
+    final hold = Completer<void>();
+    final home = FakeStoreHomeRepository(applicants: sampleApplicants())
+      ..holdFetch = hold;
+    await pumpStoreHome(tester, home: home);
+
+    expect(find.byType(CoraStateView), findsOneWidget);
+    expect(find.text('불러오는 중'), findsOneWidget);
+    expect(find.text('하루 한 컵'), findsNothing);
+
+    hold.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('불러오는 중'), findsNothing);
+    expect(find.text('하루 한 컵'), findsOneWidget);
+  });
+
+  testWidgets('store home shows the shared failed state with its own title', (
+    tester,
+  ) async {
     final home = FakeStoreHomeRepository(applicants: sampleApplicants())
       ..failFetch = true;
     await pumpStoreHome(tester, home: home);
 
+    expect(find.byType(CoraStateView), findsOneWidget);
     expect(find.text('사장님 홈을 불러오지 못했어요.'), findsOneWidget);
+    expect(find.text('연결이 불안정해요. 잠시 뒤 다시 시도해 주세요.'), findsOneWidget);
     home.failFetch = false;
     await tester.tap(find.text('다시 시도'));
     await tester.pumpAndSettle();

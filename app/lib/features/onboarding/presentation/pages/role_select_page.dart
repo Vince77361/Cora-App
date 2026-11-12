@@ -8,10 +8,10 @@ import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/navigation/role_entry.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_logo.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_select_card.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../domain/user_role.dart';
 import '../viewmodels/me_view_model.dart';
 import '../viewmodels/role_select_view_model.dart';
@@ -40,9 +40,9 @@ class RoleSelectPage extends ConsumerWidget {
         bottom: false,
         child: state.when(
           // 내 정보를 기다리는 동안은 배경만 둔다(라우터가 불러오는 중에는 이 화면을 열지 않는다).
-          loading: () => const SizedBox.expand(),
-          error: (_, _) => CoraErrorView(
-            message: serverUnreachable,
+          loading: () => const CoraStateView.loading(),
+          error: (_, _) => CoraStateView.loadFailed(
+            title: serverUnreachable,
             // 내 정보를 다시 불러오는 동안은 첫 화면에서 기다리고, 결과에 맞는 곳(역할이 없으면
             // 여기, 있으면 홈)으로 라우터가 보낸다. 불러오기가 눈 깜짝할 새 끝나도 같은 길을
             // 지나도록 직접 첫 화면으로 간다. 이 화면의 ViewModel도 함께 비운다. 옛 화면이

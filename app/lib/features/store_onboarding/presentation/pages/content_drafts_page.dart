@@ -10,12 +10,12 @@ import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
 import '../../../../core/ui/cora_segmented_tabs.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../../core/ui/cora_step_header.dart';
 import '../../domain/content_draft.dart';
 import '../../domain/my_store.dart';
@@ -145,8 +145,8 @@ class _ContentDraftsPageState extends ConsumerState<ContentDraftsPage> {
     return Column(
       children: [
         Expanded(
-          child: CoraErrorView(
-            message: ContentDraftsPage.loadFailed,
+          child: CoraStateView.loadFailed(
+            title: ContentDraftsPage.loadFailed,
             onRetry: () => ref.invalidate(contentDraftsViewModelProvider),
           ),
         ),

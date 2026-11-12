@@ -6,8 +6,8 @@ import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_page_header.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../collaboration_text.dart';
 import '../viewmodels/collaboration_view_model.dart';
 import 'collaboration_page.dart';
@@ -21,7 +21,6 @@ class VoucherPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.colors;
     final async = ref.watch(collaborationViewModelProvider(collaborationId));
     void leave() {
       if (context.canPop()) {
@@ -44,16 +43,13 @@ class VoucherPage extends ConsumerWidget {
                   voucherName: value.collaboration.terms.voucherName ?? '',
                   shortId: value.collaboration.shortId,
                 ),
-                AsyncError() => CoraErrorView(
-                  message: loadFailedMessage,
+                AsyncError() => CoraStateView.loadFailed(
+                  title: loadFailedMessage,
                   onRetry: () => ref.invalidate(
                     collaborationViewModelProvider(collaborationId),
                   ),
                 ),
-                _ => ColoredBox(
-                  color: c.background,
-                  child: const SizedBox.expand(),
-                ),
+                _ => const CoraStateView.loading(),
               },
             ),
           ],

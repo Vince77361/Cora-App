@@ -8,9 +8,9 @@ import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_bottom_nav.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart';
 import '../../domain/store_summary.dart';
 import '../viewmodels/store_list_view_model.dart';
@@ -65,20 +65,9 @@ class StoreListPage extends ConsumerWidget {
                       child: value.stores.isEmpty
                           ? ListView(
                               physics: const AlwaysScrollableScrollPhysics(),
-                              padding: const EdgeInsets.fromLTRB(
-                                24,
-                                120,
-                                24,
-                                0,
-                              ),
-                              children: [
-                                Text(
-                                  empty,
-                                  textAlign: TextAlign.center,
-                                  style: CoraTextStyles.body.copyWith(
-                                    color: c.textSecondary,
-                                  ),
-                                ),
+                              padding: const EdgeInsets.only(top: 12),
+                              children: const [
+                                CoraStateView.empty(title: empty),
                               ],
                             )
                           : ListView.separated(
@@ -100,11 +89,11 @@ class StoreListPage extends ConsumerWidget {
                               ),
                             ),
                     ),
-                    AsyncError() => CoraErrorView(
-                      message: loadFailed,
+                    AsyncError() => CoraStateView.loadFailed(
+                      title: loadFailed,
                       onRetry: () => ref.invalidate(storeListViewModelProvider),
                     ),
-                    _ => const SizedBox.expand(),
+                    _ => const CoraStateView.loading(),
                   },
                 ),
               ],

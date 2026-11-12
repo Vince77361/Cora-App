@@ -10,9 +10,9 @@ import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shadows.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_pressable.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../onboarding/presentation/viewmodels/me_view_model.dart';
 import '../../domain/notification_settings.dart';
 import '../notification_settings_text.dart';
@@ -88,12 +88,12 @@ class _NotificationSettingsPageState
                       onToggle: vm.toggle,
                       onQuiet: vm.selectQuietHours,
                     ),
-                    AsyncError(isLoading: false) => CoraErrorView(
-                      message: NotificationSettingsTexts.loadFailed,
+                    AsyncError(isLoading: false) => CoraStateView.loadFailed(
+                      title: NotificationSettingsTexts.loadFailed,
                       onRetry: () =>
                           ref.invalidate(notificationSettingsViewModelProvider),
                     ),
-                    _ => const SizedBox.expand(),
+                    _ => const CoraStateView.loading(),
                   },
                 ),
               ],

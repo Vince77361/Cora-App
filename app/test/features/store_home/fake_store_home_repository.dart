@@ -86,6 +86,9 @@ class FakeStoreHomeRepository implements StoreHomeRepository {
   /// 설정하면 [sendOffer]가 이 Completer가 끝날 때까지 기다린다.
   Completer<void>? holdSend;
 
+  /// 설정하면 [fetchSummary]가 이 Completer가 끝날 때까지 기다린다(불러오는 중 화면을 본다).
+  Completer<void>? holdFetch;
+
   int fetchCalls = 0;
   final sent = <({String creatorId, OfferTermsInput terms})>[];
   final cancelled = <String>[];
@@ -93,6 +96,7 @@ class FakeStoreHomeRepository implements StoreHomeRepository {
   @override
   Future<StoreHomeSummary> fetchSummary() async {
     fetchCalls++;
+    await holdFetch?.future;
     if (failFetch) throw const StoreHomeFailure();
     return StoreHomeSummary(
       newApplications: applicants.length,

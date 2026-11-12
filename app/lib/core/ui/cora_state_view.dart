@@ -139,6 +139,7 @@ class _LoadingCard extends StatelessWidget {
                 Expanded(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     spacing: 8,
                     children: [
                       _Bar(factor: 0.7, height: 12, color: c.line),
@@ -235,6 +236,8 @@ class _MessageCard extends StatelessWidget {
             ExcludeSemantics(child: _IconCircle(kind: kind)),
             Expanded(
               child: Column(
+                // 세로로 늘어나지 않고 글자 높이만큼만 차지한다(Row가 위쪽 높이를 느슨하게 준다).
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 오류는 화면이 바뀌지 않아도 스크린 리더가 바로 읽게 한다.
@@ -403,10 +406,13 @@ class _ActionChip extends StatelessWidget {
               color: c.chipAction,
               borderRadius: BorderRadius.circular(CoraRadius.pill),
             ),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: CoraTextStyles.label.copyWith(color: c.onChipAction),
+            // `alignment`를 주면 Container가 가로로 늘어난다. 글자 너비만큼만 두고 세로로만 가운데에 둔다.
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                label,
+                style: CoraTextStyles.label.copyWith(color: c.onChipAction),
+              ),
             ),
           ),
         ),

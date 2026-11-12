@@ -7,9 +7,9 @@ import '../../../../core/navigation/role_entry.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_pressable.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart';
 import '../../../onboarding/presentation/viewmodels/me_view_model.dart';
 import '../../domain/wallet.dart';
@@ -55,11 +55,11 @@ class WalletPage extends ConsumerWidget {
                   wallet: value,
                   onAccount: () => _openAccount(context, ref),
                 ),
-                AsyncError(isLoading: false) => CoraErrorView(
-                  message: WalletTexts.loadFailed,
+                AsyncError(isLoading: false) => CoraStateView.loadFailed(
+                  title: WalletTexts.loadFailed,
                   onRetry: () => ref.invalidate(walletViewModelProvider),
                 ),
-                _ => const SizedBox.expand(),
+                _ => const CoraStateView.loading(),
               },
             ),
           ],
@@ -122,14 +122,9 @@ class _Body extends StatelessWidget {
             ),
           ),
           if (wallet.entries.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Text(
-                WalletTexts.empty,
-                style: CoraTextStyles.bodySmall.copyWith(
-                  color: c.textSecondary,
-                ),
-              ),
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: CoraStateView.empty(title: WalletTexts.empty),
             )
           else
             Padding(

@@ -11,18 +11,18 @@ import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/time/clock.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart';
 import '../../domain/collaboration.dart';
 import '../collaboration_text.dart';
 import '../mail_launcher.dart';
 import '../viewmodels/collaboration_view_model.dart';
-import '../widgets/collaboration_parts.dart';
 import '../widgets/cancel_collaboration_sheet.dart';
+import '../widgets/collaboration_parts.dart';
 
 /// A7 협업 진행(NEscrow / DarkNEscrow). 크리에이터가 수락한 협업의 보관 금액, 단계, 다음에 할 일을
 /// 보인다. 링크 제출, 식사권, 지급받을 계좌, 문의, 협업 그만두기가 여기서 열린다.
@@ -131,16 +131,13 @@ class _CollaborationPageState extends ConsumerState<CollaborationPage> {
                     ),
                   ),
                 ),
-                AsyncError() => CoraErrorView(
-                  message: loadFailedMessage,
+                AsyncError() => CoraStateView.loadFailed(
+                  title: loadFailedMessage,
                   onRetry: () => ref.invalidate(
                     collaborationViewModelProvider(widget.collaborationId),
                   ),
                 ),
-                _ => ColoredBox(
-                  color: c.background,
-                  child: const SizedBox.expand(),
-                ),
+                _ => const CoraStateView.loading(),
               },
             ),
             if (value != null)

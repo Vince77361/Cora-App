@@ -9,12 +9,12 @@ import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/time/clock.dart';
 import '../../../../core/ui/cora_bottom_nav.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_list_row.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pill_button.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../collaboration/presentation/collaboration_text.dart';
 import '../../../collaboration/presentation/viewmodels/collaboration_list_view_model.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart';
@@ -43,7 +43,8 @@ class ReceivedOffersPage extends ConsumerWidget {
   static const acceptedTitle = '수락했어요.';
   static const acceptedBody = '사장님이 결제하면 알려드릴게요.';
   static const confirm = '확인';
-  static const noNewOffers = '새 오퍼가 없어요. 가게에 지원하면 오퍼가 도착해요.';
+  static const noNewOffers = '새 오퍼가 없어요.';
+  static const noNewOffersDescription = '가게에 지원하면 오퍼가 도착해요.';
   static const noActive = '아직 진행 중인 협업이 없어요.';
   static const activeLoadFailed = '진행 중인 협업을 불러오지 못했어요.';
   static const alreadyHandled = '이미 처리된 오퍼예요.';
@@ -54,7 +55,6 @@ class ReceivedOffersPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.colors;
     final async = ref.watch(receivedOffersViewModelProvider);
     final vm = ref.read(receivedOffersViewModelProvider.notifier);
     return Scaffold(
@@ -78,14 +78,11 @@ class ReceivedOffersPage extends ConsumerWidget {
                   ),
                 ],
               ),
-              AsyncError() => CoraErrorView(
-                message: loadFailed,
+              AsyncError() => CoraStateView.loadFailed(
+                title: loadFailed,
                 onRetry: () => ref.invalidate(receivedOffersViewModelProvider),
               ),
-              _ => ColoredBox(
-                color: c.background,
-                child: const SizedBox.expand(),
-              ),
+              _ => const CoraStateView.loading(),
             },
           ),
           const Align(
@@ -232,6 +229,8 @@ class _NewTab extends StatelessWidget {
       null => null,
     };
     final Widget body;
+    // F8 빈 상태 카드는 자기 좌우 여백(16)을 가져서 카드 쪽 12 여백을 겹치지 않는다.
+    var bare = false;
     if (state.accepted) {
       body = _MessagePanel(
         title: ReceivedOffersPage.acceptedTitle,
@@ -245,7 +244,14 @@ class _NewTab extends StatelessWidget {
         ],
       );
     } else if (current == null) {
-      body = const _MessagePanel(body: ReceivedOffersPage.noNewOffers);
+      bare = true;
+      body = const Padding(
+        padding: EdgeInsets.only(top: 12),
+        child: CoraStateView.empty(
+          title: ReceivedOffersPage.noNewOffers,
+          description: ReceivedOffersPage.noNewOffersDescription,
+        ),
+      );
     } else if (current.canUndoDecline) {
       body = _MessagePanel(
         title: ReceivedOffersPage.declinedTitle,
@@ -274,13 +280,13 @@ class _NewTab extends StatelessWidget {
       );
     }
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
+      padding: EdgeInsets.fromLTRB(bare ? 0 : 12, 0, bare ? 0 : 12, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (notice != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.fromLTRB(bare ? 12 : 0, 0, bare ? 12 : 0, 8),
               child: Semantics(
                 liveRegion: true,
                 child: Text(
@@ -584,8 +590,8 @@ class _ActiveTab extends ConsumerWidget {
     final now = ref.watch(clockProvider).now();
     return switch (async) {
       AsyncData(:final value) when value.isEmpty => const Padding(
-        padding: EdgeInsets.fromLTRB(12, 0, 12, 100),
-        child: _MessagePanel(body: ReceivedOffersPage.noActive),
+        padding: EdgeInsets.only(top: 12),
+        child: CoraStateView.empty(title: ReceivedOffersPage.noActive),
       ),
       AsyncData(:final value) => ListView(
         padding: const EdgeInsets.fromLTRB(8, 0, 8, 112),
@@ -605,11 +611,11 @@ class _ActiveTab extends ConsumerWidget {
             ),
         ],
       ),
-      AsyncError() => CoraErrorView(
-        message: ReceivedOffersPage.activeLoadFailed,
+      AsyncError() => CoraStateView.loadFailed(
+        title: ReceivedOffersPage.activeLoadFailed,
         onRetry: () => ref.invalidate(collaborationListViewModelProvider),
       ),
-      _ => const SizedBox.expand(),
+      _ => const CoraStateView.loading(),
     };
   }
 }

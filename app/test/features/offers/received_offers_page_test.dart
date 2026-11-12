@@ -1,4 +1,5 @@
 import 'package:cora/core/navigation/app_routes.dart';
+import 'package:cora/core/ui/cora_state_view.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart';
 import 'package:cora/features/offers/domain/offer_view.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -219,14 +220,20 @@ void main() {
   });
 
   group('empty and failed states', () {
-    testWidgets('shows the empty message on each tab', (tester) async {
+    testWidgets('received offers shows the shared empty state on each tab', (
+      tester,
+    ) async {
       await _openInbox(tester, offers: FakeReceivedOffersRepository());
 
       expect(find.text('새 오퍼 0'), findsOneWidget);
-      expect(find.text('새 오퍼가 없어요. 가게에 지원하면 오퍼가 도착해요.'), findsOneWidget);
+      // 두 문장이면 첫 문장이 제목, 둘째가 설명이다.
+      expect(find.byType(CoraStateView), findsOneWidget);
+      expect(find.text('새 오퍼가 없어요.'), findsOneWidget);
+      expect(find.text('가게에 지원하면 오퍼가 도착해요.'), findsOneWidget);
 
       await tester.tap(find.text('진행 중'));
       await tester.pumpAndSettle();
+      expect(find.byType(CoraStateView), findsOneWidget);
       expect(find.text('아직 진행 중인 협업이 없어요.'), findsOneWidget);
     });
 

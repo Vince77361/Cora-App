@@ -1,10 +1,10 @@
 import 'package:cora/core/navigation/cora_transitions.dart';
 import 'package:cora/core/theme/cora_theme.dart';
-import 'package:cora/core/ui/cora_error_view.dart';
 import 'package:cora/core/ui/cora_glass_card.dart';
 import 'package:cora/core/ui/cora_logo.dart';
 import 'package:cora/core/ui/cora_primary_button.dart';
 import 'package:cora/core/ui/cora_select_card.dart';
+import 'package:cora/core/ui/cora_state_view.dart';
 import 'package:cora/features/dev/presentation/pages/motion_gallery_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -99,7 +99,7 @@ void main() {
     expect(find.byType(CoraSelectCard), findsNWidgets(3));
     expect(find.byType(CoraPrimaryButton), findsAtLeastNWidgets(2));
     expect(find.byType(CoraGlassCard), findsOneWidget);
-    expect(find.byType(CoraErrorView), findsOneWidget);
+    expect(find.byType(CoraStateView), findsNWidgets(5));
     // A1 문구 그대로
     expect(find.text('가게를 알리고 싶어요'), findsOneWidget);
     expect(find.text('가게 링크로 시작하기'), findsOneWidget);

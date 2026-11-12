@@ -10,11 +10,11 @@ import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/time/clock.dart';
 import '../../../../core/ui/cora_bottom_nav.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_list_row.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_segmented_tabs.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../notifications/presentation/notification_routes.dart';
 import '../../../notifications/presentation/viewmodels/unread_count_view_model.dart';
 import '../../../notifications/presentation/widgets/notification_bell.dart';
@@ -40,7 +40,8 @@ class StoreHomePage extends ConsumerStatefulWidget {
   static const inProgress = '진행 중';
   static const shortcuts = ['릴스로 찾기', '리스트 검색', '빠른 입찰'];
   static const sendOffer = '오퍼 보내기';
-  static const emptyApplicants = '아직 지원한 크리에이터가 없어요. 가게가 공개되면 지원이 도착해요.';
+  static const emptyApplicants = '아직 지원한 크리에이터가 없어요.';
+  static const emptyApplicantsDescription = '가게가 공개되면 지원이 도착해요.';
   static const emptySentOffers = '아직 보낸 오퍼가 없어요.';
 
   /// 캔버스에 없는 상태의 문구.
@@ -191,7 +192,6 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
   Widget build(BuildContext context) {
     ref.listen(storeHomeNoticeProvider, (_, next) => _onNotice(next));
     ref.listen(storeHomeViewModelProvider, (_, _) => _applyPendingTab());
-    final c = context.colors;
     final async = ref.watch(storeHomeViewModelProvider);
     final notice = ref.watch(storeHomeNoticeProvider);
     return Scaffold(
@@ -207,14 +207,11 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
                 onShortcut: _comingSoon,
                 onBellReturn: _onBellReturn,
               ),
-              AsyncError() => CoraErrorView(
-                message: StoreHomePage.loadFailed,
+              AsyncError() => CoraStateView.loadFailed(
+                title: StoreHomePage.loadFailed,
                 onRetry: () => ref.invalidate(storeHomeViewModelProvider),
               ),
-              _ => ColoredBox(
-                color: c.background,
-                child: const SizedBox.expand(),
-              ),
+              _ => const CoraStateView.loading(),
             },
           ),
           if (notice != null)
@@ -563,7 +560,10 @@ class _Applicants extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.applicants.isEmpty) {
-      return const _Empty(message: StoreHomePage.emptyApplicants);
+      return const _Empty(
+        title: StoreHomePage.emptyApplicants,
+        description: StoreHomePage.emptyApplicantsDescription,
+      );
     }
     return Column(
       children: [
@@ -601,7 +601,7 @@ class _SentOffers extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.sentOffers.isEmpty) {
-      return const _Empty(message: StoreHomePage.emptySentOffers);
+      return const _Empty(title: StoreHomePage.emptySentOffers);
     }
     return Column(
       children: [for (final offer in state.sentOffers) _sentRow(offer)],
@@ -625,28 +625,18 @@ class _SentOffers extends StatelessWidget {
   }
 }
 
-/// 목록이 비었을 때(캔버스에 없는 상태).
+/// 목록이 비었을 때. F8의 빈 상태 카드를 탭 줄 아래에 둔다(놓는 자리는 캔버스에 없다).
 class _Empty extends StatelessWidget {
-  const _Empty({required this.message});
+  const _Empty({required this.title, this.description});
 
-  final String message;
+  final String title;
+  final String? description;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
-      child: Semantics(
-        liveRegion: true,
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: CoraTextStyles.body.copyWith(
-            fontWeight: FontWeight.w400,
-            color: c.textSecondary,
-          ),
-        ),
-      ),
+      padding: const EdgeInsets.only(top: 12),
+      child: CoraStateView.empty(title: title, description: description),
     );
   }
 }

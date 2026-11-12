@@ -7,7 +7,6 @@ import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/theme/cora_theme.dart';
 import '../../../../core/ui/cora_bottom_nav.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_glass_card.dart';
 import '../../../../core/ui/cora_info_tile.dart';
 import '../../../../core/ui/cora_list_row.dart';
@@ -17,6 +16,7 @@ import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
 import '../../../../core/ui/cora_segmented_tabs.dart';
 import '../../../../core/ui/cora_select_card.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../../core/ui/cora_step_header.dart';
 
 /// 개발용 모션 갤러리. 소유자가 실제 기기에서 전환 속도·곡선과 공용 위젯을 보고 승인한다.
@@ -413,22 +413,24 @@ class _GalleryHomeState extends State<_GalleryHome> {
                 ),
               ),
 
-              const _SectionLabel('오류 화면'),
-              DecoratedBox(
-                // 실제 오류 화면처럼 `background` 위에 둔다. `surface` 위에서는
-                // 보조 버튼 채움(`surfaceMuted`)이 묻혀 보인다.
-                decoration: BoxDecoration(
-                  color: c.background,
-                  border: Border.all(color: c.line),
-                  borderRadius: BorderRadius.circular(CoraRadius.xl),
-                ),
-                child: SizedBox(
-                  height: 220,
-                  child: CoraErrorView(
-                    message: '서버에 연결하지 못했어요.',
+              const _SectionLabel('상태 패턴 · F8'),
+              // 캔버스 F8처럼 `background` 위에 다섯 상태를 10 간격으로 쌓는다.
+              Column(
+                spacing: 10,
+                children: [
+                  const CoraStateView.loading(),
+                  CoraStateView.allSeen(onOpenSaved: () {}),
+                  CoraStateView.loadFailed(
                     onRetry: () => setState(() => _retries++),
                   ),
-                ),
+                  CoraStateView.empty(
+                    title: '아직 받은 제안이 없어요',
+                    description: '포트폴리오를 채우면 가게와 브랜드의 추천에 더 자주 보여요.',
+                    actionLabel: '콘텐츠 올리기',
+                    onAction: () {},
+                  ),
+                  CoraStateView.staleVersion(version: 3, onOpen: () {}),
+                ],
               ),
               if (_retries > 0) ...[
                 const SizedBox(height: 8),

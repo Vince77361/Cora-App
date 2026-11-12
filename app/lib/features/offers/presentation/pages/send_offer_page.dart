@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/navigation/app_routes.dart';
-import '../../../../core/ui/cora_error_view.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../offer_terms/domain/offer_terms.dart';
 import '../../../offer_terms/presentation/widgets/offer_terms_wizard.dart';
 import '../../../store_home/domain/applicant.dart';
@@ -79,9 +79,9 @@ class _SendOfferPageState extends ConsumerState<SendOfferPage> {
     if (applicant == null || store == null) {
       final loading = ref.watch(storeHomeViewModelProvider).isLoading;
       body = loading
-          ? const SizedBox.expand()
-          : CoraErrorView(
-              message: SendOfferPage.notFound,
+          ? const CoraStateView.loading()
+          : CoraStateView.loadFailed(
+              title: SendOfferPage.notFound,
               onRetry: () => ref.invalidate(storeHomeViewModelProvider),
             );
     } else {

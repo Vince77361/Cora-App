@@ -11,9 +11,9 @@ import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/time/clock.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../../core/ui/cora_step_header.dart';
 import '../../../onboarding/presentation/viewmodels/me_view_model.dart';
 import '../../domain/app_notification.dart';
@@ -165,12 +165,12 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                                 },
                               ),
                             ),
-                    AsyncError(isLoading: false) => CoraErrorView(
-                      message: NotificationTexts.loadFailed,
+                    AsyncError(isLoading: false) => CoraStateView.loadFailed(
+                      title: NotificationTexts.loadFailed,
                       onRetry: () =>
                           ref.invalidate(notificationsViewModelProvider),
                     ),
-                    _ => const SizedBox.expand(),
+                    _ => const CoraStateView.loading(),
                   },
                 ),
               ],
@@ -544,25 +544,15 @@ class _ReadAllButton extends StatelessWidget {
   }
 }
 
-/// 알림이 하나도 없을 때(캔버스에 없는 상태).
+/// 알림이 하나도 없을 때. F8의 빈 상태 카드를 탭 줄 아래에 둔다(놓는 자리는 캔버스에 없다).
 class _Empty extends StatelessWidget {
   const _Empty();
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Semantics(
-          liveRegion: true,
-          child: Text(
-            NotificationTexts.empty,
-            textAlign: TextAlign.center,
-            style: CoraTextStyles.body.copyWith(color: c.textSecondary),
-          ),
-        ),
-      ),
+    return const Padding(
+      padding: EdgeInsets.only(top: 12),
+      child: CoraStateView.empty(title: NotificationTexts.empty),
     );
   }
 }

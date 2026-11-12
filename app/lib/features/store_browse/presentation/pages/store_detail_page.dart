@@ -7,10 +7,10 @@ import '../../../../core/navigation/cora_hero_tag.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_info_tile.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pill_button.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../../core/ui/cora_step_header.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart';
 import '../../domain/store_detail.dart';
@@ -52,7 +52,6 @@ class StoreDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.colors;
     final provider = storeDetailViewModelProvider(storeId);
     final async = ref.watch(provider);
     return Scaffold(
@@ -80,15 +79,15 @@ class StoreDetailPage extends ConsumerWidget {
                 ),
               ),
               Expanded(
-                child: CoraErrorView(
-                  message: loadFailed,
+                child: CoraStateView.loadFailed(
+                  title: loadFailed,
                   onRetry: () => ref.invalidate(provider),
                 ),
               ),
             ],
           ),
         ),
-        _ => ColoredBox(color: c.background, child: const SizedBox.expand()),
+        _ => const CoraStateView.loading(),
       },
     );
   }

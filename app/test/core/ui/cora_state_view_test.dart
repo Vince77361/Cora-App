@@ -208,4 +208,41 @@ void main() {
       }
     }
   });
+
+  testWidgets('keeps its own size when the page gives it the whole body', (
+    tester,
+  ) async {
+    // 페이지는 `Expanded`로 본문 전체(꽉 찬 제약)를 준다. 카드가 따라 늘어나면 안 된다.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: coraLightTheme,
+        home: Scaffold(
+          body: Column(
+            children: [
+              Expanded(child: CoraStateView.loadFailed(onRetry: () {})),
+            ],
+          ),
+        ),
+      ),
+    );
+    final card = tester.getSize(
+      find
+          .descendant(
+            of: find.byType(CoraStateView),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    expect(card.height, lessThan(150));
+    // 단추는 글자 너비만큼만 차지한다.
+    final chip = tester.getSize(
+      find
+          .ancestor(of: find.text('다시 시도'), matching: find.byType(Container))
+          .first,
+    );
+    expect(chip.width, lessThan(120));
+    expect(chip.height, 36);
+    // 카드는 위쪽 끝에 붙는다.
+    expect(tester.getTopLeft(find.byType(CoraStateView)).dy, 0);
+  });
 }

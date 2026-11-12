@@ -9,11 +9,11 @@ import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_field_box.dart';
 import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../domain/payout_account.dart';
 import '../viewmodels/payout_account_view_model.dart';
 
@@ -137,14 +137,11 @@ class _PayoutAccountPageState extends ConsumerState<PayoutAccountPage> {
                               .read(payoutAccountViewModelProvider.notifier)
                               .startEdit,
                         ),
-                AsyncError() => CoraErrorView(
-                  message: PayoutAccountPage.loadFailed,
+                AsyncError() => CoraStateView.loadFailed(
+                  title: PayoutAccountPage.loadFailed,
                   onRetry: () => ref.invalidate(payoutAccountViewModelProvider),
                 ),
-                _ => ColoredBox(
-                  color: c.background,
-                  child: const SizedBox.expand(),
-                ),
+                _ => const CoraStateView.loading(),
               },
             ),
             if (value != null && showForm)

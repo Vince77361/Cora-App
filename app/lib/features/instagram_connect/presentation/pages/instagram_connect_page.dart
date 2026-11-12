@@ -10,9 +10,9 @@ import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_primary_button.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../viewmodels/instagram_connect_view_model.dart';
 
 /// 인스타그램 연동(캔버스에 없다; 캔버스의 `NInstagram`은 5번 계획의 가져오기 화면이다). 연동해야
@@ -110,15 +110,12 @@ class InstagramConnectPage extends ConsumerWidget {
                     ],
                   ),
                 ),
-                AsyncError() => CoraErrorView(
-                  message: InstagramConnectPage.loadFailed,
+                AsyncError() => CoraStateView.loadFailed(
+                  title: InstagramConnectPage.loadFailed,
                   onRetry: () =>
                       ref.invalidate(instagramConnectViewModelProvider),
                 ),
-                _ => ColoredBox(
-                  color: c.background,
-                  child: const SizedBox.expand(),
-                ),
+                _ => const CoraStateView.loading(),
               },
             ),
             if (value != null && value.connection == null)

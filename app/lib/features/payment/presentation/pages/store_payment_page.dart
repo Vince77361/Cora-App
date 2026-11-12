@@ -10,10 +10,10 @@ import '../../../../core/text/josa.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_error_view.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../../core/ui/cora_step_header.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart';
 import '../../../store_home/presentation/viewmodels/store_home_view_model.dart';
@@ -103,18 +103,15 @@ class _StorePaymentPageState extends ConsumerState<StorePaymentPage> {
                   padding: const EdgeInsets.only(bottom: 24),
                   child: _Content(state: value, onMethod: _vm.selectMethod),
                 ),
-                AsyncError(:final error) => CoraErrorView(
-                  message: error is PaymentFailure && error.conflict
+                AsyncError(:final error) => CoraStateView.loadFailed(
+                  title: error is PaymentFailure && error.conflict
                       ? StorePaymentPage.unavailable
                       : StorePaymentPage.loadFailed,
                   onRetry: () => ref.invalidate(
                     paymentViewModelProvider(widget.collaborationId),
                   ),
                 ),
-                _ => ColoredBox(
-                  color: c.background,
-                  child: const SizedBox.expand(),
-                ),
+                _ => const CoraStateView.loading(),
               },
             ),
             if (state != null)
