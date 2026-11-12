@@ -18,6 +18,7 @@ import '../../features/onboarding/presentation/pages/role_home_placeholder_page.
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
 import '../../features/offers/presentation/pages/received_offers_page.dart';
+import '../../features/payout_account/presentation/pages/payout_account_page.dart';
 import '../../features/offers/presentation/pages/send_offer_page.dart';
 import '../../features/store_browse/presentation/pages/store_detail_page.dart';
 import '../../features/store_browse/presentation/pages/store_list_page.dart';
@@ -218,6 +219,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           VoucherPage(collaborationId: state.pathParameters['id']!),
           key: state.pageKey,
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.creatorPayoutAccount,
+        pageBuilder: (context, state) =>
+            CoraTransitions.push(const PayoutAccountPage(), key: state.pageKey),
       ),
       GoRoute(
         path: '/creator/coming-soon/:title',

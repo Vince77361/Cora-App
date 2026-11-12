@@ -57,6 +57,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     this.onStepDotDone = const Color(0xFF17181C),
     this.stepDotNow = const Color(0xFFC6FF3D),
     this.onStepDotNow = const Color(0xFF1F2A00),
+    this.chipAction = const Color(0xFFFFFFFF),
+    this.onChipAction = const Color(0xFF17181C),
   });
 
   final Color background;
@@ -154,6 +156,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
   final Color onStepDotDone;
   final Color stepDotNow;
   final Color onStepDotNow;
+
+  /// `surface` 카드 안의 작은 알약 버튼(NWallet `계좌 변경`). 라이트·다크 모두 흰 바탕에 #17181C 글자다.
+  final Color chipAction;
+  final Color onChipAction;
 
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
@@ -344,6 +350,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? onStepDotDone,
     Color? stepDotNow,
     Color? onStepDotNow,
+    Color? chipAction,
+    Color? onChipAction,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -400,6 +408,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
       onStepDotDone: onStepDotDone ?? this.onStepDotDone,
       stepDotNow: stepDotNow ?? this.stepDotNow,
       onStepDotNow: onStepDotNow ?? this.onStepDotNow,
+      chipAction: chipAction ?? this.chipAction,
+      onChipAction: onChipAction ?? this.onChipAction,
     );
   }
 
@@ -464,6 +474,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
       onStepDotDone: mix(onStepDotDone, other.onStepDotDone),
       stepDotNow: mix(stepDotNow, other.stepDotNow),
       onStepDotNow: mix(onStepDotNow, other.onStepDotNow),
+      chipAction: mix(chipAction, other.chipAction),
+      onChipAction: mix(onChipAction, other.onChipAction),
     );
   }
 }

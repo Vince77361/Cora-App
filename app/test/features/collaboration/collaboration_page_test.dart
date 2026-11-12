@@ -98,6 +98,11 @@ void main() {
     await pumpCollaboration(tester, repo: _repo(c));
 
     expect(find.text('지급받을 계좌 등록하기'), findsOneWidget);
+
+    await tester.tap(find.text('지급받을 계좌 등록하기'));
+    await tester.pumpAndSettle();
+    expect(topPath(tester), AppRoutes.creatorPayoutAccount);
+    expect(find.text('지급받을 계좌를\n알려 주세요'), findsOneWidget);
   });
 
   testWidgets('shows the payout date or the paid amount when settled', (

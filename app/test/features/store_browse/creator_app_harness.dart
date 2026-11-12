@@ -2,6 +2,7 @@ import 'package:cora/core/time/clock.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/collaboration/presentation/mail_launcher.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile.dart';
+import 'package:cora/features/payout_account/domain/payout_account_repository.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile_repository.dart';
 import 'package:cora/features/offers/domain/received_offers_repository.dart';
 import 'package:cora/features/offers/presentation/viewmodels/received_offers_view_model.dart';
@@ -16,6 +17,7 @@ import '../auth/fake_auth_repository.dart';
 import '../creator_profile/fake_creator_profile_repository.dart';
 import '../collaboration/fake_collaboration_repository.dart';
 import '../offers/fake_received_offers_repository.dart';
+import '../payout_account/fake_payout_account_repository.dart';
 import '../onboarding/fake_me_repository.dart';
 import 'fake_store_browse_repository.dart';
 
@@ -27,6 +29,7 @@ Future<void> pumpCreatorApp(
   FakeReceivedOffersRepository? offers,
   FakeCollaborationRepository? collaborations,
   MailLauncher? mail,
+  FakePayoutAccountRepository? payoutAccounts,
   String mySido = '서울특별시',
   Duration undoWindow = const Duration(seconds: 30),
   bool profileFails = false,
@@ -59,6 +62,9 @@ Future<void> pumpCreatorApp(
         collaborations ?? FakeCollaborationRepository(),
       ),
       if (mail != null) mailLauncherProvider.overrideWithValue(mail),
+      payoutAccountRepositoryProvider.overrideWithValue(
+        payoutAccounts ?? FakePayoutAccountRepository(),
+      ),
       undoDeclineWindowProvider.overrideWithValue(undoWindow),
       clockProvider.overrideWithValue(clock ?? FakeClock()),
       ...overrides,
