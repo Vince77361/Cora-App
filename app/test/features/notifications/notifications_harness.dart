@@ -1,5 +1,6 @@
 import 'package:cora/features/notifications/domain/notification_repository.dart';
 import 'package:cora/features/notifications/presentation/notification_routes.dart';
+import 'package:cora/features/notifications/presentation/widgets/notification_bell.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,10 +28,18 @@ Future<void> pumpStoreNotifications(
     home: home,
     clock: clock,
     smallPhoneLargeText: smallPhoneLargeText,
-    overrides: [notificationRepositoryProvider.overrideWithValue(repo)],
+    overrides: [
+      notificationRepositoryProvider.overrideWithValue(repo),
+      ...overrides,
+    ],
   );
   if (!open) return;
-  routerOf(tester).push(NotificationRoutes.notifications);
+  await openNotifications(tester);
+}
+
+/// 종을 눌러 알림함을 연다. 알림함이 홈으로 돌아오며 넘기는 값을 종이 받는다.
+Future<void> openNotifications(WidgetTester tester) async {
+  await tester.tap(find.byType(NotificationBell));
   await tester.pumpAndSettle();
 }
 

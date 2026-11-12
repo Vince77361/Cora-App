@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -77,7 +78,10 @@ class _StorePaymentPageState extends ConsumerState<StorePaymentPage> {
     final outcome = await _vm.pay();
     if (!mounted || outcome != PaymentOutcome.approved) return;
     ref.read(storeHomeNoticeProvider.notifier).show(StorePaymentPage.approved);
-    _leave();
+    // 알림함에서 열었더라도 승인되면 홈으로 돌아가고(설계 A8), 홈은 서버에서 다시 읽어 결제한 오퍼를
+    // 바로 보인다. 홈에서 열었으면 홈의 돌아옴 새로 고침이 한 번 더 돌지만 해롭지 않다.
+    unawaited(ref.read(storeHomeViewModelProvider.notifier).refresh());
+    context.go(AppRoutes.store);
   }
 
   @override

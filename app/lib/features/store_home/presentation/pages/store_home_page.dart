@@ -15,6 +15,7 @@ import '../../../../core/ui/cora_list_row.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_segmented_tabs.dart';
+import '../../../notifications/presentation/notification_routes.dart';
 import '../../../notifications/presentation/viewmodels/unread_count_view_model.dart';
 import '../../../notifications/presentation/widgets/notification_bell.dart';
 import '../../../offers/domain/offer_view.dart';
@@ -44,6 +45,13 @@ class StoreHomePage extends ConsumerStatefulWidget {
 
   /// 캔버스에 없는 상태의 문구.
   static const loadFailed = '사장님 홈을 불러오지 못했어요.';
+
+  /// `?tab=` 값이 가리키는 탭. 모르는 값이면 null.
+  static StoreHomeTab? tabFor(String? param) => switch (param) {
+    NotificationRoutes.applicantsTab => StoreHomeTab.applicants,
+    NotificationRoutes.sentOffersTab => StoreHomeTab.sentOffers,
+    _ => null,
+  };
 
   static String applicantsTab(int count) => '지원한 크리에이터 $count';
   static String sentOffersTab(int count) => '보낸 오퍼 $count';
@@ -101,6 +109,19 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
   void dispose() {
     _noticeTimer?.cancel();
     super.dispose();
+  }
+
+  /// 알림함에서 돌아왔을 때. 알림함에서 결제하거나 취소를 요청했을 수 있어서 홈을 서버에서 다시 읽고,
+  /// 홈으로 가는 알림을 눌렀으면 그 탭을 고른다.
+  void _onBellReturn(Object? result) {
+    final vm = ref.read(storeHomeViewModelProvider.notifier);
+    if (result is String) {
+      final tab = StoreHomePage.tabFor(
+        Uri.parse(result).queryParameters[NotificationRoutes.tabParam],
+      );
+      if (tab != null) vm.selectTab(tab);
+    }
+    unawaited(vm.refresh());
   }
 
   void _onNotice(String? message) {
@@ -184,6 +205,7 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
                 onSentOffer: _onSentOffer,
                 onSentOfferAction: _onSentOfferAction,
                 onShortcut: _comingSoon,
+                onBellReturn: _onBellReturn,
               ),
               AsyncError() => CoraErrorView(
                 message: StoreHomePage.loadFailed,
@@ -224,12 +246,14 @@ class _Body extends ConsumerWidget {
     required this.onSentOffer,
     required this.onSentOfferAction,
     required this.onShortcut,
+    required this.onBellReturn,
   });
 
   final StoreHomeState state;
   final ValueChanged<SentOffer> onSentOffer;
   final ValueChanged<SentOffer> onSentOfferAction;
   final ValueChanged<String> onShortcut;
+  final ValueChanged<Object?> onBellReturn;
 
   /// 하단 메뉴(높이 64, 아래 20)에 가려지지 않게 목록 끝에 두는 여백.
   static const double _navClearance = 20 + 64 + 24;
@@ -253,7 +277,7 @@ class _Body extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: _navClearance),
         children: [
-          const _Header(),
+          _Header(onBellReturn: onBellReturn),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: IntrinsicHeight(
@@ -334,7 +358,9 @@ class _Body extends ConsumerWidget {
 /// 머리(높이 72, 좌우 20): 가게 사진 44, 가게 이름, 종 아이콘, 오른쪽 `가게 페이지`. 사진을 누르면 내 가게.
 /// 종은 캔버스 NStoreHome에 없다(2026-11-11 소유자 결정). `가게 페이지` 왼쪽에 둔다.
 class _Header extends ConsumerWidget {
-  const _Header();
+  const _Header({required this.onBellReturn});
+
+  final ValueChanged<Object?> onBellReturn;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -391,7 +417,7 @@ class _Header extends ConsumerWidget {
                 ],
               ),
             ),
-            const NotificationBell(),
+            NotificationBell(onReturn: onBellReturn),
             Semantics(
               container: true,
               button: true,

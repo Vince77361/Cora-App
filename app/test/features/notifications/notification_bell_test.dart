@@ -1,3 +1,5 @@
+import 'package:cora/core/navigation/app_routes.dart';
+import 'package:cora/features/notifications/domain/app_notification.dart';
 import 'package:cora/features/notifications/presentation/notification_routes.dart';
 import 'package:cora/features/notifications/presentation/widgets/notification_bell.dart';
 import 'package:flutter/material.dart';
@@ -101,6 +103,33 @@ void main() {
     );
 
     expect(find.byKey(NotificationBell.dotKey), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('ignores the return after the bell is gone', (tester) async {
+    final repo = FakeNotificationRepository(
+      items: [
+        AppNotification(
+          id: 'a',
+          tab: NotificationTab.matching,
+          text: 'a 문구',
+          actorName: '누구',
+          targetKind: 'MATCH',
+          createdAt: DateTime.utc(2026, 11, 11, 11),
+          read: false,
+        ),
+      ],
+    );
+    await pumpStoreNotifications(tester, repo: repo, open: false);
+    await tester.tap(find.byType(NotificationBell));
+    await tester.pumpAndSettle();
+    expect(topPath(tester), NotificationRoutes.notifications);
+
+    // 알림함이 열린 채 홈이 통째로 바뀌면 종은 사라지고, 늦게 오는 돌아옴은 무시해야 한다.
+    routerOf(tester).go(AppRoutes.storeDrafts);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NotificationBell), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

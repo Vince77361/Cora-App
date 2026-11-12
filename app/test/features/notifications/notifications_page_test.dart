@@ -1,6 +1,10 @@
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/features/notifications/domain/app_notification.dart';
+import 'package:cora/features/notifications/presentation/widgets/notification_bell.dart';
+import 'package:cora/features/payment/domain/payment_repository.dart';
+import 'package:cora/features/payment/presentation/viewmodels/payment_view_model.dart';
+import 'package:cora/features/payment/presentation/checkout_launcher.dart';
 import 'package:cora/features/notifications/presentation/notification_routes.dart';
 import 'package:cora/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:cora/features/store_home/presentation/viewmodels/store_home_view_model.dart';
@@ -10,6 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../support/fake_clock.dart';
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
+import '../payment/fake_payment_repository.dart';
+import '../payment/payment_harness.dart';
 import 'fake_notification_repository.dart';
 import 'notifications_harness.dart';
 
@@ -196,8 +202,7 @@ void main() {
       StoreHomeTab.sentOffers,
     );
 
-    routerOf(tester).push(NotificationRoutes.notifications);
-    await tester.pumpAndSettle();
+    await openNotifications(tester);
     await tester.tap(find.text('apply 문구'));
     await tester.pumpAndSettle();
     expect(topPath(tester), startsWith(AppRoutes.store));
@@ -205,6 +210,65 @@ void main() {
       containerOf(tester).read(storeHomeViewModelProvider).value!.tab,
       StoreHomeTab.applicants,
     );
+  });
+
+  testWidgets('refreshes the store home and the bell after paying from a '
+      'notification', (tester) async {
+    final home = homeWithPayableOffer();
+    final repo = FakeNotificationRepository(
+      items: [_note('pay', kind: 'PAYMENT', targetId: 'col-1')],
+    );
+    await pumpStoreNotifications(
+      tester,
+      repo: repo,
+      home: home,
+      overrides: [
+        paymentRepositoryProvider.overrideWithValue(
+          FakePaymentRepository(statuses: [PaymentStatus.approved]),
+        ),
+        paymentPollingProvider.overrideWithValue(fastPolling),
+        checkoutLauncherProvider.overrideWithValue(FakeCheckoutLauncher()),
+      ],
+    );
+    final fetchesBefore = home.fetchCalls;
+
+    await tester.tap(find.text('pay 문구'));
+    await tester.pumpAndSettle();
+    expect(topPath(tester), AppRoutes.storePay('col-1'));
+    await tester.tap(find.text('결제하고 보관 맡기기'));
+    await tester.pumpAndSettle();
+
+    expect(topPath(tester), AppRoutes.store);
+    expect(find.text('결제했어요. 크리에이터에게 알렸어요.'), findsOneWidget);
+    expect(home.fetchCalls, greaterThan(fetchesBefore));
+    // 알림함에서 읽은 줄이 종 점에도 반영된다.
+    expect(find.byKey(NotificationBell.dotKey), findsNothing);
+  });
+
+  testWidgets('switches to the applicants tab again after a manual tab '
+      'change', (tester) async {
+    final repo = FakeNotificationRepository(
+      items: [_note('apply', kind: 'STORE_APPLICANTS')],
+    );
+    await pumpStoreNotifications(tester, repo: repo);
+    StoreHomeTab tab() =>
+        containerOf(tester).read(storeHomeViewModelProvider).value!.tab;
+
+    await tester.tap(find.text('apply 문구'));
+    await tester.pumpAndSettle();
+    expect(tab(), StoreHomeTab.applicants);
+
+    // 손으로 보낸 오퍼 탭으로 바꾼 뒤 같은 알림을 다시 누른다.
+    containerOf(tester)
+        .read(storeHomeViewModelProvider.notifier)
+        .selectTab(StoreHomeTab.sentOffers);
+    await tester.pump();
+    await openNotifications(tester);
+    await tester.tap(find.text('apply 문구'));
+    await tester.pumpAndSettle();
+
+    expect(topPath(tester), startsWith(AppRoutes.store));
+    expect(tab(), StoreHomeTab.applicants);
   });
 
   testWidgets('only marks a row read when its kind is unknown', (tester) async {

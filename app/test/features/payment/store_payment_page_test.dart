@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:cora/core/config/app_config.dart';
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_colors.dart';
+import 'package:cora/features/notifications/domain/app_notification.dart';
 import 'package:cora/features/payment/domain/payment_repository.dart';
+import 'package:cora/features/payment/presentation/checkout_launcher.dart';
+import 'package:cora/features/payment/presentation/viewmodels/payment_view_model.dart';
 import 'package:cora/features/payment/presentation/pages/store_payment_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,6 +14,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
+import '../notifications/fake_notification_repository.dart';
+import '../notifications/notifications_harness.dart'
+    show pumpStoreNotifications;
 import '../store_home/store_home_harness.dart';
 import 'fake_payment_repository.dart';
 import 'payment_harness.dart';
@@ -133,6 +139,48 @@ void main() {
     expect(currentPath(tester), AppRoutes.store);
     expect(find.text(_approvedNotice), findsOneWidget);
     // 홈이 서버에서 다시 읽는다(진행 중 숫자와 오퍼 줄이 바뀐다).
+    expect(home.fetchCalls, greaterThan(fetchesBefore));
+  });
+
+  testWidgets('goes to the store home with the confirmation when approved from '
+      'the notification list', (tester) async {
+    final home = homeWithPayableOffer();
+    await pumpStoreNotifications(
+      tester,
+      repo: FakeNotificationRepository(
+        items: [
+          AppNotification(
+            id: 'pay',
+            tab: NotificationTab.settlement,
+            text: '결제해 주세요',
+            actorName: '하루 한 컵',
+            targetKind: 'PAYMENT',
+            targetId: 'col-1',
+            createdAt: DateTime.utc(2026, 11, 11, 11),
+            read: false,
+          ),
+        ],
+      ),
+      home: home,
+      overrides: [
+        paymentRepositoryProvider.overrideWithValue(
+          FakePaymentRepository(statuses: [PaymentStatus.approved]),
+        ),
+        paymentPollingProvider.overrideWithValue(fastPolling),
+        checkoutLauncherProvider.overrideWithValue(FakeCheckoutLauncher()),
+      ],
+    );
+    await tester.tap(find.text('결제해 주세요'));
+    await tester.pumpAndSettle();
+    expect(find.byType(StorePaymentPage), findsOneWidget);
+    final fetchesBefore = home.fetchCalls;
+
+    await tester.tap(find.text(_submit));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(StorePaymentPage), findsNothing);
+    expect(currentPath(tester), AppRoutes.store);
+    expect(find.text(_approvedNotice), findsOneWidget);
     expect(home.fetchCalls, greaterThan(fetchesBefore));
   });
 

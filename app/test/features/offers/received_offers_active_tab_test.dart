@@ -114,4 +114,67 @@ void main() {
 
     expect(find.text('결제를 기다리고 있어요'), findsOneWidget);
   });
+
+  testWidgets(
+    'lists a settled collaboration that still needs a payout account on the '
+    'in-progress tab',
+    (tester) async {
+      final collaborations = FakeCollaborationRepository(
+        active: [collaboration()],
+        done: [
+          collaboration(
+            id: 'd1111111-0000-0000-0000-000000000001',
+            storeName: '달빛 베이커리',
+            stage: CollaborationStage.settled,
+            now: StepKey.settle,
+            payoutStatus: PayoutStatus.needsAccount,
+          ),
+          collaboration(
+            id: 'd2222222-0000-0000-0000-000000000002',
+            storeName: '봄날 카페',
+            stage: CollaborationStage.cancelled,
+          ),
+        ],
+      );
+      await _openActiveTab(tester, collaborations);
+
+      expect(find.text('한그릇 라멘'), findsOneWidget);
+      expect(find.text('달빛 베이커리'), findsOneWidget);
+      expect(find.text('정산이 끝났어요'), findsOneWidget);
+      // 정산이 아닌 끝난 협업은 진행 중에 올리지 않는다.
+      expect(find.text('봄날 카페'), findsNothing);
+
+      await tester.tap(find.text('달빛 베이커리'));
+      await tester.pumpAndSettle();
+      expect(find.text('지급받을 계좌 등록하기'), findsOneWidget);
+    },
+  );
+
+  testWidgets('drops a settled collaboration once the payout is done', (
+    tester,
+  ) async {
+    final collaborations = FakeCollaborationRepository(
+      done: [
+        for (final (i, status) in [
+          PayoutStatus.pending,
+          PayoutStatus.failed,
+          PayoutStatus.done,
+          PayoutStatus.none,
+        ].indexed)
+          collaboration(
+            id: 'e000000$i-0000-0000-0000-000000000001',
+            storeName: '가게 $i',
+            stage: CollaborationStage.settled,
+            now: StepKey.settle,
+            payoutStatus: status,
+          ),
+      ],
+    );
+    await _openActiveTab(tester, collaborations);
+
+    expect(find.text('가게 0'), findsOneWidget);
+    expect(find.text('가게 1'), findsOneWidget);
+    expect(find.text('가게 2'), findsNothing);
+    expect(find.text('가게 3'), findsNothing);
+  });
 }

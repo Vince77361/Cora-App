@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
+import '../../support/pump_cora_app.dart';
 import '../store_browse/creator_app_harness.dart' show topPath;
 import 'fake_notification_settings_repository.dart';
 import 'notification_settings_harness.dart';
@@ -231,6 +232,31 @@ void main() {
     expect(repo.saved.last.recommendations, isTrue);
     expect(repo.saved.last.quietHours, QuietHours.weekend);
     expect(repo.settings, repo.saved.last);
+  });
+
+  testWidgets('keeps saving a queued change after the page is closed', (
+    tester,
+  ) async {
+    final gate = Completer<void>();
+    final repo = FakeNotificationSettingsRepository()..saveGate = gate;
+    await pumpNotificationSettings(tester, repo: repo);
+
+    await tester.tap(find.text('추천 소식'));
+    await tester.pump();
+    await tester.tap(find.text('주말'));
+    await tester.pump();
+
+    // 첫 저장이 끝나기 전에 화면을 닫는다. 줄에 남은 두 번째 저장도 서버에 가야 한다.
+    routerOf(tester).pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(NotificationSettingsPage), findsNothing);
+    gate.complete();
+    await tester.pumpAndSettle();
+
+    expect(repo.saved, hasLength(2));
+    expect(repo.saved.last.recommendations, isTrue);
+    expect(repo.saved.last.quietHours, QuietHours.weekend);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('exposes switches to assistive technology', (tester) async {

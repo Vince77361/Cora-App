@@ -21,15 +21,22 @@ abstract final class NotificationRoutes {
 /// 그때 알림을 누르면 읽음으로만 바뀐다.
 String? locationFor(String targetKind, String? targetId, UserRole role) {
   final id = (targetId == null || targetId.isEmpty) ? null : targetId;
+  // 서버는 역할을 가리지 않고 종류만 내려 주므로, 그 화면이 있는 역할에게만 경로를 준다.
   switch (targetKind) {
     case 'STORE_APPLICANTS':
-      return '${AppRoutes.store}?${NotificationRoutes.tabParam}=${NotificationRoutes.applicantsTab}';
+      return role == UserRole.store
+          ? '${AppRoutes.store}?${NotificationRoutes.tabParam}=${NotificationRoutes.applicantsTab}'
+          : null;
     case 'STORE_SENT_OFFERS':
-      return '${AppRoutes.store}?${NotificationRoutes.tabParam}=${NotificationRoutes.sentOffersTab}';
+      return role == UserRole.store
+          ? '${AppRoutes.store}?${NotificationRoutes.tabParam}=${NotificationRoutes.sentOffersTab}'
+          : null;
     case 'OFFER_INBOX':
-      return AppRoutes.creatorOffers;
+      return role == UserRole.creator ? AppRoutes.creatorOffers : null;
     case 'PAYMENT':
-      return id == null ? null : AppRoutes.storePay(id);
+      return id == null || role != UserRole.store
+          ? null
+          : AppRoutes.storePay(id);
     case 'COLLABORATION':
       if (id == null) return null;
       return switch (role) {
@@ -38,7 +45,7 @@ String? locationFor(String targetKind, String? targetId, UserRole role) {
         UserRole.brand => null,
       };
     case 'WALLET':
-      return NotificationRoutes.wallet;
+      return role == UserRole.creator ? NotificationRoutes.wallet : null;
   }
   return null;
 }

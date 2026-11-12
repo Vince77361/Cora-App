@@ -14,7 +14,11 @@ import '../viewmodels/unread_count_view_model.dart';
 /// 캔버스에 없는 위젯이다(설계 E3 "입구"): 44 버튼, 종 22(선 2, `text`), 점 8(`accent`, 바깥 2 고리는
 /// `background`, 오른쪽 10 위 10).
 class NotificationBell extends ConsumerWidget {
-  const NotificationBell({super.key});
+  const NotificationBell({super.key, this.onReturn});
+
+  /// 알림함에서 돌아왔을 때 부른다. [result]는 알림함이 닫히며 넘긴 값이다(홈으로 가는 알림이면 그 경로).
+  /// 종이 이미 사라졌으면(홈이 바뀌었으면) 부르지 않는다.
+  final void Function(Object? result)? onReturn;
 
   static const double size = 44;
   static const dotKey = ValueKey('notification-bell-dot');
@@ -25,9 +29,12 @@ class NotificationBell extends ConsumerWidget {
     final unread = ref.watch(unreadCountViewModelProvider).value ?? 0;
 
     void open() {
-      context.push(NotificationRoutes.notifications).then((_) {
+      context.push<Object?>(NotificationRoutes.notifications).then((result) {
+        // 알림함이 열려 있는 사이 홈이 바뀌어 종이 사라졌으면 ref도 context도 쓸 수 없다.
+        if (!context.mounted) return;
         // 알림함에서 읽은 것이 점에 바로 반영되도록 서버 값을 다시 읽는다.
         ref.invalidate(unreadCountViewModelProvider);
+        onReturn?.call(result);
       });
     }
 

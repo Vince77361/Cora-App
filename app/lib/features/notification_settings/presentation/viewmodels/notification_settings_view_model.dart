@@ -88,10 +88,11 @@ class NotificationSettingsViewModel
     state = AsyncData(
       NotificationSettingsState(settings: change(current.settings)),
     );
+    // 화면이 닫혀도 줄에 남은 저장은 서버에 가야 한다. 닫힌 뒤에는 ref를 읽을 수 없으므로 포트를 먼저 잡는다.
+    final repo = _repo;
     _queue = _queue.then((_) async {
-      if (!ref.mounted) return;
       try {
-        _confirmed = await _repo.save(change(_confirmed));
+        _confirmed = await repo.save(change(_confirmed));
       } on NotificationSettingsFailure {
         if (!ref.mounted) return;
         final shown = state.value?.settings ?? _confirmed;

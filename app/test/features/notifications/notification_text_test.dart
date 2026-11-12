@@ -148,6 +148,18 @@ void main() {
       expect(NotificationRoutes.wallet, '/creator/wallet');
     });
 
+    test('returns null for a wallet row seen by a store owner', () {
+      expect(locationFor('WALLET', null, UserRole.store), isNull);
+      expect(locationFor('WALLET', null, UserRole.brand), isNull);
+    });
+
+    test('gives each kind only to the role that has that screen', () {
+      expect(locationFor('STORE_APPLICANTS', null, UserRole.creator), isNull);
+      expect(locationFor('STORE_SENT_OFFERS', null, UserRole.creator), isNull);
+      expect(locationFor('PAYMENT', 'c-1', UserRole.creator), isNull);
+      expect(locationFor('OFFER_INBOX', null, UserRole.store), isNull);
+    });
+
     test('returns null for kinds it does not know', () {
       expect(locationFor('MATCH', 'x', UserRole.creator), isNull);
       expect(locationFor('', null, UserRole.store), isNull);
