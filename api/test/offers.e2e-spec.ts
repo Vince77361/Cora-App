@@ -945,7 +945,7 @@ describe('offers', () => {
       });
     });
 
-    it('keeps accepted offers out of new and in active', async () => {
+    it('keeps accepted offers out of new', async () => {
       const waiting = await seedOffer(store.id, USER_A);
       const other = await seedStore();
       const accepted = await seedOffer(other.id, USER_A, {
@@ -954,11 +954,8 @@ describe('offers', () => {
         paymentDueAt: new Date(T0.getTime() + 3 * DAY),
       });
       const news = (await received('new').expect(200)).body as ReceivedBody[];
-      const active = (await received('active').expect(200))
-        .body as ReceivedBody[];
       expect(news.map((o) => o.id)).toEqual([waiting.id]);
-      expect(active.map((o) => o.id)).toEqual([accepted.id]);
-      expect(active[0].view).toBe('ACCEPTED');
+      expect(news.map((o) => o.id)).not.toContain(accepted.id);
     });
 
     it('shows an undoable decline in new and drops it after 30 seconds', async () => {
@@ -999,6 +996,8 @@ describe('offers', () => {
 
     it('rejects an unknown tab', async () => {
       await received('other').expect(400);
+      // 진행 중 탭은 협업 목록으로 옮겨 갔다.
+      await received('active').expect(400);
       await request(server).get('/offers/received').set(auth).expect(400);
     });
 
@@ -1034,19 +1033,6 @@ describe('offers', () => {
         view: 'ACCEPTED',
         needsInstagram: false,
       });
-    });
-
-    it('stops flagging an accepted offer after the creator disconnects', async () => {
-      const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
-      await connectInstagram();
-      await accept(offer.id).expect(200);
-      // 결제를 기다리는 동안에는 해제할 수 없으므로 DB에서 풀린 상태를 만든다.
-      await prisma.instagramConnection.deleteMany();
-      const active = (await received('active').expect(200))
-        .body as ReceivedBody[];
-      expect(active.map((o) => [o.view, o.needsInstagram])).toEqual([
-        ['ACCEPTED', false],
-      ]);
     });
 
     it('does not require instagram for a voucher-only offer or a shorts offer', async () => {
@@ -1127,9 +1113,6 @@ describe('offers', () => {
         voucherName: '2인 식사권',
       });
       expect((res.body as ReceivedBody).collaborationId).toBe(collaboration.id);
-      const list = (await received('active').expect(200))
-        .body as ReceivedBody[];
-      expect(list[0].collaborationId).toBe(collaboration.id);
     });
 
     it('creates a FUNDED collaboration with a 14 day due date when a voucher-only offer is accepted', async () => {
@@ -1167,9 +1150,8 @@ describe('offers', () => {
           .paymentDueAt,
       ).toBeNull();
       clock.advance(5 * DAY);
-      const active = (await received('active').expect(200))
-        .body as ReceivedBody[];
-      expect(active.map((o) => o.id)).toEqual([offer.id]);
+      // 수락한 오퍼는 받은 오퍼 목록에 없다(협업 목록이 보여 준다).
+      expect((await received('new').expect(200)).body).toEqual([]);
       expect(
         (await prisma.offer.findUniqueOrThrow({ where: { id: offer.id } }))
           .status,

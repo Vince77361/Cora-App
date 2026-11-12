@@ -12,7 +12,6 @@ part of cora_api;
 
 enum ReceivedOfferTab {
   new_._(r'new'),
-  active._(r'active'),
   ;
 
   /// Instantiate a new enum with the provided value.
@@ -79,8 +78,6 @@ class ReceivedOfferTabTypeTransformer {
       switch (data) {
         case r'new':
           return ReceivedOfferTab.new_;
-        case r'active':
-          return ReceivedOfferTab.active;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');

@@ -51,9 +51,11 @@ export class OffersController {
   @ApiOkResponse({ type: [ReceivedOfferModel] })
   listReceived(
     @CurrentUser() user: AuthUser,
+    // tab은 값이 new 하나뿐이라 검증만 받고 쓰지 않는다.
     @Query() query: ReceivedOffersQueryDto,
   ): Promise<ReceivedOfferModel[]> {
-    return this.offers.listReceived(user.userId, query.tab);
+    void query;
+    return this.offers.listReceived(user.userId);
   }
 
   @Post('offers/:id/cancel')

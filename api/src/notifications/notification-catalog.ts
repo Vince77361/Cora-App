@@ -20,11 +20,19 @@ export type NotificationTarget = {
 
 export type NotificationParams = Record<string, string | number>;
 
+// notify가 받아야 하는 값의 모양. 숫자는 0도 값으로 본다(없는 것은 undefined, null, 숫자가 아닌 것).
+export type RequiredParams = Record<string, 'number' | 'string'>;
+
 export interface CatalogEntry {
   // null은 알림함에 남기지 않는 종류(5번 계획의 대화 메시지)다.
   tab: NotificationTab | null;
   switch: NotificationSwitch;
   glyph: NotificationGlyph | null;
+  // 문구가 쓰는 값. 빠지면 "0원", "0일"처럼 틀린 문구가 줄로 남으므로 notify가 줄을 만들기 전에 거절한다.
+  // render의 기본값은 이미 저장된 줄(상대가 탈퇴해 사본이 지워진 줄)을 읽을 때만 쓴다.
+  requiredParams: RequiredParams;
+  // 문구에 상대 이름을 쓰는 종류. true면 notify가 actor를 요구한다.
+  needsActor: boolean;
   render(input: {
     actorName: string | null;
     params: NotificationParams;
@@ -56,6 +64,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'MATCHING',
     switch: 'OFFERS',
     glyph: null,
+    requiredParams: {},
+    needsActor: true,
     render: ({ actorName }) =>
       `${actorName ?? CREATOR_FALLBACK}님이 지원했어요.`,
   },
@@ -64,6 +74,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'MATCHING',
     switch: 'OFFERS',
     glyph: null,
+    requiredParams: { format: 'string', pieceCount: 'number' },
+    needsActor: true,
     render: ({ actorName, params }) => {
       const format = FORMAT_LABEL[String(params.format)] ?? '콘텐츠';
       return `${josa(actorName ?? STORE_FALLBACK, '이/가')} ${format} ${params.pieceCount ?? 1}편 오퍼를 보냈어요.`;
@@ -74,6 +86,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'MATCHING',
     switch: 'OFFERS',
     glyph: null,
+    requiredParams: {},
+    needsActor: true,
     render: ({ actorName }) =>
       `${actorName ?? CREATOR_FALLBACK}님이 오퍼를 수락했어요.`,
   },
@@ -82,6 +96,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'MATCHING',
     switch: 'OFFERS',
     glyph: null,
+    requiredParams: {},
+    needsActor: true,
     render: ({ actorName }) =>
       `${actorName ?? CREATOR_FALLBACK}님이 이번 오퍼는 함께하기 어렵대요.`,
   },
@@ -90,6 +106,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'COLLABORATION',
     switch: 'ESSENTIAL',
     glyph: null,
+    requiredParams: {},
+    needsActor: true,
     render: ({ actorName }) =>
       `${josa(actorName ?? STORE_FALLBACK, '이/가')} 결제했어요. 방문하고 촬영해 주세요.`,
   },
@@ -98,6 +116,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'COLLABORATION',
     switch: 'ESSENTIAL',
     glyph: null,
+    requiredParams: {},
+    needsActor: true,
     render: ({ actorName }) =>
       `${actorName ?? CREATOR_FALLBACK}님이 콘텐츠를 올렸어요.`,
   },
@@ -106,6 +126,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'COLLABORATION',
     switch: 'ESSENTIAL',
     glyph: null,
+    requiredParams: { days: 'number' },
+    needsActor: false,
     render: ({ params }) =>
       `콘텐츠 제출 기한이 ${params.days ?? 0}일 남았어요.`,
   },
@@ -114,6 +136,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'COLLABORATION',
     switch: 'ESSENTIAL',
     glyph: null,
+    requiredParams: {},
+    needsActor: false,
     render: () => '제출 기한이 지나 협업이 종료됐어요.',
   },
   // 표 "미제출 환급, 결제 뒤 취소 환급" 줄: 정산 / 끌 수 없음 / ₩.
@@ -121,6 +145,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'SETTLEMENT',
     switch: 'ESSENTIAL',
     glyph: 'WON',
+    requiredParams: { amount: 'number' },
+    needsActor: false,
     render: ({ params }) =>
       `기한 안에 콘텐츠가 올라오지 않아 ${josa(won(params.amount), '을/를')} 돌려드려요.`,
   },
@@ -129,6 +155,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'SETTLEMENT',
     switch: 'ESSENTIAL',
     glyph: 'WON',
+    requiredParams: { amount: 'number' },
+    needsActor: true,
     // 식사권만 있는 협업은 돌려줄 돈이 없어 금액이 0이다: 환급 문장은 빼고 그만뒀다는 소식만 낸다(판단 R41).
     render: ({ actorName, params }) => {
       const base = `${actorName ?? CREATOR_FALLBACK}님이 협업을 그만뒀어요.`;
@@ -142,6 +170,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'COLLABORATION',
     switch: 'ESSENTIAL',
     glyph: null,
+    requiredParams: {},
+    needsActor: true,
     render: ({ actorName }) =>
       `${josa(actorName ?? STORE_FALLBACK, '이/가')} 협업 취소를 요청했어요.`,
   },
@@ -150,6 +180,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'COLLABORATION',
     switch: 'ESSENTIAL',
     glyph: null,
+    requiredParams: {},
+    needsActor: false,
     render: () => '협업이 잠시 멈췄어요. 운영팀이 확인하고 연락드릴게요.',
   },
   // 표 "정산 확정": 정산 / 정산 / ₩. 캔버스 E3 문구.
@@ -157,6 +189,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'SETTLEMENT',
     switch: 'SETTLEMENT',
     glyph: 'WON',
+    requiredParams: { amount: 'number' },
+    needsActor: false,
     render: ({ params }) =>
       `정산 ${josa(won(params.amount), '이/가')} 다음 주 수요일에 들어와요.`,
   },
@@ -165,6 +199,8 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'SETTLEMENT',
     switch: 'SETTLEMENT',
     glyph: 'WON',
+    requiredParams: { amount: 'number' },
+    needsActor: false,
     render: ({ params }) => `${josa(won(params.amount), '이/가')} 지급됐어요.`,
   },
   // 표 "정산 뒤 환급": 정산 / 정산 / ₩.
@@ -172,7 +208,36 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     tab: 'SETTLEMENT',
     switch: 'SETTLEMENT',
     glyph: 'WON',
+    requiredParams: { amount: 'number' },
+    needsActor: false,
     render: ({ params }) =>
       `조회수 집계가 끝났어요. ${josa(won(params.amount), '을/를')} 돌려드려요.`,
   },
 };
+
+export interface NotifyActorLike {
+  name: string;
+}
+
+// notify가 받은 값에서 빠진 것의 이름을 모은다(값은 담지 않는다: 이름과 금액이 로그에 새지 않게).
+// 빈 배열이면 그릴 수 있는 입력이다.
+export function missingNotifyInputs(
+  kind: NotificationKind,
+  params: NotificationParams,
+  actor: NotifyActorLike | null,
+): string[] {
+  const entry = NOTIFICATION_CATALOG[kind];
+  const missing: string[] = [];
+  if (entry.needsActor && (actor?.name ?? '').trim() === '') {
+    missing.push('actor');
+  }
+  for (const [key, type] of Object.entries(entry.requiredParams)) {
+    const value = params[key];
+    const ok =
+      type === 'number'
+        ? typeof value === 'number' && Number.isFinite(value)
+        : typeof value === 'string' && value !== '';
+    if (!ok) missing.push(key);
+  }
+  return missing;
+}

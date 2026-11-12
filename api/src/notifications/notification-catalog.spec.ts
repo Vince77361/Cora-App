@@ -1,5 +1,8 @@
 import { NotificationKind } from '@prisma/client';
-import { NOTIFICATION_CATALOG } from './notification-catalog';
+import {
+  NOTIFICATION_CATALOG,
+  missingNotifyInputs,
+} from './notification-catalog';
 
 const render = (
   kind: NotificationKind,
@@ -142,6 +145,115 @@ describe('NOTIFICATION_CATALOG', () => {
       tab: 'SETTLEMENT',
       switch: 'SETTLEMENT',
       glyph: 'WON',
+    });
+  });
+  describe('required inputs', () => {
+    const actor = { name: '한그릇 라멘' };
+
+    it('states what each kind needs', () => {
+      const needs = (kind: NotificationKind) => ({
+        params: Object.keys(NOTIFICATION_CATALOG[kind].requiredParams).sort(),
+        actor: NOTIFICATION_CATALOG[kind].needsActor,
+      });
+      expect(needs('OFFER_RECEIVED')).toEqual({
+        params: ['format', 'pieceCount'],
+        actor: true,
+      });
+      expect(needs('SUBMIT_REMINDER')).toEqual({
+        params: ['days'],
+        actor: false,
+      });
+      for (const kind of [
+        'SETTLEMENT_CONFIRMED',
+        'PAYOUT_DONE',
+        'SETTLEMENT_REFUNDED',
+        'UNSUBMITTED_REFUNDED',
+      ] as const) {
+        expect(needs(kind)).toEqual({ params: ['amount'], actor: false });
+      }
+      expect(needs('CREATOR_CANCELLED')).toEqual({
+        params: ['amount'],
+        actor: true,
+      });
+      for (const kind of [
+        'APPLICATION_RECEIVED',
+        'OFFER_ACCEPTED',
+        'OFFER_DECLINED',
+        'PAYMENT_FUNDED',
+        'CONTENT_SUBMITTED',
+        'CANCEL_REQUESTED',
+      ] as const) {
+        expect(needs(kind)).toEqual({ params: [], actor: true });
+      }
+      expect(needs('UNSUBMITTED_ENDED')).toEqual({ params: [], actor: false });
+      expect(needs('COLLABORATION_HALTED')).toEqual({
+        params: [],
+        actor: false,
+      });
+    });
+
+    it('reports a missing amount instead of rendering 0won', () => {
+      expect(missingNotifyInputs('SETTLEMENT_CONFIRMED', {}, null)).toEqual([
+        'amount',
+      ]);
+      expect(missingNotifyInputs('PAYOUT_DONE', { amount: 'x' }, null)).toEqual(
+        ['amount'],
+      );
+      expect(missingNotifyInputs('PAYOUT_DONE', { amount: NaN }, null)).toEqual(
+        ['amount'],
+      );
+    });
+
+    it('reports a missing day count', () => {
+      expect(missingNotifyInputs('SUBMIT_REMINDER', {}, null)).toEqual([
+        'days',
+      ]);
+    });
+
+    it('reports a missing format or piece count', () => {
+      expect(missingNotifyInputs('OFFER_RECEIVED', {}, actor)).toEqual([
+        'format',
+        'pieceCount',
+      ]);
+      expect(
+        missingNotifyInputs('OFFER_RECEIVED', { format: 'REELS' }, actor),
+      ).toEqual(['pieceCount']);
+    });
+
+    it('reports a missing actor name for a kind whose text uses it', () => {
+      expect(missingNotifyInputs('OFFER_ACCEPTED', {}, null)).toEqual([
+        'actor',
+      ]);
+      expect(missingNotifyInputs('OFFER_ACCEPTED', {}, { name: ' ' })).toEqual([
+        'actor',
+      ]);
+      expect(missingNotifyInputs('OFFER_ACCEPTED', {}, actor)).toEqual([]);
+    });
+
+    it('treats zero as present, not missing', () => {
+      // 식사권만 있는 협업의 그만둠은 금액 0으로 오고, 환급 문장 없이 그려진다(판단 R41).
+      expect(
+        missingNotifyInputs('CREATOR_CANCELLED', { amount: 0 }, actor),
+      ).toEqual([]);
+      expect(missingNotifyInputs('CREATOR_CANCELLED', {}, actor)).toEqual([
+        'amount',
+      ]);
+    });
+
+    it('accepts a complete input for every kind', () => {
+      expect(
+        missingNotifyInputs(
+          'OFFER_RECEIVED',
+          { format: 'REELS', pieceCount: 1 },
+          actor,
+        ),
+      ).toEqual([]);
+      expect(missingNotifyInputs('SUBMIT_REMINDER', { days: 3 }, null)).toEqual(
+        [],
+      );
+      expect(
+        missingNotifyInputs('SETTLEMENT_CONFIRMED', { amount: 43200 }, null),
+      ).toEqual([]);
     });
   });
 });

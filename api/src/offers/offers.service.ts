@@ -19,7 +19,6 @@ import {
 import { StoresService } from '../stores/stores.service';
 import { buildTerms } from '../stores/offer-terms';
 import { UsersService } from '../users/users.service';
-import { ReceivedTab } from './dto/received-offers-query.dto';
 import { ReceivedOfferModel } from './dto/received-offer.model';
 import { SendOfferDto } from './dto/send-offer.dto';
 import { SentOfferModel } from './dto/sent-offer.model';
@@ -208,20 +207,17 @@ export class OffersService {
     return this.toSent(fresh, creator, now, collaboration?.id ?? null);
   }
 
-  async listReceived(
-    userId: string,
-    tab: ReceivedTab,
-  ): Promise<ReceivedOfferModel[]> {
+  // 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼. 수락한 오퍼는 협업 목록이 보여 준다.
+  async listReceived(userId: string): Promise<ReceivedOfferModel[]> {
     await this.assertRole(userId, 'CREATOR', '크리에이터 계정만 쓸 수 있어요.');
     const now = this.clock.now();
     const rows = await this.settleAll(
       await this.offers.listForCreator(userId),
       now,
     );
-    const shown = rows.filter((row) =>
-      tab === 'new'
-        ? viewForCreator(row, now) === 'WAITING' || canUndoDecline(row, now)
-        : viewForCreator(row, now) === 'ACCEPTED',
+    const shown = rows.filter(
+      (row) =>
+        viewForCreator(row, now) === 'WAITING' || canUndoDecline(row, now),
     );
     const collaborationIds = await this.collaborationIds(shown);
     const connected = (await this.instagram.getConnection(userId)) !== null;

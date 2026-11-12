@@ -604,7 +604,7 @@ describe('OffersService', () => {
 
     it('marks a per-view reels offer as needing instagram and refuses to accept it', async () => {
       const perView = await sendAs('REELS', 'PER_VIEW');
-      const [card] = await service.listReceived(CREATOR, 'new');
+      const [card] = await service.listReceived(CREATOR);
       expect(card.needsInstagram).toBe(true);
       await expect(service.accept(CREATOR, perView)).rejects.toMatchObject({
         code: 'CONFLICT',
@@ -618,25 +618,15 @@ describe('OffersService', () => {
     it('accepts the same offer after connecting', async () => {
       const perView = await sendAs('CARD_NEWS', 'PER_VIEW');
       instagram.connected = true;
-      const [card] = await service.listReceived(CREATOR, 'new');
+      const [card] = await service.listReceived(CREATOR);
       expect(card.needsInstagram).toBe(false);
       const accepted = await service.accept(CREATOR, perView);
       expect(accepted.view).toBe('ACCEPTED');
       expect(accepted.needsInstagram).toBe(false);
     });
 
-    it('stops flagging an accepted offer even if the creator disconnects afterwards', async () => {
-      const perView = await sendAs('REELS', 'PER_VIEW');
-      instagram.connected = true;
-      await service.accept(CREATOR, perView);
-      instagram.connected = false;
-      const [active] = await service.listReceived(CREATOR, 'active');
-      expect(active.view).toBe('ACCEPTED');
-      expect(active.needsInstagram).toBe(false);
-    });
-
     it('does not require instagram for a voucher-only offer or a shorts offer', async () => {
-      const [voucher] = await service.listReceived(CREATOR, 'new');
+      const [voucher] = await service.listReceived(CREATOR);
       expect(voucher.needsInstagram).toBe(false);
       await expect(service.accept(CREATOR, id)).resolves.toMatchObject({
         view: 'ACCEPTED',
@@ -645,7 +635,7 @@ describe('OffersService', () => {
 
     it('does not require instagram for a per-view shorts offer', async () => {
       const shorts = await sendAs('SHORTS', 'PER_VIEW');
-      const [card] = await service.listReceived(CREATOR, 'new');
+      const [card] = await service.listReceived(CREATOR);
       expect(card.needsInstagram).toBe(false);
       await expect(service.accept(CREATOR, shorts)).resolves.toMatchObject({
         view: 'ACCEPTED',
@@ -739,7 +729,7 @@ describe('OffersService', () => {
     });
 
     it('uses the stored terms copy in the received card', async () => {
-      const list = await service.listReceived(CREATOR, 'new');
+      const list = await service.listReceived(CREATOR);
       expect(list).toHaveLength(1);
       expect(list[0].terms).toMatchObject({
         format: 'REELS',

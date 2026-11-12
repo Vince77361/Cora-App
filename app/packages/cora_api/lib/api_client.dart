@@ -274,6 +274,22 @@ class ApiClient {
           return MyApplicationStatusTypeTransformer().decode(value);
         case 'MyStoreModel':
           return MyStoreModel.fromJson(value);
+        case 'NotificationActorModel':
+          return NotificationActorModel.fromJson(value);
+        case 'NotificationGlyph':
+          return NotificationGlyphTypeTransformer().decode(value);
+        case 'NotificationModel':
+          return NotificationModel.fromJson(value);
+        case 'NotificationPageModel':
+          return NotificationPageModel.fromJson(value);
+        case 'NotificationSettingsModel':
+          return NotificationSettingsModel.fromJson(value);
+        case 'NotificationTab':
+          return NotificationTabTypeTransformer().decode(value);
+        case 'NotificationTabFilter':
+          return NotificationTabFilterTypeTransformer().decode(value);
+        case 'NotificationTargetModel':
+          return NotificationTargetModel.fromJson(value);
         case 'OfferTermsModel':
           return OfferTermsModel.fromJson(value);
         case 'OfferView':
@@ -294,6 +310,8 @@ class ApiClient {
           return PayoutStatusTypeTransformer().decode(value);
         case 'PhotoUploadModel':
           return PhotoUploadModel.fromJson(value);
+        case 'QuietHours':
+          return QuietHoursTypeTransformer().decode(value);
         case 'ReceivedOfferModel':
           return ReceivedOfferModel.fromJson(value);
         case 'ReceivedOfferTab':
@@ -324,6 +342,10 @@ class ApiClient {
           return StoreSummaryModel.fromJson(value);
         case 'SubmitContentDto':
           return SubmitContentDto.fromJson(value);
+        case 'UnreadCountModel':
+          return UnreadCountModel.fromJson(value);
+        case 'UpdateNotificationSettingsDto':
+          return UpdateNotificationSettingsDto.fromJson(value);
         case 'UpdateRoleDto':
           return UpdateRoleDto.fromJson(value);
         case 'UpdateStoreDto':

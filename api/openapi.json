@@ -877,6 +877,190 @@
         ],
         "type": "object"
       },
+      "NotificationActorModel": {
+        "properties": {
+          "name": {
+            "description": "알림을 만들 때 저장한 상대의 이름 사본.",
+            "type": "string"
+          },
+          "photoUrl": {
+            "description": "상대 사진의 공개 주소. 사진이 없으면 null(앱이 이름 첫 글자를 그린다).",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "photoUrl"
+        ],
+        "type": "object"
+      },
+      "NotificationGlyph": {
+        "description": "글자 그림. 정산은 WON(₩), 없으면 상대 사진.",
+        "enum": [
+          "WON",
+          "PEN"
+        ],
+        "type": "string"
+      },
+      "NotificationModel": {
+        "properties": {
+          "actor": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationActorModel"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "createdAt": {
+            "description": "만든 시각(ISO 8601).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "glyph": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationGlyph"
+              }
+            ],
+            "description": "글자 그림. 정산은 WON(₩), 없으면 상대 사진.",
+            "nullable": true
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "tab": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationTab"
+              }
+            ]
+          },
+          "target": {
+            "$ref": "#/components/schemas/NotificationTargetModel"
+          },
+          "text": {
+            "description": "종류와 값으로 만든 문구(카탈로그의 render).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tab",
+          "text",
+          "glyph",
+          "actor",
+          "target",
+          "createdAt",
+          "read"
+        ],
+        "type": "object"
+      },
+      "NotificationPageModel": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationModel"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "다음 쪽을 부르는 값(그대로 cursor에 넣는다). 마지막 쪽이면 null.",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "NotificationSettingsModel": {
+        "properties": {
+          "enabledCount": {
+            "description": "다섯 스위치 가운데 켜진 수(E4의 \"{n}개 켜짐\").",
+            "type": "number"
+          },
+          "messages": {
+            "description": "대화 메시지.",
+            "type": "boolean"
+          },
+          "mutualInterest": {
+            "description": "서로 관심.",
+            "type": "boolean"
+          },
+          "offers": {
+            "description": "새 오퍼와 제안.",
+            "type": "boolean"
+          },
+          "quietHours": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuietHours"
+              }
+            ]
+          },
+          "recommendations": {
+            "description": "추천 소식. 처음 값은 꺼짐.",
+            "type": "boolean"
+          },
+          "settlement": {
+            "description": "정산(지급 예정, 지급 완료).",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mutualInterest",
+          "offers",
+          "messages",
+          "settlement",
+          "recommendations",
+          "quietHours",
+          "enabledCount"
+        ],
+        "type": "object"
+      },
+      "NotificationTab": {
+        "enum": [
+          "MATCHING",
+          "COLLABORATION",
+          "SETTLEMENT"
+        ],
+        "type": "string"
+      },
+      "NotificationTabFilter": {
+        "enum": [
+          "ALL",
+          "MATCHING",
+          "COLLABORATION",
+          "SETTLEMENT"
+        ],
+        "type": "string"
+      },
+      "NotificationTargetModel": {
+        "properties": {
+          "id": {
+            "nullable": true,
+            "type": "string"
+          },
+          "kind": {
+            "description": "누르면 가는 곳의 종류(예: COLLABORATION, OFFER_INBOX, WALLET). 앱이 화면으로 바꾼다.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "type": "object"
+      },
       "OfferTermsModel": {
         "properties": {
           "format": {
@@ -1099,6 +1283,14 @@
         ],
         "type": "object"
       },
+      "QuietHours": {
+        "enum": [
+          "OFF",
+          "NIGHT",
+          "WEEKEND"
+        ],
+        "type": "string"
+      },
       "ReceivedOfferModel": {
         "properties": {
           "bestShootingTime": {
@@ -1163,8 +1355,7 @@
       },
       "ReceivedOfferTab": {
         "enum": [
-          "new",
-          "active"
+          "new"
         ],
         "type": "string"
       },
@@ -1541,6 +1732,53 @@
         },
         "required": [
           "url"
+        ],
+        "type": "object"
+      },
+      "UnreadCountModel": {
+        "properties": {
+          "count": {
+            "description": "지금 역할의 읽지 않은 알림 수(최근 90일).",
+            "type": "number"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "type": "object"
+      },
+      "UpdateNotificationSettingsDto": {
+        "properties": {
+          "messages": {
+            "type": "boolean"
+          },
+          "mutualInterest": {
+            "type": "boolean"
+          },
+          "offers": {
+            "type": "boolean"
+          },
+          "quietHours": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuietHours"
+              }
+            ]
+          },
+          "recommendations": {
+            "type": "boolean"
+          },
+          "settlement": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mutualInterest",
+          "offers",
+          "messages",
+          "settlement",
+          "recommendations",
+          "quietHours"
         ],
         "type": "object"
       },
@@ -2264,6 +2502,68 @@
         ]
       }
     },
+    "/me/notification-settings": {
+      "get": {
+        "operationId": "getNotificationSettings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "NotificationSettings"
+        ]
+      },
+      "put": {
+        "operationId": "putNotificationSettings",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNotificationSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "NotificationSettings"
+        ]
+      }
+    },
     "/me/role": {
       "patch": {
         "operationId": "updateMyRole",
@@ -2298,6 +2598,128 @@
         "summary": "",
         "tags": [
           "Users"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "listNotifications",
+        "parameters": [
+          {
+            "description": "없으면 ALL.",
+            "in": "query",
+            "name": "tab",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/NotificationTabFilter"
+            }
+          },
+          {
+            "description": "이전 쪽의 nextCursor. 처음 쪽은 비운다.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPageModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/notifications/read-all": {
+      "post": {
+        "operationId": "readAllNotifications",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "operationId": "countUnreadNotifications",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "post": {
+        "operationId": "readNotification",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Notifications"
         ]
       }
     },
@@ -2343,7 +2765,7 @@
         "operationId": "listReceivedOffers",
         "parameters": [
           {
-            "description": "new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼. active: 수락한 오퍼.",
+            "description": "new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼.",
             "in": "query",
             "name": "tab",
             "required": true,

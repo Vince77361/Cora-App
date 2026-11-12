@@ -66,6 +66,7 @@ describe('NotificationsRepository', () => {
       actorName: null,
       actorPhotoPath: null,
       targetId: null,
+      createdAt: new Date('2026-11-11T03:00:00.000Z'),
     };
     const first = await repo().create(input);
     const second = await repo().create(input);
@@ -81,6 +82,7 @@ describe('NotificationsRepository', () => {
       actorName: null,
       actorPhotoPath: null,
       targetId: null,
+      createdAt: new Date('2026-11-11T03:00:00.000Z'),
     };
     const results = await Promise.all(
       Array.from({ length: 5 }, () => repo().create(input)),
@@ -107,5 +109,78 @@ describe('NotificationsRepository', () => {
     await expect(
       prisma.notificationSetting.create({ data: { userId: USER } }),
     ).rejects.toMatchObject({ code: 'P2002' });
+  });
+
+  it('stores the createdAt it is given instead of the database clock', async () => {
+    const at = new Date('2026-01-02T03:04:05.678Z');
+    await repo().create({
+      ...row({ dedupeKey: 'k4' }),
+      actorUserId: null,
+      actorName: null,
+      actorPhotoPath: null,
+      targetId: null,
+      createdAt: at,
+    });
+    expect((await prisma.notification.findFirstOrThrow()).createdAt).toEqual(
+      at,
+    );
+  });
+
+  it('pages the inbox by time then id without skipping rows that share a time', async () => {
+    const at = new Date('2026-11-11T03:00:00.000Z');
+    await prisma.notification.createMany({
+      data: Array.from({ length: 7 }, () => ({ ...row(), createdAt: at })),
+    });
+    const since = new Date('2026-01-01T00:00:00.000Z');
+    const base = { userId: USER, role: 'CREATOR' as const, tab: null, since };
+    const first = await repo().listInbox({ ...base, after: null, limit: 3 });
+    const second = await repo().listInbox({
+      ...base,
+      after: { createdAt: first[2].createdAt, id: first[2].id },
+      limit: 3,
+    });
+    const third = await repo().listInbox({
+      ...base,
+      after: { createdAt: second[2].createdAt, id: second[2].id },
+      limit: 3,
+    });
+    const ids = [...first, ...second, ...third].map((r) => r.id);
+    expect(ids).toHaveLength(7);
+    expect(new Set(ids).size).toBe(7);
+  });
+
+  it("does not touch someone else's row when marking read", async () => {
+    const theirs = await prisma.notification.create({
+      data: { ...row({ userId: OTHER }), role: 'STORE' },
+    });
+    const now = new Date('2026-11-11T03:00:00.000Z');
+    expect(await repo().markRead(theirs.id, USER, now)).toBe(false);
+    expect(
+      await prisma.notification.findUniqueOrThrow({ where: { id: theirs.id } }),
+    ).toEqual(theirs);
+  });
+
+  it('upserts settings once per person and keeps the consent time unless one is given', async () => {
+    const values = {
+      mutualInterest: true,
+      offers: true,
+      messages: true,
+      settlement: true,
+      recommendations: true,
+      quietHours: 'NIGHT' as const,
+    };
+    const at = new Date('2026-11-11T03:00:00.000Z');
+    await repo().upsertSettings(USER, values, at);
+    await repo().upsertSettings(
+      USER,
+      { ...values, recommendations: false },
+      null,
+    );
+    const saved = await prisma.notificationSetting.findFirstOrThrow({
+      where: { userId: USER },
+    });
+    expect(saved.recommendations).toBe(false);
+    expect(saved.recommendationsAgreedAt).toEqual(at);
+    expect(await prisma.notificationSetting.count()).toBe(1);
   });
 });

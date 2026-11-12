@@ -219,7 +219,7 @@ import 'package:cora_api/api.dart';
 //defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
 final api_instance = OffersApi();
-final tab = ; // ReceivedOfferTab | new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼. active: 수락한 오퍼.
+final tab = ; // ReceivedOfferTab | new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼.
 
 try {
     final result = api_instance.listReceivedOffers(tab);
@@ -233,7 +233,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **tab** | [**ReceivedOfferTab**](.md)| new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼. active: 수락한 오퍼. | 
+ **tab** | [**ReceivedOfferTab**](.md)| new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼. | 
 
 ### Return type
 

@@ -101,6 +101,15 @@ String parameterToString(dynamic value) {
   if (value is MyApplicationStatus) {
     return MyApplicationStatusTypeTransformer().encode(value).toString();
   }
+  if (value is NotificationGlyph) {
+    return NotificationGlyphTypeTransformer().encode(value).toString();
+  }
+  if (value is NotificationTab) {
+    return NotificationTabTypeTransformer().encode(value).toString();
+  }
+  if (value is NotificationTabFilter) {
+    return NotificationTabFilterTypeTransformer().encode(value).toString();
+  }
   if (value is OfferView) {
     return OfferViewTypeTransformer().encode(value).toString();
   }
@@ -112,6 +121,9 @@ String parameterToString(dynamic value) {
   }
   if (value is PayoutStatus) {
     return PayoutStatusTypeTransformer().encode(value).toString();
+  }
+  if (value is QuietHours) {
+    return QuietHoursTypeTransformer().encode(value).toString();
   }
   if (value is ReceivedOfferTab) {
     return ReceivedOfferTabTypeTransformer().encode(value).toString();

@@ -82,6 +82,12 @@ Class | Method | HTTP request | Description
 *InstagramApi* | [**completeInstagramConnect**](doc//InstagramApi.md#completeinstagramconnect) | **POST** /instagram/connect/complete | 
 *InstagramApi* | [**disconnectInstagram**](doc//InstagramApi.md#disconnectinstagram) | **DELETE** /instagram/connection | 
 *InstagramApi* | [**getInstagramConnection**](doc//InstagramApi.md#getinstagramconnection) | **GET** /instagram/connection | 
+*NotificationSettingsApi* | [**getNotificationSettings**](doc//NotificationSettingsApi.md#getnotificationsettings) | **GET** /me/notification-settings | 
+*NotificationSettingsApi* | [**putNotificationSettings**](doc//NotificationSettingsApi.md#putnotificationsettings) | **PUT** /me/notification-settings | 
+*NotificationsApi* | [**countUnreadNotifications**](doc//NotificationsApi.md#countunreadnotifications) | **GET** /notifications/unread-count | 
+*NotificationsApi* | [**listNotifications**](doc//NotificationsApi.md#listnotifications) | **GET** /notifications | 
+*NotificationsApi* | [**readAllNotifications**](doc//NotificationsApi.md#readallnotifications) | **POST** /notifications/read-all | 
+*NotificationsApi* | [**readNotification**](doc//NotificationsApi.md#readnotification) | **POST** /notifications/{id}/read | 
 *OffersApi* | [**acceptOffer**](doc//OffersApi.md#acceptoffer) | **POST** /offers/{id}/accept | 
 *OffersApi* | [**cancelOffer**](doc//OffersApi.md#canceloffer) | **POST** /offers/{id}/cancel | 
 *OffersApi* | [**declineOffer**](doc//OffersApi.md#declineoffer) | **POST** /offers/{id}/decline | 
@@ -147,6 +153,14 @@ Class | Method | HTTP request | Description
  - [MeModel](doc//MeModel.md)
  - [MyApplicationStatus](doc//MyApplicationStatus.md)
  - [MyStoreModel](doc//MyStoreModel.md)
+ - [NotificationActorModel](doc//NotificationActorModel.md)
+ - [NotificationGlyph](doc//NotificationGlyph.md)
+ - [NotificationModel](doc//NotificationModel.md)
+ - [NotificationPageModel](doc//NotificationPageModel.md)
+ - [NotificationSettingsModel](doc//NotificationSettingsModel.md)
+ - [NotificationTab](doc//NotificationTab.md)
+ - [NotificationTabFilter](doc//NotificationTabFilter.md)
+ - [NotificationTargetModel](doc//NotificationTargetModel.md)
  - [OfferTermsModel](doc//OfferTermsModel.md)
  - [OfferView](doc//OfferView.md)
  - [PaymentCreatedModel](doc//PaymentCreatedModel.md)
@@ -157,6 +171,7 @@ Class | Method | HTTP request | Description
  - [PayoutAccountModel](doc//PayoutAccountModel.md)
  - [PayoutStatus](doc//PayoutStatus.md)
  - [PhotoUploadModel](doc//PhotoUploadModel.md)
+ - [QuietHours](doc//QuietHours.md)
  - [ReceivedOfferModel](doc//ReceivedOfferModel.md)
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)
  - [RewardType](doc//RewardType.md)
@@ -172,6 +187,8 @@ Class | Method | HTTP request | Description
  - [StoreStatus](doc//StoreStatus.md)
  - [StoreSummaryModel](doc//StoreSummaryModel.md)
  - [SubmitContentDto](doc//SubmitContentDto.md)
+ - [UnreadCountModel](doc//UnreadCountModel.md)
+ - [UpdateNotificationSettingsDto](doc//UpdateNotificationSettingsDto.md)
  - [UpdateRoleDto](doc//UpdateRoleDto.md)
  - [UpdateStoreDto](doc//UpdateStoreDto.md)
  - [UpsertCreatorProfileDto](doc//UpsertCreatorProfileDto.md)

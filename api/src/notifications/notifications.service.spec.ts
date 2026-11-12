@@ -236,4 +236,85 @@ describe('NotificationsService', () => {
     expect(push.sent).toHaveLength(1);
     expect(push.sent[0].data).toMatchObject({ notificationId: null });
   });
+  it('stamps the row with the clock time', async () => {
+    clock.set(new Date('2026-11-20T01:23:45.678Z'));
+    await service.notify(offerEvent);
+    expect(repo.rows[0].createdAt).toEqual(
+      new Date('2026-11-20T01:23:45.678Z'),
+    );
+  });
+
+  describe('required inputs', () => {
+    it('rejects a missing amount before writing a row or pushing', async () => {
+      await expect(
+        service.notify({
+          userId: CREATOR,
+          role: 'CREATOR',
+          kind: 'SETTLEMENT_CONFIRMED',
+          target: { kind: 'WALLET', id: null },
+        }),
+      ).rejects.toThrow('SETTLEMENT_CONFIRMED');
+      expect(repo.rows).toEqual([]);
+      expect(push.sent).toEqual([]);
+    });
+
+    it('rejects a missing day count', async () => {
+      await expect(
+        service.notify({
+          userId: CREATOR,
+          role: 'CREATOR',
+          kind: 'SUBMIT_REMINDER',
+          target: { kind: 'COLLABORATION', id: 'c-1' },
+        }),
+      ).rejects.toThrow('days');
+      expect(repo.rows).toEqual([]);
+    });
+
+    it('rejects an offer without a format or piece count', async () => {
+      await expect(
+        service.notify({ ...offerEvent, params: {} }),
+      ).rejects.toThrow('format, pieceCount');
+      expect(repo.rows).toEqual([]);
+    });
+
+    it('rejects a kind that needs an actor name when there is none', async () => {
+      await expect(
+        service.notify({
+          userId: OWNER,
+          role: 'STORE',
+          kind: 'CONTENT_SUBMITTED',
+          target: { kind: 'COLLABORATION', id: 'c-1' },
+        }),
+      ).rejects.toThrow('actor');
+      expect(repo.rows).toEqual([]);
+    });
+
+    it('names the missing keys but never the values or the actor name', async () => {
+      const error = await service
+        .notify({
+          ...offerEvent,
+          params: { format: 'REELS' },
+          dedupeKey: 'k',
+        })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(Error);
+      const { name, message } = error as Error;
+      expect(name).toBe('InvalidNotificationInput');
+      expect(message).toContain('pieceCount');
+      expect(message).not.toContain('한그릇');
+    });
+
+    it('accepts an amount of zero where zero is a real value', async () => {
+      await service.notify({
+        userId: OWNER,
+        role: 'STORE',
+        kind: 'CREATOR_CANCELLED',
+        params: { amount: 0 },
+        actor: { userId: CREATOR, name: '하루 한 컵', photoPath: null },
+        target: { kind: 'COLLABORATION', id: 'c-1' },
+      });
+      expect(repo.rows).toHaveLength(1);
+      expect(push.sent[0].body).toBe('하루 한 컵님이 협업을 그만뒀어요.');
+    });
+  });
 });

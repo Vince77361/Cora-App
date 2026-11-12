@@ -267,7 +267,7 @@ class OffersApi {
   /// Parameters:
   ///
   /// * [ReceivedOfferTab] tab (required):
-  ///   new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼. active: 수락한 오퍼.
+  ///   new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼.
   Future<Response> listReceivedOffersWithHttpInfo(
     ReceivedOfferTab tab, {
     Future<void>? abortTrigger,
@@ -303,7 +303,7 @@ class OffersApi {
   /// Parameters:
   ///
   /// * [ReceivedOfferTab] tab (required):
-  ///   new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼. active: 수락한 오퍼.
+  ///   new: 답을 기다리는 오퍼와 방금 거절해 되돌릴 수 있는 오퍼.
   Future<List<ReceivedOfferModel>?> listReceivedOffers(
     ReceivedOfferTab tab, {
     Future<void>? abortTrigger,
