@@ -453,6 +453,78 @@ describe('BullMqJobScheduler', () => {
     warn.mockRestore();
   });
 
+  describe('failed jobs', () => {
+    function withAlert() {
+      const alerts: { subject: string; body: string }[] = [];
+      const queue = new FakeQueue();
+      const scheduler = new BullMqJobScheduler({
+        queue,
+        clock: new FakeClock(T0),
+        registry: new JobHandlerRegistry(),
+        operatorAlert: {
+          alert: (input) => {
+            alerts.push(input);
+            return Promise.resolve();
+          },
+        },
+      });
+      return { scheduler, alerts };
+    }
+    const failed = (attemptsMade: number) => ({
+      name: 'settle',
+      attemptsMade,
+      opts: { attempts: 5 },
+      data: { jobKey: 'settle:c1' },
+    });
+
+    it('alerts the operator once when a job has used all its attempts, with only the job name and key', async () => {
+      const error = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+      const { scheduler, alerts } = withAlert();
+      await scheduler.handleFailure(failed(5), new Error('boom'));
+      expect(alerts).toEqual([
+        {
+          subject: '작업이 재시도를 다 쓰고 실패했어요. 확인해 주세요.',
+          body: '작업: settle\n키: settle:c1',
+        },
+      ]);
+      error.mockRestore();
+    });
+
+    it('does not alert while attempts remain', async () => {
+      const error = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+      const { scheduler, alerts } = withAlert();
+      await scheduler.handleFailure(failed(1), new Error('boom'));
+      await scheduler.handleFailure(failed(4), new Error('boom'));
+      expect(alerts).toEqual([]);
+      error.mockRestore();
+    });
+
+    it('alerts at once for an unrecoverable failure that will not be retried', async () => {
+      const error = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+      const { scheduler, alerts } = withAlert();
+      await scheduler.handleFailure(
+        failed(1),
+        new UnrecoverableError('no handler'),
+      );
+      expect(alerts).toHaveLength(1);
+      error.mockRestore();
+    });
+
+    it('survives an operator alert that fails', async () => {
+      const error = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+      const scheduler = new BullMqJobScheduler({
+        queue: new FakeQueue(),
+        clock: new FakeClock(T0),
+        registry: new JobHandlerRegistry(),
+        operatorAlert: { alert: () => Promise.reject(new Error('mail down')) },
+      });
+      await expect(
+        scheduler.handleFailure(failed(5), new Error('boom')),
+      ).resolves.toBeUndefined();
+      error.mockRestore();
+    });
+  });
+
   it('tells the handler whether this run is the last attempt', async () => {
     const { scheduler, registry } = build();
     const seen: unknown[] = [];

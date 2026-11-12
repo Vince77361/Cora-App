@@ -69,7 +69,9 @@ export class SettlementsModule implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.registry.register('view-snapshot', (p) => this.viewSnapshot.run(p));
+    this.registry.register('view-snapshot', (p, context) =>
+      this.viewSnapshot.run(p, context),
+    );
     this.registry.register('settle', (p, context) =>
       this.settle.run(p, context),
     );

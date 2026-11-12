@@ -6,6 +6,7 @@ import {
 import { Queue, UnrecoverableError, Worker } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 import { Clock } from '../common/clock';
+import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import { JobHandlerRegistry, NoJobHandlerError } from './job-handler-registry';
 import type { JobName } from './job-names';
 import { JobPayload, JobScheduler } from './job-scheduler';
@@ -45,7 +46,17 @@ export type BullMqJobSchedulerDeps = {
   queue: JobQueue;
   clock: Clock;
   registry: JobHandlerRegistry;
+  // 시도를 다 쓰고 실패한 작업을 운영자에게 알린다(없으면 로그만 남긴다).
+  operatorAlert?: OperatorAlertPort;
 };
+
+// 작업자가 실패를 알릴 때 보는 작업의 모습(Job에서 쓰는 부분만).
+export interface FailedJobLike {
+  name: string;
+  attemptsMade: number;
+  opts?: { attempts?: number };
+  data?: { jobKey?: unknown };
+}
 
 export class BullMqJobScheduler
   extends JobScheduler
@@ -69,12 +80,13 @@ export class BullMqJobScheduler
     connection: ConnectionOptions,
     clock: Clock,
     registry: JobHandlerRegistry,
+    operatorAlert?: OperatorAlertPort,
     queueName = JOB_QUEUE_NAME,
   ): BullMqJobScheduler {
     const queue = new Queue(queueName, { connection });
     queue.on('error', (e) => this.logError('큐', e));
     return new BullMqJobScheduler(
-      { queue: queue, clock, registry },
+      { queue: queue, clock, registry, operatorAlert },
       { queue, connection, queueName },
     );
   }
@@ -168,6 +180,34 @@ export class BullMqJobScheduler
     }
   }
 
+  // 작업자가 작업의 실패를 알릴 때마다 부른다. 로그를 남기고, 더 이상 재시도하지 않는 실패(시도를 다 썼거나
+  // 재시도해도 소용없는 오류)는 운영자에게 알린다: 어느 돈 작업이 어디서 죽었든 마지막 안전망이 된다.
+  // 본문에는 작업 이름과 키만 넣는다(키에는 협업 id만 있고 개인정보는 없다).
+  async handleFailure(
+    job: FailedJobLike | undefined,
+    error: Error,
+  ): Promise<void> {
+    const key = String(job?.data?.jobKey);
+    this.logger.error(
+      `작업 실패: ${job?.name ?? '?'} key=${key} ${error.message}`,
+    );
+    if (!job) return;
+    const exhausted =
+      job.attemptsMade >= (job.opts?.attempts ?? 1) ||
+      error instanceof UnrecoverableError;
+    if (!exhausted || !this.deps.operatorAlert) return;
+    try {
+      await this.deps.operatorAlert.alert({
+        subject: '작업이 재시도를 다 쓰고 실패했어요. 확인해 주세요.',
+        body: `작업: ${job.name}\n키: ${key}`,
+      });
+    } catch (alertError) {
+      this.logger.error(
+        `운영자 알림을 보내지 못했어요: ${alertError instanceof Error ? alertError.name : 'unknown'}`,
+      );
+    }
+  }
+
   // 모든 모듈의 onModuleInit(처리기 등록)이 끝난 뒤에 작업자를 시작해야 처리기 없는 작업이 먼저 실패하지 않는다.
   async onApplicationBootstrap(): Promise<void> {
     if (!this.real) return;
@@ -181,9 +221,7 @@ export class BullMqJobScheduler
     });
     worker.on('error', (e) => BullMqJobScheduler.logError('작업자', e));
     worker.on('failed', (job, e) => {
-      this.logger.error(
-        `작업 실패: ${job?.name ?? '?'} key=${String((job?.data as { jobKey?: unknown } | undefined)?.jobKey)} ${e.message}`,
-      );
+      void this.handleFailure(job as FailedJobLike | undefined, e);
     });
     this.worker = worker;
     await withTimeout(

@@ -46,7 +46,12 @@ export class SettlementsService {
 
   // view-snapshot 작업: 그날의 조회수를 읽어 저장한다. 같은 날 작업이 다시 돌아도 한 번만 읽고 한 줄만 남는다.
   // 가장 최근 세 줄이 모두 null이면(읽지 못한 날이 연속 3일) 정산하지 않고 멈춘다.
-  async takeSnapshot(collaborationId: string, dayIndex: number): Promise<void> {
+  // 마지막 시도에서 읽기가 예상 밖의 오류로 실패하면 던지지 않고 null로 저장한다: 날이 줄 없이 빠지지 않게(3일 규칙은 날을 센다).
+  async takeSnapshot(
+    collaborationId: string,
+    dayIndex: number,
+    context?: JobRunContext,
+  ): Promise<void> {
     const collaboration = await this.collaborations.findById(collaborationId);
     if (!collaboration) return;
     // 멈추는 도중에 죽었다면 남은 단계(작업 취소, 알림)를 마친다. 이미 한 일은 같은 키라 그대로다.
@@ -56,7 +61,7 @@ export class SettlementsService {
     }
     if (collaboration.stage !== 'COUNTING') return;
 
-    await this.ensureSnapshot(collaboration, dayIndex);
+    await this.ensureSnapshot(collaboration, dayIndex, context);
     await this.haltIfUnreadable(collaboration);
   }
 
@@ -77,7 +82,11 @@ export class SettlementsService {
       return;
     }
     if (collaboration.stage === 'COUNTING') {
-      if ((await this.settleCounting(collaboration, key)) !== 'settled') return;
+      if (
+        (await this.settleCounting(collaboration, key, context)) !== 'settled'
+      ) {
+        return;
+      }
     } else if (collaboration.stage !== 'SETTLED') {
       return;
     }
@@ -90,12 +99,16 @@ export class SettlementsService {
   private async settleCounting(
     collaboration: Collaboration,
     key: string,
+    context?: JobRunContext,
   ): Promise<'settled' | 'halted' | 'gone'> {
     // 7일째 줄이 없으면 이 자리에서 읽는다: 같은 시각의 7일째 작업과 이 작업의 실행 순서에 기대지 않는다
     // (같은 날 줄은 유일 제약이 하나만 남긴다).
-    await this.ensureSnapshot(collaboration, SNAPSHOT_DAYS);
+    await this.ensureSnapshot(collaboration, SNAPSHOT_DAYS, context);
     // 7일째 작업이 먼저 돌았다면 그 작업이 했을 판정을 여기서도 한다: 5~7일을 읽지 못했는데 4일째 값으로 정산하면 안 된다.
-    if (await this.haltIfUnreadable(collaboration)) return 'halted';
+    // 정산 시점에는 5~7일의 작업이 이미 끝났어야 하므로, 줄이 없는 날도 읽지 못한 날로 센다.
+    if (await this.haltIfUnreadable(collaboration, { atSettlement: true })) {
+      return 'halted';
+    }
     const snapshots = await this.repository.listSnapshots(collaboration.id);
     const finalViews = pickFinalViews(snapshots);
     // 읽은 값이 하나도 없다(위 판정에 걸리기 전의 경우): 0으로 정산하지 않고 멈춘다.
@@ -211,13 +224,14 @@ export class SettlementsService {
   async ensureSnapshot(
     collaboration: Collaboration,
     dayIndex: number,
+    context?: JobRunContext,
   ): Promise<void> {
     const existing = await this.repository.findSnapshot(
       collaboration.id,
       dayIndex,
     );
     if (existing) return;
-    const views = await this.readViews(collaboration);
+    const views = await this.readViews(collaboration, context);
     await this.repository.createSnapshotIfAbsent({
       collaborationId: collaboration.id,
       dayIndex,
@@ -228,19 +242,33 @@ export class SettlementsService {
 
   // 가장 최근 세 줄이 모두 null이면(읽지 못한 날이 연속 3일) 멈춘다. 멈췄으면 true다.
   // 날마다의 스냅샷 작업과 7일째의 정산 작업이 같은 판정을 쓴다: 어느 쪽이 먼저 돌아도 결과가 같다.
+  // atSettlement이면 줄을 세는 것에 더해 마지막 3일(5~7일)을 날로 센다: 줄이 없는 날(작업이 시도를 다 쓰고 죽었거나
+  // 작업자를 다시 켜느라 건너뛴 날)도 읽지 못한 날이라, 5일째 null·6일째 줄 없음·7일째 null이면 4일째 값으로 정산하지 않는다.
   private async haltIfUnreadable(
     collaboration: Collaboration,
+    options: { atSettlement?: boolean } = {},
   ): Promise<boolean> {
     const latest = await this.repository.latestSnapshots(
       collaboration.id,
       HALT_AFTER_UNREADABLE_DAYS,
     );
-    if (
-      latest.length < HALT_AFTER_UNREADABLE_DAYS ||
-      latest.some((s) => s.views !== null)
-    ) {
-      return false;
+    const rowsAllNull =
+      latest.length === HALT_AFTER_UNREADABLE_DAYS &&
+      latest.every((s) => s.views === null);
+    let daysAllUnreadable = false;
+    if (options.atSettlement) {
+      const byDay = new Map(
+        (await this.repository.listSnapshots(collaboration.id)).map((s) => [
+          s.dayIndex,
+          s.views,
+        ]),
+      );
+      daysAllUnreadable = Array.from(
+        { length: HALT_AFTER_UNREADABLE_DAYS },
+        (_, i) => SNAPSHOT_DAYS - i,
+      ).every((day) => (byDay.get(day) ?? null) === null);
     }
+    if (!rowsAllNull && !daysAllUnreadable) return false;
     await this.halt(collaboration);
     return true;
   }
@@ -257,14 +285,12 @@ export class SettlementsService {
     if (fresh && isViewCountHalt(fresh)) await this.finishHalt(fresh);
   }
 
-  // 멈춘 뒤의 정리: 정산과 남은 조회수 작업을 취소하고, 운영자와 양쪽에 알린다.
-  // 멈추는 도중에 죽어 다시 돌 때도 여기로 오므로, 운영자 알림은 이미 나갔어도 다시 나갈 수 있다(알림이 한 번도 안 가는 것보다 낫다).
+  // 멈춘 뒤의 정리: 운영자와 양쪽에 알리고, 정산과 남은 조회수 작업은 맨 뒤에 취소한다.
+  // 알림이 먼저다: 운영자 알림이나 알림함이 이 작업의 재시도 기간 내내 죽어 있어도 작업이 남아 있어야 다시 돌아 알릴 수 있다
+  // (취소가 먼저면 다시 돌 작업이 없어 알림 없이 멈춘 협업만 남는다). 취소는 오류를 삼킨다.
+  // 멈추는 도중에 죽어 다시 돌 때도 여기로 오므로, 운영자 알림은 이미 나갔어도 다시 나갈 수 있다(한 번도 안 가는 것보다 낫다).
   // 사용자 알림은 같은 키라 한 건이다.
   private async finishHalt(collaboration: Collaboration): Promise<void> {
-    await this.jobs.cancel(settleJobKey(collaboration.id));
-    for (let day = 0; day <= SNAPSHOT_DAYS; day += 1) {
-      await this.jobs.cancel(snapshotJobKey(collaboration.id, day));
-    }
     await this.operatorAlert.alert({
       subject: '조회수를 읽지 못해 협업이 멈췄어요. 확인해 주세요.',
       body: `협업 ID: ${collaboration.id}`,
@@ -285,11 +311,16 @@ export class SettlementsService {
       target,
       dedupeKey,
     });
+    await this.jobs.cancel(settleJobKey(collaboration.id));
+    for (let day = 0; day <= SNAPSHOT_DAYS; day += 1) {
+      await this.jobs.cancel(snapshotJobKey(collaboration.id, day));
+    }
   }
 
   // 연결된 인스타그램 계정이 없으면 읽을 수 없다(수락 조건과 해제 제한이 있어 보통은 있다). 0회가 아니라 읽기 실패다.
   private async readViews(
     collaboration: Collaboration,
+    context?: JobRunContext,
   ): Promise<number | null> {
     if (!collaboration.submittedUrl || !collaboration.submittedAt) return null;
     if (!(await this.instagram.getConnection(collaboration.creatorId))) {
@@ -305,6 +336,13 @@ export class SettlementsService {
       return Number.isInteger(views) && views >= 0 ? views : null;
     } catch (error) {
       if (error instanceof ViewCountUnavailableError) return null;
+      // 예상 밖의 오류는 던져 큐가 다시 시도하게 한다. 마지막 시도라면 더 던져도 날이 비므로 읽지 못한 날로 기록한다.
+      if (context?.finalAttempt) {
+        this.logger.error(
+          `마지막 시도에서도 조회수를 읽지 못해 읽지 못한 날로 기록해요: ${error instanceof Error ? error.name : 'unknown'}`,
+        );
+        return null;
+      }
       throw error;
     }
   }

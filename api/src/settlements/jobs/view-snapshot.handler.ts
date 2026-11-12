@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { JobPayload } from '../../jobs/job-scheduler';
+import type { JobPayload, JobRunContext } from '../../jobs/job-scheduler';
 import { SettlementsService } from '../settlements.service';
 import { collaborationIdOf, dayIndexOf } from './collaboration-job-payload';
 
@@ -8,10 +8,11 @@ import { collaborationIdOf, dayIndexOf } from './collaboration-job-payload';
 export class ViewSnapshotHandler {
   constructor(private readonly settlements: SettlementsService) {}
 
-  run(payload: JobPayload): Promise<void> {
+  run(payload: JobPayload, context?: JobRunContext): Promise<void> {
     return this.settlements.takeSnapshot(
       collaborationIdOf(payload),
       dayIndexOf(payload),
+      context,
     );
   }
 }

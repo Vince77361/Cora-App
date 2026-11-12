@@ -1474,4 +1474,134 @@ describe('settlements', () => {
       });
     });
   });
+  describe('follow-up round (R43)', () => {
+    const settlePayload = (id: string) => ({ collaborationId: id });
+
+    it('completes the halt on a rerun when the operator alert fails on the first run', async () => {
+      const s = await seed();
+      await submit(s.collaborationId, `${REELS_URL}?views=unavailable`).expect(
+        200,
+      );
+      alert.mockRejectedValueOnce(new Error('mail down'));
+      await expect(
+        scheduler.registry.run('settle', settlePayload(s.collaborationId)),
+      ).rejects.toThrow('mail down');
+      // 알림이 실패했으므로 협업은 멈췄지만 다시 돌 작업은 그대로 남아 있다.
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('HALTED');
+      expect(jobKeys()).toContain(`settle:${s.collaborationId}`);
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'COLLABORATION_HALTED' },
+        }),
+      ).toBe(0);
+
+      await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+      expect(alert).toHaveBeenCalledTimes(2);
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'COLLABORATION_HALTED' },
+        }),
+      ).toBe(2);
+      expect(jobKeys().filter((k) => k.startsWith('view-snapshot'))).toEqual(
+        [],
+      );
+      expect(jobKeys()).not.toContain(`settle:${s.collaborationId}`);
+    });
+
+    it('keeps the remaining jobs when the inbox is down so a rerun can still notify', async () => {
+      const s = await seed();
+      await submit(s.collaborationId, `${REELS_URL}?views=unavailable`).expect(
+        200,
+      );
+      jest
+        .spyOn(app.get(NotificationsService), 'notify')
+        .mockRejectedValueOnce(new Error('inbox down'));
+      await expect(
+        scheduler.registry.run('settle', settlePayload(s.collaborationId)),
+      ).rejects.toThrow('inbox down');
+      expect(jobKeys()).toContain(`settle:${s.collaborationId}`);
+      await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'COLLABORATION_HALTED' },
+        }),
+      ).toBe(2);
+      expect(jobKeys()).not.toContain(`settle:${s.collaborationId}`);
+    });
+
+    it('halts instead of settling on day 4 when day 5 is unreadable, day 6 has no row and day 7 is unreadable', async () => {
+      const s = await seed();
+      jest
+        .spyOn(app.get(ViewCountPort), 'read')
+        .mockResolvedValueOnce(100)
+        .mockResolvedValueOnce(200)
+        .mockResolvedValueOnce(300)
+        .mockResolvedValueOnce(400)
+        .mockResolvedValueOnce(500)
+        .mockRejectedValue(new ViewCountUnavailableError());
+      await submit(s.collaborationId, REELS_URL).expect(200);
+      // 6일째 작업이 시도를 다 쓰고 죽었다고 보고 지운다.
+      await scheduler.cancel(`view-snapshot:${s.collaborationId}:6`);
+      clock.set(new Date(T0.getTime() + 5 * DAY));
+      await scheduler.runDue(clock.now());
+      clock.set(new Date(T0.getTime() + 7 * DAY));
+      await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+
+      const days = (await snapshotsOf(s.collaborationId)).map((r) => [
+        r.dayIndex,
+        r.views,
+      ]);
+      expect(days).toEqual([
+        [0, 100],
+        [1, 200],
+        [2, 300],
+        [3, 400],
+        [4, 500],
+        [5, null],
+        [7, null],
+      ]);
+      expect(await collaborationOf(s.collaborationId)).toMatchObject({
+        stage: 'HALTED',
+        haltedReason: 'VIEW_COUNT_UNAVAILABLE',
+      });
+      expect(await prisma.settlement.count()).toBe(0);
+      expect(await prisma.payout.count()).toBe(0);
+      expect(await prisma.refund.count()).toBe(0);
+      expect(alert).toHaveBeenCalledTimes(1);
+    });
+
+    it('still settles on the day 7 count when days 5 and 6 have no row but day 7 is readable', async () => {
+      const s = await seed();
+      await submit(s.collaborationId, `${REELS_URL}?views=4320`).expect(200);
+      await scheduler.cancel(`view-snapshot:${s.collaborationId}:5`);
+      await scheduler.cancel(`view-snapshot:${s.collaborationId}:6`);
+      clock.set(new Date(T0.getTime() + 7 * DAY));
+      await scheduler.runDue(clock.now());
+      expect(await prisma.settlement.findMany()).toMatchObject([
+        { finalViews: 4320, payoutAmount: 43200 },
+      ]);
+    });
+
+    it('records a day as unreadable instead of throwing on the final attempt of an unexpected read error', async () => {
+      const s = await seed();
+      await submit(s.collaborationId, REELS_URL).expect(200);
+      jest
+        .spyOn(app.get(ViewCountPort), 'read')
+        .mockRejectedValue(new Error('socket hang up'));
+      const payload = { collaborationId: s.collaborationId, dayIndex: 0 };
+      // 마지막이 아닌 시도는 던져 큐가 다시 시도하게 하고, 줄을 남기지 않는다.
+      await expect(
+        scheduler.registry.run('view-snapshot', payload, {
+          finalAttempt: false,
+        }),
+      ).rejects.toThrow('socket hang up');
+      expect(await snapshotsOf(s.collaborationId)).toHaveLength(0);
+      // 마지막 시도는 읽지 못한 날(null)로 기록한다. 0이 아니다.
+      await scheduler.registry.run('view-snapshot', payload, {
+        finalAttempt: true,
+      });
+      const rows = await snapshotsOf(s.collaborationId);
+      expect(rows.map((r) => [r.dayIndex, r.views])).toEqual([[0, null]]);
+    });
+  });
 });

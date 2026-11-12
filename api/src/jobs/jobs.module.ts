@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Clock } from '../common/clock';
+import { IntegrationsModule } from '../integrations/integrations.module';
+import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import { BullMqJobScheduler } from './bullmq-job-scheduler';
 import { JobHandlerRegistry } from './job-handler-registry';
 import { JobScheduler } from './job-scheduler';
@@ -24,15 +26,17 @@ class UnconfiguredJobScheduler extends JobScheduler {
 
 // 기능 모듈은 이 모듈을 import해서 JobScheduler(작업 등록)와 JobHandlerRegistry(onModuleInit에서 처리기 등록)를 쓴다.
 @Module({
+  imports: [IntegrationsModule],
   providers: [
     JobHandlerRegistry,
     {
       provide: JobScheduler,
-      inject: [ConfigService, Clock, JobHandlerRegistry],
+      inject: [ConfigService, Clock, JobHandlerRegistry, OperatorAlertPort],
       useFactory: (
         config: ConfigService,
         clock: Clock,
         registry: JobHandlerRegistry,
+        operatorAlert: OperatorAlertPort,
       ): JobScheduler => {
         if (config.get<string>('NODE_ENV') === 'test') {
           return new UnconfiguredJobScheduler();
@@ -43,6 +47,7 @@ class UnconfiguredJobScheduler extends JobScheduler {
           redisConnectionFromUrl(url),
           clock,
           registry,
+          operatorAlert,
         );
       },
     },

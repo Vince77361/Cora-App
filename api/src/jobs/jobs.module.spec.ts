@@ -14,7 +14,20 @@ describe('JobsModule', () => {
           ignoreEnvFile: true,
           ignoreEnvVars: true,
           load: [
-            () => ({ NODE_ENV: 'test', REDIS_URL: 'redis://127.0.0.1:1' }),
+            () => ({
+              NODE_ENV: 'test',
+              REDIS_URL: 'redis://127.0.0.1:1',
+              // JobsModule이 운영자 알림 포트를 쓰려고 IntegrationsModule을 import하므로, 그 모듈의 어댑터 설정이 필요하다.
+              SUPABASE_URL: 'https://fake.supabase.co',
+              PUSH_ADAPTER: 'fake',
+              STORE_LINK_ADAPTER: 'fake',
+              CONTENT_DRAFT_ADAPTER: 'fake',
+              PAYMENT_ADAPTER: 'fake',
+              PAYOUT_ADAPTER: 'fake',
+              VIEW_COUNT_ADAPTER: 'fake',
+              INSTAGRAM_ADAPTER: 'fake',
+              OPERATOR_ALERT_ADAPTER: 'fake',
+            }),
           ],
         }),
         CommonModule,
