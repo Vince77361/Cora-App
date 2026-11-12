@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g2_palette.dart';
 
@@ -14,6 +15,8 @@ class ChatPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = G2Palette.of(context);
+    // 사장님에게 메시지를 요청하는 쪽은 크리에이터다. 문구는 D2·G2·F6 캔버스의 값을 쓴다.
+    final store = demoRole.value == DemoRole.store;
     return DemoFrame(
       background: p.bg,
       children: [
@@ -27,11 +30,19 @@ class ChatPage extends StatelessWidget {
                   height: 330,
                   width: double.infinity,
                   child: Container(
-                    color: G2Palette.photoGreen,
+                    color: store
+                        ? const Color(0xFFF3E3D3)
+                        : G2Palette.photoGreen,
                     child: Stack(
                       children: [
-                        const Positioned.fill(
-                          child: DemoPhoto(DemoImages.moaStudio, x: 62, y: 50),
+                        Positioned.fill(
+                          child: store
+                              ? const DemoPhoto(DemoImages.onecup, x: 50, y: 30)
+                              : const DemoPhoto(
+                                  DemoImages.moaStudio,
+                                  x: 62,
+                                  y: 50,
+                                ),
                         ),
                         const Positioned(
                           left: 0,
@@ -92,7 +103,7 @@ class ChatPage extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '모아 스튜디오',
+                                store ? '하루 한 컵' : '모아 스튜디오',
                                 style: g2Text(
                                   28,
                                   color: _white,
@@ -102,7 +113,9 @@ class ChatPage extends StatelessWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '느린 결, 일상의 주얼리 캠페인',
+                                store
+                                    ? '리빙 릴스 · 팔로워 640명'
+                                    : '느린 결, 일상의 주얼리 캠페인',
                                 style: g2Text(
                                   14,
                                   color: const Color.fromRGBO(
@@ -136,7 +149,9 @@ class ChatPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '“안녕하세요! 주얼리를 먼저 7일 정도 사용해보신 뒤, 11월 16일 이후 촬영이 가능하실까요?”',
+                          store
+                              ? '“김 오르는 첫 숟가락을 슬로모션으로 찍을게요.”'
+                              : '“안녕하세요! 주얼리를 먼저 7일 정도 사용해보신 뒤, 11월 16일 이후 촬영이 가능하실까요?”',
                           style: g2Text(
                             22,
                             color: p.text,
@@ -153,9 +168,17 @@ class ChatPage extends StatelessWidget {
                           children: [
                             Expanded(child: _cell(p, '제작물', '릴스 1편')),
                             const SizedBox(width: 8),
-                            Expanded(child: _cell(p, '제작비', '30만 원')),
+                            Expanded(
+                              child: store
+                                  ? _cell(p, '희망 보상', '식사권 + 3만 원')
+                                  : _cell(p, '제작비', '30만 원'),
+                            ),
                             const SizedBox(width: 8),
-                            Expanded(child: _cell(p, '촬영', '11/16 이후')),
+                            Expanded(
+                              child: store
+                                  ? _cell(p, '촬영', '오후 3–5시')
+                                  : _cell(p, '촬영', '11/16 이후'),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 24),

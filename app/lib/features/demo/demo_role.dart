@@ -29,13 +29,12 @@ final Set<String> _account = {
   DemoPaths.help,
 };
 
-/// 대화·조건 합의·계약·초안 검토: 역할이 함께 쓴다.
+/// 대화·조건 합의·계약: 역할이 함께 쓴다. 초안 검토(14)는 브랜드 계약의 것이라 여기 없다.
 final Set<String> _shared = {
   DemoPaths.chat,
   DemoPaths.chatThread,
   DemoPaths.agreement,
   DemoPaths.contract,
-  DemoPaths.review,
   // 2026-11-12: 검토·제안함·조회 자료·빈 상태는 맡기는 쪽과 크리에이터가 함께 쓴다.
   DemoPaths.reviewSend,
   DemoPaths.proposals,
@@ -79,7 +78,8 @@ final Set<String> _brandOnly = {
 };
 
 /// 진행 단계(07)는 브랜드와 크리에이터가 함께 본다(공통 모델 14장 "협업" 탭).
-final Set<String> _brandAndCreator = {DemoPaths.progress};
+/// 초안 검토(14)도 브랜드 계약에서 온 협업에만 있다(6번 설계). 가게 오퍼는 방문 → 게시 → 링크 제출로 끝난다.
+final Set<String> _brandAndCreator = {DemoPaths.progress, DemoPaths.review};
 
 final Set<String> _creatorOnly = {
   DemoPaths.creatorDiscover,
@@ -150,6 +150,8 @@ final Map<DemoRole, Map<String, String>> _redirects = {
     '*>${DemoPaths.terms}': DemoPaths.offer,
     // 콘텐츠 제안(10)은 크리에이터 화면.
     '*>${DemoPaths.proposal}': DemoPaths.agreement,
+    // 초안 검토(14)는 브랜드 계약의 화면. 가게 오퍼에는 초안 검토가 없어 진행 중인 사장님 홈으로 간다.
+    '*>${DemoPaths.review}': DemoPaths.storeHome,
     // F8 빈 상태 화면의 예시 버튼(브랜드 발견·관심, 크리에이터 콘텐츠 올리기)은 사장님 홈으로.
     '${DemoPaths.states}>${DemoPaths.brandDiscover}': DemoPaths.storeHome,
     '${DemoPaths.states}>${DemoPaths.likes}': DemoPaths.storeHome,

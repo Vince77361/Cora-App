@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g2_palette.dart';
 
 /// 12 조건 합의·변경 기록.
+///
+/// 캔버스의 12번은 크리에이터와 브랜드의 협업이다. 가게 사장님이 크리에이터의 역제안에 응답하는 길(F3 "응답하기")도
+/// 같은 모양을 쓰므로, 사장님 역할로 열면 가게 협업의 판본 2로 채운다(F1·F2·F6·F3 캔버스와 가게 흐름 개정 설계의 값).
 class AgreementPage extends StatelessWidget {
   const AgreementPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final p = G2Palette.of(context);
+    final store = demoRole.value == DemoRole.store;
     final chipBg = p.dark
         ? const Color.fromRGBO(255, 255, 255, 0.06)
         : const Color.fromRGBO(255, 255, 255, 0.7);
@@ -98,6 +103,47 @@ class AgreementPage extends StatelessWidget {
       return Column(children: rows);
     }
 
+    // 합의 상태 칸: 확인한 쪽은 라임 체크, 기다리는 쪽은 빈 동그라미.
+    Widget statusChip(String label, bool done) => Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: chipBg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: done ? G2Palette.lime : p.line,
+              shape: BoxShape.circle,
+            ),
+            child: done
+                ? const Center(
+                    child: DemoSvg(
+                      G2Icons.check,
+                      color: G2Palette.onLime,
+                      size: 12,
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: done
+                  ? g2Text(14, color: p.text, weight: FontWeight.w500)
+                  : g2Text(14, color: p.sub),
+            ),
+          ),
+        ],
+      ),
+    );
+
     return DemoFrame(
       background: p.bg,
       children: [
@@ -166,7 +212,7 @@ class AgreementPage extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '브랜드 확인 대기 중',
+                            store ? '내가 응답할 차례' : '브랜드 확인 대기 중',
                             style: g2Text(
                               14,
                               color: p.sub,
@@ -179,74 +225,15 @@ class AgreementPage extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: Container(
-                              height: 40,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: chipBg,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 20,
-                                    height: 20,
-                                    decoration: const BoxDecoration(
-                                      color: G2Palette.lime,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Center(
-                                      child: DemoSvg(
-                                        G2Icons.check,
-                                        color: G2Palette.onLime,
-                                        size: 12,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '나 · 확인함',
-                                    style: g2Text(
-                                      14,
-                                      color: p.text,
-                                      weight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            child: store
+                                ? statusChip('나 · 대기', false)
+                                : statusChip('나 · 확인함', true),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Container(
-                              height: 40,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: chipBg,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 20,
-                                    height: 20,
-                                    decoration: BoxDecoration(
-                                      color: p.line,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '브랜드 · 대기',
-                                    style: g2Text(14, color: p.sub),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            child: store
+                                ? statusChip('상대 · 확인함', true)
+                                : statusChip('브랜드 · 대기', false),
                           ),
                         ],
                       ),
@@ -273,7 +260,9 @@ class AgreementPage extends StatelessWidget {
                           children: [
                             Text('최대 현금 부담', style: g2Text(13, color: p.sub)),
                             Text(
-                              '300,000원 → 350,000원',
+                              store
+                                  ? '60,000원 → 30,000원'
+                                  : '300,000원 → 350,000원',
                               style: g2Text(
                                 13,
                                 color: p.text,
@@ -284,7 +273,7 @@ class AgreementPage extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '대화에서 정한 조건',
+                        store ? '역제안한 조건' : '대화에서 정한 조건',
                         style: g2Text(
                           22,
                           color: p.text,
@@ -302,16 +291,28 @@ class AgreementPage extends StatelessWidget {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                  child: grid([
-                    changed('제작비', '350,000원', '300,000원'),
-                    changed('제작 시작', '11월 23일', '11월 16일'),
-                    plain('제작물', '일상형 릴스 1편'),
-                    plain('제품 제공', '포함'),
-                    plain('수정 범위', '기획안 기준 1회'),
-                    plain('활용 권한', '브랜드 계정 재게시만'),
-                    plain('지급 조건', '게시 후 7일 이내'),
-                    plain('광고 표시', '영상·게시물에 명확히'),
-                  ]),
+                  child: grid(
+                    store
+                        ? [
+                            changed('결과물', '카드뉴스 1편', '릴스 1편 · 30초 안팎'),
+                            changed('고정 현금', '30,000원', '없음'),
+                            changed('조회수 수당', '없음', '1,000회당 2,000원'),
+                            plain('제공 혜택', '식사권 40,000원 · 2인'),
+                            plain('사용권', '가게 계정 재게시 3개월'),
+                            plain('시리즈', '동네 점심 지도'),
+                            plain('표현 원칙', '#얼굴출연없음'),
+                          ]
+                        : [
+                            changed('제작비', '350,000원', '300,000원'),
+                            changed('제작 시작', '11월 23일', '11월 16일'),
+                            plain('제작물', '일상형 릴스 1편'),
+                            plain('제품 제공', '포함'),
+                            plain('수정 범위', '기획안 기준 1회'),
+                            plain('활용 권한', '브랜드 계정 재게시만'),
+                            plain('지급 조건', '게시 후 7일 이내'),
+                            plain('광고 표시', '영상·게시물에 명확히'),
+                          ],
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -337,7 +338,10 @@ class AgreementPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 10),
-                          Text('브랜드의 최초 제안', style: g2Text(14, color: p.sub)),
+                          Text(
+                            store ? '가게의 기본 조건' : '브랜드의 최초 제안',
+                            style: g2Text(14, color: p.sub),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -356,7 +360,7 @@ class AgreementPage extends StatelessWidget {
                           ),
                           const SizedBox(width: 10),
                           Text(
-                            '내가 제작비·일정 수정 제안',
+                            store ? '하루 한 컵의 역제안' : '내가 제작비·일정 수정 제안',
                             style: g2Text(14, color: p.text),
                           ),
                         ],
@@ -392,10 +396,14 @@ class AgreementPage extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      flex: 10,
+                      flex: store ? 12 : 10,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () => demoGo(context, 'Terms.dc.html'),
+                        // 가게는 판본을 고쳐 다시 보낸다(F3 상세의 "고쳐서 다시 보내기" → F1).
+                        onTap: () => demoGo(
+                          context,
+                          store ? 'NBudget.dc.html' : 'Terms.dc.html',
+                        ),
                         child: Container(
                           height: 52,
                           alignment: Alignment.center,
@@ -404,7 +412,7 @@ class AgreementPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            '수정 제안',
+                            store ? '고쳐서 다시 보내기' : '수정 제안',
                             style: g2Text(
                               15,
                               color: p.text,
@@ -416,10 +424,14 @@ class AgreementPage extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      flex: 14,
+                      flex: store ? 12 : 14,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () => demoGo(context, 'NContract.dc.html'),
+                        // 가게 오퍼는 최신 판본을 수락하면 합의가 되고 결제(A8)로 간다. 계약서 화면은 브랜드 계약의 것이다.
+                        onTap: () => demoGo(
+                          context,
+                          store ? 'NPay.dc.html' : 'NContract.dc.html',
+                        ),
                         child: Container(
                           height: 52,
                           alignment: Alignment.center,
@@ -428,7 +440,7 @@ class AgreementPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            '계약서 미리 보기',
+                            store ? '이 판본 수락' : '계약서 미리 보기',
                             style: g2Text(
                               15,
                               color: G2Palette.onLime,
@@ -442,7 +454,9 @@ class AgreementPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '버전 1에 했던 수락은 버전 2에 적용되지 않아요. 합의 기록과 최종 계약 체결은 별도예요.',
+                  store
+                      ? '버전 1에 했던 수락은 버전 2에 적용되지 않아요. 수락하면 그때 결제해요.'
+                      : '버전 1에 했던 수락은 버전 2에 적용되지 않아요. 합의 기록과 최종 계약 체결은 별도예요.',
                   textAlign: TextAlign.center,
                   style: g2Text(12, color: p.sub),
                 ),

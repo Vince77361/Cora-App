@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g8_common.dart';
 
@@ -17,7 +18,9 @@ class _Row {
   final String name;
   final String sub;
   final String badge;
-  final String href;
+
+  /// 눌렀을 때 가는 화면. 비어 있으면 아무 일도 하지 않는다.
+  final String? href;
   final String photo;
   final Color avBg;
 
@@ -94,6 +97,66 @@ const List<List<_Group>> _data = [
 
 const List<String> _tabLabels = ['진행 중 3', '종료 2'];
 
+/// 사장님: 캔버스 그대로지만 "합의 완료" 줄은 계약서(D4)가 아니라 결제(A8)로 간다
+/// (가게 흐름 개정 설계 F3: "합의 완료 · 계약으로 이동"을 누르면 사장님은 결제로). 다른 역할 화면(D5)으로 가던
+/// "일정이 맞지 않아 종료" 줄은 사장님에게 갈 곳이 없어 아무 일도 하지 않는다.
+final List<List<_Group>> _storeData = [
+  _data[0],
+  [
+    _Group('종료', const Color(0xFFE6E8EB), const Color(0xFF2A2D33), [
+      const _Row(
+        name: '서윤의 작은 취향',
+        sub: '합의 완료 · 계약으로 이동',
+        badge: '완료',
+        href: 'NPay.dc.html',
+        photo: DemoImages.seoyun,
+        avBg: _seoyunBg,
+      ),
+      const _Row(
+        name: '하루 한 컵',
+        sub: '일정이 맞지 않아 종료',
+        badge: '종료',
+        href: null,
+        photo: DemoImages.onecup,
+        avBg: _onecupBg,
+      ),
+    ]),
+  ],
+];
+
+const Color _ramenBg = Color(0xFFF6E3C8);
+
+/// 크리에이터: 상대는 가게다. 이름 줄만 가게로 바꾸고 줄 구성(문구)은 캔버스와 같다. 크리에이터가 F6으로 보낸 판본 2는
+/// 가게의 응답을 기다리므로 "상대 대기"에 있고, "합의 완료" 줄은 크리에이터의 협업 화면(A7)으로 간다.
+const List<List<_Group>> _creatorData = [
+  [
+    _Group('상대 대기', Color(0xFFA0A4AD), Color(0xFFA0A4AD), [
+      _Row(
+        name: '한그릇 라멘',
+        sub: '판본 2 · 릴스 1편 · 2일 안에 답이 와요',
+        badge: '대기',
+        href: 'NReviewSend.dc.html',
+        photo: DemoImages.ramen,
+        avBg: _ramenBg,
+      ),
+    ]),
+  ],
+  [
+    _Group('종료', Color(0xFFE6E8EB), Color(0xFF2A2D33), [
+      _Row(
+        name: '한그릇 라멘',
+        sub: '합의 완료 · 계약으로 이동',
+        badge: '완료',
+        href: 'NEscrow.dc.html',
+        photo: DemoImages.ramen,
+        avBg: _ramenBg,
+      ),
+    ]),
+  ],
+];
+
+const List<String> _creatorTabLabels = ['진행 중 1', '종료 1'];
+
 /// F3 제안함 (`NProposals.dc.html`)
 class ProposalsPage extends StatefulWidget {
   const ProposalsPage({super.key});
@@ -108,6 +171,13 @@ class _ProposalsPageState extends State<ProposalsPage> {
   @override
   Widget build(BuildContext context) {
     final pal = G8Palette.of(context);
+    final role = demoRole.value;
+    final data = switch (role) {
+      DemoRole.store => _storeData,
+      DemoRole.creator => _creatorData,
+      _ => _data,
+    };
+    final labels = role == DemoRole.creator ? _creatorTabLabels : _tabLabels;
     return DemoFrame(
       background: pal.bg,
       children: [
@@ -125,8 +195,8 @@ class _ProposalsPageState extends State<ProposalsPage> {
                     style: g8Text(16, pal.text, weight: FontWeight.w500),
                   ),
                 ),
-                _tabs(pal),
-                for (final g in _data[_tab]) _group(context, pal, g),
+                _tabs(pal, labels),
+                for (final g in data[_tab]) _group(context, pal, g),
               ],
             ),
           ),
@@ -135,7 +205,7 @@ class _ProposalsPageState extends State<ProposalsPage> {
     );
   }
 
-  Widget _tabs(G8Palette pal) {
+  Widget _tabs(G8Palette pal, List<String> labels) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(4),
@@ -145,16 +215,16 @@ class _ProposalsPageState extends State<ProposalsPage> {
       ),
       child: Row(
         children: [
-          for (var i = 0; i < _tabLabels.length; i++) ...[
+          for (var i = 0; i < labels.length; i++) ...[
             if (i > 0) const SizedBox(width: 2),
-            Expanded(child: _tabButton(pal, i)),
+            Expanded(child: _tabButton(pal, labels, i)),
           ],
         ],
       ),
     );
   }
 
-  Widget _tabButton(G8Palette pal, int i) {
+  Widget _tabButton(G8Palette pal, List<String> labels, int i) {
     final on = i == _tab;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -176,7 +246,7 @@ class _ProposalsPageState extends State<ProposalsPage> {
               : null,
         ),
         child: Text(
-          _tabLabels[i],
+          labels[i],
           style: g8Text(14, pal.text, weight: FontWeight.w500),
         ),
       ),
@@ -221,7 +291,7 @@ class _ProposalsPageState extends State<ProposalsPage> {
   Widget _row(BuildContext context, G8Palette pal, _Row r) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => demoGo(context, r.href),
+      onTap: r.href == null ? null : () => demoGo(context, r.href!),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(

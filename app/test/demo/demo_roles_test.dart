@@ -274,18 +274,18 @@ void main() {
     expect(path(), DemoPaths.reviewSend);
   });
 
-  // D4 계약은 세 가지를 모두 확인해야 다음으로 간다. 크리에이터와 브랜드는 진행 단계로, 사장님은 진행 단계가 없어 홈으로 간다.
-  for (final (role, target) in [
-    (DemoRole.creator, DemoPaths.progress),
-    (DemoRole.brand, DemoPaths.progress),
-    (DemoRole.store, DemoPaths.storeHome),
+  // D4 계약은 세 가지를 모두 확인해야 다음으로 간다. 크리에이터와 브랜드는 진행 단계로, 사장님은 진행 단계가 없어 합의한 오퍼의 결제(A8)로 간다.
+  for (final (role, target, check) in [
+    (DemoRole.creator, DemoPaths.progress, '콘텐츠는 브랜드 계정 재게시에만 쓰여요'),
+    (DemoRole.brand, DemoPaths.progress, '콘텐츠는 브랜드 계정 재게시에만 쓰여요'),
+    (DemoRole.store, DemoPaths.pay, '콘텐츠는 가게 계정 재게시에만 쓰여요'),
   ]) {
     testWidgets('contract confirm as ${role.name} goes to $target', (
       tester,
     ) async {
       demoRole.value = role;
       await start(tester, DemoPaths.contract);
-      await tapText(tester, '콘텐츠는 브랜드 계정 재게시에만 쓰여요');
+      await tapText(tester, check);
       await tapText(tester, '동의하고 계약하기');
       expect(path(), target);
       expectInRole(role);

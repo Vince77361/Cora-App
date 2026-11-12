@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g8_common.dart';
 
@@ -13,6 +14,18 @@ const List<(String, String)> _rows = [
   ('최대 현금 부담', '60,000원'),
 ];
 
+/// 크리에이터가 F6 "내 방식으로 제안"에서 넘어오면 받는 사람은 가게다(가게 흐름 개정 설계 F2).
+/// 값은 F6의 희망 보상 "식사권 + 3만 원"(고정 현금 3만 원, 조회수 수당 없음)이고, 최대 현금 부담은 고정 현금과 같다.
+const List<(String, String)> _creatorRows = [
+  ('모집', '한그릇 라멘 · 첫 숟가락 릴스'),
+  ('결과물', '릴스 1편 · 30초 안팎'),
+  ('제공 혜택', '식사권 40,000원 · 2인'),
+  ('고정 현금', '30,000원'),
+  ('조회수 수당', '없음'),
+  ('사용권', '가게 계정 재게시 3개월'),
+  ('최대 현금 부담', '30,000원'),
+];
+
 /// F2 제안 보내기 전 검토 (`NReviewSend.dc.html`)
 class ReviewSendPage extends StatelessWidget {
   const ReviewSendPage({super.key});
@@ -20,6 +33,8 @@ class ReviewSendPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pal = G8Palette.of(context);
+    final creator = demoRole.value == DemoRole.creator;
+    final rows = creator ? _creatorRows : _rows;
     return DemoFrame(
       background: pal.bg,
       children: [
@@ -49,7 +64,7 @@ class ReviewSendPage extends StatelessWidget {
                     ),
                   ),
                 ),
-                _recipient(pal),
+                _recipient(pal, creator),
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
@@ -59,13 +74,13 @@ class ReviewSendPage extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      for (var i = 0; i < _rows.length; i++)
+                      for (var i = 0; i < rows.length; i++)
                         G8KeyValueRow(
                           pal: pal,
-                          term: _rows[i].$1,
-                          value: _rows[i].$2,
+                          term: rows[i].$1,
+                          value: rows[i].$2,
                           first: i == 0,
-                          bold: i == _rows.length - 1,
+                          bold: i == rows.length - 1,
                         ),
                     ],
                   ),
@@ -73,7 +88,10 @@ class ReviewSendPage extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
                   child: Text(
-                    '보낸다고 합의가 되는 건 아니에요. 상대가 수락하면 그때 결제해요. 보낸 조건은 판본 1로 고정되고, 이용료 [수수료]는 별도예요.',
+                    // 가게의 판본 1(기본 조건) 다음이라 크리에이터의 제안은 판본 2다.
+                    creator
+                        ? '보낸다고 합의가 되는 건 아니에요. 상대가 수락하면 그때 결제해요. 보낸 조건은 판본 2로 고정되고, 이용료 [수수료]는 별도예요.'
+                        : '보낸다고 합의가 되는 건 아니에요. 상대가 수락하면 그때 결제해요. 보낸 조건은 판본 1로 고정되고, 이용료 [수수료]는 별도예요.',
                     style: g8Text(12, pal.sub, height: 1.6),
                   ),
                 ),
@@ -112,8 +130,8 @@ class ReviewSendPage extends StatelessWidget {
     );
   }
 
-  /// 받는 사람 카드: 크리에이터 사진, 이름, 고른 작품 사진.
-  Widget _recipient(G8Palette pal) {
+  /// 받는 사람 카드: 받는 사람 사진, 이름, 고른 작품 사진. 크리에이터가 보낼 때 받는 사람은 가게다.
+  Widget _recipient(G8Palette pal, bool creator) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(14),
@@ -126,12 +144,18 @@ class ReviewSendPage extends StatelessWidget {
           Container(
             width: 52,
             height: 52,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF3E3D3),
+            decoration: BoxDecoration(
+              color: creator
+                  ? const Color(0xFFF6E3C8)
+                  : const Color(0xFFF3E3D3),
               shape: BoxShape.circle,
             ),
             clipBehavior: Clip.antiAlias,
-            child: const DemoPhoto(DemoImages.onecup, x: 50, y: 25),
+            child: DemoPhoto(
+              creator ? DemoImages.ramen : DemoImages.onecup,
+              x: 50,
+              y: 25,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -140,7 +164,7 @@ class ReviewSendPage extends StatelessWidget {
               children: [
                 Text('받는 사람', style: g8Text(12, pal.sub)),
                 Text(
-                  '하루 한 컵',
+                  creator ? '한그릇 라멘' : '하루 한 컵',
                   style: g8Text(16, pal.text, weight: FontWeight.w700),
                 ),
               ],

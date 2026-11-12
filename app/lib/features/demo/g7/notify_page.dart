@@ -87,6 +87,22 @@ class _NotifyPageState extends State<NotifyPage> {
   static const _settingsSvg =
       '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg>';
 
+  /// 조건 합의 알림은 브랜드 협업(모아 스튜디오) 것이다. 사장님에게는 같은 12번 화면으로 가는 크리에이터의 역제안 알림이다.
+  static const _storeAgreement = _Item(
+    2,
+    '하루 한 컵이 판본 2를 보냈어요.',
+    '12분 전',
+    'Agreement.dc.html',
+    '2c6508f8caadc5c0466b315d99cbda6b',
+    Color(0xFFF3E3D3),
+    true,
+  );
+
+  static _Item _forRole(_Item x) =>
+      demoRole.value == DemoRole.store && x.href == 'Agreement.dc.html'
+      ? _storeAgreement
+      : x;
+
   int _tab = 0;
   bool _read = false;
 
@@ -95,6 +111,7 @@ class _NotifyPageState extends State<NotifyPage> {
     final c = G7Colors.of(context);
     // 알림은 내 역할이 열 수 있는 화면으로 가는 것만 보인다(캔버스의 알림 목록은 역할이 섞여 있다).
     final rows = _items
+        .map(_forRole)
         .where((x) => demoCanOpen(x.href) && (_tab == 0 || x.k == _tab))
         .toList();
     final selChip = c.dark ? const Color(0xFF33363D) : const Color(0xFFE3E5E9);

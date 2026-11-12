@@ -55,6 +55,8 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
   @override
   Widget build(BuildContext context) {
     final p = G2Palette.of(context);
+    // 사장님의 대화 상대는 크리에이터다(브랜드의 캠페인 대화가 아니다). 문구는 D2·G2·F6 캔버스의 값을 쓴다.
+    final store = demoRole.value == DemoRole.store;
     final sentBg = p.dark ? const Color(0xFF0F1012) : G2Palette.lime;
     final sentFg = p.dark ? const Color(0xFFFFFFFF) : G2Palette.onLime;
     final bubbleShape = const BorderRadius.only(
@@ -103,11 +105,15 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
                   width: 40,
                   height: 40,
                   clipBehavior: Clip.antiAlias,
-                  decoration: const BoxDecoration(
-                    color: G2Palette.photoGreen,
+                  decoration: BoxDecoration(
+                    color: store
+                        ? const Color(0xFFF3E3D3)
+                        : G2Palette.photoGreen,
                     shape: BoxShape.circle,
                   ),
-                  child: const DemoPhoto(DemoImages.moaStudio, x: 62, y: 40),
+                  child: store
+                      ? const DemoPhoto(DemoImages.onecup, x: 50, y: 25)
+                      : const DemoPhoto(DemoImages.moaStudio, x: 62, y: 40),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -116,7 +122,7 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        '모아 스튜디오',
+                        store ? '하루 한 컵' : '모아 스튜디오',
                         style: g2Text(
                           16,
                           color: p.text,
@@ -124,7 +130,7 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
                         ),
                       ),
                       Text(
-                        '느린 결, 일상의 주얼리 캠페인',
+                        store ? '리빙 릴스 · 팔로워 640명' : '느린 결, 일상의 주얼리 캠페인',
                         style: g2Text(12, color: p.sub),
                       ),
                     ],
@@ -166,7 +172,9 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '릴스 1편, 35만 원 + 제품, 11월 23일 시작\n조건 버전 2 · 브랜드 확인 대기',
+                      store
+                          ? '카드뉴스 1편, 식사권 2인 + 3만 원\n조건 버전 2 · 내가 응답할 차례'
+                          : '릴스 1편, 35만 원 + 제품, 11월 23일 시작\n조건 버전 2 · 브랜드 확인 대기',
                       style: g2Text(13, color: p.text, height: 1.45),
                     ),
                   ),
@@ -209,16 +217,23 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
                     ),
                   ),
                   child: Text(
-                    '주얼리를 먼저 7일 정도 사용해보신 뒤, 11월 16일 이후 촬영이 가능하실까요?',
+                    store
+                        ? '김 오르는 첫 숟가락을 슬로모션으로 찍을게요.'
+                        : '주얼리를 먼저 7일 정도 사용해보신 뒤, 11월 16일 이후 촬영이 가능하실까요?',
                     style: g2Text(15, color: p.text, height: 1.5),
                   ),
                 ),
               ),
               const SizedBox(height: 10),
-              sent('네, 가능해요. 대신 23일부터 시작하면 더 여유 있게 쓸 수 있어요.'),
+              sent(
+                store
+                    ? '오후 3시에서 5시 사이에 오시면 찍기 좋아요.'
+                    : '네, 가능해요. 대신 23일부터 시작하면 더 여유 있게 쓸 수 있어요.',
+              ),
               const SizedBox(height: 10),
               Align(
-                alignment: Alignment.centerRight,
+                // 콘텐츠 카드는 크리에이터가 보낸다. 사장님에게는 상대가 보낸 카드라 왼쪽에 놓인다.
+                alignment: store ? Alignment.centerLeft : Alignment.centerRight,
                 child: GestureDetector(
                   onTap: () => demoGo(context, 'Proposal.dc.html'),
                   child: Container(
@@ -231,12 +246,24 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(
+                        SizedBox(
                           height: 120,
                           width: double.infinity,
                           child: ColoredBox(
-                            color: G2Palette.photoCream,
-                            child: DemoPhoto(DemoImages.seoyun, x: 40, y: 40),
+                            color: store
+                                ? const Color(0xFFF3E3D3)
+                                : G2Palette.photoCream,
+                            child: store
+                                ? const DemoPhoto(
+                                    DemoImages.onecup,
+                                    x: 50,
+                                    y: 40,
+                                  )
+                                : const DemoPhoto(
+                                    DemoImages.seoyun,
+                                    x: 40,
+                                    y: 40,
+                                  ),
                           ),
                         ),
                         Padding(

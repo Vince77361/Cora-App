@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g2_palette.dart';
 
@@ -17,12 +18,21 @@ class _ContractPageState extends State<ContractPage> {
     '광고 표시 의무를 지킬게요',
     '콘텐츠는 브랜드 계정 재게시에만 쓰여요',
   ];
+  // 사장님의 사용권은 "가게 계정 재게시"다(공통 모델 7장).
+  static const _storeLabels = [
+    '합의한 조건 버전 2를 확인했어요',
+    '광고 표시 의무를 지킬게요',
+    '콘텐츠는 가게 계정 재게시에만 쓰여요',
+  ];
   final List<bool> _on = [true, true, false];
 
   @override
   Widget build(BuildContext context) {
     final p = G2Palette.of(context);
     final ready = _on.every((x) => x);
+    // 사장님에게 계약 상대는 크리에이터이고 보상은 식사권·고정 현금·조회수 수당이다(F2 캔버스의 값).
+    final store = demoRole.value == DemoRole.store;
+    final labels = store ? _storeLabels : _labels;
 
     Widget term(String k, String v) => Expanded(
       child: Column(
@@ -151,7 +161,7 @@ class _ContractPageState extends State<ContractPage> {
                           Expanded(child: Container(height: 2, color: p.line)),
                           const SizedBox(width: 10),
                           Text(
-                            '모아 스튜디오',
+                            store ? '한그릇 라멘' : '모아 스튜디오',
                             style: g2Text(
                               14,
                               color: p.text,
@@ -163,15 +173,23 @@ class _ContractPageState extends State<ContractPage> {
                             width: 36,
                             height: 36,
                             clipBehavior: Clip.antiAlias,
-                            decoration: const BoxDecoration(
-                              color: G2Palette.photoGreen,
+                            decoration: BoxDecoration(
+                              color: store
+                                  ? const Color(0xFFF6E3C8)
+                                  : G2Palette.photoGreen,
                               shape: BoxShape.circle,
                             ),
-                            child: const DemoPhoto(
-                              DemoImages.moaStudio,
-                              x: 62,
-                              y: 40,
-                            ),
+                            child: store
+                                ? const DemoPhoto(
+                                    DemoImages.ramen,
+                                    x: 50,
+                                    y: 25,
+                                  )
+                                : const DemoPhoto(
+                                    DemoImages.moaStudio,
+                                    x: 62,
+                                    y: 40,
+                                  ),
                           ),
                         ],
                       ),
@@ -179,18 +197,24 @@ class _ContractPageState extends State<ContractPage> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          term('제작물', '일상형 릴스 1편'),
+                          term('제작물', store ? '릴스 1편' : '일상형 릴스 1편'),
                           const SizedBox(width: 8),
-                          term('제작비', '350,000원 + 제품'),
+                          store
+                              ? term('제공 혜택', '식사권 40,000원 · 2인')
+                              : term('제작비', '350,000원 + 제품'),
                         ],
                       ),
                       const SizedBox(height: 12),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          term('제작 시작', '11월 23일'),
+                          store
+                              ? term('조회수 수당', '1,000회당 2,000원')
+                              : term('제작 시작', '11월 23일'),
                           const SizedBox(width: 8),
-                          term('지급', '게시 후 7일 이내'),
+                          store
+                              ? term('최대 현금 부담', '60,000원')
+                              : term('지급', '게시 후 7일 이내'),
                         ],
                       ),
                     ],
@@ -200,7 +224,8 @@ class _ContractPageState extends State<ContractPage> {
                   padding: const EdgeInsets.fromLTRB(8, 14, 8, 0),
                   child: Column(
                     children: [
-                      for (var i = 0; i < _labels.length; i++) _check(p, i),
+                      for (var i = 0; i < labels.length; i++)
+                        _check(p, labels, i),
                     ],
                   ),
                 ),
@@ -220,7 +245,9 @@ class _ContractPageState extends State<ContractPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  '브랜드 동의를 기다리고 있어요. 계약서는 체결 후 보관함에 저장돼요.',
+                  store
+                      ? '크리에이터 동의를 기다리고 있어요. 계약서는 체결 후 보관함에 저장돼요.'
+                      : '브랜드 동의를 기다리고 있어요. 계약서는 체결 후 보관함에 저장돼요.',
                   textAlign: TextAlign.center,
                   style: g2Text(12, color: p.sub),
                 ),
@@ -228,7 +255,11 @@ class _ContractPageState extends State<ContractPage> {
                 if (ready)
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => demoGo(context, 'Progress.dc.html'),
+                    // 사장님에게는 진행 단계(07)가 없다. 합의한 오퍼는 결제(A8)로 이어진다.
+                    onTap: () => demoGo(
+                      context,
+                      store ? 'NPay.dc.html' : 'Progress.dc.html',
+                    ),
                     child: Container(
                       height: 58,
                       alignment: Alignment.center,
@@ -267,7 +298,7 @@ class _ContractPageState extends State<ContractPage> {
     );
   }
 
-  Widget _check(G2Palette p, int i) {
+  Widget _check(G2Palette p, List<String> labels, int i) {
     final on = _on[i];
     final box = p.dark
         ? (on ? const Color(0xFFF2F3F5) : const Color(0xFF2A2D33))
@@ -298,7 +329,7 @@ class _ContractPageState extends State<ContractPage> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                _labels[i],
+                labels[i],
                 style: g2Text(15, color: p.text, height: 1.45),
               ),
             ),
