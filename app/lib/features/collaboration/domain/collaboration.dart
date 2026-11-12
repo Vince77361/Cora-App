@@ -119,7 +119,11 @@ class Collaboration {
 
   bool get hasVoucher => terms.voucherName != null;
 
-  /// 조회수당 지급이 있는(돈이 보관되는) 협업.
+  /// 조건에 조회수당 지급이 있다. 결제 전에도 참이다(보관액 `escrowAmount`는 결제 전에 0이다).
+  bool get hasPerView => terms.rewardType != RewardType.voucher;
+
+  /// 돈이 지금 실제로 보관돼 있다(결제 뒤이고 조회수당 지급이 있는 협업). 조건이 아니라 서버가 준
+  /// `escrowAmount`로 따진다: 결제 전과 식사권만 있는 협업은 0이다.
   bool get hasEscrow => escrowAmount > 0;
 
   CollaborationStep? step(StepKey key) {

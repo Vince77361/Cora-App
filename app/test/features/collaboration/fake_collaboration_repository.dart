@@ -35,7 +35,7 @@ Collaboration collaboration({
   CollaborationRole role = CollaborationRole.creator,
   CollaborationStage stage = CollaborationStage.funded,
   OfferTerms terms = _bothTerms,
-  int escrowAmount = 100000,
+  int? escrowAmount,
   StepKey? now,
   List<CollaborationStep>? steps,
   int? earnedSoFar,
@@ -56,7 +56,13 @@ Collaboration collaboration({
   stage: stage,
   counterpartName: storeName,
   terms: terms,
-  escrowAmount: escrowAmount,
+  // 서버처럼: 결제 전과 식사권만 있는 협업은 보관액이 0이다.
+  escrowAmount:
+      escrowAmount ??
+      (stage == CollaborationStage.awaitingPayment ||
+              terms.rewardType == RewardType.voucher
+          ? 0
+          : 100000),
   steps:
       steps ??
       stepsAt(now ?? StepKey.visit, acceptedAt: DateTime.utc(2026, 11, 10, 3)),

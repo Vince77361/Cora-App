@@ -329,4 +329,91 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('콘텐츠 링크 제출'), findsOneWidget);
   });
+
+  testWidgets('does not say the money is held before the store has paid', (
+    tester,
+  ) async {
+    // 서버는 결제 전 보관액(escrowAmount)을 0으로 준다.
+    final awaiting = collaboration(
+      stage: CollaborationStage.awaitingPayment,
+      now: StepKey.paid,
+    );
+    expect(awaiting.escrowAmount, 0);
+    await pumpCollaboration(tester, repo: _repo(awaiting));
+
+    expect(find.text('Cora가 안전하게 보관 중'), findsNothing);
+    // 상자 머리와 아래 꺼진 버튼이 같은 문구라 둘이다.
+    expect(find.text('결제를 기다리고 있어요'), findsNWidgets(2));
+    expect(find.text('100,000원'), findsOneWidget);
+    expect(find.text('+ 2인 식사권 (방문 때 사용)'), findsOneWidget);
+    expect(find.text('링크를 제출하면 집계가 시작돼요.'), findsOneWidget);
+    // 마지막 단계의 상한은 조건에서 읽는다.
+    expect(find.text('최대 10만 원'), findsOneWidget);
+    // 결제 전이라 제출 버튼은 없다(꺼진 `결제를 기다리고 있어요`뿐).
+    expect(find.text('콘텐츠 링크 제출'), findsNothing);
+  });
+
+  testWidgets(
+    'shows the cap without a voucher line for per-view only before payment',
+    (tester) async {
+      final awaiting = collaboration(
+        stage: CollaborationStage.awaitingPayment,
+        now: StepKey.paid,
+        terms: const OfferTerms(
+          format: ContentFormat.reels,
+          rewardType: RewardType.perView,
+          perViewAmount: 10,
+          perViewCap: 100000,
+        ),
+      );
+      await pumpCollaboration(tester, repo: _repo(awaiting));
+
+      expect(find.text('Cora가 안전하게 보관 중'), findsNothing);
+      expect(find.text('결제를 기다리고 있어요'), findsNWidgets(2));
+      expect(find.text('100,000원'), findsOneWidget);
+      expect(find.textContaining('식사권'), findsNothing);
+      expect(find.text('최대 10만 원'), findsOneWidget);
+    },
+  );
+
+  testWidgets('does not overflow at 1.3x text scale while counting', (
+    tester,
+  ) async {
+    await pumpCollaboration(
+      tester,
+      repo: _repo(_counting()),
+      clock: FakeClock(),
+      smallPhoneLargeText: true,
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('집계 중이에요 · 7일 남음'), findsOneWidget);
+  });
+
+  testWidgets(
+    'does not overflow at 1.3x text scale when settled without an account',
+    (tester) async {
+      final settled = collaboration(
+        stage: CollaborationStage.settled,
+        steps: [
+          for (final key in StepKey.values)
+            CollaborationStep(key: key, state: StepState.done),
+        ],
+        payoutStatus: PayoutStatus.needsAccount,
+        settlement: const CollaborationSettlement(
+          finalViews: 4320,
+          payoutAmount: 43200,
+          refundAmount: 56800,
+        ),
+      );
+      await pumpCollaboration(
+        tester,
+        repo: _repo(settled),
+        smallPhoneLargeText: true,
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('지급받을 계좌 등록하기'), findsOneWidget);
+    },
+  );
 }

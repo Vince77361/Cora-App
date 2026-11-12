@@ -9,10 +9,11 @@ import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
 
 /// 오른쪽 위 메뉴의 `협업 그만두기`를 누르면 아래에서 올라오는 시트(캔버스에 없는 화면). 누르면 같은 시트
-/// 안에서 확인 문구로 바뀐다. [onConfirm]이 false를 돌려주면(실패) 시트를 닫고 A7이 안내를 보인다.
+/// 안에서 확인 문구로 바뀐다. 시트는 자기만 닫고 [onConfirm]의 결과(성공이면 true)를 돌려준다. 시트를
+/// 닫은 뒤에 화면을 떠날지는 부른 쪽이 정한다(실패하면 false, `계속하기`·바깥을 누르면 null).
 ///
 /// 사장님의 `협업 취소 요청`도 같은 시트다: 글자만 [menu]·[confirmTitle]·[confirm]·[keep]으로 바꾼다.
-Future<void> showCancelCollaborationSheet(
+Future<bool?> showCancelCollaborationSheet(
   BuildContext context, {
   required Future<bool> Function() onConfirm,
   String menu = CancelCollaborationSheet.menu,
@@ -21,7 +22,7 @@ Future<void> showCancelCollaborationSheet(
   String keep = CancelCollaborationSheet.keep,
 }) {
   final c = context.colors;
-  return showModalBottomSheet<void>(
+  return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -74,8 +75,8 @@ class _CancelCollaborationSheetState extends State<CancelCollaborationSheet> {
 
   Future<void> _confirm() async {
     setState(() => _busy = true);
-    await widget.onConfirm();
-    if (mounted) Navigator.of(context).pop();
+    final done = await widget.onConfirm();
+    if (mounted) Navigator.of(context).pop(done);
   }
 
   @override

@@ -115,12 +115,7 @@ class _CollaborationPageState extends ConsumerState<CollaborationPage> {
                     ),
               onBack: _leave,
               trailing: value != null && value.collaboration.canCancel
-                  ? CollaborationMoreButton(
-                      onTap: () => showCancelCollaborationSheet(
-                        context,
-                        onConfirm: _cancel,
-                      ),
-                    )
+                  ? CollaborationMoreButton(onTap: _openCancelSheet)
                   : null,
             ),
             Expanded(
@@ -187,11 +182,14 @@ class _CollaborationPageState extends ConsumerState<CollaborationPage> {
     );
   }
 
-  /// 시트의 `그만두기`. 실패하면 시트를 닫고 A7이 서버 문구를 보인다.
-  Future<bool> _cancel() async {
-    final done = await _vm.cancel();
-    if (mounted && done) _leave();
-    return done;
+  /// `협업 그만두기` 시트를 열고, 시트가 닫힌 뒤 그만두는 데 성공했으면 화면을 떠난다. 실패하면
+  /// 시트만 닫히고 A7이 서버 문구를 보인다.
+  Future<void> _openCancelSheet() async {
+    final done = await showCancelCollaborationSheet(
+      context,
+      onConfirm: _vm.cancel,
+    );
+    if (mounted && done == true) _leave();
   }
 }
 
@@ -338,6 +336,8 @@ class _HeldBox extends StatelessWidget {
       CollaborationStage.refunded ||
       CollaborationStage.cancelled ||
       CollaborationStage.other => CollaborationPage.ended,
+      // 결제 전에는 보관 중인 돈이 없다. 보관 중이라고 말하지 않는다.
+      CollaborationStage.awaitingPayment => CollaborationPage.waitingPayment,
       _ => CollaborationPage.keeping,
     };
     final big = settled && co.settlement != null
@@ -347,7 +347,7 @@ class _HeldBox extends StatelessWidget {
     return CollaborationBox(
       label: headline,
       big: big,
-      note: co.hasEscrow && co.hasVoucher && !settled
+      note: co.hasPerView && co.hasVoucher && !settled
           ? CollaborationPage.heldVoucher(co.terms.voucherName!)
           : null,
       lower: lower,
@@ -356,7 +356,7 @@ class _HeldBox extends StatelessWidget {
 
   Widget? _lower(BuildContext context, CoraColors c) {
     final co = collaboration;
-    if (!co.hasEscrow) return null;
+    if (!co.hasPerView) return null;
     final Widget content;
     if (co.stage == CollaborationStage.settled) {
       final views = co.settlement?.finalViews;

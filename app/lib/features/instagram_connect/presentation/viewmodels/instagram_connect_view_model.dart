@@ -7,6 +7,10 @@ import '../../domain/instagram_repository.dart';
 /// 서버가 문구를 보내지 않았을 때의 일반 실패 문구.
 const connectFailedMessage = '연동하지 못했어요. 다시 시도해 주세요.';
 
+/// 운영 빌드에서 승인 주소를 받았지만 앱이 그 주소를 열고 돌아오는 길은 9번 계획에서 붙인다.
+/// 실패가 아니므로 실패 문구를 쓰지 않는다(캔버스에 없는 문구).
+const connectSoonMessage = '인스타그램 연동은 곧 열려요.';
+
 class InstagramConnectState {
   const InstagramConnectState({
     required this.connection,
@@ -57,7 +61,7 @@ class InstagramConnectViewModel extends AsyncNotifier<InstagramConnectState> {
       await _repo.begin();
       if (!ref.mounted) return false;
       state = AsyncData(
-        current.copyWith(busy: false, error: connectFailedMessage),
+        current.copyWith(busy: false, error: connectSoonMessage),
       );
       return true;
     } catch (error) {

@@ -7,10 +7,11 @@ abstract class MailLauncher {
 }
 
 /// `mailto:` 주소. 제목의 빈칸·대괄호·한글은 퍼센트 인코딩한다(`+`가 아니라 `%20`이어야 메일 앱이
-/// 제대로 읽는다). 받는 사람이 없으면 `mailto:?subject=…`다.
-Uri mailtoUri({String? to, required String subject}) => Uri.parse(
-  'mailto:${to == null ? '' : Uri.encodeComponent(to)}'
-  '?subject=${Uri.encodeComponent(subject)}',
+/// 제대로 읽는다). 받는 주소의 `@`는 그대로 둔다. 받는 사람이 없으면 `mailto:?subject=…`다.
+Uri mailtoUri({String? to, required String subject}) => Uri(
+  scheme: 'mailto',
+  path: to ?? '',
+  query: 'subject=${Uri.encodeComponent(subject)}',
 );
 
 class UrlLauncherMailLauncher implements MailLauncher {

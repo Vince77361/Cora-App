@@ -136,7 +136,9 @@ void main() {
     // 실제 인스타그램 승인은 9번 계획에서 붙인다: 주소만 받고 안내를 보인다.
     expect(repo.beginCalls, 1);
     expect(topPath(tester), AppRoutes.creatorInstagram);
-    expect(find.text('연동하지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
+    // 실패가 아니라 아직 열리지 않았다는 중립 안내다.
+    expect(find.text('인스타그램 연동은 곧 열려요.'), findsOneWidget);
+    expect(find.text('연동하지 못했어요. 다시 시도해 주세요.'), findsNothing);
   });
 
   testWidgets('shows an error with retry when loading fails', (tester) async {

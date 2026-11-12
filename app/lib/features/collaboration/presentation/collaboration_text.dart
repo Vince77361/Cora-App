@@ -1,8 +1,9 @@
+import '../../../core/time/kst.dart';
 import '../../offer_terms/presentation/offer_terms_text.dart';
 import '../domain/collaboration.dart';
 import '../domain/collaboration_repository.dart';
 
-// A7과 진행 중 탭이 같은 문구를 쓰도록 모은 순수 함수들. 날짜는 휴대폰의 달력 날짜로 센다.
+// A7과 진행 중 탭이 같은 문구를 쓰도록 모은 순수 함수들. 날짜는 한국 시간(KST)으로 센다.
 
 String stepTitle(StepKey key) => switch (key) {
   StepKey.accepted => '오퍼 수락',
@@ -19,12 +20,21 @@ String? stepSubtitle(Collaboration c, StepKey key) => switch (key) {
   // 캔버스 문구는 식사권이 있는 협업의 것이다. 식사권이 없으면 보여 줄 말이 없다.
   StepKey.visit => c.hasVoucher ? '식사권은 방문 때 보여주세요' : null,
   StepKey.submit => c.submitDueAt == null ? null : dueLabel(c.submitDueAt!),
-  StepKey.settle => c.hasEscrow ? '최대 ${won(c.escrowAmount)}' : null,
+  // 상한은 조건에서 읽는다: 결제 전에는 보관액이 0이다.
+  StepKey.settle =>
+    c.hasPerView && c.terms.perViewCap != null
+        ? '최대 ${won(c.terms.perViewCap!)}'
+        : null,
 };
 
-/// 보관 상자의 큰 글씨. 돈이 보관되면 금액, 식사권만이면 식사권 이름이다.
-String heldLabel(Collaboration c) =>
-    c.hasEscrow ? wonExact(c.escrowAmount) : (c.terms.voucherName ?? '');
+/// 보관 상자의 큰 글씨. 돈이 보관 중이면 그 금액, 결제 전이면 조회수당 상한, 식사권만이면 식사권
+/// 이름이다.
+String heldLabel(Collaboration c) {
+  if (c.hasEscrow) return wonExact(c.escrowAmount);
+  final cap = c.terms.perViewCap;
+  if (c.hasPerView && cap != null) return wonExact(cap);
+  return c.terms.voucherName ?? '';
+}
 
 /// `11월 23일까지`.
 String dueLabel(DateTime due) => '${_md(due)}까지';
@@ -32,10 +42,7 @@ String dueLabel(DateTime due) => '${_md(due)}까지';
 /// `11월 18일`. 없으면 null.
 String? _monthDay(DateTime? at) => at == null ? null : _md(at);
 
-String _md(DateTime at) {
-  final local = at.toLocal();
-  return '${local.month}월 ${local.day}일';
-}
+String _md(DateTime at) => kstMonthDay(at);
 
 String monthDay(DateTime at) => _md(at);
 
@@ -43,7 +50,7 @@ String monthDay(DateTime at) => _md(at);
 int daysLeft(DateTime end, DateTime now) {
   final left = end.difference(now);
   if (left <= Duration.zero) return 1;
-  return (left.inHours / 24).ceil();
+  return (left.inMicroseconds / Duration.microsecondsPerDay).ceil();
 }
 
 /// `문의하기` 메일 제목.
