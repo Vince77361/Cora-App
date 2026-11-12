@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../shared/demo_ui.dart';
 import 'g1_ui.dart';
 
-/// 02 넘기기 이유 (`Pass.dc.html`). 이유를 하나 고르거나(다시 누르면 해제) 그냥 넘긴다.
+/// 02 넘기기 이유 (`Pass.dc.html`). 이유는 선택이다: 하나 고르거나(다시 누르면 해제) 이유 없이 넘긴다.
 class PassPage extends StatefulWidget {
   const PassPage({super.key});
 
@@ -14,14 +14,17 @@ class PassPage extends StatefulWidget {
 }
 
 const List<(String, String)> _reasons = [
-  ('분위기가 달라요', 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 14s1.5 2 4 2 4-2 4-2'),
+  ('표현 분위기가 달라요', 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 14s1.5 2 4 2 4-2 4-2'),
+  (
+    '지역·방문이 어려워요',
+    'M12 21s-6-5.4-6-11a6 6 0 0 1 12 0c0 5.6-6 11-6 11zM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4',
+  ),
+  ('금액이 안 맞아요', 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'),
   ('분야가 달라요', 'M4 6h16M4 12h16M4 18h10'),
-  ('조건이 안 맞아요', 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'),
-  ('이유 없이 넘기기', 'M5 12h14M13 6l6 6-6 6'),
 ];
 
 class _PassPageState extends State<PassPage> {
-  int _pick = 2;
+  int _pick = -1;
 
   @override
   Widget build(BuildContext context) {
@@ -114,12 +117,12 @@ class _PassPageState extends State<PassPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '어떤 점이 달랐나요?',
+                            '넘겼어요. 이유를 남길까요?',
                             style: g1Text(20, 500, p.text, ls: -0.02),
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '다음 추천에만 반영하고, 서윤의 작은 취향에게는 알리지 않아요.',
+                            '선택이에요. 남기면 다음 추천에만 반영하고 상대에게는 알리지 않아요.',
                             style: g1Text(14, 400, p.sub),
                           ),
                         ],
@@ -137,19 +140,13 @@ class _PassPageState extends State<PassPage> {
                             child: Container(
                               height: 56,
                               decoration: BoxDecoration(
-                                color: p.dark
-                                    ? const Color(0xFFF2F3F5)
-                                    : g1Lime,
+                                color: g1Lime,
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               alignment: Alignment.center,
                               child: Text(
-                                '넘기고 다음 추천 보기',
-                                style: g1Text(
-                                  16,
-                                  p.dark ? 500 : 700,
-                                  p.dark ? g1Ink : g1OnLime,
-                                ),
+                                _pick < 0 ? '이유 없이 다음 보기' : '이유 남기고 다음 보기',
+                                style: g1Text(16, 700, g1OnLime),
                               ),
                             ),
                           ),
@@ -159,7 +156,7 @@ class _PassPageState extends State<PassPage> {
                             child: Container(
                               height: 44,
                               alignment: Alignment.center,
-                              child: Text('취소', style: g1Text(14, 500, p.sub)),
+                              child: Text('되돌리기', style: g1Text(14, 500, p.sub)),
                             ),
                           ),
                         ],
@@ -179,13 +176,11 @@ class _PassPageState extends State<PassPage> {
     final on = _pick == i;
     final (label, path) = _reasons[i];
     final iconBg = on
-        ? (p.dark ? const Color(0xFFF2F3F5) : g1Lime)
+        ? g1Lime
         : (p.dark ? const Color(0xFF1C1E22) : const Color(0xFFF8F9FA));
-    final iconFg = on ? (p.dark ? const Color(0xFF0F1012) : g1OnLime) : p.sub;
-    final dot = on ? (p.dark ? const Color(0xFF0F1012) : g1Lime) : p.line;
-    final check = on
-        ? (p.dark ? const Color(0xFFF2F3F5) : g1OnLime)
-        : Colors.transparent;
+    final iconFg = on ? g1OnLime : p.sub;
+    final dot = on ? g1Lime : p.line;
+    final check = on ? g1OnLime : Colors.transparent;
     return G1Tap(
       onTap: () => setState(() => _pick = on ? -1 : i),
       child: SizedBox(

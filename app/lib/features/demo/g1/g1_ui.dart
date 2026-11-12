@@ -120,9 +120,21 @@ class G1Header extends StatelessWidget {
 }
 
 /// 브랜드 관점 화면의 하단 메뉴. 지금 역할의 메뉴를 보여 준다(진행 단계는 크리에이터도 본다). [current]: 0 발견, 1 관심, 2 대화, 3 협업, 4 프로필.
-/// 다크에서는 켜진 칸이 라임이다.
-Widget g1BottomNav(BuildContext context, int current) {
+/// 다크에서 켜진 칸은 기본이 라임이다(발견). 관심·협업 캔버스(`DarkLikes`, `DarkProgress`)는 켜진 칸이 #F2F3F5,
+/// 꺼진 칸이 #8B9099라서 [neutralDark]로 그 값을 쓴다.
+Widget g1BottomNav(
+  BuildContext context,
+  int current, {
+  bool neutralDark = false,
+}) {
   final dark = G1Palette.of(context).dark;
+  if (dark && neutralDark) {
+    return DemoBottomNav(
+      inactiveColor: const Color(0xFF8B9099),
+      darkShadowOpacity: 0.12,
+      items: demoRoleNavItems(demoRole.value ?? DemoRole.brand, current),
+    );
+  }
   return demoRoleNav(
     current: current,
     fallback: DemoRole.brand,

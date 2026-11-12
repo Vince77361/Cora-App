@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../shared/demo_ui.dart';
@@ -62,6 +63,14 @@ class StoreAIPage extends StatefulWidget {
 class _StoreAIPageState extends State<StoreAIPage> {
   int _tab = 0;
   int _v = 0;
+  late final TapGestureRecognizer _again = TapGestureRecognizer()
+    ..onTap = () => setState(() => _v++);
+
+  @override
+  void dispose() {
+    _again.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +80,7 @@ class _StoreAIPageState extends State<StoreAIPage> {
     final tones = <List<Color>>[
       [const Color(0xFFF3FFD6), const Color(0xFF1F2A00)],
       pal.dark
-          ? [const Color(0xFFF2F3F5), const Color(0xFF0F1012)]
+          ? [const Color(0xFF1C1E22), const Color(0xFFF2F3F5)]
           : [const Color(0xFFF8F9FA), const Color(0xFF17181C)],
     ];
     return DemoFrame(
@@ -106,8 +115,21 @@ class _StoreAIPageState extends State<StoreAIPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        '가게 페이지 정보로 AI가 썼어요. 그대로 올려도, 고쳐서 올려도 돼요.',
+                      Text.rich(
+                        TextSpan(
+                          text: '가게 페이지 정보로 AI가 썼어요. 그대로 올려도, 고쳐서 올려도 돼요. ',
+                          children: [
+                            TextSpan(
+                              text: '다시 만들기',
+                              recognizer: _again,
+                              style: TextStyle(
+                                color: pal.text,
+                                decoration: TextDecoration.underline,
+                                decorationColor: pal.text,
+                              ),
+                            ),
+                          ],
+                        ),
                         style: g5Text(14, pal.sub, height: 1.6),
                       ),
                     ],
@@ -137,7 +159,7 @@ class _StoreAIPageState extends State<StoreAIPage> {
                       final tone = tones[(i + _v) % 2];
                       final fg = s.photo
                           ? (pal.dark
-                                ? const Color(0xFF0F1012)
+                                ? const Color(0xFF2A2D33)
                                 : const Color(0xFFFFFFFF))
                           : tone[1];
                       return Container(
@@ -239,21 +261,24 @@ class _StoreAIPageState extends State<StoreAIPage> {
               children: [
                 Expanded(
                   flex: 10,
-                  // artifact는 다크에서도 이 버튼 색을 바꾸지 않는다.
                   child: G5BigButton(
-                    label: '다시 만들기',
-                    background: const Color(0xFFF2F3F5),
-                    foreground: G5Palette.ink,
+                    label: '가게 계정에 올리기',
+                    background: pal.dark
+                        ? const Color(0xFF2A2D33)
+                        : const Color(0xFFF2F3F5),
+                    foreground: pal.dark
+                        ? const Color(0xFFF2F3F5)
+                        : G5Palette.ink,
                     size: 15,
                     weight: FontWeight.w500,
-                    onTap: () => setState(() => _v++),
+                    onTap: () => demoGo(context, 'NAIOrder.dc.html'),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   flex: 16,
                   child: G5BigButton(
-                    label: '저장하고 오퍼 만들기',
+                    label: '오퍼 만들기',
                     background: G5Palette.lime,
                     foreground: G5Palette.limeInk,
                     onTap: () => demoGo(context, 'NOffer.dc.html'),
@@ -270,11 +295,9 @@ class _StoreAIPageState extends State<StoreAIPage> {
   Widget _tab_(G5Palette pal, int i) {
     final on = i == _tab;
     final bg = pal.dark
-        ? (on ? const Color(0xFFF2F3F5) : const Color(0xFF1C1E22))
+        ? (on ? const Color(0xFF33363D) : const Color(0xFF1C1E22))
         : (on ? const Color(0xFFE3E5E9) : const Color(0xFFF8F9FA));
-    final fg = pal.dark
-        ? (on ? const Color(0xFF0F1012) : const Color(0xFFF2F3F5))
-        : const Color(0xFF17181C);
+    final fg = pal.dark ? const Color(0xFFF2F3F5) : const Color(0xFF17181C);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _tab = i),

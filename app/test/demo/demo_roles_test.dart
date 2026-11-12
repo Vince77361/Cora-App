@@ -103,17 +103,21 @@ void main() {
     expect(demoRole.value, DemoRole.store);
     await tapText(tester, '가게 페이지 만들기');
     expect(path(), DemoPaths.storePage);
-    await tapText(tester, '이대로 다음');
+    await tapText(tester, 'AI로 직접 제작');
     expect(path(), DemoPaths.storeAI);
-    await tapText(tester, '저장하고 오퍼 만들기');
+    await tapText(tester, '오퍼 만들기');
     expect(path(), DemoPaths.offer);
     await tapText(tester, '다음');
     await tapText(tester, '다음');
-    // A5 오퍼 보내기는 크리에이터의 받은 오퍼(A6)가 아니라 사장님 홈(A9)으로 간다.
-    await tapText(tester, '오퍼 보내기');
-    expect(path(), DemoPaths.storeHome);
-    expect(stack().length, 1);
+    // 2026-11-12 캔버스: A5 → F2 보내기 전 검토 → F3 제안함(함께 쓰는 화면).
+    await tapText(tester, '검토하고 보내기');
+    expect(path(), DemoPaths.reviewSend);
+    await tapText(tester, '이 조건으로 보내기');
+    expect(path(), DemoPaths.proposals);
     expectInRole(DemoRole.store);
+    // 제안함에는 하단 메뉴가 없어 홈에서 메뉴를 확인한다.
+    demoRouter.go(DemoPaths.storeHome);
+    await settle(tester);
 
     // 하단 메뉴: 홈, 찾기, 대화, 오퍼, AI 글.
     for (final (label, target) in [
@@ -164,10 +168,10 @@ void main() {
 
     await tapNav(tester, '관심');
     expect(path(), DemoPaths.likes);
-    await tapText(tester, '후보 2명 비교하기');
+    await tapText(tester, '선택한 2명 비교하기');
     expect(path(), DemoPaths.compare);
     expectInRole(DemoRole.brand);
-    await tapText(tester, '조건 보기');
+    await tapText(tester, '서윤의 제안 보기');
     expect(path(), DemoPaths.terms);
     expectInRole(DemoRole.brand);
     await back(tester);
@@ -266,8 +270,8 @@ void main() {
     await start(tester, DemoPaths.offer);
     await tapText(tester, '다음');
     await tapText(tester, '다음');
-    await tapText(tester, '오퍼 보내기');
-    expect(path(), DemoPaths.offerInbox);
+    await tapText(tester, '검토하고 보내기');
+    expect(path(), DemoPaths.reviewSend);
   });
 
   // D4 계약은 세 가지를 모두 확인해야 다음으로 간다. 크리에이터와 브랜드는 진행 단계로, 사장님은 진행 단계가 없어 홈으로 간다.

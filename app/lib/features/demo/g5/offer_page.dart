@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../shared/demo_ui.dart';
@@ -33,12 +34,12 @@ const List<_Fmt> _fmts = [
 ];
 
 const List<_Reward> _rewards = [
-  _Reward('식사권 제공', '2인 식사권, 약 4만 원 상당', '2인 식사권 (약 4만 원)'),
-  _Reward('조회수당 지급', '조회 1회당 10원, 최대 10만 원', '조회 1회당 10원, 최대 10만 원'),
+  _Reward('제공 혜택만', '식사권 40,000원 · 2인', '식사권 40,000원 · 2인'),
+  _Reward('고정 현금', '정한 금액을 한 번에 · 선택', '고정 현금 (금액 입력)'),
   _Reward(
-    '식사권 + 조회수',
-    '식사 후 올리고, 조회수만큼 더 받아요',
-    '2인 식사권\n+ 조회 1회당 10원, 최대 10만 원',
+    '제공 혜택 + 조회수 수당 · 추천',
+    '1,000회당 2,000원 · 1인 최대 60,000원',
+    '식사권 40,000원 · 2인\n+ 1,000회당 2,000원, 최대 60,000원',
   ),
 ];
 
@@ -62,6 +63,14 @@ class _OfferPageState extends State<OfferPage> {
   int _step = 0;
   int _fmt = 1;
   int _rw = 2;
+  late final TapGestureRecognizer _detail = TapGestureRecognizer()
+    ..onTap = () => demoGo(context, 'NBudget.dc.html');
+
+  @override
+  void dispose() {
+    _detail.dispose();
+    super.dispose();
+  }
 
   void _prev() {
     if (_step > 0) setState(() => _step--);
@@ -105,19 +114,15 @@ class _OfferPageState extends State<OfferPage> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
             child: _step < 2
-                // 다크의 '다음'은 밝은 바탕, 굵기 500으로 artifact가 따로 정했다.
                 ? G5BigButton(
                     label: '다음',
                     onTap: _next,
-                    background: pal.dark
-                        ? const Color(0xFFF2F3F5)
-                        : G5Palette.lime,
-                    foreground: pal.dark ? G5Palette.ink : G5Palette.limeInk,
-                    weight: pal.dark ? FontWeight.w500 : FontWeight.w700,
+                    background: G5Palette.lime,
+                    foreground: G5Palette.limeInk,
                   )
                 : G5BigButton(
-                    label: '오퍼 보내기',
-                    onTap: () => demoGo(context, 'NOfferInbox.dc.html'),
+                    label: '검토하고 보내기',
+                    onTap: () => demoGo(context, 'NReviewSend.dc.html'),
                     background: G5Palette.lime,
                     foreground: G5Palette.limeInk,
                   ),
@@ -127,7 +132,7 @@ class _OfferPageState extends State<OfferPage> {
     );
   }
 
-  Widget _heading(G5Palette pal, String title, String sub) {
+  Widget _heading(G5Palette pal, String title, String sub, {TextSpan? link}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
       child: Column(
@@ -144,7 +149,10 @@ class _OfferPageState extends State<OfferPage> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(sub, style: g5Text(14, pal.sub)),
+          Text.rich(
+            TextSpan(text: sub, children: [?link]),
+            style: g5Text(14, pal.sub),
+          ),
         ],
       ),
     );
@@ -153,10 +161,10 @@ class _OfferPageState extends State<OfferPage> {
   ({Color bg, Color fg, Color dot, Color check}) _opt(G5Palette pal, bool on) {
     if (pal.dark) {
       return (
-        bg: on ? const Color(0xFFF2F3F5) : const Color(0xFF1C1E22),
-        fg: on ? const Color(0xFF0F1012) : const Color(0xFFF2F3F5),
-        dot: on ? const Color(0xFF0F1012) : const Color(0xFF2A2D33),
-        check: const Color(0xFFF2F3F5),
+        bg: on ? const Color(0xFF33363D) : const Color(0xFF1C1E22),
+        fg: const Color(0xFFF2F3F5),
+        dot: on ? G5Palette.lime : const Color(0xFF2A2D33),
+        check: G5Palette.limeInk,
       );
     }
     return (
@@ -278,7 +286,20 @@ class _OfferPageState extends State<OfferPage> {
     }
 
     return [
-      _heading(pal, '어떻게\n보상할까요?', '식사권만, 조회수만, 또는 둘 다 고를 수 있어요.'),
+      _heading(
+        pal,
+        '어떻게\n보상할까요?',
+        '가게 등록 때 정한 기본값이에요. 최대 현금 부담 60,000원, 조회수가 적으면 남은 돈은 돌려드려요. ',
+        link: TextSpan(
+          text: '자세히 설정',
+          recognizer: _detail,
+          style: TextStyle(
+            color: pal.text,
+            decoration: TextDecoration.underline,
+            decorationColor: pal.text,
+          ),
+        ),
+      ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
         child: Column(

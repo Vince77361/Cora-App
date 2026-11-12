@@ -164,10 +164,9 @@ class _ReelsPageState extends State<ReelsPage> {
                         child: FractionallySizedBox(
                           alignment: Alignment.centerLeft,
                           widthFactor: 0.38,
-                          // 다크 파일은 채움이 #0F1012다(artifact 그대로).
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: c.dark ? c.bg : Colors.white,
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),

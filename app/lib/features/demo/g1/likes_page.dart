@@ -9,6 +9,8 @@ class LikesPage extends StatelessWidget {
 
   static const String _heart =
       '<svg width="12" height="12" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M12 20.5s-7.5-4.6-7.5-10.4A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.7c0 5.8-7.5 10.4-7.5 10.4z"></path></svg>';
+  static const String _check =
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1F2A00" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>';
   static const String _compare =
       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F2A00" stroke-width="2.2"><rect x="3" y="4" width="8" height="16" rx="2"></rect><rect x="13" y="4" width="8" height="16" rx="2"></rect></svg>';
 
@@ -33,7 +35,7 @@ class LikesPage extends StatelessWidget {
                       Text('관심·보류', style: g1Text(26, 900, p.text, ls: -0.03)),
                       const SizedBox(height: 4),
                       Text(
-                        '관심 표시는 협업 확정이 아니에요. 모아두고 비교해요.',
+                        '저장은 나만 보고, 관심은 상대에게 전해져요. 비교할 후보를 골라요.',
                         style: g1Text(13, 400, p.sub),
                       ),
                     ],
@@ -43,7 +45,7 @@ class LikesPage extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                   child: Row(
                     children: [
-                      _tab(p, '전체 2', true),
+                      _tab(p, '저장 2', true),
                       const SizedBox(width: 6),
                       _tab(p, '서로 관심 1', false),
                       const SizedBox(width: 6),
@@ -121,13 +123,13 @@ class LikesPage extends StatelessWidget {
                 children: [
                   const DemoSvg(_compare, size: 18),
                   const SizedBox(width: 8),
-                  Text('후보 2명 비교하기', style: g1Text(16, 700, g1OnLime)),
+                  Text('선택한 2명 비교하기', style: g1Text(16, 700, g1OnLime)),
                 ],
               ),
             ),
           ),
         ),
-        g1BottomNav(context, 1),
+        g1BottomNav(context, 1, neutralDark: true),
       ],
     );
   }
@@ -136,8 +138,8 @@ class LikesPage extends StatelessWidget {
     final Color bg;
     final Color fg;
     if (selected) {
-      bg = p.dark ? const Color(0xFFF2F3F5) : Colors.white;
-      fg = g1Ink;
+      bg = p.dark ? const Color(0xFF2A2D33) : Colors.white;
+      fg = p.dark ? const Color(0xFFF2F3F5) : g1Ink;
     } else {
       bg = p.surface;
       fg = p.text;
@@ -149,7 +151,7 @@ class LikesPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
-        boxShadow: selected && !p.dark
+        boxShadow: selected
             ? const [
                 BoxShadow(
                   color: Color(0x1A17181C),
@@ -182,6 +184,20 @@ class LikesPage extends StatelessWidget {
           children: [
             ColoredBox(color: bg),
             DemoPhoto(DemoImages.forBlob(blob), x: 50, y: y),
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: const BoxDecoration(
+                  color: g1Lime,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: const DemoSvg(_check, size: 14),
+              ),
+            ),
             Positioned(left: 8, top: 8, child: badge),
             Positioned(
               left: 0,

@@ -10,6 +10,9 @@ class ProgressPage extends StatelessWidget {
   static const String _check =
       '<svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>';
 
+  static const String _chevron =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="#1F2A00" stroke-width="2.4" stroke-linecap="round"><path d="M9 5l7 7-7 7"></path></svg>';
+
   @override
   Widget build(BuildContext context) {
     final p = G1Palette.of(context);
@@ -68,26 +71,54 @@ class ProgressPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                Container(
-                  margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+                G1Tap(
+                  onTap: () => demoGo(context, 'NContract.dc.html'),
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: g1Lime,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('지금 할 일', style: g1Text(12, 500, g1OnLime)),
+                              Text(
+                                '계약서 확인하고 동의하기',
+                                style: g1Text(16, 700, g1OnLime),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const DemoSvg(_chevron, size: 18),
+                      ],
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: p.surface,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('함께 만들 콘텐츠', style: g1Text(12, 500, p.text)),
-                      const SizedBox(height: 4),
-                      Text(
-                        '“출근 전 30초, 오늘의 손목 루틴”',
-                        style: g1Text(17, 700, p.text),
-                      ),
-                    ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: _stat(p, '이번 협업 확보액', '350,000원')),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: G1Tap(
+                            onTap: () => demoGo(context, 'NProposals.dc.html'),
+                            child: _stat(p, '남은 캠페인 예산', '150,000원'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 Padding(
@@ -132,19 +163,30 @@ class ProgressPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                  child: Text(
-                    '상대의 동의와 최종 계약을 확인한 뒤 제작을 시작해요.',
-                    style: g1Text(12, 400, p.sub),
-                  ),
-                ),
               ],
             ),
           ),
         ),
-        g1BottomNav(context, 3),
+        g1BottomNav(context, 3, neutralDark: true),
       ],
+    );
+  }
+
+  /// 금액 칸. 두 칸이 같은 높이로 나란히 선다.
+  Widget _stat(G1Palette p, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: g1Text(11, 400, p.sub)),
+          Text(value, style: g1Text(15, 700, p.text)),
+        ],
+      ),
     );
   }
 

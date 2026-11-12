@@ -73,9 +73,9 @@ class _PayPageState extends State<PayPage> {
                     children: [
                       _row(p, '콘텐츠', '릴스 1편'),
                       const SizedBox(height: 12),
-                      _row(p, '2인 식사권', '방문 때 가게에서 제공', right: true),
+                      _row(p, '식사권 40,000원 · 2인', '방문 때 가게에서 제공', right: true),
                       const SizedBox(height: 12),
-                      _row(p, '조회수당 (최대)', '100,000원'),
+                      _row(p, '조회수 수당 (최대)', '60,000원'),
                       const SizedBox(height: 12),
                       _row(p, '서비스 수수료', '[수수료]'),
                       const SizedBox(height: 14),
@@ -98,7 +98,7 @@ class _PayPageState extends State<PayPage> {
                               ),
                             ),
                             Text(
-                              '100,000원+',
+                              '60,000원+',
                               style: g6Text(
                                 26,
                                 p.text,
@@ -111,7 +111,7 @@ class _PayPageState extends State<PayPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '조회수가 적어 다 쓰지 않은 금액은 7일 집계 후 돌려드려요.',
+                        '최대 60,000원, 실제는 조회수만큼, 남으면 7일 집계 후 환불해요.',
                         style: g6Text(12, p.sub, height: 1.6),
                       ),
                     ],
@@ -131,14 +131,20 @@ class _PayPageState extends State<PayPage> {
                               height: 52,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: i == _method ? p.selBg : p.unselBg,
+                                color: i == _method
+                                    ? (p.dark
+                                          ? const Color(0xFF33363D)
+                                          : p.selBg)
+                                    : p.unselBg,
                                 borderRadius: BorderRadius.circular(18),
                               ),
                               child: Text(
                                 _methods[i],
                                 style: g6Text(
                                   14,
-                                  i == _method ? p.selFg : p.unselFg,
+                                  p.dark || i != _method
+                                      ? p.unselFg
+                                      : p.selFg,
                                   weight: FontWeight.w500,
                                 ),
                               ),

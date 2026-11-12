@@ -35,10 +35,11 @@ class _OfferInboxPageState extends State<OfferInboxPage> {
                 )
               : _OfferCard(onDecline: () => setState(() => _declined = true)),
         ),
-        demoRoleNav(
-          current: 3,
-          fallback: DemoRole.creator,
-          activeColor: c.navActive,
+        // 꺼진 칸이 라이트·다크 모두 #8B9099, 켜진 칸은 공용 기본색(라이트 #17181C, 다크 #F2F3F5)이다.
+        DemoBottomNav(
+          items: demoRoleNavItems(demoRole.value ?? DemoRole.creator, 3),
+          inactiveColor: const Color(0xFF8B9099),
+          darkShadowOpacity: 0.12,
         ),
       ],
     );
@@ -164,7 +165,7 @@ class _OfferCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '2인 식사권 + 조회수당',
+                  '식사권 2인 + 조회수 수당',
                   style: g4Style(
                     20,
                     weight: FontWeight.w900,
@@ -173,7 +174,7 @@ class _OfferCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '조회 1회당 10원, 최대 10만 원. 김이 오르는 첫 숟가락 장면을 원해요.',
+                  '1,000회당 2,000원, 최대 60,000원. 김이 오르는 첫 숟가락 장면을 원해요.',
                   style: g4Style(14, color: soft, height: 1.55),
                 ),
                 const SizedBox(height: 10),

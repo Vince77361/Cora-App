@@ -111,7 +111,7 @@ const List<_Card> _cards = [
     href: 'NStoreView.dc.html',
     name: '한그릇 라멘',
     title: '김이 오르는\n첫 숟가락',
-    price: '2인 식사권 + 조회수당',
+    price: '식사권 + 조회수 수당',
     tags: ['소상공인', '팔로워무관'],
     bg: Color(0xFFF6E3C8),
     mutual: false,
@@ -125,7 +125,7 @@ const List<_Card> _cards = [
     tags: ['리빙', '솔직후기'],
     bg: Color(0xFFE7DDEE),
     mutual: false,
-    darkShapeOverrides: {0: Color(0xFF0F1012)},
+    darkShapeOverrides: {0: Color(0xFF2A2D33)},
     shapes: [
       _Shape(
         150,
@@ -329,7 +329,7 @@ class _CreatorDiscoverPageState extends State<CreatorDiscoverPage> {
           child: Container(
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: p.dark ? const Color(0xFF0F1012) : const Color(0xFFE6E8EB),
+              color: p.dark ? const Color(0xFF2A2D33) : const Color(0xFFE6E8EB),
               borderRadius: BorderRadius.circular(28),
               boxShadow: const [
                 BoxShadow(
@@ -350,11 +350,15 @@ class _CreatorDiscoverPageState extends State<CreatorDiscoverPage> {
             ),
           ),
         ),
-        demoRoleNav(
-          current: 0,
-          fallback: DemoRole.creator,
-          activeColor: p.dark ? _lime : null,
-        ),
+        // 다크 캔버스(`DarkCreatorDiscover`)의 하단 메뉴는 켜진 칸 #F2F3F5, 꺼진 칸 #8B9099다.
+        if (p.dark)
+          DemoBottomNav(
+            inactiveColor: const Color(0xFF8B9099),
+            darkShadowOpacity: 0.12,
+            items: demoRoleNavItems(demoRole.value ?? DemoRole.creator, 0),
+          )
+        else
+          demoRoleNav(current: 0, fallback: DemoRole.creator),
       ],
     );
   }
@@ -787,8 +791,10 @@ class _CreatorDiscoverPageState extends State<CreatorDiscoverPage> {
         file = 'Match.dc.html';
     }
     final match = _toast == 'match';
-    final bg = match ? _lime : (p.dark ? const Color(0xFF2A2D33) : _white);
-    final fg = match ? const Color(0xFF1F2A00) : (p.dark ? _white : g3Ink);
+    final bg = match ? _lime : (p.dark ? const Color(0xFF0F1012) : _white);
+    final fg = match
+        ? const Color(0xFF1F2A00)
+        : (p.dark ? const Color(0xFFF2F3F5) : g3Ink);
     final linkColor = match
         ? (p.dark ? const Color(0xFFF2F3F5) : g3Ink)
         : _lime;
@@ -801,7 +807,7 @@ class _CreatorDiscoverPageState extends State<CreatorDiscoverPage> {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: (match || p.dark)
+          boxShadow: match
               ? null
               : const [
                   BoxShadow(

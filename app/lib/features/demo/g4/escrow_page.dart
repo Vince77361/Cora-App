@@ -16,7 +16,7 @@ class EscrowPage extends StatelessWidget {
     ['가게 결제 완료', 'Cora가 금액을 보관해요', 'done'],
     ['방문하고 촬영하기', '식사권은 방문 때 보여주세요', 'now'],
     ['콘텐츠 올리고 링크 제출', '11월 23일까지', 'todo'],
-    ['7일간 조회수 집계 후 지급', '최대 10만 원', 'todo'],
+    ['7일간 조회수 집계 후 지급', '최대 6만 원', 'todo'],
   ];
 
   @override
@@ -40,8 +40,30 @@ class EscrowPage extends StatelessWidget {
                   ),
                 ),
                 _Summary(c: c),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => demoGo(context, 'NMetrics.dc.html'),
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: c.fill,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('조회 자료와 보상 계산 확인', style: g4Style(14, color: c.text)),
+                        Text('미확인', style: g4Style(14, color: c.sub)),
+                      ],
+                    ),
+                  ),
+                ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: Column(
                     children: [
                       for (var i = 0; i < _rows.length; i++)
@@ -139,7 +161,7 @@ class _Summary extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '100,000원',
+            '60,000원',
             style: g4Style(
               40,
               weight: FontWeight.w900,
@@ -148,7 +170,7 @@ class _Summary extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text('+ 2인 식사권 (방문 때 사용)', style: g4Style(14, color: c.sub)),
+          Text('+ 식사권 40,000원 · 2인 (방문 때 사용)', style: g4Style(14, color: c.sub)),
           const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.only(top: 16),
@@ -158,11 +180,11 @@ class _Summary extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: _Stat(c: c, label: '지금 받을 금액', value: '43,200원'),
+                  child: _Stat(c: c, label: '지금 받을 금액', value: '25,000원'),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _Stat(c: c, label: '조회수', value: '4,320회'),
+                  child: _Stat(c: c, label: '조회수', value: '12,500회'),
                 ),
               ],
             ),
@@ -211,11 +233,15 @@ class _Step extends StatelessWidget {
     final Color dotBg;
     final Color dotFg;
     if (c.dark) {
-      dotBg = done || now ? const Color(0xFFF2F3F5) : const Color(0xFF1C1E22);
-      dotFg = done
-          ? G4Colors.lime
+      dotBg = done
+          ? const Color(0xFF2A2D33)
           : now
-          ? const Color(0xFF0F1012)
+          ? G4Colors.lime
+          : const Color(0xFF1C1E22);
+      dotFg = done
+          ? const Color(0xFFF2F3F5)
+          : now
+          ? G4Colors.onLime
           : const Color(0xFFA0A4AD);
     } else {
       dotBg = done

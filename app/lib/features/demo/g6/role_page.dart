@@ -119,17 +119,34 @@ class _RolePageState extends State<RolePage> {
           ),
         ),
         G6BottomBar(
-          child: G6PillButton(
-            label: cur.next,
-            bg: dark ? const Color(0xFFF2F3F5) : G6Palette.lime,
-            fg: dark ? const Color(0xFF17181C) : G6Palette.onLime,
-            weight: dark ? FontWeight.w500 : FontWeight.w700,
-            // 역할의 첫 화면에 들어가면 로그인 쪽 화면을 비운다. 홈에서 뒤로 밀어 로그인으로 돌아가지 않게.
-            onTap: () {
-              // 고른 역할을 기억한다. 이 뒤의 링크와 하단 메뉴는 이 역할의 화면 안에서만 돈다.
-              demoRole.value = DemoRole.values[_pick];
-              demoReset(context, cur.href);
-            },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              G6PillButton(
+                label: cur.next,
+                bg: G6Palette.lime,
+                fg: G6Palette.onLime,
+                // 역할의 첫 화면에 들어가면 로그인 쪽 화면을 비운다. 홈에서 뒤로 밀어 로그인으로 돌아가지 않게.
+                onTap: () {
+                  // 고른 역할을 기억한다. 이 뒤의 링크와 하단 메뉴는 이 역할의 화면 안에서만 돈다.
+                  demoRole.value = DemoRole.values[_pick];
+                  demoReset(context, cur.href);
+                },
+              ),
+              const SizedBox(height: 6),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => demoGo(context, 'Main.dc.html'),
+                child: Container(
+                  height: 44,
+                  alignment: Alignment.center,
+                  child: Text(
+                    '등록 없이 먼저 둘러보기',
+                    style: g6Text(14, p.sub, weight: FontWeight.w500),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -140,17 +157,13 @@ class _RolePageState extends State<RolePage> {
     final it = _items[i];
     final on = i == _pick;
     final bg = on
-        ? (dark ? const Color(0xFFF2F3F5) : const Color(0xFFE3E5E9))
-        : (dark ? const Color(0xFF0F1012) : const Color(0xFFFFFFFF));
-    final fg = on
-        ? (dark ? const Color(0xFF0F1012) : const Color(0xFF17181C))
-        : (dark ? const Color(0xFFF2F3F5) : const Color(0xFF17181C));
+        ? (dark ? const Color(0xFF33363D) : const Color(0xFFE3E5E9))
+        : (dark ? const Color(0xFF2A2D33) : const Color(0xFFFFFFFF));
+    final fg = dark ? const Color(0xFFF2F3F5) : const Color(0xFF17181C);
     final dot = on
-        ? (dark ? const Color(0xFF0F1012) : G6Palette.lime)
+        ? G6Palette.lime
         : (dark ? const Color(0xFF2A2D33) : const Color(0xFFE6E8EB));
-    final check = on
-        ? (dark ? const Color(0xFFF2F3F5) : G6Palette.onLime)
-        : Colors.transparent;
+    final check = on ? G6Palette.onLime : Colors.transparent;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _pick = i),

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../shared/demo_ui.dart';
 import 'g1_ui.dart';
 
-/// 06 조건 협의 (`Terms.dc.html`). 세부 조건은 하나만 펼쳐진다(처음에는 `추천된 이유`).
+/// 06 받은 제안 · 판본 1 (`Terms.dc.html`). 세부 조건은 하나만 펼쳐진다(처음에는 `추천된 이유`).
 class TermsPage extends StatefulWidget {
   const TermsPage({super.key});
 
@@ -126,7 +126,7 @@ class _TermsPageState extends State<TermsPage> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        '이 조건으로 협의',
+                        '이 판본 수락',
                         style: g1Text(15, 700, g1OnLime),
                       ),
                     ),
@@ -208,14 +208,38 @@ class _TermsPageState extends State<TermsPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('협의 전 초안', style: g1Text(15, 700, p.sub)),
-                    Text('서로 관심', style: g1Text(12, 500, p.text)),
+                    Text('받은 제안 · 판본 1', style: g1Text(15, 700, p.sub)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: g1Lime,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text('내가 응답할 차례', style: g1Text(12, 500, g1OnLime)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 14),
+                // 격자 칸처럼 세 칸의 높이를 맞춘다.
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _stat(p, '현금 고정비', '30만 원', 18, 900, ls: -0.03),
+                      const SizedBox(width: 6),
+                      _stat(p, '혜택', '제품 제공', 15, 700),
+                      const SizedBox(width: 6),
+                      _stat(p, '성과 추가', '없음', 15, 700),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Text(
-                  '30만 원',
-                  style: g1Text(44, 900, p.text, ls: -0.05, height: 1),
+                  '수락하면 이 판본 조건으로 계약 준비를 시작해요. 최대 현금 부담 30만 원.',
+                  style: g1Text(12, 400, p.sub),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -248,6 +272,34 @@ class _TermsPageState extends State<TermsPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 핵심 조건 한 칸. 세 칸이 같은 너비로 나란히 선다.
+  Widget _stat(
+    G1Palette p,
+    String label,
+    String value,
+    double size,
+    int weight, {
+    double ls = 0,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: g1Text(11, 400, p.sub)),
+            const SizedBox(height: 2),
+            Text(value, style: g1Text(size, weight, p.text, ls: ls)),
+          ],
+        ),
       ),
     );
   }

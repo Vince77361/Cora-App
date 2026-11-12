@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../shared/demo_ui.dart';
@@ -16,10 +17,15 @@ class StoreLinkPage extends StatefulWidget {
 
 class _StoreLinkPageState extends State<StoreLinkPage> {
   final _focus = FocusNode();
+  final _expFocus = FocusNode();
+  late final TapGestureRecognizer _manual = TapGestureRecognizer()
+    ..onTap = () => demoGo(context, 'NStoreManual.dc.html');
 
   @override
   void dispose() {
     _focus.dispose();
+    _expFocus.dispose();
+    _manual.dispose();
     super.dispose();
   }
 
@@ -48,7 +54,7 @@ class _StoreLinkPageState extends State<StoreLinkPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '가게 링크만 넣으면\n소개 페이지를 만들어 드려요.',
+                        '가게 링크 하나면 돼요.',
                         style: g5Text(
                           28,
                           pal.text,
@@ -59,7 +65,7 @@ class _StoreLinkPageState extends State<StoreLinkPage> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        '사진, 메뉴, 영업시간을 링크에서 가져와요. 2개 이상 넣으면 더 정확해요.',
+                        '네이버 지도, 캐치테이블, 인스타그램, 체험단 후기 글 중 무엇이든 괜찮아요. 가입 없이 먼저 볼 수 있어요.',
                         style: g5Text(15, pal.sub, height: 1.6),
                       ),
                     ],
@@ -72,7 +78,7 @@ class _StoreLinkPageState extends State<StoreLinkPage> {
                       _linkCard(
                         pal,
                         '네이버 지도',
-                        '사진 12장, 메뉴 8개 찾음',
+                        '메뉴 12개, 사진 34장, 후기 58개 찾음',
                         'naver.me/[가게 링크]',
                       ),
                       const SizedBox(height: 10),
@@ -83,62 +89,40 @@ class _StoreLinkPageState extends State<StoreLinkPage> {
                         'app.catchtable.co.kr/[가게 링크]',
                       ),
                       const SizedBox(height: 10),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: _focus.requestFocus,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: pal.card,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '인스타그램 · 선택',
-                                style: g5Text(
-                                  13,
-                                  pal.sub,
-                                  weight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              TextField(
-                                focusNode: _focus,
-                                keyboardType: TextInputType.url,
-                                cursorColor: pal.text,
-                                style: g5Text(15, pal.text),
-                                decoration: InputDecoration(
-                                  isDense: true,
-                                  isCollapsed: true,
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                  contentPadding: EdgeInsets.zero,
-                                  filled: false,
-                                  hintText: 'instagram.com/가게계정',
-                                  // 브라우저 기본 placeholder 색.
-                                  hintStyle: g5Text(
-                                    15,
-                                    const Color(0xFF757575),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      _inputCard(
+                        pal,
+                        _expFocus,
+                        '체험단 후기 글 · 선택 · 인스타 게시물로 바꿔 드려요',
+                        'blog.naver.com/[후기 글]',
+                      ),
+                      const SizedBox(height: 10),
+                      _inputCard(
+                        pal,
+                        _focus,
+                        '인스타그램 · 선택',
+                        'instagram.com/가게계정',
                       ),
                     ],
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
-                  child: Text(
-                    '가져온 정보는 다음 화면에서 고칠 수 있어요. 공개 정보만 사용해요.',
+                  child: Text.rich(
+                    TextSpan(
+                      text: '가져온 정보는 다음 화면에서 고칠 수 있어요. 공개 정보만 사용해요. ',
+                      children: [
+                        TextSpan(
+                          text: '링크가 없거나 안 열리면 직접 입력',
+                          recognizer: _manual,
+                          style: TextStyle(
+                            color: pal.text,
+                            fontWeight: FontWeight.w500,
+                            decoration: TextDecoration.underline,
+                            decorationColor: pal.text,
+                          ),
+                        ),
+                      ],
+                    ),
                     style: g5Text(13, pal.sub, height: 1.6),
                   ),
                 ),
@@ -161,6 +145,50 @@ class _StoreLinkPageState extends State<StoreLinkPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _inputCard(
+    G5Palette pal,
+    FocusNode focus,
+    String label,
+    String hint,
+  ) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: focus.requestFocus,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: pal.card,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: g5Text(13, pal.sub, weight: FontWeight.w500)),
+            const SizedBox(height: 6),
+            TextField(
+              focusNode: focus,
+              keyboardType: TextInputType.url,
+              cursorColor: pal.text,
+              style: g5Text(15, pal.text),
+              decoration: InputDecoration(
+                isDense: true,
+                isCollapsed: true,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+                filled: false,
+                hintText: hint,
+                // 브라우저 기본 placeholder 색.
+                hintStyle: g5Text(15, const Color(0xFF757575)),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -116,8 +116,42 @@ class StorePagePage extends StatelessWidget {
                     ],
                   ),
                 ),
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: pal.card,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text.rich(
+                          TextSpan(
+                            text: 'cora.page/l/hangeureut-ramen ',
+                            children: [
+                              TextSpan(
+                                text: '· 공개 페이지',
+                                style: TextStyle(color: pal.sub),
+                              ),
+                            ],
+                          ),
+                          style: g5Text(13, pal.text),
+                        ),
+                      ),
+                      Text(
+                        '공유',
+                        style: g5Text(13, pal.text, weight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Column(
                     children: [
                       IntrinsicHeight(
@@ -167,7 +201,7 @@ class StorePagePage extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            '크리에이터에게 보여줄 소개',
+                            '이런 가게가 맞나요? · 탭해서 고치기',
                             style: g5Text(
                               12,
                               pal.text,
@@ -197,7 +231,7 @@ class StorePagePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '진한 국물을 12시간 끓이는 작은 라멘집이에요. 김이 오르는 첫 숟가락 장면을 담아주세요.',
+                        '#진한국물 #바좌석 #조용한오후 · 손님들이 자주 한 말: “국물이 진해요”, “혼밥하기 좋아요”. 공개 페이지에는 크리에이터 지원하기 버튼이 보여요.',
                         style: g5Text(15, pal.text, height: 1.55),
                       ),
                     ],
@@ -218,22 +252,26 @@ class StorePagePage extends StatelessWidget {
                 Expanded(
                   flex: 10,
                   child: G5BigButton(
-                    label: '정보 고치기',
-                    background: pal.card,
-                    foreground: pal.text,
+                    label: 'AI로 직접 제작',
+                    background: pal.dark
+                        ? const Color(0xFF2A2D33)
+                        : const Color(0xFFF2F3F5),
+                    foreground: pal.dark
+                        ? const Color(0xFFF2F3F5)
+                        : G5Palette.ink,
                     size: 15,
                     weight: FontWeight.w500,
-                    onTap: () {},
+                    onTap: () => demoGo(context, 'NStoreAI.dc.html'),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   flex: 16,
                   child: G5BigButton(
-                    label: '이대로 다음',
+                    label: '크리에이터 모집',
                     background: G5Palette.lime,
                     foreground: G5Palette.limeInk,
-                    onTap: () => demoGo(context, 'NStoreAI.dc.html'),
+                    onTap: () => demoGo(context, 'NBudget.dc.html'),
                   ),
                 ),
               ],

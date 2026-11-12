@@ -162,10 +162,10 @@ void main() {
     await start(tester, DemoPaths.brandDiscover);
     demoRouter.push(DemoPaths.likes);
     await settle(tester);
-    demoRouter.push(DemoPaths.match);
+    demoRouter.push(DemoPaths.pass);
     await settle(tester);
     expect(stackSize(), 3);
-    await tapText(tester, '계속 둘러보기');
+    await tapText(tester, '이유 없이 다음 보기');
     expect(path(), DemoPaths.brandDiscover);
     expect(stackSize(), 1);
   });

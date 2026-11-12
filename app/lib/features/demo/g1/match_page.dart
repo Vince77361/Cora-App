@@ -89,7 +89,24 @@ class MatchPage extends StatelessWidget {
               children: [
                 const SizedBox(height: 8),
                 _avatars(),
-                const SizedBox(height: 26),
+                const SizedBox(height: 18),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: p.surface,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '느린 결, 일상의 주얼리 캠페인에서 연결',
+                      style: g1Text(12, 500, p.sub),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Text(
                   '서로를 골랐어요.',
                   textAlign: TextAlign.center,
@@ -138,13 +155,13 @@ class MatchPage extends StatelessWidget {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: p.dark ? const Color(0xFF0F1012) : g1Lime,
+                            color: g1Lime,
                             shape: BoxShape.circle,
                           ),
                           alignment: Alignment.center,
                           child: DemoSvg(
                             _arrow,
-                            color: p.dark ? Colors.white : g1OnLime,
+                            color: g1OnLime,
                             size: 18,
                           ),
                         ),
@@ -162,16 +179,16 @@ class MatchPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     alignment: Alignment.center,
-                    child: Text('협업 조건 확인하기', style: g1Text(16, 700, g1OnLime)),
+                    child: Text('받은 제안 보기 · 1건', style: g1Text(16, 700, g1OnLime)),
                   ),
                 ),
                 const SizedBox(height: 4),
                 G1Tap(
-                  onTap: () => demoGo(context, 'Main.dc.html'),
+                  onTap: () => demoGo(context, 'NBudget.dc.html'),
                   child: Container(
                     height: 44,
                     alignment: Alignment.center,
-                    child: Text('계속 둘러보기', style: g1Text(14, 500, p.sub)),
+                    child: Text('내가 먼저 제안하기', style: g1Text(14, 500, p.sub)),
                   ),
                 ),
               ],

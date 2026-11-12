@@ -280,7 +280,7 @@ class _PrinciplesPageState extends State<PrinciplesPage> {
                             child: Container(
                               height: 4,
                               color: p.dark
-                                  ? const Color(0xFF0F1012)
+                                  ? const Color(0xFFF2F3F5)
                                   : const Color(0xFF17181C),
                             ),
                           ),

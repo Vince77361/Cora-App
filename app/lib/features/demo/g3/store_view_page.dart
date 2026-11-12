@@ -14,6 +14,13 @@ class StoreViewPage extends StatefulWidget {
 
 class _StoreViewPageState extends State<StoreViewPage> {
   bool _applied = false;
+  final _pitchFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _pitchFocus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +34,8 @@ class _StoreViewPageState extends State<StoreViewPage> {
           children: [
             Positioned.fill(
               child: SingleChildScrollView(
-                // 아래 고정 영역(지원하기 / 지원했어요 상태 막대)에 가리지 않게 비운다.
-                padding: const EdgeInsets.only(bottom: 120),
+                // 아래 고정 영역(한 줄 제안 칸과 지원 / 지원했어요 상태 막대)에 가리지 않게 비운다.
+                padding: const EdgeInsets.only(bottom: 200),
                 child: Stack(
                   children: [
                     Positioned(
@@ -53,7 +60,56 @@ class _StoreViewPageState extends State<StoreViewPage> {
               child: Container(
                 color: p.bg,
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-                child: _applied ? _appliedBar(p) : _applyBar(context, p),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _pitch(p),
+                    _applied ? _appliedBar(p) : _applyBar(context, p),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pitch(G3Palette p) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _pitchFocus.requestFocus,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: p.card,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '이 가게라면 이렇게 찍겠다 · 한 줄 · 조회수가 없어도 지원할 수 있어요',
+              style: TextStyle(fontSize: 12, color: p.sub),
+            ),
+            const SizedBox(height: 4),
+            TextField(
+              focusNode: _pitchFocus,
+              cursorColor: p.text,
+              style: TextStyle(fontSize: 15, color: p.text),
+              decoration: const InputDecoration(
+                isDense: true,
+                isCollapsed: true,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+                filled: false,
+                hintText: '김 오르는 첫 숟가락을 슬로모션으로',
+                // 브라우저 기본 placeholder 색.
+                hintStyle: TextStyle(fontSize: 15, color: Color(0xFF757575)),
               ),
             ),
           ],
@@ -68,20 +124,22 @@ class _StoreViewPageState extends State<StoreViewPage> {
         Expanded(
           flex: 10,
           child: G3Pill(
-            label: '가게 정보',
-            background: p.card,
-            color: p.text,
+            label: '내 방식으로 제안',
+            background: p.dark
+                ? const Color(0xFF2A2D33)
+                : const Color(0xFFF2F3F5),
+            color: p.dark ? const Color(0xFFF2F3F5) : g3Ink,
             height: 56,
             fontSize: 15,
             fontWeight: FontWeight.w500,
-            onTap: () => demoGo(context, 'NStorePage.dc.html'),
+            onTap: () => demoGo(context, 'NCounter.dc.html'),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           flex: 16,
           child: G3Pill(
-            label: '지원하기',
+            label: '조건 그대로 지원',
             background: p.accent,
             color: p.onAccent,
             height: 56,
@@ -95,10 +153,10 @@ class _StoreViewPageState extends State<StoreViewPage> {
   }
 
   Widget _appliedBar(G3Palette p) {
-    // 다크에서는 상태 막대 바탕이 #0F1012(화면 바탕과 같음), 글자 #FFFFFF, 취소 버튼 rgba(255,255,255,0.14).
-    final boxBg = p.dark ? const Color(0xFF0F1012) : p.card;
-    final boxFg = p.dark ? const Color(0xFFFFFFFF) : g3Ink;
-    final cancelBg = p.dark ? const Color(0x24FFFFFF) : const Color(0xFFFFFFFF);
+    // 상태 막대는 라이트·다크 모두 카드 바탕, 취소 버튼은 흰 바탕에 어두운 글자다.
+    final boxBg = p.card;
+    final boxFg = p.text;
+    const cancelBg = Color(0xFFFFFFFF);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
@@ -130,7 +188,7 @@ class _StoreViewPageState extends State<StoreViewPage> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: boxFg,
+                  color: g3Ink,
                 ),
               ),
             ),
@@ -274,7 +332,7 @@ class _StoreViewPageState extends State<StoreViewPage> {
                 Text('보상', style: TextStyle(fontSize: 12, color: p.text)),
                 const SizedBox(height: 4),
                 Text(
-                  '2인 식사권 + 조회 1회당 10원',
+                  '식사권 40,000원 · 2인 + 조회수 수당',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
@@ -283,7 +341,7 @@ class _StoreViewPageState extends State<StoreViewPage> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '조회수당은 최대 10만 원',
+                  '1,000회당 2,000원 · 1인 최대 60,000원',
                   style: TextStyle(fontSize: 13, color: p.text),
                 ),
               ],

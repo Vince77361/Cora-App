@@ -65,7 +65,7 @@ class _ReviewPageState extends State<ReviewPage> {
     final sel = _items[_sel];
     const lime = Color(0xFFC6FF3D);
     final trackBg = _ad
-        ? (p.dark ? const Color(0xFFF2F3F5) : lime)
+        ? lime
         : (p.dark ? const Color(0xFF2A2D33) : const Color(0xFFE6E8EB));
     final ctaBg = _ad ? lime : p.card;
     final ctaFg = _ad ? p.onAccent : p.sub;
@@ -158,7 +158,7 @@ class _ReviewPageState extends State<ReviewPage> {
                 ),
                 const SizedBox(height: 6),
                 G3Pill(
-                  label: '초안 확인 완료',
+                  label: '이 판본(v2) 게시 승인',
                   background: ctaBg,
                   color: ctaFg,
                   height: 56,
@@ -195,7 +195,7 @@ class _ReviewPageState extends State<ReviewPage> {
             Expanded(
               child: Center(
                 child: Text(
-                  '초안 v2 검토',
+                  '영상 v2 · 파일 #A12 검토',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
@@ -475,17 +475,10 @@ class _ReviewPageState extends State<ReviewPage> {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: p.dark
-                      ? const Color(0xFF0F1012)
-                      : const Color(0xFFC6FF3D),
+                  color: const Color(0xFFC6FF3D),
                   shape: BoxShape.circle,
                 ),
-                child: DemoSvg(
-                  _sendSvg,
-                  color: p.dark
-                      ? const Color(0xFFFFFFFF)
-                      : const Color(0xFF1F2A00),
-                ),
+                child: DemoSvg(_sendSvg, color: const Color(0xFF1F2A00)),
               ),
             ),
           ),

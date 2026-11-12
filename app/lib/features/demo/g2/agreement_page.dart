@@ -258,6 +258,31 @@ class AgreementPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: p.card,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('최대 현금 부담', style: g2Text(13, color: p.sub)),
+                            Text(
+                              '300,000원 → 350,000원',
+                              style: g2Text(
+                                13,
+                                color: p.text,
+                                weight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       Text(
                         '대화에서 정한 조건',
                         style: g2Text(
@@ -417,7 +442,7 @@ class AgreementPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '합의 기록과 최종 계약 체결은 별도예요.',
+                  '버전 1에 했던 수락은 버전 2에 적용되지 않아요. 합의 기록과 최종 계약 체결은 별도예요.',
                   textAlign: TextAlign.center,
                   style: g2Text(12, color: p.sub),
                 ),

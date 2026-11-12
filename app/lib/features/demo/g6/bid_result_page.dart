@@ -14,7 +14,7 @@ class BidResultPage extends StatelessWidget {
     // 다크 파일은 예산 카드 바탕이 화면 바탕과 같고 금액이 라임색이다.
     final cardBg = dark ? const Color(0xFF0F1012) : const Color(0xFFF8F9FA);
     final amount = dark ? G6Palette.lime : const Color(0xFF17181C);
-    final fill = dark ? const Color(0xFF0F1012) : const Color(0xFF17181C);
+    final fill = dark ? const Color(0xFFF2F3F5) : const Color(0xFF17181C);
     final listBg = p.card;
     return DemoFrame(
       background: p.bg,

@@ -33,8 +33,7 @@ class G5Palette {
     sub: Color(0xFFA0A4AD),
     card: Color(0xFF1C1E22),
     track: Color(0xFF2A2D33),
-    // artifact 다크의 진행 막대 채움색 그대로(#0F1012).
-    fill: Color(0xFF0F1012),
+    fill: Color(0xFFF2F3F5),
     pillBg: Color(0xFFF2F3F5),
   );
 

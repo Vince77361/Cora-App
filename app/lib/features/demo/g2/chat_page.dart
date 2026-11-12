@@ -169,7 +169,7 @@ class ChatPage extends StatelessWidget {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                '수락하기 전에는 내 추가 연락처가 공개되지 않아요. 수락 후에도 대화 관리에서 차단하거나 신고할 수 있어요.',
+                                '대화를 열어도 조건을 수락한 게 아니에요. 위 숫자는 협의 중인 제안이에요. 대화를 열기 전에는 내 연락처가 공개되지 않아요. 수락 후에도 대화 관리에서 차단하거나 신고할 수 있어요.',
                                 style: g2Text(14, color: p.sub, height: 1.6),
                               ),
                             ),
@@ -202,7 +202,7 @@ class ChatPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      '거절',
+                      '요청 거절',
                       style: g2Text(16, color: p.text, weight: FontWeight.w500),
                     ),
                   ),
@@ -220,7 +220,7 @@ class ChatPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        '대화 수락',
+                        '대화 열기',
                         style: g2Text(
                           16,
                           color: G2Palette.onLime,

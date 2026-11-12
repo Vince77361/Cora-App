@@ -80,7 +80,7 @@ class _BiddingPageState extends State<BiddingPage> {
     final perView = a / c.mid;
     final perViewText = '약 ${perView.round() < 1 ? 1 : perView.round()}원';
     final cardBg = dark ? const Color(0xFF0F1012) : const Color(0xFFFFFFFF);
-    final barFill = dark ? const Color(0xFF0F1012) : const Color(0xFF17181C);
+    final barFill = dark ? const Color(0xFFF2F3F5) : const Color(0xFF17181C);
     final circleText = dark ? const Color(0xFFE4FFB0) : G6Palette.onLime;
     final tileBg = p.card;
     return DemoFrame(

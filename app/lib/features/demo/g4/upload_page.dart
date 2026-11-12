@@ -180,7 +180,7 @@ class _UploadPageState extends State<UploadPage> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Text(
-                    '좋아요를 많이 받은 콘텐츠가 카드 첫 장에 먼저 보여요.',
+                    '대표 릴스 1개만 있어도 지원할 수 있어요. 좋아요를 많이 받은 콘텐츠가 카드 첫 장에 먼저 보여요.',
                     textAlign: TextAlign.center,
                     style: g4Style(12, color: c.sub),
                   ),
@@ -274,8 +274,8 @@ class _Cat extends StatelessWidget {
     final Color bg;
     final Color fg;
     if (c.dark) {
-      bg = on ? const Color(0xFFF2F3F5) : const Color(0xFF1C1E22);
-      fg = on ? const Color(0xFF0F1012) : const Color(0xFFF2F3F5);
+      bg = on ? const Color(0xFF33363D) : const Color(0xFF1C1E22);
+      fg = const Color(0xFFF2F3F5);
     } else {
       bg = on ? const Color(0xFFE3E5E9) : const Color(0xFFF8F9FA);
       fg = G4Colors.ink;

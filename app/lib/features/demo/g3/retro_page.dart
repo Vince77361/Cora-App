@@ -89,8 +89,10 @@ class _RetroPageState extends State<RetroPage> {
                     Expanded(
                       child: G3Pill(
                         label: '이번만 할래요',
-                        background: const Color(0xFFF2F3F5),
-                        color: g3Ink,
+                        background: p.dark
+                            ? const Color(0xFF2A2D33)
+                            : const Color(0xFFF2F3F5),
+                        color: p.dark ? const Color(0xFFF2F3F5) : g3Ink,
                         height: 56,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -100,20 +102,20 @@ class _RetroPageState extends State<RetroPage> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: G3Pill(
-                        label: '다시 만날래요',
+                        label: '새 제안 만들기',
                         background: const Color(0xFFC6FF3D),
                         color: const Color(0xFF1F2A00),
                         height: 56,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        onTap: () => demoGo(context, 'NKeepList.dc.html'),
+                        onTap: () => demoGo(context, 'NBudget.dc.html'),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '어느 쪽을 골라도 회고는 나만 볼 수 있게 저장돼요.',
+                  '회고는 나만 봐요. 새 제안은 지난 합의를 고치지 않고 새로 만들어요.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, height: 1.5, color: p.sub),
                 ),
@@ -161,11 +163,10 @@ class _RetroPageState extends State<RetroPage> {
             ],
           ),
           const SizedBox(height: 10),
-          // 다크에서는 구분선 색이 바탕(#0F1012)과 같아 보이지 않는다. artifact 그대로.
           Container(
             height: 3,
             decoration: BoxDecoration(
-              color: p.dark ? const Color(0xFF0F1012) : const Color(0xFF17181C),
+              color: p.dark ? const Color(0xFFF2F3F5) : const Color(0xFF17181C),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -278,7 +279,9 @@ class _RetroPageState extends State<RetroPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: on.contains(i) ? p.chipOn : p.card,
+                  color: on.contains(i)
+                      ? (p.dark ? const Color(0xFF33363D) : p.chipOn)
+                      : p.card,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -286,7 +289,9 @@ class _RetroPageState extends State<RetroPage> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: on.contains(i) ? p.onChipOn : p.onChipOff,
+                    color: on.contains(i) && !p.dark
+                        ? p.onChipOn
+                        : p.onChipOff,
                   ),
                 ),
               ),

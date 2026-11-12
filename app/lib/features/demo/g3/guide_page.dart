@@ -41,7 +41,7 @@ class GuidePage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '출근 전 30초, 오늘의 손목 루틴',
+                          '합의 버전 2 연결 · 출근 전 30초, 오늘의 손목 루틴',
                           style: TextStyle(fontSize: 13, color: p.sub),
                         ),
                         const SizedBox(height: 6),
@@ -121,14 +121,37 @@ class GuidePage extends StatelessWidget {
           child: Container(
             color: p.bg,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            child: G3Pill(
-              label: '이 방향으로 저장',
-              background: p.accent,
-              color: p.onAccent,
-              height: 54,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              onTap: () => demoGo(context, 'Review.dc.html'),
+            // 캔버스에서 "나만 보는 초안 저장"은 누르면 가는 곳이 없는 버튼이다.
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 10,
+                  child: G3Pill(
+                    label: '나만 보는 초안 저장',
+                    background: p.dark
+                        ? const Color(0xFF2A2D33)
+                        : const Color(0xFFF2F3F5),
+                    color: p.dark ? const Color(0xFFF2F3F5) : g3Ink,
+                    height: 54,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    onTap: () {},
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 13,
+                  child: G3Pill(
+                    label: '브랜드에 검토 요청',
+                    background: p.accent,
+                    color: p.onAccent,
+                    height: 54,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    onTap: () => demoGo(context, 'Review.dc.html'),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

@@ -173,11 +173,15 @@ class DemoBottomNav extends StatelessWidget {
     required this.items,
     this.activeColor,
     this.inactiveColor,
+    this.darkShadowOpacity = 0.28,
   });
 
   final List<DemoNavItem> items;
   final Color? activeColor;
   final Color? inactiveColor;
+
+  /// 다크 그림자 진하기. 2026-11-12 캔버스는 화면마다 0.28(01, B1, B2, C1)과 0.12(03, 07, 08, A6, A9)로 다르다.
+  final double darkShadowOpacity;
 
   @override
   Widget build(BuildContext context) {
@@ -200,7 +204,7 @@ class DemoBottomNav extends StatelessWidget {
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Color.fromRGBO(23, 24, 28, dark ? 0.28 : 0.12),
+              color: Color.fromRGBO(23, 24, 28, dark ? darkShadowOpacity : 0.12),
               offset: const Offset(0, 12),
               blurRadius: 32,
             ),
