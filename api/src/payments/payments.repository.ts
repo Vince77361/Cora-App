@@ -28,18 +28,14 @@ export class PaymentsRepository {
     return this.prisma.payment.findFirst({ where: { id, deletedAt: null } });
   }
 
-  // 협업의 보관을 시작시킨 결제: 승인된 결제 가운데 가장 먼저 승인된 것이다.
-  // 뒤늦게 승인돼 협업에 반영되지 못한 결제(끝난 협업, 이중 결제)는 항상 그 뒤에 승인된다.
-  findFundingPayment(collaborationId: string): Promise<Payment | null> {
-    return this.prisma.payment.findFirst({
-      where: {
-        collaborationId,
-        status: 'APPROVED',
-        pgTransactionId: { not: null },
-        deletedAt: null,
-      },
-      orderBy: [{ approvedAt: 'asc' }, { createdAt: 'asc' }],
-    });
+  // 협업의 보관을 시작시킨 결제. 승인 트랜잭션이 결제의 승인 시각과 협업의 fundedAt에 같은 시각(now)을 쓰므로,
+  // 승인된 결제 가운데 approvedAt이 협업의 fundedAt과 같은 것이 정확히 그 결제다.
+  // 뒤늦게 승인돼 협업에 반영되지 못한 결제(끝난 협업, 이중 결제)는 다른 시각에 승인되므로 섞이지 않는다.
+  async findFundingPayment(collaborationId: string): Promise<Payment | null> {
+    return (
+      (await this.mapFundingPayments([collaborationId])).get(collaborationId) ??
+      null
+    );
   }
 
   // 협업 여러 개의 보관을 시작시킨 결제(위와 같은 기준)를 한 번에. 키는 협업 id다.
@@ -53,10 +49,18 @@ export class PaymentsRepository {
         pgTransactionId: { not: null },
         deletedAt: null,
       },
-      orderBy: [{ approvedAt: 'asc' }, { createdAt: 'asc' }],
+      include: { collaboration: { select: { fundedAt: true } } },
+      orderBy: { createdAt: 'asc' },
     });
-    for (const row of rows) {
-      if (!map.has(row.collaborationId)) map.set(row.collaborationId, row);
+    for (const { collaboration, ...payment } of rows) {
+      if (
+        payment.approvedAt &&
+        collaboration.fundedAt &&
+        payment.approvedAt.getTime() === collaboration.fundedAt.getTime() &&
+        !map.has(payment.collaborationId)
+      ) {
+        map.set(payment.collaborationId, payment);
+      }
     }
     return map;
   }

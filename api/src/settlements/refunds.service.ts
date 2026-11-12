@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, Refund } from '@prisma/client';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import { PaymentPort } from '../integrations/payment/payment.port';
+import { JobRunContext } from '../jobs/job-scheduler';
 import { PaymentsService } from '../payments/payments.service';
 import { SettlementsRepository } from './settlements.repository';
 
@@ -41,8 +42,12 @@ export class RefundsService {
 
   // PG에 환급을 요청하고 DONE으로 바꾼다. PENDING이 아니면 아무 일도 하지 않으므로 같은 작업이 다시 돌아도 한 번만 나간다.
   // 요청이 나간 뒤 DONE 전에 죽어도 다시 돌 때 같은 키로 요청하므로 PG에서 한 번만 환급된다.
-  // 실패하면 운영자에게 알리고 던진다: 행은 PENDING으로 남아 큐가 다시 시도한다.
-  async execute(refundId: string): Promise<void> {
+  // 실패하면 던진다: 행은 PENDING으로 남아 큐가 다시 시도한다. 운영자에게는 마지막 시도에서만 알린다
+  // (재시도마다 알리면 일시적인 장애에 경보가 시도 수만큼 쌓인다). 마지막 시도인지 모르면 알린다.
+  async execute(
+    refundId: string,
+    context: JobRunContext = { finalAttempt: true },
+  ): Promise<void> {
     const refund = await this.repository.findRefundById(refundId);
     if (!refund || refund.status !== 'PENDING') return;
     try {
@@ -57,10 +62,12 @@ export class RefundsService {
       });
       await this.repository.markRefundDone(refund.id, externalId);
     } catch (error) {
-      await this.alertQuietly(
-        '환급을 보내지 못했어요. 확인해 주세요.',
-        `환급 ID: ${refund.id}`,
-      );
+      if (context.finalAttempt) {
+        await this.alertQuietly(
+          '환급을 보내지 못했어요. 확인해 주세요.',
+          `환급 ID: ${refund.id}`,
+        );
+      }
       throw error;
     }
   }

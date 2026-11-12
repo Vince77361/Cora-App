@@ -24,8 +24,15 @@ export type JobPayload =
   | PayoutJobPayload
   | CancelRequestJobPayload;
 
+// 큐가 실행 때 넘기는 정보. finalAttempt는 이 실행이 마지막 시도인지다(실패해도 더 이상 재시도하지 않는다).
+// 재시도마다 운영자에게 알리지 않고 마지막 시도에서만 알리려는 처리기가 쓴다. 안 넘기면 마지막 시도로 본다.
+export type JobRunContext = { finalAttempt: boolean };
+
 // 작업 처리기. 다시 실행돼도 같은 결과를 내야 하고, 시각은 Clock에서 읽는다.
-export type JobHandler = (payload: JobPayload) => Promise<void>;
+export type JobHandler = (
+  payload: JobPayload,
+  context?: JobRunContext,
+) => Promise<void>;
 
 // 지연 작업 등록 포트. 실제 구현은 BullMQ, 테스트는 FakeJobScheduler.
 export abstract class JobScheduler {

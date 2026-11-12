@@ -10,6 +10,7 @@ import request from 'supertest';
 import { scheduleSubmissionDeadlineJobs } from '../src/collaborations/collaboration-jobs';
 import { Clock } from '../src/common/clock';
 import { FakePaymentAdapter } from '../src/integrations/payment/fake-payment.adapter';
+import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
 import { PaymentPort } from '../src/integrations/payment/payment.port';
 import { PushPort } from '../src/integrations/push/push.port';
 import { JobScheduler } from '../src/jobs/job-scheduler';
@@ -749,6 +750,28 @@ describe('collaborations', () => {
       expect(await prisma.refund.count()).toBe(0);
     });
 
+    it('alerts the operator and keeps the refund pending when the PG refund fails during the cancel', async () => {
+      const s = await seed();
+      const alert = jest
+        .spyOn(app.get(OperatorAlertPort), 'alert')
+        .mockResolvedValue(undefined);
+      jest.spyOn(pg, 'refund').mockRejectedValue(new Error('pg down'));
+      // 취소 요청 안에서 환급을 한 번만 시도한다(작업이 아니라 시도 횟수 정보가 없다): 실패는 바로 운영자에게 알린다.
+      await cancel(s.collaborationId).expect(200);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe(
+        'CANCELLED',
+      );
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { amount: 110000, status: 'PENDING' },
+      ]);
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(alert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subject: '환급을 보내지 못했어요. 확인해 주세요.',
+        }),
+      );
+    });
+
     it('still cancels when the owner notification cannot be saved', async () => {
       const s = await seed();
       jest
@@ -762,6 +785,24 @@ describe('collaborations', () => {
   });
 
   describe('owner cancel request', () => {
+    it('alerts the operator when the PG refund fails while the creator accepts a cancel request', async () => {
+      const s = await seed();
+      const created = await requestCancel(s.collaborationId).expect(201);
+      const requestId = bodyOf(created).cancelRequest?.id as string;
+      const alert = jest
+        .spyOn(app.get(OperatorAlertPort), 'alert')
+        .mockResolvedValue(undefined);
+      jest.spyOn(pg, 'refund').mockRejectedValue(new Error('pg down'));
+      await accept(s.collaborationId, requestId).expect(200);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe(
+        'CANCELLED',
+      );
+      expect(await prisma.refund.findMany()).toMatchObject([
+        { status: 'PENDING' },
+      ]);
+      expect(alert).toHaveBeenCalledTimes(1);
+    });
+
     it('lets the owner request a cancel and the creator accept it', async () => {
       const s = await seed();
       const created = await requestCancel(s.collaborationId).expect(201);

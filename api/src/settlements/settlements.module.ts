@@ -70,10 +70,12 @@ export class SettlementsModule implements OnModuleInit {
 
   onModuleInit(): void {
     this.registry.register('view-snapshot', (p) => this.viewSnapshot.run(p));
-    this.registry.register('settle', (p) => this.settle.run(p));
+    this.registry.register('settle', (p, context) =>
+      this.settle.run(p, context),
+    );
     this.registry.register('payout-send', (p) => this.payoutSend.run(p));
-    this.registry.register('refund-unsubmitted', (p) =>
-      this.refundUnsubmitted.run(p),
+    this.registry.register('refund-unsubmitted', (p, context) =>
+      this.refundUnsubmitted.run(p, context),
     );
     this.registry.register('submit-reminder', (p) =>
       this.submitReminder.run(p),

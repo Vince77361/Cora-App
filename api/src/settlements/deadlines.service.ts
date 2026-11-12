@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Collaboration } from '@prisma/client';
+import { JobRunContext } from '../jobs/job-scheduler';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { postingsForFullRefund } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
@@ -24,7 +25,10 @@ export class DeadlinesService {
   // refund-unsubmitted 작업: 기한까지 제출이 없으면 낸 돈 전부(상한 + 수수료)를 돌려주고 협업을 끝낸다.
   // 같은 작업이 몇 번 돌아도 환급과 알림은 한 번씩이다. 환급 행은 장부·단계와 한 트랜잭션에서 만들고,
   // PG 환급과 알림은 커밋 뒤에 행을 보고 이어서 한다(커밋 뒤에 죽어 다시 돌아도 마친다).
-  async refundUnsubmitted(collaborationId: string): Promise<void> {
+  async refundUnsubmitted(
+    collaborationId: string,
+    context?: JobRunContext,
+  ): Promise<void> {
     const collaboration = await this.collaborations.findById(collaborationId);
     if (!collaboration) return;
     if (collaboration.settlementMethod === 'NONE') {
@@ -40,7 +44,7 @@ export class DeadlinesService {
       unsubmittedRefundKey(collaboration.id),
     );
     if (!refund) return;
-    await this.refunds.execute(refund.id);
+    await this.refunds.execute(refund.id, context);
     await this.notifyRefunded(collaboration, refund.amount);
   }
 
@@ -59,18 +63,16 @@ export class DeadlinesService {
   }
 
   // 돈이 없는 협업(식사권만)은 돈 없이 끝낸다. 양쪽에 종료만 알린다(금액이 든 환급 문구는 보내지 않는다).
-  // 이미 끝난 협업에서 다시 돌 때는 알림만 마친다(같은 키라 한 건이다).
+  // 이 작업이 FUNDED → REFUNDED로 옮겼을 때만 알린다: 이미 다른 경로(운영 명령 등)가 옮긴 협업에
+  // "제출 기한이 지나 종료됐어요"라는 틀린 사유를 보내지 않는다.
   private async endWithoutMoney(collaboration: Collaboration): Promise<void> {
-    if (collaboration.stage === 'FUNDED') {
-      const moved = await this.collaborations.advance(
-        collaboration.id,
-        'FUNDED',
-        'REFUNDED',
-      );
-      if (!moved) return;
-    } else if (collaboration.stage !== 'REFUNDED') {
-      return;
-    }
+    if (collaboration.stage !== 'FUNDED') return;
+    const moved = await this.collaborations.advance(
+      collaboration.id,
+      'FUNDED',
+      'REFUNDED',
+    );
+    if (!moved) return;
     await this.notifyEnded(collaboration);
     await this.notifications.notify({
       userId: collaboration.commissionerId,

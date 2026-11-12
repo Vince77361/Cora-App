@@ -16,7 +16,9 @@ import { FakePayoutAdapter } from '../src/integrations/payout/fake-payout.adapte
 import { PayoutPort } from '../src/integrations/payout/payout.port';
 import { assertBalanced } from '../src/ledger/ledger-postings';
 import { PayoutAccountsService } from '../src/payout-accounts/payout-accounts.service';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { RefundsService } from '../src/settlements/refunds.service';
+import { SettlementsService } from '../src/settlements/settlements.service';
 import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
 import {
   ViewCountPort,
@@ -922,7 +924,6 @@ describe('settlements', () => {
       expect(
         await prisma.notification.count({ where: { kind: 'PAYOUT_DONE' } }),
       ).toBe(1);
-      expect(s.creatorId).toBe(USER_A);
     });
 
     it('sends the payout with the same key when the job died after sending', async () => {
@@ -985,7 +986,6 @@ describe('settlements', () => {
       clock.set(PAYDAY);
       await scheduler.runDue(clock.now());
       expect(payoutPort.sent).toHaveLength(1);
-      expect(s.collaborationId).toBe(row.collaborationId);
     });
 
     it('leaves the payout pending and does not fail the job when the account key is unreadable', async () => {
@@ -1005,7 +1005,6 @@ describe('settlements', () => {
       expect(ran.filter((j) => j.status === 'failed')).toEqual([]);
       expect(payoutPort.sent).toHaveLength(0);
       expect((await prisma.payout.findFirstOrThrow()).status).toBe('PENDING');
-      expect(s.collaborationId).toBeTruthy();
     });
 
     it('marks the payout failed and alerts the operator when the transfer fails', async () => {
@@ -1019,7 +1018,6 @@ describe('settlements', () => {
       expect(
         await prisma.notification.count({ where: { kind: 'PAYOUT_DONE' } }),
       ).toBe(0);
-      expect(s.creatorId).toBe(USER_A);
     });
 
     it('does not move payouts that are not yet due when an account is registered', async () => {
@@ -1031,7 +1029,6 @@ describe('settlements', () => {
         PAYDAY,
       );
       expect(jobKeys().filter((k) => k.startsWith('payout:'))).toHaveLength(1);
-      expect(s.ownerId).toBeTruthy();
     });
   });
   describe('unsubmitted refund', () => {
@@ -1259,6 +1256,222 @@ describe('settlements', () => {
       expect(
         await prisma.notification.count({ where: { kind: 'SUBMIT_REMINDER' } }),
       ).toBe(0);
+    });
+  });
+  describe('fix round 1', () => {
+    const settlePayload = (id: string) => ({ collaborationId: id });
+
+    it('halts instead of settling on day 4 when days 5 to 7 are unreadable and settle runs before the day 7 snapshot', async () => {
+      const s = await seed();
+      jest
+        .spyOn(app.get(ViewCountPort), 'read')
+        .mockResolvedValueOnce(100)
+        .mockResolvedValueOnce(200)
+        .mockResolvedValueOnce(300)
+        .mockResolvedValueOnce(400)
+        .mockResolvedValueOnce(500)
+        .mockRejectedValue(new ViewCountUnavailableError());
+      await submit(s.collaborationId, REELS_URL).expect(200);
+      // 0~6일의 작업을 돌린다(5, 6일은 읽지 못한다).
+      clock.set(new Date(T0.getTime() + 6 * DAY));
+      await scheduler.runDue(clock.now());
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
+      expect(alert).not.toHaveBeenCalled();
+
+      // 7일째: 정산 작업이 7일째 스냅샷 작업보다 먼저 돈다.
+      clock.set(new Date(T0.getTime() + 7 * DAY));
+      await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+      expect(await collaborationOf(s.collaborationId)).toMatchObject({
+        stage: 'HALTED',
+        stageBeforeHalt: 'COUNTING',
+        haltedReason: 'VIEW_COUNT_UNAVAILABLE',
+      });
+      expect(await prisma.settlement.count()).toBe(0);
+      expect(await prisma.payout.count()).toBe(0);
+      expect(await prisma.refund.count()).toBe(0);
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(100000);
+      expect(alert).toHaveBeenCalledTimes(1);
+      // 뒤늦게 도는 7일째 작업과 남은 작업은 취소돼 경보가 더 나가지 않는다.
+      await scheduler.runDue(clock.now());
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'COLLABORATION_HALTED' },
+        }),
+      ).toBe(2);
+    });
+
+    it('finishes the halt on a retried settle when the halt notice failed', async () => {
+      const s = await seed();
+      await submit(s.collaborationId, `${REELS_URL}?views=unavailable`).expect(
+        200,
+      );
+      jest
+        .spyOn(app.get(NotificationsService), 'notify')
+        .mockRejectedValueOnce(new Error('inbox down'));
+      await expect(
+        scheduler.registry.run('settle', settlePayload(s.collaborationId)),
+      ).rejects.toThrow('inbox down');
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('HALTED');
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'COLLABORATION_HALTED' },
+        }),
+      ).toBe(0);
+
+      await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'COLLABORATION_HALTED' },
+        }),
+      ).toBe(2);
+      expect(await prisma.settlement.count()).toBe(0);
+    });
+
+    it('sends no false alarm when the halt loses the race to another transition', async () => {
+      const s = await seed();
+      await submit(s.collaborationId, REELS_URL).expect(200);
+      // 정산이 먼저 이겨 협업이 이미 COUNTING이 아니다: 읽어 둔 낡은 협업 객체로 멈추려 한다.
+      const stale = await collaborationOf(s.collaborationId);
+      await prisma.collaboration.update({
+        where: { id: s.collaborationId },
+        data: { stage: 'SETTLED' },
+      });
+      await app.get(SettlementsService).halt(stale);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('SETTLED');
+      expect(alert).not.toHaveBeenCalled();
+      expect(await prisma.notification.count()).toBe(1);
+    });
+
+    it('rejects a submission at or after the due time and accepts one just before it', async () => {
+      const s = await seed();
+      const due = new Date(T0.getTime() + 14 * DAY);
+      clock.set(due);
+      const res = await submit(s.collaborationId, REELS_URL).expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('FUNDED');
+      clock.set(new Date(due.getTime() + DAY));
+      await submit(s.collaborationId, REELS_URL).expect(409);
+
+      clock.set(new Date(due.getTime() - 1));
+      await submit(s.collaborationId, REELS_URL).expect(200);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
+    });
+
+    it('does not announce an unsubmitted end that another path already made for a voucher-only collaboration', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      await prisma.collaboration.update({
+        where: { id: s.collaborationId },
+        data: { stage: 'REFUNDED' },
+      });
+      await scheduler.registry.run('refund-unsubmitted', {
+        collaborationId: s.collaborationId,
+      });
+      expect(await prisma.notification.count()).toBe(0);
+    });
+
+    it('refunds through the payment that started the escrow even when another approved payment is older', async () => {
+      const s = await seed();
+      // 뒤늦게 승인돼 협업에 반영되지 못한 다른 결제. 승인 시각이 더 이르다.
+      await prisma.payment.create({
+        data: {
+          collaborationId: s.collaborationId,
+          amountEscrow: 100000,
+          amountFee: 10000,
+          feeRate: 10,
+          method: 'CARD',
+          status: 'APPROVED',
+          pgTransactionId: 'tx-late',
+          requestedAt: new Date(T0.getTime() - 2 * DAY),
+          approvedAt: new Date(T0.getTime() - DAY),
+        },
+      });
+      clock.set(new Date(T0.getTime() + 14 * DAY));
+      await scheduler.runDue(clock.now());
+      expect(pg.refunds).toHaveLength(1);
+      expect(pg.refunds[0].pgTransactionId).toBe(`tx-${s.collaborationId}`);
+    });
+
+    describe('when the PG refund fails', () => {
+      it('alerts the operator only on the final attempt, keeps the refund pending and finishes on a later retry', async () => {
+        const s = await seed();
+        const refund = jest
+          .spyOn(pg, 'refund')
+          .mockRejectedValue(new Error('pg down'));
+        await submit(s.collaborationId, `${REELS_URL}?views=4320`).expect(200);
+        clock.set(new Date(T0.getTime() + 7 * DAY));
+        const payload = settlePayload(s.collaborationId);
+
+        // 마지막이 아닌 시도: 던지고, 행은 PENDING, 운영자 알림 없음. 크리에이터 정산 알림은 이미 나갔다.
+        await expect(
+          scheduler.registry.run('settle', payload, { finalAttempt: false }),
+        ).rejects.toThrow('pg down');
+        expect(alert).not.toHaveBeenCalled();
+        expect(await prisma.refund.findMany()).toMatchObject([
+          { amount: 56800, status: 'PENDING' },
+        ]);
+        expect(
+          await prisma.notification.count({
+            where: { kind: 'SETTLEMENT_CONFIRMED' },
+          }),
+        ).toBe(1);
+        expect(
+          await prisma.notification.count({
+            where: { kind: 'SETTLEMENT_REFUNDED' },
+          }),
+        ).toBe(0);
+
+        // 마지막 시도: 운영자에게 한 번 알린다.
+        await expect(
+          scheduler.registry.run('settle', payload, { finalAttempt: true }),
+        ).rejects.toThrow('pg down');
+        expect(alert).toHaveBeenCalledTimes(1);
+        expect(alert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            subject: '환급을 보내지 못했어요. 확인해 주세요.',
+          }),
+        );
+
+        // 나중 재시도(예: 운영자가 PG를 고친 뒤)는 같은 행으로 환급을 마친다.
+        refund.mockRestore();
+        await scheduler.registry.run('settle', payload);
+        expect(await prisma.refund.findMany()).toMatchObject([
+          { status: 'DONE' },
+        ]);
+        expect(pg.refunds).toHaveLength(1);
+        expect(
+          await prisma.notification.count({
+            where: { kind: 'SETTLEMENT_REFUNDED' },
+          }),
+        ).toBe(1);
+        expect(
+          await prisma.notification.count({
+            where: { kind: 'SETTLEMENT_CONFIRMED' },
+          }),
+        ).toBe(1);
+        expect(alert).toHaveBeenCalledTimes(1);
+      });
+
+      it('does the same for an unsubmitted refund', async () => {
+        const s = await seed();
+        jest.spyOn(pg, 'refund').mockRejectedValueOnce(new Error('pg down'));
+        const payload = { collaborationId: s.collaborationId };
+        await expect(
+          scheduler.registry.run('refund-unsubmitted', payload, {
+            finalAttempt: false,
+          }),
+        ).rejects.toThrow('pg down');
+        expect(alert).not.toHaveBeenCalled();
+        expect(await prisma.refund.findMany()).toMatchObject([
+          { amount: 110000, status: 'PENDING' },
+        ]);
+        await scheduler.registry.run('refund-unsubmitted', payload);
+        expect(await prisma.refund.findMany()).toMatchObject([
+          { status: 'DONE' },
+        ]);
+        expect(pg.refunds).toHaveLength(1);
+        expect(await accountOf(s.collaborationId, 'STORE_REFUND')).toBe(110000);
+      });
     });
   });
 });

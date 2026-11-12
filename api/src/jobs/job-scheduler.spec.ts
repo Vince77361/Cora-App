@@ -453,6 +453,29 @@ describe('BullMqJobScheduler', () => {
     warn.mockRestore();
   });
 
+  it('tells the handler whether this run is the last attempt', async () => {
+    const { scheduler, registry } = build();
+    const seen: unknown[] = [];
+    registry.register('settle', (_p, context) => {
+      seen.push(context);
+      return Promise.resolve();
+    });
+    const job = (attemptsMade: number) => ({
+      name: 'settle',
+      data: { payload: { collaborationId: 'c1' } },
+      attemptsMade,
+      opts: { attempts: 5 },
+    });
+    await scheduler.process(job(0));
+    await scheduler.process(job(3));
+    await scheduler.process(job(4));
+    expect(seen).toEqual([
+      { finalAttempt: false },
+      { finalAttempt: false },
+      { finalAttempt: true },
+    ]);
+  });
+
   it('runs the registered handler with the stored payload', async () => {
     const { scheduler, registry } = build();
     const seen: unknown[] = [];

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { JobPayload } from '../../jobs/job-scheduler';
+import type { JobPayload, JobRunContext } from '../../jobs/job-scheduler';
 import { SettlementsService } from '../settlements.service';
 import { collaborationIdOf } from './collaboration-job-payload';
 
@@ -8,12 +8,13 @@ import { collaborationIdOf } from './collaboration-job-payload';
 export class SettleHandler {
   constructor(private readonly settlements: SettlementsService) {}
 
-  run(payload: JobPayload): Promise<void> {
+  run(payload: JobPayload, context?: JobRunContext): Promise<void> {
     const collaborationId = collaborationIdOf(payload);
     // 장부의 중복 방지 키는 작업 키와 같은 'settle:' + 협업 id다.
     return this.settlements.settle(
       collaborationId,
       `settle:${collaborationId}`,
+      context,
     );
   }
 }

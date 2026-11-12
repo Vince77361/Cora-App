@@ -59,6 +59,11 @@ export class SubmissionsService {
     // 브랜드 계약의 제출(APPROVED → PUBLISHED)은 5·6번 계획이 이어서 구현한다. 지금은 이 계획의 가게 오퍼만 받는다.
     if (collaboration.kind !== 'STORE_OFFER') throw this.notSubmittable();
 
+    // 기한이 지난 제출은 받지 않는다: 늦게 도는 미제출 환급 작업과 경쟁해 기한 뒤의 링크가 집계에 들어가지 않게.
+    const dueAt = collaboration.submitDueAt;
+    if (dueAt && this.clock.now().getTime() >= dueAt.getTime()) {
+      throw this.notSubmittable();
+    }
     const url = rawUrl.trim();
     const format = readFormat(collaboration.terms);
     if (!isAcceptedLink(format, url)) {

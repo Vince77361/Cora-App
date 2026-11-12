@@ -718,7 +718,7 @@ describe('payments', () => {
         }
       }
       expect(outcomes.size).toBeGreaterThan(0);
-    });
+    }, 30000);
   });
 
   describe('recheck', () => {

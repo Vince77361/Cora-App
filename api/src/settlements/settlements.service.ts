@@ -10,7 +10,7 @@ import {
   ViewCountPort,
   ViewCountUnavailableError,
 } from '../integrations/view-count/view-count.port';
-import { JobScheduler } from '../jobs/job-scheduler';
+import { JobRunContext, JobScheduler } from '../jobs/job-scheduler';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   HALT_AFTER_UNREADABLE_DAYS,
@@ -57,32 +57,34 @@ export class SettlementsService {
     if (collaboration.stage !== 'COUNTING') return;
 
     await this.ensureSnapshot(collaboration, dayIndex);
-    const latest = await this.repository.latestSnapshots(
-      collaborationId,
-      HALT_AFTER_UNREADABLE_DAYS,
-    );
-    if (
-      latest.length === HALT_AFTER_UNREADABLE_DAYS &&
-      latest.every((s) => s.views === null)
-    ) {
-      await this.halt(collaboration);
-    }
+    await this.haltIfUnreadable(collaboration);
   }
 
   // settle 작업: 7일 집계가 끝난 협업을 정산한다. 같은 작업이 몇 번 돌아도 지급·환급·알림은 한 번씩만 일어난다.
   // key는 장부의 중복 방지 키다('settle:' + 협업 id).
   // 커밋(정산 행, 장부, 단계, 지급·환급 행)은 한 트랜잭션이고, 그 뒤 단계(작업 등록, PG 환급, 알림)는 정산 행을 보고 이어서 한다.
   // 그래서 커밋 뒤에 죽어 다시 돌 때는 단계가 이미 SETTLED여도 남은 단계를 마친다.
-  async settle(collaborationId: string, key: string): Promise<void> {
+  async settle(
+    collaborationId: string,
+    key: string,
+    context?: JobRunContext,
+  ): Promise<void> {
     const collaboration = await this.collaborations.findById(collaborationId);
     if (!collaboration) return;
+    // 조회수를 읽지 못해 멈추는 도중에 죽었다면 남은 정리(작업 취소, 알림)를 마친다.
+    if (isViewCountHalt(collaboration)) {
+      await this.finishHalt(collaboration);
+      return;
+    }
     if (collaboration.stage === 'COUNTING') {
       if ((await this.settleCounting(collaboration, key)) !== 'settled') return;
     } else if (collaboration.stage !== 'SETTLED') {
       return;
     }
     const settlement = await this.repository.findSettlement(collaborationId);
-    if (settlement) await this.finishSettlement(collaboration, settlement);
+    if (settlement) {
+      await this.finishSettlement(collaboration, settlement, context);
+    }
   }
 
   private async settleCounting(
@@ -92,9 +94,11 @@ export class SettlementsService {
     // 7일째 줄이 없으면 이 자리에서 읽는다: 같은 시각의 7일째 작업과 이 작업의 실행 순서에 기대지 않는다
     // (같은 날 줄은 유일 제약이 하나만 남긴다).
     await this.ensureSnapshot(collaboration, SNAPSHOT_DAYS);
+    // 7일째 작업이 먼저 돌았다면 그 작업이 했을 판정을 여기서도 한다: 5~7일을 읽지 못했는데 4일째 값으로 정산하면 안 된다.
+    if (await this.haltIfUnreadable(collaboration)) return 'halted';
     const snapshots = await this.repository.listSnapshots(collaboration.id);
     const finalViews = pickFinalViews(snapshots);
-    // 읽은 값이 하나도 없다: 0으로 정산하지 않고 멈춘다.
+    // 읽은 값이 하나도 없다(위 판정에 걸리기 전의 경우): 0으로 정산하지 않고 멈춘다.
     if (finalViews === null) {
       await this.halt(collaboration);
       return 'halted';
@@ -164,19 +168,16 @@ export class SettlementsService {
   }
 
   // 커밋 뒤의 단계. 모두 같은 키라 다시 불러도 한 번만 일어난다.
-  // 돈(지급 작업 등록, PG 환급)을 먼저, 알림은 마지막에 한다.
+  // 크리에이터의 알림을 사장님 환급보다 앞에 둔다: PG 환급이 계속 실패해도 크리에이터의 정산 알림은 막히지 않는다.
   private async finishSettlement(
     collaboration: Collaboration,
     settlement: Settlement,
+    context?: JobRunContext,
   ): Promise<void> {
     const payout = await this.payouts.findByKey(
       settlePayoutKey(collaboration.id),
     );
     if (payout?.status === 'PENDING') await this.payouts.schedule(payout);
-    const refund = await this.refunds.findByKey(
-      settleRefundKey(collaboration.id),
-    );
-    if (refund) await this.refunds.execute(refund.id);
 
     const target = { kind: 'WALLET', id: null } as const;
     // 0원 정산의 알림("정산 0원…")은 보내지 않는다.
@@ -190,6 +191,10 @@ export class SettlementsService {
         dedupeKey: `settled:${collaboration.id}`,
       });
     }
+    const refund = await this.refunds.findByKey(
+      settleRefundKey(collaboration.id),
+    );
+    if (refund) await this.refunds.execute(refund.id, context);
     if (settlement.refundAmount > 0) {
       await this.notifications.notify({
         userId: collaboration.commissionerId,
@@ -221,13 +226,29 @@ export class SettlementsService {
     });
   }
 
+  // 가장 최근 세 줄이 모두 null이면(읽지 못한 날이 연속 3일) 멈춘다. 멈췄으면 true다.
+  // 날마다의 스냅샷 작업과 7일째의 정산 작업이 같은 판정을 쓴다: 어느 쪽이 먼저 돌아도 결과가 같다.
+  private async haltIfUnreadable(
+    collaboration: Collaboration,
+  ): Promise<boolean> {
+    const latest = await this.repository.latestSnapshots(
+      collaboration.id,
+      HALT_AFTER_UNREADABLE_DAYS,
+    );
+    if (
+      latest.length < HALT_AFTER_UNREADABLE_DAYS ||
+      latest.some((s) => s.views !== null)
+    ) {
+      return false;
+    }
+    await this.halt(collaboration);
+    return true;
+  }
+
   // 조회수 집계를 읽지 못해 협업을 멈춘다. 돈은 에스크로에 그대로 있다.
-  // 운영자 알림을 먼저 보낸다: 알림이 실패하면 단계가 그대로라 작업이 다시 돌 때 신호가 다시 나간다.
+  // 조건부 전이가 이겼을 때만(또는 이미 조회수 사유로 멈춰 있을 때만) 뒷정리와 운영자 알림으로 간다:
+  // 전이에서 졌다면(동시 정산 등) 멈춘 것이 아니므로 거짓 경보를 보내지 않는다.
   async halt(collaboration: Collaboration): Promise<void> {
-    await this.operatorAlert.alert({
-      subject: '조회수를 읽지 못해 협업이 멈췄어요. 확인해 주세요.',
-      body: `협업 ID: ${collaboration.id}`,
-    });
     await this.collaborations.advance(collaboration.id, 'COUNTING', 'HALTED', {
       stageBeforeHalt: 'COUNTING',
       haltedReason: VIEW_COUNT_HALT_REASON,
@@ -236,12 +257,18 @@ export class SettlementsService {
     if (fresh && isViewCountHalt(fresh)) await this.finishHalt(fresh);
   }
 
-  // 멈춘 뒤의 정리: 정산과 남은 조회수 작업을 취소하고 양쪽에 알린다.
+  // 멈춘 뒤의 정리: 정산과 남은 조회수 작업을 취소하고, 운영자와 양쪽에 알린다.
+  // 멈추는 도중에 죽어 다시 돌 때도 여기로 오므로, 운영자 알림은 이미 나갔어도 다시 나갈 수 있다(알림이 한 번도 안 가는 것보다 낫다).
+  // 사용자 알림은 같은 키라 한 건이다.
   private async finishHalt(collaboration: Collaboration): Promise<void> {
     await this.jobs.cancel(settleJobKey(collaboration.id));
     for (let day = 0; day <= SNAPSHOT_DAYS; day += 1) {
       await this.jobs.cancel(snapshotJobKey(collaboration.id, day));
     }
+    await this.operatorAlert.alert({
+      subject: '조회수를 읽지 못해 협업이 멈췄어요. 확인해 주세요.',
+      body: `협업 ID: ${collaboration.id}`,
+    });
     const target = { kind: 'COLLABORATION', id: collaboration.id } as const;
     const dedupeKey = `halted:${collaboration.id}`;
     await this.notifications.notify({

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { JobPayload } from '../../jobs/job-scheduler';
+import type { JobPayload, JobRunContext } from '../../jobs/job-scheduler';
 import { DeadlinesService } from '../deadlines.service';
 import { collaborationIdOf } from './collaboration-job-payload';
 
@@ -8,7 +8,10 @@ import { collaborationIdOf } from './collaboration-job-payload';
 export class RefundUnsubmittedHandler {
   constructor(private readonly deadlines: DeadlinesService) {}
 
-  run(payload: JobPayload): Promise<void> {
-    return this.deadlines.refundUnsubmitted(collaborationIdOf(payload));
+  run(payload: JobPayload, context?: JobRunContext): Promise<void> {
+    return this.deadlines.refundUnsubmitted(
+      collaborationIdOf(payload),
+      context,
+    );
   }
 }

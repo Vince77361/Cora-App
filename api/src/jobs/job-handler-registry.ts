@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { JobName } from './job-names';
-import type { JobHandler, JobPayload } from './job-scheduler';
+import type { JobHandler, JobPayload, JobRunContext } from './job-scheduler';
 
 export class NoJobHandlerError extends Error {
   constructor(readonly jobName: string) {
@@ -24,12 +24,16 @@ export class JobHandlerRegistry {
     this.handlers.set(name, handler);
   }
 
-  async run(name: JobName, payload: JobPayload): Promise<void> {
+  async run(
+    name: JobName,
+    payload: JobPayload,
+    context?: JobRunContext,
+  ): Promise<void> {
     const handler = this.handlers.get(name);
     if (!handler) {
       this.logger.warn(`처리기가 등록되지 않은 작업을 건너뛰어요: ${name}`);
       throw new NoJobHandlerError(name);
     }
-    await handler(payload);
+    await handler(payload, context);
   }
 }

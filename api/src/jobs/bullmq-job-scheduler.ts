@@ -150,9 +150,16 @@ export class BullMqJobScheduler
   async process(job: {
     name: string;
     data: { payload: JobPayload };
+    attemptsMade?: number;
+    opts?: { attempts?: number };
   }): Promise<void> {
+    // attemptsMade는 이 실행 전에 실패한 횟수다. 다음 실패가 마지막이면 이 실행이 마지막 시도다.
+    const finalAttempt =
+      (job.attemptsMade ?? 0) + 1 >= (job.opts?.attempts ?? 1);
     try {
-      await this.deps.registry.run(job.name as JobName, job.data.payload);
+      await this.deps.registry.run(job.name as JobName, job.data.payload, {
+        finalAttempt,
+      });
     } catch (e) {
       if (e instanceof NoJobHandlerError) {
         throw new UnrecoverableError(e.message);
