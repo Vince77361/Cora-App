@@ -63,6 +63,9 @@ class FakeStoreRepository implements StoreRepository {
 
   /// true이면 해당 호출이 [StoreFailure]를 던진다.
   bool failFetch = false;
+
+  /// 설정하면 [fetchMine]이 이 Completer가 끝날 때까지 기다린다(불러오는 중 화면을 본다).
+  Completer<void>? holdFetch;
   bool failAnalyze = false;
   bool failUpdate = false;
   bool failAdvance = false;
@@ -80,6 +83,7 @@ class FakeStoreRepository implements StoreRepository {
   @override
   Future<MyStore?> fetchMine() async {
     fetchCalls++;
+    await holdFetch?.future;
     if (failFetch) throw const StoreFailure();
     return store;
   }

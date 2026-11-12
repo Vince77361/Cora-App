@@ -3,11 +3,16 @@ import 'dart:typed_data';
 
 import 'package:cora/core/media/photo_picker.dart';
 import 'package:cora/core/navigation/app_routes.dart';
+import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/core/ui/cora_primary_button.dart';
+import 'package:cora/core/ui/cora_state_view.dart';
+import 'package:cora/features/auth/domain/current_user_provider.dart';
 import 'package:cora/features/store_onboarding/domain/my_store.dart';
+import 'package:cora/features/store_onboarding/domain/store_repository_provider.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/store_edit_page.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/store_page_preview_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_photos.dart';
@@ -270,5 +275,58 @@ void main() {
     uploader.hold!.complete();
     await tester.pumpAndSettle();
     expect(_saveAction(tester), isNotNull);
+  });
+
+  group('while the store is loading', () {
+    Future<void> pumpEdit(WidgetTester tester, FakeStoreRepository stores) =>
+        tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              storeRepositoryProvider.overrideWithValue(stores),
+              // 내 가게는 로그인한 사용자가 있어야 불러온다.
+              currentUserIdProvider.overrideWithValue('u1'),
+            ],
+            child: MaterialApp(
+              theme: coraLightTheme,
+              home: const StoreEditPage(),
+            ),
+          ),
+        );
+
+    testWidgets('shows the shared loading state until the store arrives', (
+      tester,
+    ) async {
+      final hold = Completer<void>();
+      await pumpEdit(
+        tester,
+        FakeStoreRepository(store: sampleStore())..holdFetch = hold,
+      );
+      await tester.pump();
+
+      expect(find.byType(CoraStateView), findsOneWidget);
+      expect(find.text('불러오는 중'), findsOneWidget);
+
+      hold.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(CoraStateView), findsNothing);
+      expect(find.text('가게 정보 고치기'), findsOneWidget);
+    });
+
+    testWidgets('shows the shared failed state and retries', (tester) async {
+      final stores = FakeStoreRepository(store: sampleStore())
+        ..failFetch = true;
+      await pumpEdit(tester, stores);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CoraStateView), findsOneWidget);
+      expect(find.text('가게 정보를 불러오지 못했어요.'), findsOneWidget);
+      expect(find.text('연결이 불안정해요. 잠시 뒤 다시 시도해 주세요.'), findsOneWidget);
+
+      stores.failFetch = false;
+      await tester.tap(find.text('다시 시도'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CoraStateView), findsNothing);
+      expect(find.text('가게 정보 고치기'), findsOneWidget);
+    });
   });
 }

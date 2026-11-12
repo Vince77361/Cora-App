@@ -13,9 +13,11 @@ import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
+import '../../../../core/ui/cora_state_view.dart';
 import '../../../../core/ui/cora_step_header.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../domain/my_store.dart';
+import '../viewmodels/my_store_view_model.dart';
 import '../viewmodels/store_edit_view_model.dart';
 import '../widgets/option_sheet.dart';
 import '../widgets/store_icons.dart';
@@ -40,6 +42,7 @@ class StoreEditPage extends ConsumerWidget {
 
   static const title = '가게 정보 고치기';
   static const saveLabel = '저장';
+  static const loadFailed = '가게 정보를 불러오지 못했어요.';
   static const saveFailed = '저장하지 못했어요. 다시 시도해 주세요.';
   static const photoTooLarge = '사진이 너무 커요. 5MB 이하로 골라 주세요.';
   static const photoFailed = '사진을 올리지 못했어요. 다시 시도해 주세요.';
@@ -54,8 +57,15 @@ class StoreEditPage extends ConsumerWidget {
       body: SafeArea(
         bottom: false,
         child: state.when(
-          loading: () => const SizedBox.expand(),
-          error: (_, _) => const SizedBox.expand(),
+          loading: () => const CoraStateView.loading(),
+          error: (_, _) => CoraStateView.loadFailed(
+            title: loadFailed,
+            // 가게는 `내 가게`를 거쳐 읽으므로 그쪽 실패도 함께 비워야 다시 불러온다.
+            onRetry: () {
+              ref.invalidate(myStoreViewModelProvider);
+              ref.invalidate(storeEditViewModelProvider);
+            },
+          ),
           data: (s) => _EditForm(initial: s, args: args),
         ),
       ),
