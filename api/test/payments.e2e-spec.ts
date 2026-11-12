@@ -332,7 +332,7 @@ describe('payments', () => {
       await pay(s.collaborationId, 'CRYPTO').expect(400);
     });
 
-    it('leaves exactly one pending payment when two creates arrive at the same time', async () => {
+    it('leaves exactly one pending payment when three creates arrive at the same time', async () => {
       const s = await seed();
       const results = await Promise.all([
         pay(s.collaborationId),

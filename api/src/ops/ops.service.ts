@@ -352,24 +352,36 @@ export class OpsService {
     };
   }
 
-  // 송금이 FAILED인 지급을 같은 중복 방지 키로 다시 보낸다. 지급일이 아니어도 바로 보낸다.
+  // 송금이 FAILED인 지급, 또는 지급일이 지났는데 송금 작업이 시도를 다 써서 PENDING으로 남은 지급을 같은 중복 방지 키로 다시 보낸다.
+  // FAILED는 지급일이 아니어도 바로 보내지만, PENDING은 지급일 전이면 거절한다(송금은 늘 수요일 묶음이다).
   async retryPayout(payoutId: string, actor: OpsActor): Promise<OpsResult> {
     this.assertActor(actor);
     this.assertUuid(payoutId, '지급');
     const payout = await this.payouts.findById(payoutId);
     if (!payout) throw new OpsError('지급을 찾을 수 없어요.');
-    if (payout.status !== 'FAILED') {
+    const wasPending = payout.status === 'PENDING';
+    if (payout.status !== 'FAILED' && !wasPending) {
       throw new OpsError(
-        `FAILED 상태의 지급만 다시 보낼 수 있어요. (지금: ${payout.status})`,
+        `FAILED 상태의 지급, 또는 지급일이 지난 PENDING 지급만 다시 보낼 수 있어요. (지금: ${payout.status})`,
+      );
+    }
+    if (
+      wasPending &&
+      payout.scheduledFor.getTime() > this.clock.now().getTime()
+    ) {
+      throw new OpsError(
+        '아직 지급일 전이라 다시 보낼 수 없어요. 지급일이 지난 뒤에 실행해 주세요. (PENDING)',
       );
     }
     await this.inCollaboration(payout.collaborationId, async (tx, c) => {
-      if (!(await this.payouts.reopenFailed(payout.id, tx))) {
+      // PENDING은 이미 대기라 되돌릴 것이 없다. 송금은 send가 같은 키로 한 번만 보내고 DONE 갱신도 조건부다.
+      if (!wasPending && !(await this.payouts.reopenFailed(payout.id, tx))) {
         throw this.conflict();
       }
       await this.finish(tx, 'retry-payout', c.id, actor, {
         payoutId: payout.id,
         amount: payout.amount,
+        previousStatus: payout.status,
       });
     });
     const warnings: string[] = [];
@@ -396,7 +408,7 @@ export class OpsService {
       status === 'DONE'
         ? `지급 ${won(payout.amount)}원을 보냈어요. (DONE)`
         : status === 'PENDING'
-          ? '지급을 대기로 되돌렸어요. 계좌가 없으면 계좌를 등록한 뒤 다음 지급일에 나가고, 아니면 작업 큐가 이어서 보내요. (PENDING)'
+          ? `지급이 ${wasPending ? '대기로 남아 있어요' : '대기로 되돌아갔어요'}. 계좌가 없으면 계좌를 등록한 뒤 다음 지급일에 나가고, 아니면 작업 큐가 이어서 보내요. (PENDING)`
           : `지급 상태: ${status}`,
     ];
     return { lines, warnings };

@@ -52,7 +52,8 @@ export const COMMAND_SPECS: CommandSpec[] = [
   },
   {
     name: 'retry-payout',
-    summary: 'FAILED 지급을 같은 중복 방지 키로 다시 보낸다.',
+    summary:
+      'FAILED·지급일이 지난 PENDING 지급을 같은 중복 방지 키로 다시 보낸다.',
     flags: [{ name: 'payout', kind: 'uuid', help: '지급 id' }],
   },
   {

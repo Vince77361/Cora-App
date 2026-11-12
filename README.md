@@ -74,7 +74,7 @@ yarn ops halt --collaboration <협업 id> --operator 김운영 --reason "신고 
 | `resume-settlement --collaboration <id> --views <n>` | 조회수를 읽지 못해 멈춘 협업을 주어진 조회수로 정산한다 |
 | `force-refund --collaboration <id>` | 보관 중인 전액과 수수료를 사장님에게 환급하고 `REFUNDED`로 끝낸다 |
 | `force-payout --collaboration <id> --amount <n>` | 보관액 안에서 `n`원을 지급하고 남은 금액을 환급한 뒤 `SETTLED`로 끝낸다(보관액보다 크면 거절) |
-| `retry-payout --payout <id>` | `FAILED` 지급을 같은 중복 방지 키로 다시 보낸다 |
+| `retry-payout --payout <id>` | `FAILED`·지급일이 지난 `PENDING` 지급을 같은 중복 방지 키로 다시 보낸다 |
 | `retry-refund --refund <id>` | `PENDING`·`FAILED` 환급을 같은 중복 방지 키로 다시 PG에 보낸다 |
 | `refund-payment --payment <id>` | 협업에 반영되지 못한 승인 결제(끝난 뒤 늦게 승인됐거나 두 번째 결제)를 전액 환불한다. 장부에 결제 승인 묶음과 전액 환급 묶음을 남긴다 |
 | `show --collaboration <id>` | 단계, 장부 계정별 잔액, 결제·지급·환급 상태를 보여 준다(읽기 전용, 감사 기록 없음, 계좌번호는 출력하지 않음) |

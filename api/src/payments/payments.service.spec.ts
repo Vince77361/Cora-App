@@ -19,7 +19,11 @@ import { OffersService } from '../offers/offers.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { PaymentsRepository } from './payments.repository';
-import { PaymentsService, RECHECK_MAX_ATTEMPTS } from './payments.service';
+import {
+  LATE_APPROVAL_SUBJECT,
+  PaymentsService,
+  RECHECK_MAX_ATTEMPTS,
+} from './payments.service';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const CREATOR = '22222222-2222-4222-8222-222222222222';
@@ -334,6 +338,26 @@ describe('PaymentsService', () => {
       expect(t.payments.rows).toHaveLength(0);
     });
 
+    it('refuses to create a payment when the collaboration was funded between the check and the write', async () => {
+      const t = build();
+      const funded = collaboration({ stage: 'FUNDED', fundedAt: T0 });
+      const original = t.collaborations.findById.bind(t.collaborations);
+      // 트랜잭션 밖의 확인은 아직 결제 대기, 트랜잭션 안의 재확인은 그사이 승인이 커밋된 뒤를 본다.
+      jest
+        .spyOn(t.collaborations, 'findById')
+        .mockImplementation((id: string, tx?: unknown) =>
+          tx === undefined
+            ? original(id)
+            : Promise.resolve(id === COLLAB ? { ...funded } : null),
+        );
+      const checkout = jest.spyOn(t.pg, 'createCheckout');
+      await expect(
+        t.service.create(OWNER, COLLAB, 'CARD'),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+      expect(t.payments.rows).toHaveLength(0);
+      expect(checkout).not.toHaveBeenCalled();
+    });
+
     it('still creates the payment when the recheck job cannot be scheduled', async () => {
       const t = build();
       jest
@@ -551,12 +575,41 @@ describe('PaymentsService', () => {
       expect(t.scheduler.pending()).toHaveLength(0);
     });
 
-    it('does not ask for a payment that is no longer pending', async () => {
+    it('does not ask for a payment that has already failed', async () => {
       const t = build();
-      t.payments.rows.push(payment({ status: 'CANCELLED' }));
+      t.payments.rows.push(payment({ status: 'FAILED' }));
       const spy = jest.spyOn(t.pg, 'fetchStatus');
       await t.service.recheck(PAYMENT, 1);
       expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('asks the PG about a payment superseded by a newer one and funds the collaboration when it was approved', async () => {
+      const t = build();
+      // 결제창을 닫고 다시 결제해 첫 결제가 밀려났는데, 그 결제의 웹훅이 사라진 경우.
+      t.payments.rows.push(payment({ status: 'CANCELLED' }));
+      t.payments.rows.push(payment({ id: SECOND_PAYMENT, status: 'PENDING' }));
+      t.pg.recordResult({ paymentId: PAYMENT, status: 'APPROVED' });
+      await t.service.recheck(PAYMENT, 1);
+      expect(t.payments.rows[0].status).toBe('APPROVED');
+      expect(t.collaborations.row.stage).toBe('FUNDED');
+      expect(t.ledgerPosts.map((p) => p.key)).toEqual([`payment:${PAYMENT}`]);
+      expect(t.alerts.alerts).toHaveLength(0);
+    });
+
+    it('alerts the operator when a superseded payment turns out approved after another payment funded', async () => {
+      const t = build();
+      t.collaborations.row = collaboration({
+        stage: 'FUNDED',
+        fundedAt: T0,
+        submitDueAt: new Date(T0.getTime() + 7 * DAY),
+      });
+      t.payments.rows.push(payment({ status: 'CANCELLED' }));
+      t.pg.recordResult({ paymentId: PAYMENT, status: 'APPROVED' });
+      await t.service.recheck(PAYMENT, 1);
+      expect(t.ledgerPosts).toHaveLength(0);
+      expect(t.alerts.alerts.map((a) => a.subject)).toEqual([
+        LATE_APPROVAL_SUBJECT,
+      ]);
     });
 
     it('finishes the steps after funding when a failed recheck job is run again', async () => {

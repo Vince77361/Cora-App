@@ -263,7 +263,9 @@ export class PaymentsService {
       });
       return;
     }
-    if (payment.status !== 'PENDING') return;
+    // 새 결제에 밀려난(CANCELLED) 결제도 결제창이 열려 있었다면 승인될 수 있다. 그 웹훅을 놓친 경우를 이 재확인이 잡는다.
+    // 실패(FAILED)한 결제만 건너뛴다.
+    if (payment.status !== 'PENDING' && payment.status !== 'CANCELLED') return;
     const found = await this.paymentPort.fetchStatus(payment.id);
     if (found.status === 'PENDING') {
       if (attempt < RECHECK_MAX_ATTEMPTS) {
@@ -317,7 +319,7 @@ export class PaymentsService {
           tx,
         ))
       ) {
-        // 같은 통지를 동시에 처리한 쪽이 먼저 바꿨거나, 그사이 결제가 취소됐다.
+        // 같은 통지를 동시에 처리한 쪽이 먼저 바꿨거나(APPROVED), 그사이 결제가 실패로 끝났다(FAILED).
         return rollback('already-handled');
       }
       if (

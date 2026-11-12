@@ -759,6 +759,63 @@ describe('ops commands', () => {
       expect(payoutPort.sent).toHaveLength(1);
     });
 
+    it('resends a pending payout whose send job gave up and marks it done once', async () => {
+      const s = await seed('SETTLED');
+      await registerAccount();
+      // 송금 작업이 시도를 다 써서 작업 없이 PENDING으로 남은 지급(지급일은 이미 지났다).
+      const payout = await failedPayout(s.collaborationId, 'PENDING');
+      expect(scheduler.pending()).toHaveLength(0);
+      const r = await withWho('retry-payout', '--payout', payout.id);
+      expect(r.exitCode).toBe(0);
+      expect(
+        await prisma.payout.findUniqueOrThrow({ where: { id: payout.id } }),
+      ).toMatchObject({ status: 'DONE' });
+      expect(payoutPort.sent).toEqual([
+        expect.objectContaining({
+          amount: 50000,
+          idempotencyKey: `payout:${payout.id}`,
+        }),
+      ]);
+      expect(
+        await prisma.notification.count({
+          where: { userId: USER_A, kind: 'PAYOUT_DONE' },
+        }),
+      ).toBe(1);
+      expect(await audits()).toHaveLength(1);
+      expect((await audits())[0]).toMatchObject({
+        command: 'retry-payout',
+        collaborationId: s.collaborationId,
+      });
+      // 이미 DONE이라 다시 실행하면 거절되고 송금은 한 번뿐이다.
+      expect(
+        (await withWho('retry-payout', '--payout', payout.id)).exitCode,
+      ).toBe(1);
+      expect(payoutPort.sent).toHaveLength(1);
+      expect(await audits()).toHaveLength(1);
+    });
+
+    it('refuses to resend a pending payout before its payday', async () => {
+      const s = await seed('SETTLED');
+      await registerAccount();
+      const payout = await prisma.payout.create({
+        data: {
+          collaborationId: s.collaborationId,
+          amount: 50000,
+          status: 'PENDING',
+          idempotencyKey: `settle-payout:${s.collaborationId}`,
+          scheduledFor: new Date(T0.getTime() + DAY),
+        },
+      });
+      const r = await withWho('retry-payout', '--payout', payout.id);
+      expect(r.exitCode).toBe(1);
+      expect(text(r)).toContain('지급일');
+      expect(payoutPort.sent).toHaveLength(0);
+      expect(await audits()).toHaveLength(0);
+      expect(
+        await prisma.payout.findUniqueOrThrow({ where: { id: payout.id } }),
+      ).toMatchObject({ status: 'PENDING' });
+    });
+
     it('marks the payout failed again and warns when the bank rejects it again', async () => {
       const s = await seed('SETTLED');
       await registerAccount('fail 김민지');

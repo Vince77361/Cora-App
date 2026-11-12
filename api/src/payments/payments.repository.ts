@@ -18,7 +18,7 @@ class Rollback<R> extends Error {
   }
 }
 
-// 결제 조회와 상태 변경은 모두 여기를 거친다. 상태 변경은 조건부 갱신(UPDATE ... WHERE status = 'PENDING')이라
+// 결제 조회와 상태 변경은 모두 여기를 거친다. 상태 변경은 조건부 갱신(승인은 WHERE status IN (PENDING, CANCELLED), 실패는 PENDING만)이라
 // 같은 통지가 동시에 여러 번 와도 한 번만 바뀌고, 바뀐 행이 0이면 false를 돌려 서비스가 "이미 처리됨"으로 본다.
 @Injectable()
 export class PaymentsRepository {
