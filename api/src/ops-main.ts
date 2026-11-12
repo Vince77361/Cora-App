@@ -15,8 +15,9 @@ async function main(): Promise<number> {
     return 1;
   }
   loadDotenv({ quiet: true });
-  // 작업을 올리기만 하고 실행하지 않는다: 작업자는 서버 프로세스에서만 돈다.
-  // 셸에 on이 적혀 있어도 덮어쓴다(운영 명령 안에서 작업이 돌면 같은 작업이 두 곳에서 돌 수 있다).
+  // 작업을 올리기만 하고 실행하지 않는다: 작업자는 서버 프로세스에서만 돈다(운영 명령 안에서 작업이 돌면 같은 작업이 두 곳에서 돈다).
+  // 셸이나 .env가 on이어도 작업자가 꺼지도록, JobsModule이 설정값(AppModule을 import할 때 굳는다)과 별개로
+  // 이 시점의 process.env를 직접 읽는다(jobs.module.ts의 workerEnabled).
   process.env.JOBS_WORKER = 'off';
   // 운영에서 가짜 연동이 켜진 채로는 명령이 돌지 않게 서버와 같은 검사를 한다.
   assertNoFakesInProduction(loadEnv(process.env));

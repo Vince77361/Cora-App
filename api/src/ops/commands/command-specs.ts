@@ -25,7 +25,7 @@ export const COMMAND_SPECS: CommandSpec[] = [
   {
     name: 'resume',
     summary:
-      '멈춘 협업을 멈추기 전 단계로 되돌린다(신고로 멈춘 협업 포함). 정산 중이었다면 정산을 지금 실행하게 올린다.',
+      '멈춘 협업을 멈추기 전 단계로 되돌린다(신고로 멈춘 협업 포함). 집계 중이었다면 일찍 정산하지 않고 남은 날을 이어서 센다(기록되지 않은 날의 조회수 작업을 원래 시각으로 다시 올리고, 정산은 원래 정산 시각, 이미 지났으면 바로). 조회수를 읽지 못해 멈춘 협업을 바로 정산하려면 resume-settlement, 금액을 직접 정하려면 force-payout을 쓴다.',
     flags: [{ name: 'collaboration', kind: 'uuid', help: '협업 id' }],
   },
   {

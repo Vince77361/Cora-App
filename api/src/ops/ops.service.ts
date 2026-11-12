@@ -35,6 +35,7 @@ import { formatSnapshot } from './ops-format';
 import { OpsRepository } from './ops.repository';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_OPERATOR = 100;
 const MAX_REASON = 1000;
 
@@ -124,6 +125,11 @@ export class OpsService {
         if (!canTransition(c.kind, 'HALTED', to, to)) {
           throw new OpsError(`${to} 단계로는 되돌릴 수 없어요.`);
         }
+        if (to === 'COUNTING' && (!c.submittedAt || !c.countingEndsAt)) {
+          throw new OpsError(
+            '집계 시작·종료 시각이 없어서 집계 작업을 다시 올릴 수 없어요.',
+          );
+        }
         if (to === 'FUNDED' && !c.submitDueAt) {
           throw new OpsError(
             '제출 기한이 없어서 제출 기한 작업을 올릴 수 없어요.',
@@ -144,15 +150,9 @@ export class OpsService {
     const warnings: string[] = [];
     const now = this.clock.now();
     if (to === 'COUNTING') {
-      await this.afterCommit(warnings, '정산 작업 등록', async () => {
-        await this.jobs.cancel(settleJobKey(collaborationId));
-        await this.jobs.schedule(
-          'settle',
-          { collaborationId },
-          now,
-          settleJobKey(collaborationId),
-        );
-      });
+      await this.afterCommit(warnings, '집계·정산 작업 등록', () =>
+        this.rescheduleCounting(collaboration, now),
+      );
     } else if (to === 'FUNDED' && collaboration.submitDueAt) {
       const dueAt = collaboration.submitDueAt;
       await this.afterCommit(warnings, '제출 기한 작업 등록', async () => {
@@ -168,6 +168,39 @@ export class OpsService {
       });
     }
     return { lines: [`협업을 다시 열었어요. (HALTED → ${to})`], warnings };
+  }
+
+  // 집계 중이던 협업을 재개하면 멈추기 전의 일정을 이어 간다(일찍 정산하지 않는다):
+  // 아직 기록되지 않은 날의 조회수 작업을 원래 시각(제출 시각 + 날수)으로 다시 올리고(지난 시각이면 바로 돈다),
+  // 정산은 max(지금, 원래 정산 시각)에 올린다. 멈추면서 모두 취소했으므로 같은 키로 다시 올릴 수 있다.
+  private async rescheduleCounting(c: Collaboration, now: Date): Promise<void> {
+    const submittedAt = c.submittedAt;
+    const endsAt = c.countingEndsAt;
+    if (!submittedAt || !endsAt) return;
+    const recorded = new Set(
+      (await this.settlementsRepository.listSnapshots(c.id)).map(
+        (snapshot) => snapshot.dayIndex,
+      ),
+    );
+    for (let day = 0; day <= SNAPSHOT_DAYS; day += 1) {
+      if (recorded.has(day)) continue;
+      const key = snapshotJobKey(c.id, day);
+      await this.jobs.cancel(key);
+      await this.jobs.schedule(
+        'view-snapshot',
+        { collaborationId: c.id, dayIndex: day },
+        new Date(submittedAt.getTime() + day * DAY_MS),
+        key,
+      );
+    }
+    const settleKey = settleJobKey(c.id);
+    await this.jobs.cancel(settleKey);
+    await this.jobs.schedule(
+      'settle',
+      { collaborationId: c.id },
+      new Date(Math.max(now.getTime(), endsAt.getTime())),
+      settleKey,
+    );
   }
 
   // 조회수를 읽지 못해 멈춘 협업을 운영자가 확인한 조회수로 정산한다. 지급·환급·알림은 일반 정산과 같다.
@@ -630,6 +663,8 @@ export class OpsService {
 const won = (n: number): string => n.toLocaleString('en-US');
 const count = won;
 
+// 어댑터(PG·송금)의 오류 메시지에는 계좌나 예금주 같은 값이 섞일 수 있어 출력하지도 로그에 남기지도 않는다.
+// 오류의 종류(name)와 고정 문구만 낸다. 원인은 PG·송금 쪽 콘솔에서 확인한다.
 function describe(error: unknown): string {
-  return error instanceof Error ? `${error.name}: ${error.message}` : 'unknown';
+  return error instanceof Error ? `${error.name} 오류` : '알 수 없는 오류';
 }

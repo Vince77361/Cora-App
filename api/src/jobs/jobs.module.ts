@@ -24,6 +24,16 @@ class UnconfiguredJobScheduler extends JobScheduler {
   }
 }
 
+// 작업자를 켤지. 어느 쪽이든 off면 끈다.
+// 설정값(configured)은 AppModule을 import하는 순간 .env와 process.env를 읽어 굳어지므로, 그 뒤에 process.env를 바꿔도 반영되지 않는다.
+// 운영 명령(ops-main)이 시작 직전에 정하는 process.env 값을 이 시점에 직접 읽어, 셸이나 .env가 on이어도 운영 명령은 작업자를 띄우지 않게 한다.
+export function workerEnabled(
+  configured: string | undefined,
+  fromProcessEnv: string | undefined,
+): boolean {
+  return configured !== 'off' && fromProcessEnv !== 'off';
+}
+
 // 기능 모듈은 이 모듈을 import해서 JobScheduler(작업 등록)와 JobHandlerRegistry(onModuleInit에서 처리기 등록)를 쓴다.
 @Module({
   imports: [IntegrationsModule],
@@ -49,7 +59,12 @@ class UnconfiguredJobScheduler extends JobScheduler {
           registry,
           operatorAlert,
           // 운영 명령(yarn ops)은 작업을 올리기만 한다: 작업자는 서버 프로세스에서만 돈다.
-          { worker: config.get<string>('JOBS_WORKER') !== 'off' },
+          {
+            worker: workerEnabled(
+              config.get<string>('JOBS_WORKER'),
+              process.env.JOBS_WORKER,
+            ),
+          },
         );
       },
     },

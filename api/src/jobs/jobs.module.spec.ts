@@ -46,4 +46,63 @@ describe('JobsModule', () => {
     ).rejects.toThrow(/FakeJobScheduler/);
     await moduleRef.close();
   });
+
+  describe('worker switch', () => {
+    const config = (jobsWorker: string) => ({
+      isGlobal: true,
+      ignoreEnvFile: true,
+      ignoreEnvVars: true,
+      load: [
+        () => ({
+          NODE_ENV: 'development',
+          // 연결되지 않는 주소: 작업자를 시작하지 않으므로 큐 객체만 만들고 닫는다.
+          REDIS_URL: 'redis://127.0.0.1:1',
+          JOBS_WORKER: jobsWorker,
+          SUPABASE_URL: 'https://fake.supabase.co',
+          PUSH_ADAPTER: 'fake',
+          STORE_LINK_ADAPTER: 'fake',
+          CONTENT_DRAFT_ADAPTER: 'fake',
+          PAYMENT_ADAPTER: 'fake',
+          PAYOUT_ADAPTER: 'fake',
+          VIEW_COUNT_ADAPTER: 'fake',
+          INSTAGRAM_ADAPTER: 'fake',
+          OPERATOR_ALERT_ADAPTER: 'fake',
+        }),
+      ],
+    });
+    const workerOf = async (jobsWorker: string, processEnv?: string) => {
+      const saved = process.env.JOBS_WORKER;
+      if (processEnv === undefined) delete process.env.JOBS_WORKER;
+      else process.env.JOBS_WORKER = processEnv;
+      try {
+        const moduleRef = await Test.createTestingModule({
+          imports: [
+            ConfigModule.forRoot(config(jobsWorker)),
+            CommonModule,
+            JobsModule,
+          ],
+        }).compile();
+        const scheduler = moduleRef.get<{ real: { worker: boolean } }>(
+          JobScheduler,
+        );
+        const worker = scheduler.real.worker;
+        // init하지 않았으므로 작업자는 시작되지 않았다. 큐 연결만 닫는다.
+        await moduleRef.close();
+        return worker;
+      } finally {
+        if (saved === undefined) delete process.env.JOBS_WORKER;
+        else process.env.JOBS_WORKER = saved;
+      }
+    };
+
+    it('turns the worker off for ops commands even when the validated config says on', async () => {
+      // ops-main이 process.env를 off로 덮어써도 ConfigModule이 굳힌 값은 on이다.
+      await expect(workerOf('on', 'off')).resolves.toBe(false);
+    });
+
+    it('keeps the worker on for the server and off when the config says off', async () => {
+      await expect(workerOf('on', undefined)).resolves.toBe(true);
+      await expect(workerOf('off', undefined)).resolves.toBe(false);
+    });
+  });
 });

@@ -323,7 +323,11 @@ describe('ops commands', () => {
       expect(await audits()).toHaveLength(0);
     });
 
-    it('resumes a halted collaboration to its previous stage and schedules the settle job now', async () => {
+    const jobAt = (name: string, key: string) =>
+      scheduler.pending().find((j) => j.name === name && j.jobKey === key)
+        ?.runAt;
+
+    it('resumes a halted collaboration to its previous stage without settling early', async () => {
       const s = await seed('COUNTING');
       await withWho('halt', '--collaboration', s.collaborationId);
       const r = await withWho('resume', '--collaboration', s.collaborationId);
@@ -333,15 +337,62 @@ describe('ops commands', () => {
         stageBeforeHalt: null,
         haltedReason: null,
       });
-      const job = scheduler
-        .pending()
-        .find((j) => j.jobKey === `settle:${s.collaborationId}`);
-      expect(job?.name).toBe('settle');
-      expect(job!.runAt.getTime()).toBeLessThanOrEqual(clock.now().getTime());
+      // 집계 첫날에 재개: 정산은 원래 시각(7일째)이고 8번의 조회수 작업이 원래 시각으로 다시 올라간다.
+      expect(jobAt('settle', `settle:${s.collaborationId}`)?.getTime()).toBe(
+        T0.getTime() + 7 * DAY,
+      );
+      for (let day = 0; day <= 7; day += 1) {
+        expect(
+          jobAt(
+            'view-snapshot',
+            `view-snapshot:${s.collaborationId}:${day}`,
+          )?.getTime(),
+        ).toBe(T0.getTime() + day * DAY);
+      }
       expect((await audits()).map((a) => a.command)).toEqual([
         'halt',
         'resume',
       ]);
+    });
+
+    it('resumes on day 4 by re-registering only the unrecorded snapshot days and settling on day 7', async () => {
+      const s = await seed('COUNTING');
+      await prisma.viewSnapshot.createMany({
+        data: [0, 1, 2, 3].map((dayIndex) => ({
+          collaborationId: s.collaborationId,
+          dayIndex,
+          views: 100 * (dayIndex + 1),
+          takenAt: new Date(T0.getTime() + dayIndex * DAY),
+        })),
+      });
+      await withWho('halt', '--collaboration', s.collaborationId);
+      clock.set(new Date(T0.getTime() + 4 * DAY));
+      await withWho('resume', '--collaboration', s.collaborationId);
+      const snapshotKeys = scheduler
+        .pending()
+        .filter((j) => j.name === 'view-snapshot')
+        .map((j) => j.jobKey)
+        .sort();
+      expect(snapshotKeys).toEqual(
+        [4, 5, 6, 7].map((d) => `view-snapshot:${s.collaborationId}:${d}`),
+      );
+      expect(jobAt('settle', `settle:${s.collaborationId}`)?.getTime()).toBe(
+        T0.getTime() + 7 * DAY,
+      );
+      // 아직 정산되지 않았다.
+      expect(await collaborationOf(s.collaborationId)).toMatchObject({
+        stage: 'COUNTING',
+      });
+    });
+
+    it('settles right away when a counting collaboration resumes after its settle time', async () => {
+      const s = await seed('COUNTING');
+      await withWho('halt', '--collaboration', s.collaborationId);
+      clock.set(new Date(T0.getTime() + 8 * DAY));
+      await withWho('resume', '--collaboration', s.collaborationId);
+      expect(jobAt('settle', `settle:${s.collaborationId}`)?.getTime()).toBe(
+        clock.now().getTime(),
+      );
     });
 
     it('resumes a collaboration halted by a report the same way', async () => {
