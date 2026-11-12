@@ -32,6 +32,7 @@ const _bothTerms = OfferTerms(
 Collaboration collaboration({
   String id = 'c0ffee11-aaaa-bbbb-cccc-000000000001',
   String storeName = '한그릇 라멘',
+  CollaborationRole role = CollaborationRole.creator,
   CollaborationStage stage = CollaborationStage.funded,
   OfferTerms terms = _bothTerms,
   int escrowAmount = 100000,
@@ -43,13 +44,15 @@ Collaboration collaboration({
   DateTime? submitDueAt,
   String? submittedUrl,
   bool canCancel = false,
+  bool canRequestCancel = false,
   CancelRequest? cancelRequest,
+  int? expectedRefund,
   PayoutStatus payoutStatus = PayoutStatus.none,
   DateTime? payoutScheduledFor,
   CollaborationSettlement? settlement,
 }) => Collaboration(
   id: id,
-  role: CollaborationRole.creator,
+  role: role,
   stage: stage,
   counterpartName: storeName,
   terms: terms,
@@ -63,10 +66,39 @@ Collaboration collaboration({
   submitDueAt: submitDueAt ?? DateTime.utc(2026, 11, 23, 3),
   submittedUrl: submittedUrl,
   canCancel: canCancel,
+  canRequestCancel: canRequestCancel,
   cancelRequest: cancelRequest,
+  expectedRefund: expectedRefund,
   payoutStatus: payoutStatus,
   payoutScheduledFor: payoutScheduledFor,
   settlement: settlement,
+);
+
+/// 사장님이 취소를 요청한 뒤의 협업(서버처럼 요청이 생기고 다시 요청할 수 없다).
+Collaboration withOwnerCancelRequest(Collaboration c) => Collaboration(
+  id: c.id,
+  role: c.role,
+  stage: c.stage,
+  counterpartName: c.counterpartName,
+  terms: c.terms,
+  escrowAmount: c.escrowAmount,
+  steps: c.steps,
+  earnedSoFar: c.earnedSoFar,
+  currentViews: c.currentViews,
+  countingEndsAt: c.countingEndsAt,
+  submitDueAt: c.submitDueAt,
+  submittedUrl: c.submittedUrl,
+  canCancel: c.canCancel,
+  canRequestCancel: false,
+  cancelRequest: CancelRequest(
+    id: 'req-1',
+    expiresAt: DateTime.utc(2026, 11, 14, 12),
+    requestedByMe: true,
+  ),
+  payoutStatus: c.payoutStatus,
+  payoutScheduledFor: c.payoutScheduledFor,
+  settlement: c.settlement,
+  expectedRefund: c.expectedRefund,
 );
 
 /// 손으로 쓴 가짜 협업 저장소. 제출·취소·동의를 받으면 목록과 상세를 서버처럼 바꾼다.
@@ -149,6 +181,8 @@ class FakeCollaborationRepository implements CollaborationRepository {
     final error = failAction;
     if (error != null) throw error;
     cancelRequested.add(id);
+    final next = withOwnerCancelRequest(_find(id));
+    active = [for (final c in active) c.id == id ? next : c];
   }
 
   @override

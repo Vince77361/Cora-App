@@ -3,6 +3,7 @@ import 'package:cora/core/config/app_config.dart';
 import 'package:cora/core/config/app_config_provider.dart';
 import 'package:cora/core/navigation/app_router.dart';
 import 'package:cora/features/auth/domain/auth_repository_provider.dart';
+import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
 import 'package:cora/features/store_home/domain/store_home_repository.dart';
 import 'package:cora/features/store_onboarding/domain/content_draft_repository_provider.dart';
@@ -15,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/fake_auth_repository.dart';
+import '../features/collaboration/fake_collaboration_repository.dart';
 import '../features/onboarding/fake_me_repository.dart';
 import '../features/store_home/fake_store_home_repository.dart';
 import '../features/store_onboarding/fake_content_draft_repository.dart';
@@ -57,6 +59,11 @@ Widget coraAppWith(
       if (!_overrides(overrides, storeHomeRepositoryProvider))
         storeHomeRepositoryProvider.overrideWithValue(
           FakeStoreHomeRepository(),
+        ),
+      // 사장님 홈이 보낸 오퍼 줄의 협업 단계를 읽는다.
+      if (!_overrides(overrides, collaborationRepositoryProvider))
+        collaborationRepositoryProvider.overrideWithValue(
+          FakeCollaborationRepository(),
         ),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(

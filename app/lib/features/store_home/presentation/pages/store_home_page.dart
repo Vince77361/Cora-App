@@ -108,7 +108,18 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
     if (label != null) _comingSoon(label);
   }
 
+  /// 줄을 눌렀을 때. 결제가 끝난 오퍼는 협업 진행 화면을 열고, 결제 전이면 취소 시트를 연다.
   void _onSentOffer(SentOffer offer) {
+    final collaborationId = offer.collaborationId;
+    final state = ref.read(storeHomeViewModelProvider).value;
+    if (collaborationId != null &&
+        sentOfferPaid(offer, state?.collaborations[collaborationId])) {
+      // 협업 화면에서 취소를 요청했거나 돌아오면 줄을 서버 값으로 다시 읽는다.
+      context.push(AppRoutes.storeCollaboration(collaborationId)).then((_) {
+        if (mounted) ref.read(storeHomeViewModelProvider.notifier).refresh();
+      });
+      return;
+    }
     if (!offer.cancellable) return;
     showCancelOfferSheet(
       context,
@@ -266,6 +277,7 @@ class _Body extends ConsumerWidget {
             child: sentTab
                 ? _SentOffers(
                     state: state,
+                    now: now,
                     onTap: onSentOffer,
                     onAction: onSentOfferAction,
                   )
@@ -504,11 +516,13 @@ class _Applicants extends StatelessWidget {
 class _SentOffers extends StatelessWidget {
   const _SentOffers({
     required this.state,
+    required this.now,
     required this.onTap,
     required this.onAction,
   });
 
   final StoreHomeState state;
+  final DateTime now;
   final ValueChanged<SentOffer> onTap;
 
   /// `결제하기`, `다시 찾기`를 눌렀을 때.
@@ -520,20 +534,23 @@ class _SentOffers extends StatelessWidget {
       return const _Empty(message: StoreHomePage.emptySentOffers);
     }
     return Column(
-      children: [
-        for (final offer in state.sentOffers)
-          CoraListRow(
-            photoUrl: offer.creator.photoUrl,
-            photoAlignment: _faceAlignment,
-            title: offer.creator.displayName,
-            subtitle: sentOfferMeta(offer),
-            actionLabel: sentOfferAction(offer),
-            // 캔버스에서 강조색 버튼은 결제하기뿐이다.
-            actionHighlighted: offer.view == OfferView.accepted,
-            onAction: () => onAction(offer),
-            onTap: offer.cancellable ? () => onTap(offer) : null,
-          ),
-      ],
+      children: [for (final offer in state.sentOffers) _sentRow(offer)],
+    );
+  }
+
+  Widget _sentRow(SentOffer offer) {
+    final collaboration = state.collaborations[offer.collaborationId];
+    final paid = sentOfferPaid(offer, collaboration);
+    return CoraListRow(
+      photoUrl: offer.creator.photoUrl,
+      photoAlignment: _faceAlignment,
+      title: offer.creator.displayName,
+      subtitle: sentOfferMeta(offer, collaboration: collaboration, now: now),
+      actionLabel: sentOfferAction(offer, collaboration: collaboration),
+      // 캔버스에서 강조색 버튼은 결제하기뿐이다.
+      actionHighlighted: offer.view == OfferView.accepted && !paid,
+      onAction: () => onAction(offer),
+      onTap: offer.cancellable || paid ? () => onTap(offer) : null,
     );
   }
 }

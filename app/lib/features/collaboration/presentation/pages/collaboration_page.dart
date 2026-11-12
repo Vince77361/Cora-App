@@ -21,6 +21,7 @@ import '../../domain/collaboration.dart';
 import '../collaboration_text.dart';
 import '../mail_launcher.dart';
 import '../viewmodels/collaboration_view_model.dart';
+import '../widgets/collaboration_parts.dart';
 import '../widgets/cancel_collaboration_sheet.dart';
 
 /// A7 협업 진행(NEscrow / DarkNEscrow). 크리에이터가 수락한 협업의 보관 금액, 단계, 다음에 할 일을
@@ -40,7 +41,6 @@ class CollaborationPage extends ConsumerStatefulWidget {
   static const showVoucher = '식사권 보여주기';
   static const registerAccount = '지급받을 계좌 등록하기';
   static const acceptCancel = '동의하기';
-  static const more = '더보기';
 
   /// 캔버스에 없는 상태의 문구.
   static const waitingPayment = '결제를 기다리고 있어요';
@@ -115,7 +115,7 @@ class _CollaborationPageState extends ConsumerState<CollaborationPage> {
                     ),
               onBack: _leave,
               trailing: value != null && value.collaboration.canCancel
-                  ? _MoreButton(
+                  ? CollaborationMoreButton(
                       onTap: () => showCancelCollaborationSheet(
                         context,
                         onConfirm: _cancel,
@@ -195,55 +195,6 @@ class _CollaborationPageState extends ConsumerState<CollaborationPage> {
   }
 }
 
-/// 오른쪽 위 더보기(점 셋). 캔버스에 없다: 44 x 44 눌림 영역.
-class _MoreButton extends StatelessWidget {
-  const _MoreButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Semantics(
-      container: true,
-      button: true,
-      label: CollaborationPage.more,
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: CoraPressable(
-          onTap: onTap,
-          child: SizedBox.square(
-            dimension: 44,
-            child: Center(
-              child: CustomPaint(
-                size: const Size(24, 24),
-                painter: _DotsPainter(c.text),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DotsPainter extends CustomPainter {
-  const _DotsPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    for (final dx in [5.0, 12.0, 19.0]) {
-      canvas.drawCircle(Offset(dx, 12), 1.8, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DotsPainter old) => old.color != color;
-}
-
 class _Content extends StatelessWidget {
   const _Content({
     required this.collaboration,
@@ -278,7 +229,11 @@ class _Content extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-          child: _Steps(collaboration: collaboration),
+          child: CollaborationSteps(
+            steps: collaboration.steps,
+            titleOf: stepTitle,
+            subtitleOf: (key) => stepSubtitle(collaboration, key),
+          ),
         ),
         if (collaboration.hasVoucher)
           Padding(
@@ -367,8 +322,7 @@ class _CancelRequestBanner extends StatelessWidget {
   }
 }
 
-/// 보관 상자(캔버스 `section`): 모서리 28, 안쪽 22/20, `surface`. 방패 + `Cora가 안전하게 보관 중`,
-/// 큰 금액(40/900, -0.05em), 식사권 줄, 선 아래 두 칸.
+/// 보관 상자(캔버스 `section`). 모양은 [CollaborationBox]가 그리고, 여기서는 단계에 맞는 문구를 고른다.
 class _HeldBox extends StatelessWidget {
   const _HeldBox({required this.collaboration});
 
@@ -389,72 +343,18 @@ class _HeldBox extends StatelessWidget {
     final big = settled && co.settlement != null
         ? wonExact(co.settlement!.payoutAmount)
         : heldLabel(co);
-    final lower = _lower(c);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: BorderRadius.circular(CoraRadius.xxl),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              spacing: 8,
-              children: [
-                ExcludeSemantics(
-                  child: CustomPaint(
-                    size: const Size.square(16),
-                    painter: _ShieldPainter(c.text),
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    headline,
-                    style: CoraTextStyles.label.copyWith(
-                      fontWeight: FontWeight.w400,
-                      color: c.textSecondary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  big,
-                  maxLines: 1,
-                  style: CoraTextStyles.title.copyWith(
-                    fontSize: 40,
-                    letterSpacing: -2,
-                    height: 1.448,
-                    color: c.text,
-                  ),
-                ),
-              ),
-            ),
-            if (co.hasEscrow && co.hasVoucher && !settled) ...[
-              const SizedBox(height: 4),
-              Text(
-                CollaborationPage.heldVoucher(co.terms.voucherName!),
-                style: CoraTextStyles.bodySmall.copyWith(
-                  color: c.textSecondary,
-                ),
-              ),
-            ],
-            ?lower,
-          ],
-        ),
-      ),
+    final lower = _lower(context, c);
+    return CollaborationBox(
+      label: headline,
+      big: big,
+      note: co.hasEscrow && co.hasVoucher && !settled
+          ? CollaborationPage.heldVoucher(co.terms.voucherName!)
+          : null,
+      lower: lower,
     );
   }
 
-  Widget? _lower(CoraColors c) {
+  Widget? _lower(BuildContext context, CoraColors c) {
     final co = collaboration;
     if (!co.hasEscrow) return null;
     final Widget content;
@@ -464,9 +364,9 @@ class _HeldBox extends StatelessWidget {
       content = Row(
         children: [
           Expanded(
-            child: _Stat(
+            child: CollaborationStat(
               label: CollaborationPage.finalViewsLabel,
-              value: '${_commas(views)}회',
+              value: '${commas(views)}회',
             ),
           ),
           const Expanded(child: SizedBox.shrink()),
@@ -477,15 +377,15 @@ class _HeldBox extends StatelessWidget {
         spacing: 8,
         children: [
           Expanded(
-            child: _Stat(
+            child: CollaborationStat(
               label: CollaborationPage.earnedLabel,
               value: wonExact(co.earnedSoFar!),
             ),
           ),
           Expanded(
-            child: _Stat(
+            child: CollaborationStat(
               label: CollaborationPage.viewsLabel,
-              value: '${_commas(co.currentViews ?? 0)}회',
+              value: '${commas(co.currentViews ?? 0)}회',
             ),
           ),
         ],
@@ -499,175 +399,7 @@ class _HeldBox extends StatelessWidget {
     } else {
       return null;
     }
-    return Padding(
-      padding: const EdgeInsets.only(top: 18),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: c.line)),
-        ),
-        child: Padding(padding: const EdgeInsets.only(top: 16), child: content),
-      ),
-    );
-  }
-}
-
-String _commas(int n) => wonExact(n).replaceAll('원', '');
-
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return MergeSemantics(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: CoraTextStyles.caption.copyWith(
-              fontWeight: FontWeight.w400,
-              color: c.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: CoraTextStyles.heading.copyWith(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0,
-              color: c.text,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 단계 목록(캔버스 `ol`): 한 줄 최소 56, 점(26)과 글자 사이 14, 점 아래 이어지는 2px 선.
-class _Steps extends StatelessWidget {
-  const _Steps({required this.collaboration});
-
-  final Collaboration collaboration;
-
-  @override
-  Widget build(BuildContext context) {
-    final steps = collaboration.steps;
-    return Column(
-      children: [
-        for (var i = 0; i < steps.length; i++)
-          _StepRow(
-            collaboration: collaboration,
-            step: steps[i],
-            index: i,
-            last: i == steps.length - 1,
-          ),
-      ],
-    );
-  }
-}
-
-class _StepRow extends StatelessWidget {
-  const _StepRow({
-    required this.collaboration,
-    required this.step,
-    required this.index,
-    required this.last,
-  });
-
-  final Collaboration collaboration;
-  final CollaborationStep step;
-  final int index;
-  final bool last;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final done = step.state == StepState.done;
-    final now = step.state == StepState.now;
-    final dotBg = done
-        ? c.stepDotDone
-        : now
-        ? c.stepDotNow
-        : c.surface;
-    final dotFg = done
-        ? c.onStepDotDone
-        : now
-        ? c.onStepDotNow
-        : c.textSecondary;
-    final subtitle = stepSubtitle(collaboration, step.key);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 56),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          spacing: 14,
-          children: [
-            Column(
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: dotBg,
-                    shape: BoxShape.circle,
-                  ),
-                  child: SizedBox.square(
-                    dimension: 26,
-                    child: Center(
-                      child: Text(
-                        done ? '✓' : '${index + 1}',
-                        style: CoraTextStyles.caption.copyWith(color: dotFg),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: SizedBox(
-                    width: 2,
-                    child: ColoredBox(
-                      color: last ? const Color(0x00000000) : c.line,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 2, bottom: 12),
-                child: MergeSemantics(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        stepTitle(step.key),
-                        style: CoraTextStyles.buttonMedium.copyWith(
-                          fontWeight: now ? FontWeight.w700 : FontWeight.w400,
-                          color: done ? c.textSecondary : c.text,
-                        ),
-                      ),
-                      if (subtitle != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            subtitle,
-                            style: CoraTextStyles.meta.copyWith(
-                              color: c.textSecondary,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return CollaborationBox.divided(context, content);
   }
 }
 
@@ -765,34 +497,4 @@ class _BottomBar extends StatelessWidget {
       ],
     );
   }
-}
-
-/// 방패 모양(SVG `M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z`, viewBox 24, 선 2)을 16으로 줄여 그린다.
-class _ShieldPainter extends CustomPainter {
-  const _ShieldPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 24);
-    final path = Path()
-      ..moveTo(12, 3)
-      ..relativeLineTo(8, 3)
-      ..relativeLineTo(0, 6)
-      ..relativeCubicTo(0, 5, -3.5, 8, -8, 9)
-      ..relativeCubicTo(-4.5, -1, -8, -4, -8, -9)
-      ..lineTo(4, 6)
-      ..close();
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_ShieldPainter old) => old.color != color;
 }

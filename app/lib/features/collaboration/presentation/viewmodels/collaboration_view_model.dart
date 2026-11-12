@@ -82,6 +82,13 @@ class CollaborationViewModel extends AsyncNotifier<CollaborationDetailState> {
   Future<bool> acceptCancel(String requestId) =>
       _act((repo) => repo.acceptCancel(collaborationId, requestId));
 
+  /// 사장님의 `협업 취소 요청`. 성공하면 서버가 만든 요청을 받아 와 화면이 띠를 보이게 하고 true.
+  Future<bool> requestCancel() async {
+    final done = await _act((repo) => repo.requestCancel(collaborationId));
+    if (done) await _refreshQuietly(null);
+    return done;
+  }
+
   Future<bool> _act(
     Future<void> Function(CollaborationRepository repo) call,
   ) async {
@@ -109,7 +116,7 @@ class CollaborationViewModel extends AsyncNotifier<CollaborationDetailState> {
     return true;
   }
 
-  Future<void> _refreshQuietly(String notice) async {
+  Future<void> _refreshQuietly(String? notice) async {
     try {
       final fresh = await _repo.fetch(collaborationId);
       if (!ref.mounted) return;

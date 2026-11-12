@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/domain/current_user_provider.dart';
+import '../../../collaboration/domain/collaboration.dart';
+import '../../../collaboration/domain/collaboration_repository.dart';
 import '../../../offer_terms/domain/offer_terms.dart';
 import '../../domain/applicant.dart';
 import '../../domain/sent_offer.dart';
@@ -15,23 +17,30 @@ class StoreHomeState {
     required this.summary,
     required this.applicants,
     required this.sentOffers,
+    this.collaborations = const {},
     this.tab = StoreHomeTab.applicants,
   });
 
   final StoreHomeSummary summary;
   final List<Applicant> applicants;
   final List<SentOffer> sentOffers;
+
+  /// 보낸 오퍼에 걸린 협업을 id로 찾는 표. 줄이 결제 뒤의 단계를 말하는 데 쓴다. 협업을 읽지 못했으면
+  /// 비어 있고, 줄은 단계 없이 오퍼의 상태만 보인다.
+  final Map<String, Collaboration> collaborations;
   final StoreHomeTab tab;
 
   StoreHomeState copyWith({
     StoreHomeSummary? summary,
     List<Applicant>? applicants,
     List<SentOffer>? sentOffers,
+    Map<String, Collaboration>? collaborations,
     StoreHomeTab? tab,
   }) => StoreHomeState(
     summary: summary ?? this.summary,
     applicants: applicants ?? this.applicants,
     sentOffers: sentOffers ?? this.sentOffers,
+    collaborations: collaborations ?? this.collaborations,
     tab: tab ?? this.tab,
   );
 }
@@ -62,12 +71,32 @@ class StoreHomeViewModel extends AsyncNotifier<StoreHomeState> {
       _repo.fetchApplicants(),
       _repo.fetchSentOffers(),
     ]);
+    final sentOffers = results[2] as List<SentOffer>;
     return StoreHomeState(
       summary: results[0] as StoreHomeSummary,
       applicants: results[1] as List<Applicant>,
-      sentOffers: results[2] as List<SentOffer>,
+      sentOffers: sentOffers,
+      collaborations: await _loadCollaborations(sentOffers),
       tab: tab,
     );
+  }
+
+  /// 협업이 걸린 보낸 오퍼가 있을 때만 내 협업(진행 중과 끝난 것)을 읽어 id로 묶는다. 못 읽어도 홈은
+  /// 그대로 뜨고 줄이 오퍼의 상태만 보인다.
+  Future<Map<String, Collaboration>> _loadCollaborations(
+    List<SentOffer> sentOffers,
+  ) async {
+    if (sentOffers.every((o) => o.collaborationId == null)) return const {};
+    try {
+      final repo = ref.read(collaborationRepositoryProvider);
+      final lists = await Future.wait([repo.fetchActive(), repo.fetchDone()]);
+      return {
+        for (final list in lists)
+          for (final c in list) c.id: c,
+      };
+    } catch (_) {
+      return const {};
+    }
   }
 
   void selectTab(StoreHomeTab tab) {

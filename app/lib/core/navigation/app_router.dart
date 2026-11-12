@@ -7,6 +7,7 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/phone_verify_page.dart';
 import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import '../../features/collaboration/presentation/pages/collaboration_page.dart';
+import '../../features/collaboration/presentation/pages/store_collaboration_page.dart';
 import '../../features/collaboration/presentation/pages/submit_link_page.dart';
 import '../../features/collaboration/presentation/pages/voucher_page.dart';
 import '../../features/creator_profile/presentation/pages/creator_profile_setup_page.dart';
@@ -165,6 +166,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.storePayPattern,
         pageBuilder: (context, state) => CoraTransitions.push(
           StorePaymentPage(
+            collaborationId: state.pathParameters['collaborationId']!,
+          ),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.storeCollaborationPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          StoreCollaborationPage(
             collaborationId: state.pathParameters['collaborationId']!,
           ),
           key: state.pageKey,

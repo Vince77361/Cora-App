@@ -41,6 +41,14 @@ abstract final class AppRoutes {
   static String storePay(String collaborationId) =>
       '/store/collaborations/${Uri.encodeComponent(collaborationId)}/pay';
 
+  /// 협업 [collaborationId]의 사장님 진행 화면. 보낸 오퍼 줄을 눌러 열고, 홈 위에 밀려 들어온다.
+  static String storeCollaboration(String collaborationId) =>
+      '/store/collaborations/${Uri.encodeComponent(collaborationId)}';
+
+  /// [storeCollaboration]의 라우트 패턴.
+  static const storeCollaborationPattern =
+      '/store/collaborations/:collaborationId';
+
   /// [storePay]의 라우트 패턴.
   static const storePayPattern = '/store/collaborations/:collaborationId/pay';
 
