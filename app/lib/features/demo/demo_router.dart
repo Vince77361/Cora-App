@@ -10,6 +10,8 @@ import 'g4/g4_routes.dart';
 import 'g5/g5_routes.dart';
 import 'g6/g6_routes.dart';
 import 'g7/g7_routes.dart';
+import 'g8/g8_routes.dart';
+import 'g9/g9_routes.dart';
 
 final GoRouter demoRouter = GoRouter(
   // 앱은 로그인(E1)에서 시작한다.
@@ -22,6 +24,8 @@ final GoRouter demoRouter = GoRouter(
     ..._swipeBack(g5Routes),
     ..._swipeBack(g6Routes),
     ..._swipeBack(g7Routes),
+    ..._swipeBack(g8Routes),
+    ..._swipeBack(g9Routes),
   ],
   errorBuilder: (context, state) => const Scaffold(),
 );

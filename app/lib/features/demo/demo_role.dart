@@ -36,6 +36,11 @@ final Set<String> _shared = {
   DemoPaths.agreement,
   DemoPaths.contract,
   DemoPaths.review,
+  // 2026-11-12: 검토·제안함·조회 자료·빈 상태는 맡기는 쪽과 크리에이터가 함께 쓴다.
+  DemoPaths.reviewSend,
+  DemoPaths.proposals,
+  DemoPaths.metrics,
+  DemoPaths.states,
 };
 
 final Set<String> _storeOnly = {
@@ -49,10 +54,20 @@ final Set<String> _storeOnly = {
   DemoPaths.bidResult,
   DemoPaths.directory,
   DemoPaths.outreach,
+  DemoPaths.storeManual,
+  DemoPaths.result,
+  DemoPaths.applicants,
+  DemoPaths.switchReport,
+  DemoPaths.aiOrder,
 };
 
 /// B1·B5는 맡기는 쪽(사장님·브랜드)이 함께 쓴다.
-final Set<String> _storeAndBrand = {DemoPaths.reels, DemoPaths.creatorView};
+final Set<String> _storeAndBrand = {
+  DemoPaths.reels,
+  DemoPaths.creatorView,
+  // F1 보상·예산은 브랜드도 쓴다(2026-11-12 가게 흐름 개정 설계).
+  DemoPaths.budget,
+};
 
 final Set<String> _brandOnly = {
   DemoPaths.brandDiscover,
@@ -82,6 +97,7 @@ final Set<String> _creatorOnly = {
   DemoPaths.instagram,
   DemoPaths.editProfile,
   DemoPaths.wallet,
+  DemoPaths.counter,
 };
 
 /// [role]이 열 수 있는 화면 경로.
@@ -134,12 +150,18 @@ final Map<DemoRole, Map<String, String>> _redirects = {
     '*>${DemoPaths.terms}': DemoPaths.offer,
     // 콘텐츠 제안(10)은 크리에이터 화면.
     '*>${DemoPaths.proposal}': DemoPaths.agreement,
+    // F8 빈 상태 화면의 예시 버튼(브랜드 발견·관심, 크리에이터 콘텐츠 올리기)은 사장님 홈으로.
+    '${DemoPaths.states}>${DemoPaths.brandDiscover}': DemoPaths.storeHome,
+    '${DemoPaths.states}>${DemoPaths.likes}': DemoPaths.storeHome,
+    '${DemoPaths.states}>${DemoPaths.upload}': DemoPaths.storeHome,
   },
   DemoRole.brand: {
     '*>${DemoPaths.retro}': DemoPaths.progress,
     '*>${DemoPaths.proposal}': DemoPaths.terms,
     // B1·B5의 "오퍼 보내기"는 사장님의 A5. 브랜드는 조건 협의로 간다.
     '*>${DemoPaths.offer}': DemoPaths.terms,
+    // F8 빈 상태 화면의 "콘텐츠 올리기"는 크리에이터의 B6. 브랜드는 발견에 머문다.
+    '${DemoPaths.states}>${DemoPaths.upload}': DemoPaths.brandDiscover,
   },
   DemoRole.creator: {
     // 넘기기 이유(02)는 브랜드 화면. 크리에이터는 발견으로 돌아간다.
@@ -152,6 +174,11 @@ final Map<DemoRole, Map<String, String>> _redirects = {
     '*>${DemoPaths.terms}': DemoPaths.proposal,
     // D2의 "가게 정보"는 사장님의 가게 페이지(A3). 크리에이터는 이 화면에 머문다.
     '${DemoPaths.storeView}>${DemoPaths.storePage}': DemoPaths.storeView,
+    // F1 보상·예산은 맡기는 쪽 화면. 크리에이터가 조건을 정하는 곳은 F6 역제안이다(회고 "다음 조건", 검토의 "고치기").
+    '*>${DemoPaths.budget}': DemoPaths.counter,
+    // F8 빈 상태 화면의 예시 버튼: 브랜드 화면 대신 크리에이터의 발견·보관함으로.
+    '${DemoPaths.states}>${DemoPaths.brandDiscover}': DemoPaths.creatorDiscover,
+    '${DemoPaths.states}>${DemoPaths.likes}': DemoPaths.keepList,
   },
 };
 

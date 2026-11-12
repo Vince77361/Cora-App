@@ -132,6 +132,28 @@ abstract final class DemoPaths {
 
   /// E8 고객센터 (`NHelp.dc.html`)
   static const help = '/help';
+  /// F1 보상·예산 설정 (`NBudget.dc.html`, 2026-11-12 캔버스)
+  static const budget = '/budget';
+  /// F2 제안 보내기 전 검토 (`NReviewSend.dc.html`, 2026-11-12 캔버스)
+  static const reviewSend = '/review-send';
+  /// F3 제안함 (`NProposals.dc.html`, 2026-11-12 캔버스)
+  static const proposals = '/proposals';
+  /// F4 조회 자료와 보상 계산 (`NMetrics.dc.html`, 2026-11-12 캔버스)
+  static const metrics = '/metrics';
+  /// F7 매장 직접 입력 (`NStoreManual.dc.html`, 2026-11-12 캔버스)
+  static const storeManual = '/store-manual';
+  /// F8 빈 상태·오류 (`NStates.dc.html`, 2026-11-12 캔버스)
+  static const states = '/states';
+  /// G1 7일 결과 (`NResult.dc.html`, 2026-11-12 캔버스)
+  static const result = '/result';
+  /// G2 지원자 추천 3명 (`NApplicants.dc.html`, 2026-11-12 캔버스)
+  static const applicants = '/applicants';
+  /// G3 체험단 재계약 전 비교 (`NSwitchReport.dc.html`, 2026-11-12 캔버스)
+  static const switchReport = '/switch-report';
+  /// F5 Cora AI 제작 승인 (`NAIOrder.dc.html`, 2026-11-12 캔버스)
+  static const aiOrder = '/ai-order';
+  /// F6 크리에이터 역제안 (`NCounter.dc.html`, 2026-11-12 캔버스)
+  static const counter = '/counter';
 
   /// C1 외부 리스트 검색 (`NDirectory.dc.html`)
   static const directory = '/directory';
@@ -241,6 +263,17 @@ abstract final class DemoPaths {
     'NEditProfile': editProfile,
     'NWallet': wallet,
     'NHelp': help,
+    'NBudget': budget,
+    'NReviewSend': reviewSend,
+    'NProposals': proposals,
+    'NMetrics': metrics,
+    'NStoreManual': storeManual,
+    'NStates': states,
+    'NResult': result,
+    'NApplicants': applicants,
+    'NSwitchReport': switchReport,
+    'NAIOrder': aiOrder,
+    'NCounter': counter,
     'NDirectory': directory,
     'NOutreach': outreach,
   };
