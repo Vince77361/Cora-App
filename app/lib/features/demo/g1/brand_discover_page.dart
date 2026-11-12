@@ -292,9 +292,6 @@ class _BrandDiscoverPageState extends State<BrandDiscoverPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 6),
-                // 전환 알약을 지운 자리. 종 아이콘 위치가 그대로이도록 같은 폭을 비워 둔다.
-                const SizedBox(width: 161.7),
               ],
             ),
           ],

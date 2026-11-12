@@ -111,10 +111,7 @@ class G1Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [const G1Logo(fontSize: 25), const SizedBox.shrink()],
-      ),
+      child: const Row(children: [G1Logo(fontSize: 25)]),
     );
   }
 }

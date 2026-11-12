@@ -112,11 +112,11 @@ class PrinciplesPage extends StatefulWidget {
 }
 
 class _PrinciplesPageState extends State<PrinciplesPage> {
-  int _step = 2;
+  int _step = 0;
   final Map<String, List<int>> _picks = {
-    'field': [0, 1],
-    'block': [0, 1],
-    'face': [0],
+    'field': [],
+    'block': [],
+    'face': [],
     'script': [],
     'honest': [],
     'fee': [],
@@ -180,7 +180,6 @@ class _PrinciplesPageState extends State<PrinciplesPage> {
                     ),
                   ),
                 ),
-                const SizedBox.shrink(),
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => demoGo(context, 'CreatorDiscover.dc.html'),
