@@ -54,3 +54,32 @@ API는 `Authorization: Bearer <토큰>`의 Supabase 액세스 토큰을 검증�
 API를 바꾸면 `./scripts/gen-api.sh`를 실행하고 생성물을 같은 커밋에 넣는다. `app/packages/cora_api`는 손으로 고치지 않는다.
 
 생성기는 버전을 고정한 openapi-generator jar를 로컬 Java로 돌린다(Docker는 쓰지 않는다). jar는 처음 실행할 때 `.tools/`에 내려받고 체크섬을 검증한다.
+
+## 운영 명령
+
+**운영자는 DB를 직접 고치지 않는다.** 돈과 협업 단계를 바로잡는 일은 아래 명령으로만 한다. 모든 명령은 협업 행을 잠근 트랜잭션 안에서 단계를 조건부로 바꾸고, 장부 줄과 감사 기록(`ops_audit_logs`: 누가, 언제, 왜)을 함께 남긴 뒤 그 협업의 장부를 검산한다. 검산이 어긋나면 전부 되돌아간다. 같은 명령을 다시 실행해도 장부 줄과 지급·환급 행은 하나뿐이다(중복 방지 키).
+
+`show`를 뺀 모든 명령은 `--operator <이름> --reason <사유>`가 필수다. 서버를 한 번 빌드한 뒤 `api/`에서 실행한다(`yarn build`).
+
+```bash
+cd api && yarn build
+yarn ops show --collaboration <협업 id>
+yarn ops halt --collaboration <협업 id> --operator 김운영 --reason "신고 확인 중"
+```
+
+| 명령 | 하는 일 |
+|---|---|
+| `halt --collaboration <id>` | 돈을 보관 중인 단계를 `HALTED`로 멈추고(멈추기 전 단계를 저장) 등록된 정산·집계·제출 기한 작업을 취소한다 |
+| `resume --collaboration <id>` | `HALTED`를 멈추기 전 단계로 되돌린다(신고로 멈춘 협업 포함). `COUNTING`이면 정산을 지금 실행하게 올리고, `FUNDED`면 미제출 환급·기한 알림을 다시 올린다(기한이 지났으면 미제출 환급이 바로 돈다) |
+| `resume-settlement --collaboration <id> --views <n>` | 조회수를 읽지 못해 멈춘 협업을 주어진 조회수로 정산한다 |
+| `force-refund --collaboration <id>` | 보관 중인 전액과 수수료를 사장님에게 환급하고 `REFUNDED`로 끝낸다 |
+| `force-payout --collaboration <id> --amount <n>` | 보관액 안에서 `n`원을 지급하고 남은 금액을 환급한 뒤 `SETTLED`로 끝낸다(보관액보다 크면 거절) |
+| `retry-payout --payout <id>` | `FAILED` 지급을 같은 중복 방지 키로 다시 보낸다 |
+| `retry-refund --refund <id>` | `PENDING`·`FAILED` 환급을 같은 중복 방지 키로 다시 PG에 보낸다 |
+| `refund-payment --payment <id>` | 협업에 반영되지 못한 승인 결제(끝난 뒤 늦게 승인됐거나 두 번째 결제)를 전액 환불한다. 장부에 결제 승인 묶음과 전액 환급 묶음을 남긴다 |
+| `show --collaboration <id>` | 단계, 장부 계정별 잔액, 결제·지급·환급 상태를 보여 준다(읽기 전용, 감사 기록 없음, 계좌번호는 출력하지 않음) |
+
+- 커밋된 뒤의 단계(작업 취소·등록, PG 호출)가 실패하면 "경고"로 알리고 종료 코드 1을 돌려준다. 돈의 상태는 이미 커밋됐으니 `show`로 확인하고 `retry-*` 명령으로 이어 간다.
+- `yarn ops`는 작업을 올리기만 하고 실행하지 않는다(작업 큐의 작업자는 서버 프로세스에서만 돈다). 서버와 같은 환경변수 검증을 거치고, 운영에서 가짜 연동이 켜져 있으면 실행을 거부한다.
+- 모든 협업의 장부를 한꺼번에 검산하려면 `yarn check:ledger`(읽기 전용)를 쓴다. 개발 DB(`NODE_ENV=development`, `seed/dev-project.json`의 프로젝트)나 테스트 실행기를 거친 테스트 스키마(`node scripts/with-test-db.js yarn check:ledger`)에서만 실행되고, 그 밖에는 거부한다.
+

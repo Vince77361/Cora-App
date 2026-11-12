@@ -1,7 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Collaboration, Payout, Settlement } from '@prisma/client';
-import { CollaborationsRepository } from '../collaborations/collaborations.repository';
-import { postingsForSettlement } from '../ledger/ledger-postings';
+import {
+  Collaboration,
+  CollaborationStage,
+  Payout,
+  Prisma,
+  Settlement,
+} from '@prisma/client';
+import {
+  CollaborationPatch,
+  CollaborationsRepository,
+} from '../collaborations/collaborations.repository';
+import {
+  Posting,
+  postingsForForcedPayout,
+  postingsForForcedRefund,
+  postingsForSettlement,
+} from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
 import { Clock } from '../common/clock';
 import { InstagramService } from '../instagram/instagram.service';
@@ -13,6 +27,8 @@ import {
 import { JobRunContext, JobScheduler } from '../jobs/job-scheduler';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
+  forcePayoutKey,
+  forcePayoutRefundKey,
   HALT_AFTER_UNREADABLE_DAYS,
   settleJobKey,
   settlePayoutKey,
@@ -126,67 +142,166 @@ export class SettlementsService {
       return 'halted';
     }
     const perViewAmount = readPerViewAmount(collaboration.terms);
-    const now = this.clock.now();
 
     const outcome = await this.repository.transaction<'settled', 'gone'>(
       async (tx, rollback) => {
-        // 조건부 갱신이 먼저다: 동시에 도는 같은 작업 가운데 하나만 통과한다.
-        if (
-          !(await this.collaborations.advance(
-            collaboration.id,
-            'COUNTING',
-            'SETTLED',
-            {},
-            tx,
-          ))
-        ) {
-          return rollback('gone');
-        }
-        // 상한은 에스크로에 실제로 있는 돈이다(결제한 상한과 같다). 같은 트랜잭션에서 읽어, 읽은 뒤 장부가 바뀌지 않게 한다.
-        const escrow = await this.ledger.escrowBalance(collaboration.id, tx);
-        const { payout, refund } = settleViews({
-          views: finalViews,
-          perViewAmount,
-          cap: escrow,
-        });
-        const created = await this.repository.createSettlement(
-          {
-            collaborationId: collaboration.id,
+        const committed = await this.commitSettlement(
+          tx,
+          collaboration,
+          'COUNTING',
+          // 상한은 에스크로에 실제로 있는 돈이다(결제한 상한과 같다).
+          (escrow) => ({
             finalViews,
-            payoutAmount: payout,
-            refundAmount: refund,
-            settledAt: now,
-          },
-          tx,
-        );
-        if (!created) return rollback('gone');
-        const posted = await this.ledger.post(
-          collaboration.id,
-          postingsForSettlement({ payout, refund }),
+            ...settleViews({ views: finalViews, perViewAmount, cap: escrow }),
+          }),
           key,
-          tx,
         );
-        if (posted === 'duplicate') {
-          // 정산 행이 없는데 정산 장부가 있다면 상태가 어긋난 것이다. 조용히 넘기지 않고 되돌려 드러낸다.
-          throw new Error('정산 전인 협업에 정산 장부 줄이 이미 있어요.');
-        }
-        await this.payouts.request(
-          collaboration.id,
-          payout,
-          settlePayoutKey(collaboration.id),
-          now,
-          tx,
-        );
-        await this.refunds.request(
-          collaboration.id,
-          refund,
-          settleRefundKey(collaboration.id),
-          tx,
-        );
-        return 'settled';
+        return committed ? 'settled' : rollback('gone');
       },
     );
     return outcome === 'settled' ? 'settled' : 'gone';
+  }
+
+  // 정산의 커밋 부분(단계, 정산 행, 장부, 지급·환급 행)을 호출한 쪽의 트랜잭션 안에서 한다.
+  // 조회수 정산(작업)과 운영 명령(조회수로 재개, 강제 지급)이 같은 길을 쓰므로, 장부 키와 돈 행 키가 같아 어느 길로든 한 번만 정산된다.
+  // 조건부 갱신이 먼저다: 동시에 도는 같은 작업이나 명령 가운데 하나만 통과한다. 졌으면 null이고 호출한 쪽이 되돌린다.
+  // plan은 에스크로 잔액을 받아 지급·환급을 정한다(같은 트랜잭션에서 읽어, 읽은 뒤 장부가 바뀌지 않게 한다).
+  private async commitSettlement(
+    tx: Prisma.TransactionClient,
+    collaboration: Collaboration,
+    from: CollaborationStage,
+    plan: (escrow: number) => {
+      finalViews: number | null;
+      payout: number;
+      refund: number;
+    },
+    key: string,
+    options: {
+      patch?: CollaborationPatch;
+      payoutKey?: string;
+      refundKey?: string;
+      // 지급·환급이 정산이 아니라 운영 명령의 몫일 때의 장부 줄. 기본은 일반 정산의 줄이다.
+      postings?: (p: { payout: number; refund: number }) => Posting[];
+    } = {},
+  ): Promise<{ payout: number; refund: number } | null> {
+    const now = this.clock.now();
+    if (
+      !(await this.collaborations.advance(
+        collaboration.id,
+        from,
+        'SETTLED',
+        options.patch ?? {},
+        tx,
+      ))
+    ) {
+      return null;
+    }
+    const escrow = await this.ledger.escrowBalance(collaboration.id, tx);
+    const { finalViews, payout, refund } = plan(escrow);
+    const created = await this.repository.createSettlement(
+      {
+        collaborationId: collaboration.id,
+        finalViews,
+        payoutAmount: payout,
+        refundAmount: refund,
+        settledAt: now,
+      },
+      tx,
+    );
+    if (!created) return null;
+    const posted = await this.ledger.post(
+      collaboration.id,
+      (options.postings ?? postingsForSettlement)({ payout, refund }),
+      key,
+      tx,
+    );
+    if (posted === 'duplicate') {
+      // 정산 행이 없는데 정산 장부가 있다면 상태가 어긋난 것이다. 조용히 넘기지 않고 되돌려 드러낸다.
+      throw new Error('정산 전인 협업에 정산 장부 줄이 이미 있어요.');
+    }
+    await this.payouts.request(
+      collaboration.id,
+      payout,
+      options.payoutKey ?? settlePayoutKey(collaboration.id),
+      now,
+      tx,
+    );
+    await this.refunds.request(
+      collaboration.id,
+      refund,
+      options.refundKey ?? settleRefundKey(collaboration.id),
+      tx,
+    );
+    return { payout, refund };
+  }
+
+  // 운영 명령 resume-settlement: 조회수를 읽지 못해 멈춘 협업을 운영자가 준 조회수로 정산한다(호출한 쪽의 트랜잭션 안).
+  // 지급과 환급은 일반 정산과 같은 키·같은 줄이다. 졌으면(그사이 다른 길이 정산·변경했다) null이다.
+  settleHaltedWithViews(
+    tx: Prisma.TransactionClient,
+    collaboration: Collaboration,
+    views: number,
+  ): Promise<{ payout: number; refund: number } | null> {
+    const perViewAmount = readPerViewAmount(collaboration.terms);
+    return this.commitSettlement(
+      tx,
+      collaboration,
+      'HALTED',
+      (escrow) => ({
+        finalViews: views,
+        ...settleViews({ views, perViewAmount, cap: escrow }),
+      }),
+      settleJobKey(collaboration.id),
+      { patch: { haltedReason: null, stageBeforeHalt: null } },
+    );
+  }
+
+  // 운영 명령 force-payout: 보관액 안에서 amount를 지급하고 남은 보관액은 사장님에게 돌려준 뒤 정산으로 끝낸다.
+  // 수수료는 일반 정산처럼 수익으로 남는다. amount가 보관액보다 크면 던진다(호출한 쪽이 먼저 확인하지만 한 번 더 막는다).
+  settleForced(
+    tx: Prisma.TransactionClient,
+    collaboration: Collaboration,
+    amount: number,
+  ): Promise<{ payout: number; refund: number } | null> {
+    return this.commitSettlement(
+      tx,
+      collaboration,
+      collaboration.stage,
+      (escrow) => {
+        if (!Number.isInteger(amount) || amount < 0 || amount > escrow) {
+          throw new Error(
+            `강제 지급액(${amount})이 보관액(${escrow})을 넘거나 올바르지 않아요.`,
+          );
+        }
+        return { finalViews: null, payout: amount, refund: escrow - amount };
+      },
+      forcePayoutKey(collaboration.id),
+      {
+        patch: { haltedReason: null, stageBeforeHalt: null },
+        payoutKey: forcePayoutKey(collaboration.id),
+        refundKey: forcePayoutRefundKey(collaboration.id),
+        postings: ({ payout, refund }) => [
+          ...postingsForForcedPayout({ amount: payout }),
+          ...postingsForForcedRefund({ amount: refund }),
+        ],
+      },
+    );
+  }
+
+  // 정산 커밋 뒤의 단계(작업 등록, 알림, PG 환급)를 협업 id로 이어서 한다. 모두 같은 키라 다시 불러도 한 번만 일어난다.
+  // 운영 명령이 정산을 커밋한 뒤 부른다.
+  // 강제 지급은 지급·환급 행의 키가 일반 정산과 달라 keys로 알려 준다.
+  async finishSettlementOf(
+    collaborationId: string,
+    keys?: { payout: string; refund: string },
+  ): Promise<void> {
+    const collaboration = await this.collaborations.findById(collaborationId);
+    const settlement = collaboration
+      ? await this.repository.findSettlement(collaborationId)
+      : null;
+    if (collaboration && settlement) {
+      await this.finishSettlement(collaboration, settlement, undefined, keys);
+    }
   }
 
   // 커밋 뒤의 단계. 모두 같은 키라 다시 불러도 한 번만 일어난다.
@@ -195,10 +310,12 @@ export class SettlementsService {
     collaboration: Collaboration,
     settlement: Settlement,
     context?: JobRunContext,
+    keys: { payout: string; refund: string } = {
+      payout: settlePayoutKey(collaboration.id),
+      refund: settleRefundKey(collaboration.id),
+    },
   ): Promise<void> {
-    const payout = await this.payouts.findByKey(
-      settlePayoutKey(collaboration.id),
-    );
+    const payout = await this.payouts.findByKey(keys.payout);
     if (payout?.status === 'PENDING') await this.payouts.schedule(payout);
 
     const target = { kind: 'WALLET', id: null } as const;
@@ -213,9 +330,7 @@ export class SettlementsService {
         dedupeKey: `settled:${collaboration.id}`,
       });
     }
-    const refund = await this.refunds.findByKey(
-      settleRefundKey(collaboration.id),
-    );
+    const refund = await this.refunds.findByKey(keys.refund);
     if (refund) await this.refunds.execute(refund.id, context);
     if (settlement.refundAmount > 0) {
       await this.notifications.notify({

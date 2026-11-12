@@ -12,7 +12,10 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PayoutAccountsService } from '../payout-accounts/payout-accounts.service';
 import { payoutJobKey } from './job-keys';
 import { nextPayday, upcomingPayday } from './payday';
-import { SettlementsRepository } from './settlements.repository';
+import {
+  PayoutWithCreator,
+  SettlementsRepository,
+} from './settlements.repository';
 
 // 크리에이터에게 나가는 돈. 정산이 확정되면 지급 행을 PENDING으로 만들고, 송금은 지급일(수요일 10:00 KST)에 한다.
 @Injectable()
@@ -62,6 +65,19 @@ export class PayoutsService implements OnModuleInit {
 
   findByKey(key: string): Promise<Payout | null> {
     return this.repository.findPayoutByKey(key);
+  }
+
+  findById(payoutId: string): Promise<PayoutWithCreator | null> {
+    return this.repository.findPayoutWithCreator(payoutId);
+  }
+
+  // 운영 명령 retry-payout의 앞 절반: 실패한 지급을 대기로 되돌린다(송금은 send가 같은 키로 한다).
+  // FAILED가 아니면 false다. 호출한 쪽의 트랜잭션 안에서 감사 기록과 함께 커밋한다.
+  reopenFailed(
+    payoutId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    return this.repository.markPayoutPending(payoutId, tx);
   }
 
   // 지급일에 송금 작업이 돌게 올린다. 같은 지급은 키가 같아 한 번만 올라간다.

@@ -51,10 +51,12 @@ import { SubmissionsService } from './submissions.service';
     SubmitReminderHandler,
   ],
   // 협업 조회·취소 모듈이 읽기 모델(조회수·정산·지급)을 모으고, 환급을 요청하고, 링크 제출을 받을 때 쓴다.
+  // 운영 명령(ops)은 정산·지급·환급을 다시 보내거나 운영자 몫으로 커밋할 때 쓴다.
   exports: [
     SettlementsService,
     SettlementsRepository,
     RefundsService,
+    PayoutsService,
     SubmissionsService,
   ],
 })

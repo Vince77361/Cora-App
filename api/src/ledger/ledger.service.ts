@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { assertBalanced, Posting } from './ledger-postings';
+import { LedgerAccount, Prisma } from '@prisma/client';
+import { assertBalanced, balances, Posting } from './ledger-postings';
 import { LedgerRepository } from './ledger.repository';
 
 // 돈이 움직이는 모든 동작(결제 승인, 정산, 환급, 운영 명령)이 장부에 줄을 남길 때 거치는 유일한 곳이다.
@@ -61,6 +61,43 @@ export class LedgerService {
     tx?: Prisma.TransactionClient,
   ): Promise<number> {
     return this.repository.escrowBalance(collaborationId, tx);
+  }
+
+  // 그 협업의 장부가 불변식을 지키는지 확인한다. 어긋나면 던진다(운영 명령이 끝에서 부른다).
+  // tx를 주면 그 트랜잭션 안에서 읽어 방금 넣은 줄까지 본다 — 던지면 호출한 쪽이 되돌린다.
+  async assertCollaborationBalanced(
+    collaborationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    assertBalanced(await this.repository.listAmounts(collaborationId, tx));
+  }
+
+  // 계정별 잔액(들어온 합 − 나간 합). 운영 명령 show와 강제 환급이 읽는다.
+  async accountBalances(
+    collaborationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Record<LedgerAccount, number>> {
+    return balances(await this.repository.listAmounts(collaborationId, tx));
+  }
+
+  // 장부가 있는 모든 협업을 검산한다(yarn check:ledger). 어긋난 협업은 던지지 않고 모아서 돌려준다.
+  async checkAll(): Promise<{
+    checked: number;
+    failures: { collaborationId: string; message: string }[];
+  }> {
+    const all = await this.repository.listAllAmountsByCollaboration();
+    const failures: { collaborationId: string; message: string }[] = [];
+    for (const [collaborationId, entries] of all) {
+      try {
+        assertBalanced(entries);
+      } catch (error) {
+        failures.push({
+          collaborationId,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+    return { checked: all.size, failures };
   }
 
   // 지갑처럼 여러 협업의 보관액을 한꺼번에 보여 줄 때 쓴다(한 스냅샷에서 읽는다).

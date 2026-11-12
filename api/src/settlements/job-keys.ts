@@ -24,3 +24,20 @@ export const settleRefundKey = (collaborationId: string): string =>
   `settle-refund:${collaborationId}`;
 export const unsubmittedRefundKey = (collaborationId: string): string =>
   `unsubmitted-refund:${collaborationId}`;
+
+// 운영 명령(ops)의 중복 방지 키. 장부 줄과 돈 행(지급·환급)이 같은 문자열을 쓴다(서로 다른 표의 유일 제약이다).
+// 같은 명령을 다시 실행해도 장부와 돈 행이 하나뿐이다.
+export const forceRefundKey = (collaborationId: string): string =>
+  `force-refund:${collaborationId}`;
+export const forcePayoutKey = (collaborationId: string): string =>
+  `force-payout:${collaborationId}`;
+// 강제 지급에서 지급하고 남은 보관액의 환급 행.
+export const forcePayoutRefundKey = (collaborationId: string): string =>
+  `force-payout-refund:${collaborationId}`;
+// 협업에 반영되지 못한 결제(늦은 승인, 이중 결제)의 환급. 환급 행의 키에서 어느 결제를 돌려보낼지 알 수 있다.
+export const LATE_REFUND_KEY_PREFIX = 'late-refund:';
+export const lateRefundKey = (paymentId: string): string =>
+  `${LATE_REFUND_KEY_PREFIX}${paymentId}`;
+// 협업에 반영되지 못한 결제의 장부 줄(결제 승인 묶음). 협업을 보관 중으로 만든 결제와 같은 키 모양이다.
+export const paymentLedgerKey = (paymentId: string): string =>
+  `payment:${paymentId}`;

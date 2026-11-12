@@ -439,7 +439,7 @@ describe('OffersService', () => {
       code: 'FORBIDDEN',
     });
     users.role = 'STORE';
-    await expect(service.listReceived(OWNER, 'new')).rejects.toMatchObject({
+    await expect(service.listReceived(OWNER)).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   });

@@ -102,6 +102,19 @@ export function postingsForForcedPayout(p: { amount: number }): Posting[] {
   ]);
 }
 
+// 운영자 강제 지급 뒤 남은 보관액: 에스크로에서 사장님 환급 계정으로.
+// 수수료는 정산과 같게 수익으로 남는다(전액 환급이 아니다).
+export function postingsForForcedRefund(p: { amount: number }): Posting[] {
+  return nonZero([
+    {
+      debit: 'ESCROW',
+      credit: 'STORE_REFUND',
+      amount: p.amount,
+      reason: 'FORCED_REFUND',
+    },
+  ]);
+}
+
 // 계정별 (들어온 합 − 나간 합). credit 쪽이 들어온 것, debit 쪽이 나간 것이다.
 export function balances(
   entries: EntryAmounts[],

@@ -13,6 +13,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { JobsModule } from './jobs/jobs.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OffersModule } from './offers/offers.module';
+import { OpsModule } from './ops/ops.module';
 import { PaymentsDevModule } from './payments/payments-dev.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PayoutAccountsModule } from './payout-accounts/payout-accounts.module';
@@ -46,6 +47,7 @@ import { WalletModule } from './wallet/wallet.module';
     SettlementsModule,
     CollaborationsApiModule,
     WalletModule,
+    OpsModule,
     PaymentsDevModule.register(process.env),
   ],
 })

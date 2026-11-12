@@ -232,6 +232,15 @@ describe('loadEnv payment, payout and queue settings', () => {
     },
   );
 
+  it('accepts JOBS_WORKER on or off and treats blank as unset', () => {
+    expect(loadEnv(valid).JOBS_WORKER).toBeUndefined();
+    expect(loadEnv({ ...valid, JOBS_WORKER: '' }).JOBS_WORKER).toBeUndefined();
+    expect(loadEnv({ ...valid, JOBS_WORKER: 'off' }).JOBS_WORKER).toBe('off');
+    expect(() => loadEnv({ ...valid, JOBS_WORKER: 'maybe' })).toThrow(
+      /JOBS_WORKER/,
+    );
+  });
+
   it('defaults FAKE_CLOCK_OFFSET_DAYS to 0 and parses an integer', () => {
     expect(loadEnv(valid).FAKE_CLOCK_OFFSET_DAYS).toBe(0);
     expect(

@@ -14,6 +14,7 @@ import { postingsForPaymentApproved } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { OffersService } from '../offers/offers.service';
+import { paymentLedgerKey } from '../settlements/job-keys';
 import { feeFor } from '../settlements/settlement-math';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
@@ -147,6 +148,29 @@ export class PaymentsService {
     if (!payment?.pgTransactionId) return null;
     return {
       id: payment.id,
+      pgTransactionId: payment.pgTransactionId,
+      amountEscrow: payment.amountEscrow,
+      amountFee: payment.amountFee,
+    };
+  }
+
+  // 운영 명령(환급)이 결제 하나를 읽는다. 서버 안의 호출 전용이다(결제한 사람의 권한 확인 없음).
+  async findPayment(paymentId: string): Promise<{
+    id: string;
+    collaborationId: string;
+    status: Payment['status'];
+    pgTransactionId: string | null;
+    amountEscrow: number;
+    amountFee: number;
+  } | null> {
+    const payment = UUID.test(paymentId)
+      ? await this.payments.findById(paymentId)
+      : null;
+    if (!payment) return null;
+    return {
+      id: payment.id,
+      collaborationId: payment.collaborationId,
+      status: payment.status,
       pgTransactionId: payment.pgTransactionId,
       amountEscrow: payment.amountEscrow,
       amountFee: payment.amountFee,
@@ -316,7 +340,7 @@ export class PaymentsService {
           escrow: payment.amountEscrow,
           fee: payment.amountFee,
         }),
-        `payment:${payment.id}`,
+        paymentLedgerKey(payment.id),
         tx,
       );
       if (posted === 'duplicate') {

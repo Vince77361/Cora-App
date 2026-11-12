@@ -48,6 +48,8 @@ class UnconfiguredJobScheduler extends JobScheduler {
           clock,
           registry,
           operatorAlert,
+          // 운영 명령(yarn ops)은 작업을 올리기만 한다: 작업자는 서버 프로세스에서만 돈다.
+          { worker: config.get<string>('JOBS_WORKER') !== 'off' },
         );
       },
     },

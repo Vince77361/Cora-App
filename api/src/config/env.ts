@@ -24,6 +24,7 @@ const DEV_DEFAULT_ADAPTER_KEYS = [
   'OPERATOR_ALERT_ADAPTER',
 ] as const;
 const BLANK_MEANS_DEFAULT_KEYS = [
+  'JOBS_WORKER',
   'FEE_RATE_STORE_OFFER',
   'FEE_RATE_BID',
   'FEE_RATE_BRAND_CONTRACT',
@@ -127,6 +128,13 @@ export class Env {
   @IsString()
   @IsNotEmpty()
   REDIS_URL!: string;
+
+  // 작업 큐의 작업자(작업을 꺼내 실행하는 쪽)를 이 프로세스에서 켤지. 서버는 on이다.
+  // 운영 명령(yarn ops)은 작업을 올리기만 하고 실행하지 않아야 해서, ops-main이 시작 전에 off로 맞춘다.
+  @Expose()
+  @IsOptional()
+  @IsIn(['on', 'off'])
+  JOBS_WORKER?: 'on' | 'off';
 
   // 운영자 알림을 받을 주소. 운영에서만 필수다.
   @Expose()

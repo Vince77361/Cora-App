@@ -4,6 +4,7 @@ import {
   balances,
   Posting,
   postingsForForcedPayout,
+  postingsForForcedRefund,
   postingsForFullRefund,
   postingsForPaymentApproved,
   postingsForSettlement,
@@ -132,5 +133,20 @@ describe('ledger postings', () => {
       amount: 5,
     });
     expect(() => assertBalanced(all)).toThrow();
+  });
+
+  it('keeps the fee as revenue when a forced payout returns the rest of the escrow', () => {
+    const approved = postingsForPaymentApproved({ escrow: 100000, fee: 10000 });
+    const forced = [
+      ...postingsForForcedPayout({ amount: 30000 }),
+      ...postingsForForcedRefund({ amount: 70000 }),
+    ];
+    expect(postingsForForcedRefund({ amount: 0 })).toEqual([]);
+    const b = balances(entries(approved, forced));
+    expect(b.ESCROW).toBe(0);
+    expect(b.FEE_REVENUE).toBe(10000);
+    expect(b.CREATOR_PAYABLE).toBe(30000);
+    expect(b.STORE_REFUND).toBe(70000);
+    expect(() => assertBalanced(entries(approved, forced))).not.toThrow();
   });
 });

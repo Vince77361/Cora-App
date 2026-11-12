@@ -453,6 +453,29 @@ describe('BullMqJobScheduler', () => {
     warn.mockRestore();
   });
 
+  it('does not start a worker or promote jobs when the worker is turned off (ops commands)', async () => {
+    const { queue, clock, registry } = build();
+    const waitUntilReady = jest.fn();
+    const promoted = jest.fn();
+    const scheduler = new BullMqJobScheduler(
+      { queue, clock, registry },
+      {
+        // 작업자를 만들면 큐와 작업자 모두에게 준비를 기다리므로, 이 호출이 없어야 작업자가 없다는 뜻이다.
+        queue: { waitUntilReady } as never,
+        connection: {},
+        queueName: 'cora-jobs-test',
+        worker: false,
+      },
+    );
+    jest.spyOn(scheduler, 'promoteDue').mockImplementation(promoted);
+    await scheduler.onApplicationBootstrap();
+    expect(waitUntilReady).not.toHaveBeenCalled();
+    expect(promoted).not.toHaveBeenCalled();
+    // 올리는 일은 그대로 된다.
+    await scheduler.schedule('settle', { collaborationId: 'c1' }, T0, 'k');
+    expect(queue.added).toHaveLength(1);
+  });
+
   describe('failed jobs', () => {
     function withAlert() {
       const alerts: { subject: string; body: string }[] = [];

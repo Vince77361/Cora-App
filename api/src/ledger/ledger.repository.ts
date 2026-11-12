@@ -51,12 +51,37 @@ export class LedgerRepository {
 
   listAmounts(
     collaborationId: string,
-    tx: Prisma.TransactionClient,
+    tx?: Prisma.TransactionClient,
   ): Promise<EntryAmounts[]> {
-    return tx.ledgerEntry.findMany({
+    return (tx ?? this.prisma).ledgerEntry.findMany({
       where: { collaborationId, deletedAt: null },
       select: { debitAccount: true, creditAccount: true, amount: true },
     });
+  }
+
+  // 장부 전체를 협업별로 묶어 읽는다(yarn check:ledger). 한 스냅샷에서 읽어, 읽는 도중 들어온 줄 때문에 거짓 불일치가 나지 않게 한다.
+  async listAllAmountsByCollaboration(): Promise<Map<string, EntryAmounts[]>> {
+    return this.prisma.$transaction(
+      async (tx) => {
+        const rows = await tx.ledgerEntry.findMany({
+          where: { deletedAt: null },
+          select: {
+            collaborationId: true,
+            debitAccount: true,
+            creditAccount: true,
+            amount: true,
+          },
+        });
+        const byCollaboration = new Map<string, EntryAmounts[]>();
+        for (const { collaborationId, ...amounts } of rows) {
+          const list = byCollaboration.get(collaborationId) ?? [];
+          list.push(amounts);
+          byCollaboration.set(collaborationId, list);
+        }
+        return byCollaboration;
+      },
+      { isolationLevel: 'RepeatableRead' },
+    );
   }
 
   // tx를 주면 그 트랜잭션 안에서 읽는다. 돈을 얼마나 움직일지 이 값으로 정하는 호출(정산)은 같은 트랜잭션에서 읽어야

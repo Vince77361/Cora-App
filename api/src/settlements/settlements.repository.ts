@@ -249,6 +249,18 @@ export class SettlementsRepository {
     return count === 1;
   }
 
+  // 운영자가 실패한 지급을 다시 보내려고 대기로 되돌린다. FAILED가 아니면 0행이라 false다.
+  async markPayoutPending(
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const { count } = await (tx ?? this.prisma).payout.updateMany({
+      where: { id, status: 'FAILED', deletedAt: null },
+      data: { status: 'PENDING' },
+    });
+    return count === 1;
+  }
+
   async markPayoutFailed(id: string): Promise<boolean> {
     const { count } = await this.prisma.payout.updateMany({
       where: { id, status: 'PENDING', deletedAt: null },
@@ -270,9 +282,10 @@ export class SettlementsRepository {
     return this.prisma.refund.findFirst({ where: { id, deletedAt: null } });
   }
 
+  // 대기 중인 환급, 그리고 운영자가 다시 보내는 실패한 환급만 DONE으로 바꾼다. 이미 DONE이면 0행이다.
   async markRefundDone(id: string, externalId: string): Promise<boolean> {
     const { count } = await this.prisma.refund.updateMany({
-      where: { id, status: 'PENDING', deletedAt: null },
+      where: { id, status: { in: ['PENDING', 'FAILED'] }, deletedAt: null },
       data: { status: 'DONE', externalId },
     });
     return count === 1;

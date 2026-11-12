@@ -236,4 +236,39 @@ describe('LedgerService', () => {
     );
     expect(await ledger.escrowBalance(collaborationId)).toBe(0);
   });
+
+  it('reads account balances and checks every collaboration with one snapshot', async () => {
+    await ledger.post(collaborationId, payment(), 'payment:1');
+    await ledger.post(
+      collaborationId,
+      postingsForSettlement({ payout: 43200, refund: 56800 }),
+      'settle:1',
+    );
+    const balances = await ledger.accountBalances(collaborationId);
+    expect(balances).toMatchObject({
+      PG_IN: -110000,
+      ESCROW: 0,
+      CREATOR_PAYABLE: 43200,
+      STORE_REFUND: 56800,
+      FEE_REVENUE: 10000,
+    });
+    await expect(
+      ledger.assertCollaborationBalanced(collaborationId),
+    ).resolves.toBeUndefined();
+    await expect(ledger.checkAll()).resolves.toEqual({
+      checked: 1,
+      failures: [],
+    });
+    // 줄의 금액을 손으로 고치면 그 협업이 어긋난 것으로 보고된다.
+    await prisma.ledgerEntry.updateMany({
+      where: { collaborationId, creditAccount: 'CREATOR_PAYABLE' },
+      data: { amount: 43201 },
+    });
+    const { failures } = await ledger.checkAll();
+    expect(failures).toHaveLength(1);
+    expect(failures[0].collaborationId).toBe(collaborationId);
+    await expect(
+      ledger.assertCollaborationBalanced(collaborationId),
+    ).rejects.toThrow(/장부 오류/);
+  });
 });

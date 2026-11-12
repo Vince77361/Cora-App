@@ -71,6 +71,8 @@ export class BullMqJobScheduler
       queue: Queue;
       connection: ConnectionOptions;
       queueName: string;
+      // false면 작업을 올리기만 하고 꺼내 실행하지 않는다(운영 명령).
+      worker: boolean;
     },
   ) {
     super();
@@ -81,13 +83,14 @@ export class BullMqJobScheduler
     clock: Clock,
     registry: JobHandlerRegistry,
     operatorAlert?: OperatorAlertPort,
-    queueName = JOB_QUEUE_NAME,
+    options: { worker?: boolean; queueName?: string } = {},
   ): BullMqJobScheduler {
+    const queueName = options.queueName ?? JOB_QUEUE_NAME;
     const queue = new Queue(queueName, { connection });
     queue.on('error', (e) => this.logError('큐', e));
     return new BullMqJobScheduler(
       { queue: queue, clock, registry, operatorAlert },
-      { queue, connection, queueName },
+      { queue, connection, queueName, worker: options.worker ?? true },
     );
   }
 
@@ -210,7 +213,7 @@ export class BullMqJobScheduler
 
   // 모든 모듈의 onModuleInit(처리기 등록)이 끝난 뒤에 작업자를 시작해야 처리기 없는 작업이 먼저 실패하지 않는다.
   async onApplicationBootstrap(): Promise<void> {
-    if (!this.real) return;
+    if (!this.real?.worker) return;
     const { queue, connection, queueName } = this.real;
     // autorun을 끄고 앞당기기가 끝난 뒤에 시작한다. 작업자가 먼저 돌면 때가 된 지연 작업을 스스로 가져가서
     // 앞당기기와 경쟁한다.
