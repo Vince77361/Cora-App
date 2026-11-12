@@ -123,7 +123,8 @@ class _RolePageState extends State<RolePage> {
             bg: dark ? const Color(0xFFF2F3F5) : G6Palette.lime,
             fg: dark ? const Color(0xFF17181C) : G6Palette.onLime,
             weight: dark ? FontWeight.w500 : FontWeight.w700,
-            onTap: () => demoGo(context, cur.href),
+            // 역할의 첫 화면에 들어가면 로그인 쪽 화면을 비운다. 홈에서 뒤로 밀어 로그인으로 돌아가지 않게.
+            onTap: () => demoReset(context, cur.href),
           ),
         ),
       ],

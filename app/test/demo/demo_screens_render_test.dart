@@ -21,8 +21,8 @@ void main() {
   final shots = Platform.environment['SHOTS'] == '1';
   setUpAll(_loadFonts);
   for (final mode in [ThemeMode.light, ThemeMode.dark]) {
-    for (final s in demoScreens) {
-      testWidgets('${mode.name} ${s.path} renders', (tester) async {
+    for (final path in DemoPaths.all) {
+      testWidgets('${mode.name} $path renders', (tester) async {
         tester.view.physicalSize = const Size(390, 844) * 3;
         tester.view.devicePixelRatio = 3;
         addTearDown(tester.view.reset);
@@ -39,7 +39,7 @@ void main() {
             ),
           ),
         );
-        demoRouter.go(s.path);
+        demoRouter.go(path);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 600));
         expect(find.textContaining('아직 만들지 않은 화면'), findsNothing);
@@ -51,7 +51,7 @@ void main() {
             }
           });
           await tester.pump();
-          final name = '${mode.name}${s.path.replaceAll('/', '_')}';
+          final name = '${mode.name}${path.replaceAll('/', '_')}';
           await expectLater(
             find.byKey(key),
             matchesGoldenFile('../../build/demo_shots/$name.png'),

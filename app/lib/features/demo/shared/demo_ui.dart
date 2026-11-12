@@ -88,20 +88,44 @@ class DemoSvg extends StatelessWidget {
   }
 }
 
+/// 지금 쌓인 화면의 경로. 아래(처음 화면)부터 위(지금 화면)까지.
+List<String> _stackPaths(BuildContext context) => [
+  for (final m in GoRouter.of(
+    context,
+  ).routerDelegate.currentConfiguration.matches)
+    m.matchedLocation,
+];
+
 /// artifact 링크(`href="X.dc.html"`)를 따라간다. 같은 화면이면 아무것도 하지 않는다.
+/// 가려는 화면이 이미 아래에 쌓여 있으면(저장 뒤 설정으로, 닫기 뒤 홈으로 같은 "돌아가기") 같은 화면을
+/// 한 번 더 쌓지 않고 거기까지 닫는다. 실제 앱이 같은 화면을 겹쳐 쌓지 않는 것과 같다.
 void demoGo(BuildContext context, String canvasFile) {
   final path = DemoPaths.forCanvas(canvasFile);
-  if (GoRouterState.of(context).uri.path == path) return;
+  final stack = _stackPaths(context);
+  if (stack.isNotEmpty && stack.last == path) return;
+  final at = stack.lastIndexOf(path);
+  if (at >= 0) {
+    final router = GoRouter.of(context);
+    for (var i = stack.length - 1; i > at; i--) {
+      router.pop();
+    }
+    return;
+  }
   context.push(path);
 }
 
-/// 뒤로 가기(artifact의 `aria-label="뒤로"`/`닫기`): 쌓인 화면이 있으면 닫고, 없으면 목록으로.
+/// 쌓인 화면을 비우고 그 화면에서 새로 시작한다. 로그인·역할 고르기 뒤 첫 화면, 로그아웃, 하단 메뉴 탭 이동처럼
+/// 뒤로 가도 이전 화면이 나오면 안 되는 이동에 쓴다.
+void demoReset(BuildContext context, String canvasFile) {
+  final path = DemoPaths.forCanvas(canvasFile);
+  final stack = _stackPaths(context);
+  if (stack.length == 1 && stack.last == path) return;
+  context.go(path);
+}
+
+/// 뒤로 가기(artifact의 `aria-label="뒤로"`/`닫기`): 쌓인 화면이 있으면 닫는다. 없으면 아무 일도 없다.
 void demoBack(BuildContext context) {
-  if (context.canPop()) {
-    context.pop();
-  } else {
-    context.go(DemoPaths.index);
-  }
+  if (context.canPop()) context.pop();
 }
 
 /// 하단 메뉴 한 칸.
@@ -171,7 +195,10 @@ class DemoBottomNav extends StatelessWidget {
             for (final it in items)
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: it.current ? null : () => demoGo(context, it.canvasFile),
+                // 탭 이동은 화면을 쌓지 않고 바꾼다. 실제 앱의 하단 메뉴처럼 뒤로 가도 이전 탭이 나오지 않는다.
+                onTap: it.current
+                    ? null
+                    : () => demoReset(context, it.canvasFile),
                 child: SizedBox(
                   width: 58,
                   height: 52,

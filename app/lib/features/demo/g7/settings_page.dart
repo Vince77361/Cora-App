@@ -65,7 +65,10 @@ class SettingsPage extends StatelessWidget {
   ) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => demoGo(context, file),
+      // 로그아웃은 쌓인 화면을 모두 비우고 로그인으로 간다.
+      onTap: () => file == 'NLogin.dc.html'
+          ? demoReset(context, file)
+          : demoGo(context, file),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Text(label, style: TextStyle(fontSize: 13, color: c.sub)),
