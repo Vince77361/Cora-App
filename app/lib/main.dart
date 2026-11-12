@@ -28,6 +28,8 @@ import 'features/notifications/data/api_notification_repository.dart';
 import 'features/notifications/domain/notification_repository.dart';
 import 'features/onboarding/data/api_me_repository.dart';
 import 'features/payout_account/data/api_payout_account_repository.dart';
+import 'features/wallet/data/api_wallet_repository.dart';
+import 'features/wallet/domain/wallet_repository.dart';
 import 'features/payout_account/domain/payout_account_repository.dart';
 import 'features/onboarding/domain/me_repository_provider.dart';
 import 'features/offers/data/api_received_offers_repository.dart';
@@ -120,6 +122,9 @@ Future<void> main() async {
         ),
         payoutAccountRepositoryProvider.overrideWith(
           (ref) => ApiPayoutAccountRepository(ref.watch(apiClientProvider)),
+        ),
+        walletRepositoryProvider.overrideWith(
+          (ref) => ApiWalletRepository(ref.watch(apiClientProvider)),
         ),
         receivedOffersRepositoryProvider.overrideWith(
           (ref) => ApiReceivedOffersRepository(ref.watch(apiClientProvider)),

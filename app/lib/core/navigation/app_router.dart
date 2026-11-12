@@ -25,6 +25,7 @@ import '../../features/instagram_connect/presentation/pages/fake_instagram_conne
 import '../../features/instagram_connect/presentation/pages/instagram_connect_page.dart';
 import '../../features/offers/presentation/pages/received_offers_page.dart';
 import '../../features/payout_account/presentation/pages/payout_account_page.dart';
+import '../../features/wallet/presentation/pages/wallet_page.dart';
 import '../../features/offers/presentation/pages/send_offer_page.dart';
 import '../../features/store_browse/presentation/pages/store_detail_page.dart';
 import '../../features/store_browse/presentation/pages/store_list_page.dart';
@@ -259,6 +260,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           VoucherPage(collaborationId: state.pathParameters['id']!),
           key: state.pageKey,
         ),
+      ),
+      // 정산(E7). 알림함의 정산 줄이 연다(E4 설정의 "정산 계좌와 내역"은 새 계획이 만든다).
+      GoRoute(
+        path: NotificationRoutes.wallet,
+        pageBuilder: (context, state) =>
+            CoraTransitions.push(const WalletPage(), key: state.pageKey),
       ),
       GoRoute(
         path: AppRoutes.creatorPayoutAccount,

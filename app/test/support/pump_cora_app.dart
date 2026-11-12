@@ -8,6 +8,7 @@ import 'package:cora/features/notification_settings/domain/notification_settings
 import 'package:cora/features/notifications/domain/notification_repository.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
 import 'package:cora/features/store_home/domain/store_home_repository.dart';
+import 'package:cora/features/wallet/domain/wallet_repository.dart';
 import 'package:cora/features/store_onboarding/domain/content_draft_repository_provider.dart';
 import 'package:cora/features/store_onboarding/domain/store_repository_provider.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +26,7 @@ import '../features/onboarding/fake_me_repository.dart';
 import '../features/store_home/fake_store_home_repository.dart';
 import '../features/store_onboarding/fake_content_draft_repository.dart';
 import '../features/store_onboarding/fake_store_repository.dart';
+import '../features/wallet/fake_wallet_repository.dart';
 
 AppConfig testConfig(CoraEnv env) => AppConfig(
   env: env,
@@ -79,6 +81,9 @@ Widget coraAppWith(
         notificationSettingsRepositoryProvider.overrideWithValue(
           FakeNotificationSettingsRepository(),
         ),
+      // 알림함의 정산 줄이 정산(E7)을 연다.
+      if (!_overrides(overrides, walletRepositoryProvider))
+        walletRepositoryProvider.overrideWithValue(FakeWalletRepository()),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(
           FakeContentDraftRepository(),
