@@ -278,7 +278,7 @@ void main() {
   // D4 계약은 세 가지를 모두 확인해야 다음으로 간다. 크리에이터와 브랜드는 진행 단계로, 사장님은 진행 단계가 없어 합의한 오퍼의 결제(A8)로 간다.
   for (final (role, target, check) in [
     (DemoRole.creator, DemoPaths.progress, '콘텐츠는 브랜드 계정 재게시에만 쓰여요'),
-    (DemoRole.brand, DemoPaths.progress, '콘텐츠는 브랜드 계정 재게시에만 쓰여요'),
+    (DemoRole.brand, DemoPaths.progress, '콘텐츠는 브랜드 계정 재게시에만 쓸게요'),
     (DemoRole.store, DemoPaths.pay, '콘텐츠는 가게 계정 재게시에만 쓰여요'),
   ]) {
     testWidgets('contract confirm as ${role.name} goes to $target', (

@@ -157,6 +157,48 @@ const List<List<_Group>> _creatorData = [
 
 const List<String> _creatorTabLabels = ['진행 중 1', '종료 1'];
 
+/// 브랜드: 상대는 크리에이터다. 가게의 "하루 한 컵 역제안(카드뉴스)" 줄 대신, 판본 2를 보낸 서윤의 작은 취향(12 브랜드 시점)이
+/// 내가 응답할 차례에 있다. 민의 옷장 기록은 F2로 보낸 판본 1을 기다린다. 크리에이터의 보관함(D5)으로 가던 종료 줄은 갈 곳이 없다.
+const List<List<_Group>> _brandData = [
+  [
+    _Group('내가 응답할 차례', Color(0xFFC6FF3D), Color(0xFFC6FF3D), [
+      _Row(
+        name: '서윤의 작은 취향',
+        sub: '수정 제안 · 판본 2 · 릴스 1편',
+        badge: '응답하기',
+        href: 'Agreement.dc.html',
+        photo: DemoImages.seoyun,
+        avBg: _seoyunBg,
+        hot: true,
+      ),
+    ]),
+    _Group('상대 대기', Color(0xFFA0A4AD), Color(0xFFA0A4AD), [
+      _Row(
+        name: '민의 옷장 기록',
+        sub: '판본 1 · 릴스 1편 · 2일 안에 답이 와요',
+        badge: '대기',
+        href: 'NReviewSend.dc.html',
+        photo: DemoImages.minCloset,
+        avBg: _minBg,
+      ),
+    ]),
+  ],
+  [
+    _Group('종료', Color(0xFFE6E8EB), Color(0xFF2A2D33), [
+      _Row(
+        name: '하루 한 컵',
+        sub: '일정이 맞지 않아 종료',
+        badge: '종료',
+        href: null,
+        photo: DemoImages.onecup,
+        avBg: _onecupBg,
+      ),
+    ]),
+  ],
+];
+
+const List<String> _brandTabLabels = ['진행 중 2', '종료 1'];
+
 /// F3 제안함 (`NProposals.dc.html`)
 class ProposalsPage extends StatefulWidget {
   const ProposalsPage({super.key});
@@ -175,9 +217,14 @@ class _ProposalsPageState extends State<ProposalsPage> {
     final data = switch (role) {
       DemoRole.store => _storeData,
       DemoRole.creator => _creatorData,
+      DemoRole.brand => _brandData,
       _ => _data,
     };
-    final labels = role == DemoRole.creator ? _creatorTabLabels : _tabLabels;
+    final labels = switch (role) {
+      DemoRole.creator => _creatorTabLabels,
+      DemoRole.brand => _brandTabLabels,
+      _ => _tabLabels,
+    };
     return DemoFrame(
       background: pal.bg,
       children: [

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g1_ui.dart';
 
@@ -16,6 +17,9 @@ class ProgressPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = G1Palette.of(context);
+    // 크리에이터(민의 옷장 기록)가 보면 상대는 모아 스튜디오이고, 확보액·남은 캠페인 예산 같은 브랜드의 돈 대신
+    // 내가 받을 제작비와 지급 시점을 보여 준다.
+    final creator = demoRole.value == DemoRole.creator;
     return DemoFrame(
       background: p.bg,
       children: [
@@ -43,9 +47,11 @@ class ProgressPage extends StatelessWidget {
                         ),
                         child: ClipOval(
                           child: DemoPhoto(
-                            DemoImages.forBlob(
-                              '/_blob/d607dd0c30dba30c6efc831cbd7a6f4f',
-                            ),
+                            creator
+                                ? DemoImages.moaStudio
+                                : DemoImages.forBlob(
+                                    '/_blob/d607dd0c30dba30c6efc831cbd7a6f4f',
+                                  ),
                             x: 62,
                             y: 42,
                           ),
@@ -62,7 +68,9 @@ class ProgressPage extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '서윤의 작은 취향과 모아 스튜디오',
+                              creator
+                                  ? '민의 옷장 기록과 모아 스튜디오'
+                                  : '서윤의 작은 취향과 모아 스튜디오',
                               style: g1Text(13, 400, p.sub),
                             ),
                           ],
@@ -109,12 +117,18 @@ class ProgressPage extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(child: _stat(p, '이번 협업 확보액', '350,000원')),
+                        Expanded(
+                          child: creator
+                              ? _stat(p, '이번 협업 제작비', '350,000원 + 제품')
+                              : _stat(p, '이번 협업 확보액', '350,000원'),
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: G1Tap(
                             onTap: () => demoGo(context, 'NProposals.dc.html'),
-                            child: _stat(p, '남은 캠페인 예산', '150,000원'),
+                            child: creator
+                                ? _stat(p, '지급', '게시 후 7일 이내')
+                                : _stat(p, '남은 캠페인 예산', '150,000원'),
                           ),
                         ),
                       ],

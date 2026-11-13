@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g3_common.dart';
 
@@ -30,6 +31,18 @@ class _ReviewPageState extends State<ReviewPage> {
   ];
   int _sel = 1;
   bool _ad = true;
+
+  // 게시 승인은 브랜드의 일이다. 크리에이터에게는 광고 표시를 넣었는지 확인하고 승인 뒤 게시하는 버튼을 보여 준다.
+  final bool _creator = demoRole.value == DemoRole.creator;
+
+  // 댓글 작성자는 크리에이터 쪽에서 적혀 있다("나" = 크리에이터). 브랜드가 보면 모아 스튜디오가 나이고 크리에이터는 이름으로 보인다.
+  String _who(String who) {
+    if (demoRole.value != DemoRole.brand) return who;
+    if (who == '모아 스튜디오') return '나';
+    if (who == '나') return '서윤의 작은 취향';
+    return who;
+  }
+
   final TextEditingController _draft = TextEditingController();
 
   // 썸네일 줄 6칸의 object-position
@@ -53,7 +66,14 @@ class _ReviewPageState extends State<ReviewPage> {
     if (t.isEmpty) return;
     final cur = _items[_sel];
     setState(() {
-      _items.add(_Mark(cur.t, cur.pos, '나', t));
+      _items.add(
+        _Mark(
+          cur.t,
+          cur.pos,
+          demoRole.value == DemoRole.brand ? '모아 스튜디오' : '나',
+          t,
+        ),
+      );
       _draft.clear();
       _sel = _items.length - 1;
     });
@@ -114,7 +134,7 @@ class _ReviewPageState extends State<ReviewPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '광고 표시를 확인했어요',
+                              _creator ? '광고 표시를 넣었어요' : '광고 표시를 확인했어요',
                               style: TextStyle(fontSize: 15, color: p.text),
                             ),
                             Container(
@@ -158,7 +178,7 @@ class _ReviewPageState extends State<ReviewPage> {
                 ),
                 const SizedBox(height: 6),
                 G3Pill(
-                  label: '이 판본(v2) 게시 승인',
+                  label: _creator ? '승인되면 게시하기' : '이 판본(v2) 게시 승인',
                   background: ctaBg,
                   color: ctaFg,
                   height: 56,
@@ -275,7 +295,7 @@ class _ReviewPageState extends State<ReviewPage> {
                 children: [
                   // 다크에서도 말풍선 바탕이 흰색이라 글자색은 artifact 그대로다(말풍선 이름은 다크에서 #F2F3F5).
                   Text(
-                    sel.who,
+                    _who(sel.who),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,

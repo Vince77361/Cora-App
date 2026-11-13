@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g7_ui.dart';
 
@@ -12,6 +13,15 @@ class NotifySettingsPage extends StatefulWidget {
 }
 
 class _NotifySettingsPageState extends State<NotifySettingsPage> {
+  // "가게나 브랜드가 오퍼를 보냈을 때"는 크리에이터의 문구다. 맡기는 쪽(가게·브랜드)은 크리에이터의 제안을 받는다.
+  String _desc(int i) {
+    final role = demoRole.value;
+    if (i == 1 && (role == DemoRole.store || role == DemoRole.brand)) {
+      return '크리에이터가 제안이나 역제안을 보냈을 때';
+    }
+    return _items[i].$2;
+  }
+
   static const _items = [
     ('서로 관심', '상대도 관심을 표시하면 알려줘요'),
     ('새 오퍼와 제안', '가게나 브랜드가 오퍼를 보냈을 때'),
@@ -85,7 +95,7 @@ class _NotifySettingsPageState extends State<NotifySettingsPage> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        _items[i].$2,
+                                        _desc(i),
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: c.sub,

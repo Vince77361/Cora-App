@@ -165,6 +165,8 @@ final Map<DemoRole, Map<String, String>> _redirects = {
     '${DemoPaths.settings}>${DemoPaths.profile}': DemoPaths.storeHome,
   },
   DemoRole.brand: {
+    // 11 메시지 요청은 크리에이터가 받는 화면이다. 브랜드가 첫 인사를 보내면 그 크리에이터와의 대화(D3)가 열린다.
+    '*>${DemoPaths.chat}': DemoPaths.chatThread,
     '*>${DemoPaths.retro}': DemoPaths.progress,
     '*>${DemoPaths.proposal}': DemoPaths.terms,
     // B1·B5의 "오퍼 보내기"는 사장님의 A5. 브랜드는 조건 협의로 간다.

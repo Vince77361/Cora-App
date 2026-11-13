@@ -98,10 +98,25 @@ class _NotifyPageState extends State<NotifyPage> {
     true,
   );
 
-  static _Item _forRole(_Item x) =>
-      demoRole.value == DemoRole.store && x.href == 'Agreement.dc.html'
-      ? _storeAgreement
-      : x;
+  /// 브랜드(모아 스튜디오)에게는 자기 이름의 알림 대신, 판본 2를 보낸 크리에이터의 알림이다(12 브랜드 시점과 같다).
+  static const _brandAgreement = _Item(
+    2,
+    '서윤의 작은 취향이 조건 버전 2를 보냈어요.',
+    '12분 전',
+    'Agreement.dc.html',
+    'd607dd0c30dba30c6efc831cbd7a6f4f',
+    Color(0xFFE8DDCB),
+    true,
+  );
+
+  static _Item _forRole(_Item x) {
+    if (x.href != 'Agreement.dc.html') return x;
+    return switch (demoRole.value) {
+      DemoRole.store => _storeAgreement,
+      DemoRole.brand => _brandAgreement,
+      _ => x,
+    };
+  }
 
   int _tab = 0;
   bool _read = false;

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g8_common.dart';
 
 /// 고정 현금 선택지(원). 캔버스의 `amounts`.
-const List<int> _amounts = [0, 30000, 50000, 100000];
+const List<int> _storeAmounts = [0, 30000, 50000, 100000];
+
+/// 브랜드의 제작비 선택지(원). 브랜드는 식사권 대신 제품을 주고 제작비를 정한다(후보 비교 04의 30만·35만 원).
+const List<int> _brandAmounts = [200000, 300000, 350000, 400000];
 
 /// 조회수 수당의 1인 상한(원).
 const int _perfCap = 60000;
@@ -18,8 +22,12 @@ class BudgetPage extends StatefulWidget {
 }
 
 class _BudgetPageState extends State<BudgetPage> {
-  int _fixed = 0;
-  bool _perf = true;
+  // 브랜드는 04 "민에게 제안"에서 온다: 제작비 35만 원, 성과 수당 없음(04의 "성과 상한 없음").
+  final bool _brand = demoRole.value == DemoRole.brand;
+  late int _fixed = _brand ? 2 : 0;
+  late bool _perf = !_brand;
+
+  List<int> get _amounts => _brand ? _brandAmounts : _storeAmounts;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +66,10 @@ class _BudgetPageState extends State<BudgetPage> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text('식사권과 현금은 따로 계산해요.', style: g8Text(14, pal.sub)),
+                      Text(
+                        _brand ? '제품과 현금은 따로 계산해요.' : '식사권과 현금은 따로 계산해요.',
+                        style: g8Text(14, pal.sub),
+                      ),
                     ],
                   ),
                 ),
@@ -144,7 +155,7 @@ class _BudgetPageState extends State<BudgetPage> {
           ),
           const SizedBox(height: 4),
           Text(
-            '식사권 40,000원 · 2인',
+            _brand ? '제품 제공 · 주얼리 1종' : '식사권 40,000원 · 2인',
             style: g8Text(17, pal.text, weight: FontWeight.w500),
           ),
         ],
@@ -159,7 +170,7 @@ class _BudgetPageState extends State<BudgetPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('고정 현금 (선택)', style: g8Text(13, pal.sub)),
+          Text(_brand ? '제작비' : '고정 현금 (선택)', style: g8Text(13, pal.sub)),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -214,7 +225,7 @@ class _BudgetPageState extends State<BudgetPage> {
                     children: [
                       Text('조회수 수당', style: g8Text(15, pal.text)),
                       Text(
-                        '조회수만큼 더 드려요 · 기본으로 켜져 있어요',
+                        _brand ? '조회수만큼 더 드려요' : '조회수만큼 더 드려요 · 기본으로 켜져 있어요',
                         style: g8Text(12, pal.sub),
                       ),
                     ],

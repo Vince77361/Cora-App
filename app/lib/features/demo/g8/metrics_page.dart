@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g8_common.dart';
 
@@ -14,6 +15,14 @@ const List<(String, String)> _calc = [
   ('1인 상한', '60,000원 · 상한 안'),
   ('사장님께 환불', '35,000원'),
   ('크리에이터 지급 예정', '25,000원'),
+];
+
+/// 브랜드 계약(서윤의 작은 취향, 버전 2)은 제작비 고정이라 조회수 수당과 환불이 없다. 조회 자료는 성과 확인으로만 쓴다.
+const List<(String, String)> _brandCalc = [
+  ('제작비', '350,000원 · 계약 고정'),
+  ('조회수 수당', '없음'),
+  ('지급 조건', '게시 후 7일 이내'),
+  ('크리에이터 지급 예정', '350,000원'),
 ];
 
 /// 조회 자료의 확인 상태. 캔버스의 `st`.
@@ -154,6 +163,7 @@ class _MetricsPageState extends State<MetricsPage> {
   }
 
   Widget _calcCard(G8Palette pal) {
+    final calc = demoRole.value == DemoRole.brand ? _brandCalc : _calc;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
@@ -171,13 +181,13 @@ class _MetricsPageState extends State<MetricsPage> {
               style: g8Text(13, pal.sub, weight: FontWeight.w500),
             ),
           ),
-          for (var i = 0; i < _calc.length; i++)
+          for (var i = 0; i < calc.length; i++)
             G8KeyValueRow(
               pal: pal,
-              term: _calc[i].$1,
-              value: _calc[i].$2,
+              term: calc[i].$1,
+              value: calc[i].$2,
               first: i == 0,
-              bold: i == _calc.length - 1,
+              bold: i == calc.length - 1,
             ),
         ],
       ),

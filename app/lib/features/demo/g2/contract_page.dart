@@ -24,6 +24,12 @@ class _ContractPageState extends State<ContractPage> {
     '광고 표시 의무를 지킬게요',
     '콘텐츠는 가게 계정 재게시에만 쓰여요',
   ];
+  // 브랜드가 지킬 약속은 지급과 사용 범위다. 광고 표시 의무는 크리에이터의 약속이다.
+  static const _brandLabels = [
+    '합의한 조건 버전 2를 확인했어요',
+    '게시 후 7일 이내에 제작비를 지급할게요',
+    '콘텐츠는 브랜드 계정 재게시에만 쓸게요',
+  ];
   final List<bool> _on = [true, true, false];
 
   @override
@@ -32,7 +38,14 @@ class _ContractPageState extends State<ContractPage> {
     final ready = _on.every((x) => x);
     // 사장님에게 계약 상대는 크리에이터이고 보상은 식사권·고정 현금·조회수 수당이다(F2 캔버스의 값).
     final store = demoRole.value == DemoRole.store;
-    final labels = store ? _storeLabels : _labels;
+    final brand = demoRole.value == DemoRole.brand;
+    // 크리에이터 역할의 나는 민의 옷장 기록이다(프로필·설정·정산과 같은 이름).
+    final creator = demoRole.value == DemoRole.creator;
+    final labels = store
+        ? _storeLabels
+        : brand
+        ? _brandLabels
+        : _labels;
 
     Widget term(String k, String v) => Expanded(
       child: Column(
@@ -145,15 +158,17 @@ class _ContractPageState extends State<ContractPage> {
                               color: G2Palette.photoCream,
                               shape: BoxShape.circle,
                             ),
-                            child: const DemoPhoto(
-                              DemoImages.seoyun,
+                            child: DemoPhoto(
+                              creator
+                                  ? DemoImages.minCloset
+                                  : DemoImages.seoyun,
                               x: 55,
                               y: 22,
                             ),
                           ),
                           const SizedBox(width: 10),
                           Text(
-                            '서윤의 작은 취향',
+                            creator ? '민의 옷장 기록' : '서윤의 작은 취향',
                             style: g2Text(
                               14,
                               color: p.text,
@@ -248,7 +263,7 @@ class _ContractPageState extends State<ContractPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  store
+                  store || brand
                       ? '크리에이터 동의를 기다리고 있어요. 계약서는 체결 후 보관함에 저장돼요.'
                       : '브랜드 동의를 기다리고 있어요. 계약서는 체결 후 보관함에 저장돼요.',
                   textAlign: TextAlign.center,

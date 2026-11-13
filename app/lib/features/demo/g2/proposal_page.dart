@@ -244,7 +244,7 @@ class ProposalPage extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  '실제로 사용하는 장면이 좋았어요. 새 주얼리도 서윤님의 일상 안에서 소개하고 싶어요.',
+                                  '실제로 사용하는 장면이 좋았어요. 새 주얼리도 서연님의 일상 안에서 소개하고 싶어요.',
                                   style: g2Text(
                                     17,
                                     color: const Color(0xFF17181C),

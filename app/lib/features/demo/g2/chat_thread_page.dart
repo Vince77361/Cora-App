@@ -234,40 +234,36 @@ class _ChatThreadPageState extends State<ChatThreadPage> {
               ),
               const SizedBox(height: 10),
               if (brand)
-                sent(
-                  '주얼리를 먼저 7일 정도 사용해보신 뒤, 11월 16일 이후 촬영이 가능하실까요?',
-                )
+                sent('주얼리를 먼저 7일 정도 사용해보신 뒤, 11월 16일 이후 촬영이 가능하실까요?')
               else
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 270),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: p.card,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                      bottomLeft: Radius.circular(6),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 270),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: p.card,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                        bottomLeft: Radius.circular(6),
+                      ),
+                    ),
+                    child: Text(
+                      store
+                          ? '김 오르는 첫 숟가락을 슬로모션으로 찍을게요.'
+                          : '주얼리를 먼저 7일 정도 사용해보신 뒤, 11월 16일 이후 촬영이 가능하실까요?',
+                      style: g2Text(15, color: p.text, height: 1.5),
                     ),
                   ),
-                  child: Text(
-                    store
-                        ? '김 오르는 첫 숟가락을 슬로모션으로 찍을게요.'
-                        : '주얼리를 먼저 7일 정도 사용해보신 뒤, 11월 16일 이후 촬영이 가능하실까요?',
-                    style: g2Text(15, color: p.text, height: 1.5),
-                  ),
                 ),
-              ),
               const SizedBox(height: 10),
               if (brand)
-                received(
-                  '네, 가능해요. 대신 23일부터 시작하면 더 여유 있게 쓸 수 있어요.',
-                )
+                received('네, 가능해요. 대신 23일부터 시작하면 더 여유 있게 쓸 수 있어요.')
               else
                 sent(
                   store

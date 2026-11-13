@@ -105,6 +105,36 @@ void main() {
     expect(path(), DemoPaths.budget);
   });
 
+  testWidgets('brand screens show brand terms, not store ones', (tester) async {
+    for (final screen in [
+      DemoPaths.budget,
+      DemoPaths.reviewSend,
+      DemoPaths.proposals,
+      DemoPaths.metrics,
+    ]) {
+      await open(tester, DemoRole.brand, screen);
+      expect(find.textContaining('식사권'), findsNothing, reason: screen);
+      expect(find.textContaining('하루 한 컵 ·'), findsNothing, reason: screen);
+      expect(find.textContaining('사장님'), findsNothing, reason: screen);
+    }
+    await open(tester, DemoRole.brand, DemoPaths.notify);
+    expect(find.textContaining('모아 스튜디오가'), findsNothing);
+    await open(tester, DemoRole.brand, DemoPaths.contract);
+    expect(find.text('광고 표시 의무를 지킬게요'), findsNothing);
+  });
+
+  testWidgets('creator screens speak as 민의 옷장 기록, not the brand', (
+    tester,
+  ) async {
+    await open(tester, DemoRole.creator, DemoPaths.progress);
+    expect(find.text('남은 캠페인 예산'), findsNothing);
+    expect(find.text('민의 옷장 기록과 모아 스튜디오'), findsOneWidget);
+    await open(tester, DemoRole.creator, DemoPaths.review);
+    expect(find.text('이 판본(v2) 게시 승인'), findsNothing);
+    await open(tester, DemoRole.creator, DemoPaths.contract);
+    expect(find.text('민의 옷장 기록'), findsOneWidget);
+  });
+
   testWidgets('brand D3 talks with the creator from the brand side', (
     tester,
   ) async {

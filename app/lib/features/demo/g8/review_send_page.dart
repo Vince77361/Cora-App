@@ -26,6 +26,17 @@ const List<(String, String)> _creatorRows = [
   ('최대 현금 부담', '30,000원'),
 ];
 
+/// 브랜드는 후보 비교(04)의 "민에게 제안"에서 온다. 받는 사람은 민의 옷장 기록이고 값은 04·F1의 브랜드 조건이다.
+const List<(String, String)> _brandRows = [
+  ('모집', '느린 결, 일상의 주얼리 캠페인'),
+  ('결과물', '릴스 1편 · 30초'),
+  ('제공 혜택', '제품 제공 · 주얼리 1종'),
+  ('제작비', '350,000원'),
+  ('조회수 수당', '없음'),
+  ('사용권', '브랜드 계정 재게시 + 광고 3개월'),
+  ('최대 현금 부담', '350,000원'),
+];
+
 /// F2 제안 보내기 전 검토 (`NReviewSend.dc.html`)
 class ReviewSendPage extends StatelessWidget {
   const ReviewSendPage({super.key});
@@ -34,7 +45,12 @@ class ReviewSendPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final pal = G8Palette.of(context);
     final creator = demoRole.value == DemoRole.creator;
-    final rows = creator ? _creatorRows : _rows;
+    final brand = demoRole.value == DemoRole.brand;
+    final rows = creator
+        ? _creatorRows
+        : brand
+        ? _brandRows
+        : _rows;
     return DemoFrame(
       background: pal.bg,
       children: [
@@ -64,7 +80,7 @@ class ReviewSendPage extends StatelessWidget {
                     ),
                   ),
                 ),
-                _recipient(pal, creator),
+                _recipient(pal, creator, brand),
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
@@ -89,7 +105,9 @@ class ReviewSendPage extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
                   child: Text(
                     // 가게의 판본 1(기본 조건) 다음이라 크리에이터의 제안은 판본 2다.
-                    creator
+                    brand
+                        ? '보낸다고 합의가 되는 건 아니에요. 상대가 수락하면 그 판본으로 계약 준비를 시작해요. 보낸 조건은 판본 1로 고정되고, 이용료 [수수료]는 별도예요.'
+                        : creator
                         ? '보낸다고 합의가 되는 건 아니에요. 상대가 수락하면 그때 결제해요. 보낸 조건은 판본 2로 고정되고, 이용료 [수수료]는 별도예요.'
                         : '보낸다고 합의가 되는 건 아니에요. 상대가 수락하면 그때 결제해요. 보낸 조건은 판본 1로 고정되고, 이용료 [수수료]는 별도예요.',
                     style: g8Text(12, pal.sub, height: 1.6),
@@ -131,7 +149,7 @@ class ReviewSendPage extends StatelessWidget {
   }
 
   /// 받는 사람 카드: 받는 사람 사진, 이름, 고른 작품 사진. 크리에이터가 보낼 때 받는 사람은 가게다.
-  Widget _recipient(G8Palette pal, bool creator) {
+  Widget _recipient(G8Palette pal, bool creator, bool brand) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(14),
@@ -152,7 +170,11 @@ class ReviewSendPage extends StatelessWidget {
             ),
             clipBehavior: Clip.antiAlias,
             child: DemoPhoto(
-              creator ? DemoImages.ramen : DemoImages.onecup,
+              creator
+                  ? DemoImages.ramen
+                  : brand
+                  ? DemoImages.minCloset
+                  : DemoImages.onecup,
               x: 50,
               y: 25,
             ),
@@ -164,7 +186,11 @@ class ReviewSendPage extends StatelessWidget {
               children: [
                 Text('받는 사람', style: g8Text(12, pal.sub)),
                 Text(
-                  creator ? '한그릇 라멘' : '하루 한 컵',
+                  creator
+                      ? '한그릇 라멘'
+                      : brand
+                      ? '민의 옷장 기록'
+                      : '하루 한 컵',
                   style: g8Text(16, pal.text, weight: FontWeight.w700),
                 ),
               ],
@@ -179,7 +205,11 @@ class ReviewSendPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
             ),
             clipBehavior: Clip.antiAlias,
-            child: const DemoPhoto(DemoImages.onecup, x: 50, y: 60),
+            child: DemoPhoto(
+              brand ? DemoImages.minCloset : DemoImages.onecup,
+              x: 50,
+              y: 60,
+            ),
           ),
         ],
       ),
