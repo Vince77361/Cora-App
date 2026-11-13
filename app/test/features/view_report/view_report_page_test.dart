@@ -462,6 +462,33 @@ void main() {
     expect(find.text('자료 확인했어요'), findsNothing);
   });
 
+  testWidgets(
+    'F4 shows a capture as pending before the server made a calculation',
+    (tester) async {
+      // 서버는 계산이 생긴 뒤에야 출처와 조회수를 캡처 값으로 바꾼다. 올린 직후에도 올린 값을 보인다.
+      await pumpCreatorReport(
+        tester,
+        reports: FakeViewReportRepository(
+          report: sampleReport(
+            status: ViewReportStatus.counting,
+            views: null,
+            withCalc: false,
+            canConfirm: false,
+            canDispute: false,
+            evidence: const ViewReportEvidence(
+              imageUrl: 'https://example.test/evidence.jpg',
+              statedViews: 9000,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('캡처 제출 · 확인 중'), findsOneWidget);
+      expect(find.text('연결 계정'), findsNothing);
+      expect(find.text('9,000회'), findsOneWidget);
+    },
+  );
+
   testWidgets('F4 leaves the capture out when the server could not sign it', (
     tester,
   ) async {

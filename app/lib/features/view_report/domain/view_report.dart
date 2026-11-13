@@ -88,4 +88,14 @@ class ViewReport {
   final bool canConfirm;
   final bool canDispute;
   final bool canUploadEvidence;
+
+  /// 화면에 보일 자료 출처. 캡처를 올렸지만 서버가 아직 계산(과 출처 값)을 만들지 않았어도 올린 뒤에는
+  /// `캡처 제출 · 확인 중`으로 보인다(서버는 계산이 생긴 뒤에야 출처를 바꾼다).
+  ViewReportSource get shownSource =>
+      evidence != null && source == ViewReportSource.connectedAccount
+      ? ViewReportSource.capturePending
+      : source;
+
+  /// 화면에 보일 조회수. 아직 읽은 값이 없으면 크리에이터가 캡처에 적어 낸 값을 보인다.
+  int? get shownViews => views ?? evidence?.statedViews;
 }

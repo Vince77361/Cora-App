@@ -214,7 +214,7 @@ class _DataBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final views = report.views;
+    final views = report.shownViews;
     final evidence = report.evidence;
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -270,7 +270,7 @@ class _DataBox extends StatelessWidget {
             ),
             _KeyValueRow(
               term: ViewReportPage.source,
-              value: sourceLabel(report.source),
+              value: sourceLabel(report.shownSource),
             ),
             // 서명 주소를 못 만들었으면(null) 사진 자리를 비운다.
             if (evidence?.imageUrl != null)
