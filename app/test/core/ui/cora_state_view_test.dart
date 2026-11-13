@@ -52,10 +52,28 @@ void main() {
       await tester.pumpWidget(
         coraTestApp(CoraStateView.staleVersion(version: 12, onOpen: () {})),
       );
-      expect(find.textContaining('판본 12을 보냈어요'), findsOneWidget);
+      expect(find.textContaining('판본 12를 보냈어요'), findsOneWidget);
       expect(find.text('판본 12 보기'), findsOneWidget);
     },
   );
+
+  testWidgets('picks the object particle that fits the version number', (
+    tester,
+  ) async {
+    for (final (version, particle) in [
+      (2, '를'),
+      (3, '을'),
+      (4, '를'),
+      (9, '를'),
+    ]) {
+      await tester.pumpWidget(
+        coraTestApp(
+          CoraStateView.staleVersion(version: version, onOpen: () {}),
+        ),
+      );
+      expect(find.textContaining('판본 $version$particle 보냈어요'), findsOneWidget);
+    }
+  });
 
   testWidgets('shows only a title when the empty state has no description or '
       'action', (tester) async {

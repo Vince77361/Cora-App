@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../text/josa.dart';
 import '../theme/cora_colors.dart';
 import '../theme/cora_shapes.dart';
 import '../theme/cora_text_styles.dart';
@@ -67,13 +68,15 @@ class CoraStateView extends StatelessWidget {
       onAction = onOpenSaved;
 
   /// F8 `이전 판본이라 수락할 수 없어요`. [version]은 상대가 보낸 최신 판본 번호다.
-  const CoraStateView.staleVersion({
+  /// 조사는 판본 번호의 받침에 맞춘다(`판본 2를`, `판본 3을`). 그래서 const가 아니다.
+  CoraStateView.staleVersion({
     super.key,
     required int version,
     required VoidCallback onOpen,
   }) : kind = CoraStateKind.staleVersion,
        title = '이전 판본이라 수락할 수 없어요',
-       description = '상대가 판본 $version을 보냈어요. 바뀐 조건을 확인한 뒤 수락해 주세요.',
+       description =
+           '상대가 ${josa('판본 $version', JosaPair.eulReul)} 보냈어요. 바뀐 조건을 확인한 뒤 수락해 주세요.',
        actionLabel = '판본 $version 보기',
        onAction = onOpen;
 
