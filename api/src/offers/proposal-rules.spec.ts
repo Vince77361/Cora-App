@@ -2,7 +2,10 @@ import { OfferVersion } from '@prisma/client';
 import { OfferVersionModel } from './dto/offer-version.model';
 import {
   changedFields,
+  defaultsOfVersion,
+  endStatusOf,
   partyOf,
+  proposalExtras,
   turnAfter,
   versionModelOf,
 } from './proposal-rules';
@@ -178,5 +181,57 @@ describe('versionModelOf', () => {
     expect(versionModelOf({ ...row, seriesName: '월간 한 컵' }).series).toEqual(
       { name: '월간 한 컵', format: null, note: null },
     );
+  });
+});
+
+describe('endStatusOf', () => {
+  it('cancels when the writer of the latest version ends it and declines when the receiver does', () => {
+    // 차례(turn)는 받은 쪽이다.
+    expect(endStatusOf('STORE', 'STORE')).toBe('DECLINED');
+    expect(endStatusOf('CREATOR', 'STORE')).toBe('CANCELLED');
+    expect(endStatusOf('CREATOR', 'CREATOR')).toBe('DECLINED');
+    expect(endStatusOf('STORE', 'CREATOR')).toBe('CANCELLED');
+  });
+});
+
+describe('proposalExtras', () => {
+  it('keeps the idea and principles only for the creator', () => {
+    const input = { idea: ' 내 방식 ', principles: ['광고 티 안 내기'] };
+    expect(proposalExtras('CREATOR', input)).toEqual({
+      idea: '내 방식',
+      principles: ['광고 티 안 내기'],
+    });
+    expect(proposalExtras('STORE', input)).toEqual({
+      idea: null,
+      principles: [],
+    });
+  });
+
+  it('stores an empty idea as null', () => {
+    expect(proposalExtras('CREATOR', { idea: '  ' })).toEqual({
+      idea: null,
+      principles: [],
+    });
+  });
+});
+
+describe('defaultsOfVersion', () => {
+  it('fills blanks from the previous version terms', () => {
+    const row = {
+      voucherName: '식사권',
+      voucherValue: 40000,
+      voucherPeople: 2,
+      viewRatePerThousand: 3000,
+      perViewCap: 90000,
+      usageRights: 'STORE_REPOST_6M',
+    } as OfferVersion;
+    expect(defaultsOfVersion(row)).toEqual({
+      voucherName: '식사권',
+      voucherValue: 40000,
+      voucherPeople: 2,
+      viewRatePerThousand: 3000,
+      perViewCap: 90000,
+      usageRights: 'STORE_REPOST_6M',
+    });
   });
 });

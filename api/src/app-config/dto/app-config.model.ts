@@ -47,6 +47,12 @@ export class VoucherDefaultsModel {
 
   @ApiProperty({ type: 'integer' })
   maxPeople!: number;
+
+  @ApiProperty({ type: 'integer', description: '식사권 금액의 최솟값(원).' })
+  minValue!: number;
+
+  @ApiProperty({ type: 'integer', description: '식사권 금액의 최댓값(원).' })
+  maxValue!: number;
 }
 
 export class RewardConfigModel {

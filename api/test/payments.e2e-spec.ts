@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import {
   CollaborationStage,
   PaymentStatus,
+  Prisma,
   PrismaClient,
   SettlementMethod,
 } from '@prisma/client';
@@ -113,7 +114,7 @@ describe('payments', () => {
       commissionerId?: string;
       paymentDueAt?: Date | null;
       // 이미 저장된 협업의 조건 사본(고정 현금처럼 아직 새로 만들 수 없는 값을 읽는 길을 확인할 때).
-      copy?: Record<string, unknown>;
+      copy?: Prisma.InputJsonObject;
       settlementMethod?: SettlementMethod;
     } = {},
   ): Promise<Seeded> {

@@ -16,3 +16,16 @@ export function declinedAtOf(payload: JobPayload): Date {
   }
   throw new Error('작업에 declinedAt이 없어요.');
 }
+
+// 판본 응답 기한 작업의 판본 번호. 없거나 자연수가 아니면 던진다.
+export function versionOf(payload: JobPayload): number {
+  if (
+    'version' in payload &&
+    typeof payload.version === 'number' &&
+    Number.isInteger(payload.version) &&
+    payload.version >= 1
+  ) {
+    return payload.version;
+  }
+  throw new Error('작업에 version이 없어요.');
+}

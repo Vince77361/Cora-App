@@ -31,7 +31,7 @@ export class SentOfferModel {
 
   @ApiProperty({
     description:
-      '사장님가 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.',
+      '사장님이 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.',
   })
   myTurn!: boolean;
 

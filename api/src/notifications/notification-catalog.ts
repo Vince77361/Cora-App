@@ -14,7 +14,9 @@ export type NotificationTarget = {
     | 'OFFER_INBOX'
     | 'PAYMENT'
     | 'COLLABORATION'
-    | 'WALLET';
+    | 'WALLET'
+    // 제안 상세(id = 오퍼 id). 판본을 주고받는 알림이 간다.
+    | 'PROPOSAL';
   id: string | null;
 };
 
@@ -212,6 +214,47 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     needsActor: false,
     render: ({ params }) =>
       `조회수 집계가 끝났어요. ${josa(won(params.amount), '을/를')} 돌려드려요.`,
+  },
+  // 표 "역제안·다시 보냄·수락·종료": 매칭 / 새 오퍼와 제안 / 사진. 가는 곳은 모두 제안 상세다.
+  // 크리에이터가 조건을 바꿔 제안: 사장님이 받는다.
+  OFFER_COUNTERED: {
+    tab: 'MATCHING',
+    switch: 'OFFERS',
+    glyph: null,
+    requiredParams: {},
+    needsActor: true,
+    render: ({ actorName }) =>
+      `${actorName ?? CREATOR_FALLBACK}님이 조건을 바꿔 제안했어요.`,
+  },
+  // 사장님이 조건을 바꿔 다시 보냄: 크리에이터가 받는다.
+  OFFER_REVISED: {
+    tab: 'MATCHING',
+    switch: 'OFFERS',
+    glyph: null,
+    requiredParams: {},
+    needsActor: true,
+    render: ({ actorName }) =>
+      `${josa(actorName ?? STORE_FALLBACK, '이/가')} 조건을 바꿔 다시 보냈어요.`,
+  },
+  // 사장님이 크리에이터의 판본을 수락: 크리에이터가 받는다.
+  OFFER_ACCEPTED_BY_STORE: {
+    tab: 'MATCHING',
+    switch: 'OFFERS',
+    glyph: null,
+    requiredParams: {},
+    needsActor: true,
+    render: ({ actorName }) =>
+      `${josa(actorName ?? STORE_FALLBACK, '이/가')} 제안을 수락했어요. 결제하면 알려드릴게요.`,
+  },
+  // 어느 쪽이 끝냈든 상대가 받는다. 이름은 끝낸 쪽이다(활동 이름 또는 가게 이름).
+  OFFER_ENDED: {
+    tab: 'MATCHING',
+    switch: 'OFFERS',
+    glyph: null,
+    requiredParams: {},
+    needsActor: true,
+    render: ({ actorName }) =>
+      `${actorName ?? CREATOR_FALLBACK}님과의 제안이 종료됐어요.`,
   },
 };
 

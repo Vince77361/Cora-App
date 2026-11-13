@@ -27,6 +27,8 @@ export class AppConfigService {
           defaultValue: voucher.defaultValue,
           defaultPeople: voucher.defaultPeople,
           maxPeople: voucher.maxPeople,
+          minValue: voucher.minValue,
+          maxValue: voucher.maxValue,
         },
         usageRightsDefault: REWARD_POLICY.usageRightsDefault,
         countingDays: REWARD_POLICY.countingDays,

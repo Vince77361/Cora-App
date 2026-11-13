@@ -84,6 +84,41 @@ describe('NOTIFICATION_CATALOG', () => {
     );
   });
 
+  it('renders the proposal wordings', () => {
+    expect(render('OFFER_COUNTERED', '하루 한 컵')).toBe(
+      '하루 한 컵님이 조건을 바꿔 제안했어요.',
+    );
+    expect(render('OFFER_REVISED', '한그릇 라멘')).toBe(
+      '한그릇 라멘이 조건을 바꿔 다시 보냈어요.',
+    );
+    expect(render('OFFER_REVISED', '모아 스튜디오')).toBe(
+      '모아 스튜디오가 조건을 바꿔 다시 보냈어요.',
+    );
+    expect(render('OFFER_ACCEPTED_BY_STORE', '한그릇 라멘')).toBe(
+      '한그릇 라멘이 제안을 수락했어요. 결제하면 알려드릴게요.',
+    );
+    expect(render('OFFER_ENDED', '하루 한 컵')).toBe(
+      '하루 한 컵님과의 제안이 종료됐어요.',
+    );
+  });
+
+  it('puts the proposal notices on the matching tab under the offers switch', () => {
+    for (const kind of [
+      'OFFER_COUNTERED',
+      'OFFER_REVISED',
+      'OFFER_ACCEPTED_BY_STORE',
+      'OFFER_ENDED',
+    ] as const) {
+      expect(NOTIFICATION_CATALOG[kind]).toMatchObject({
+        tab: 'MATCHING',
+        switch: 'OFFERS',
+        glyph: null,
+        needsActor: true,
+        requiredParams: {},
+      });
+    }
+  });
+
   it('never puts a phone number or account in a text', () => {
     // 문구는 이름, 숫자, 형식만 쓴다.
     const text = render('OFFER_RECEIVED', '한그릇 라멘', {

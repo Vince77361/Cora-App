@@ -1272,7 +1272,29 @@ describe('collaborations', () => {
       expect(await prisma.offer.count()).toBe(1);
     });
 
-    it('does not close the offer when the stage move finds another stage', async () => {
+    it('puts the offer back when the stage move loses a race after the offer was closed', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      const applicationId = await linkApplication(s);
+      const repo = app.get(CollaborationsRepository);
+      // 단계를 읽은 뒤 다른 요청이 먼저 단계를 바꾼 경우를 흉내 낸다: 오퍼를 닫은 다음 이동만 0행이 된다.
+      const moveStage = jest
+        .spyOn(
+          repo as unknown as { moveStage: () => Promise<boolean> },
+          'moveStage',
+        )
+        .mockResolvedValueOnce(false);
+      expect(await repo.advance(s.collaborationId, 'FUNDED', 'REFUNDED')).toBe(
+        false,
+      );
+      expect(moveStage).toHaveBeenCalledTimes(1);
+      moveStage.mockRestore();
+      // 우리가 닫은 오퍼는 되돌려지고 지원은 그대로이며 협업도 그대로다.
+      expect((await offerOf(s.offerId)).closedAt).toBeNull();
+      expect((await applicationOf(applicationId)).status).toBe('OFFERED');
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('FUNDED');
+    });
+
+    it('does not close the offer when the collaboration is not in the expected stage', async () => {
       const s = await seed({ rewardType: 'VOUCHER' });
       const applicationId = await linkApplication(s);
       const repo = app.get(CollaborationsRepository);

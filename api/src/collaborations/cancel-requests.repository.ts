@@ -35,10 +35,16 @@ export class CancelRequestsRepository {
 
   // 같은 협업에 대한 취소·요청·동의를 한 줄로 세운다(트랜잭션이 끝날 때까지 잡는다).
   // 이게 없으면 동시에 온 요청 둘이 서로의 줄을 못 봐서 대기 요청이 둘 생기거나, 취소와 동의가 겹친다.
+  // 잠금 순서는 오퍼 → 협업이다. 협업이 끝 단계로 가면 같은 트랜잭션에서 연결된 오퍼도 닫는데(closeThenMove),
+  // 결제 승인·취소·판본 수락 쪽은 오퍼를 먼저 잠그므로 여기서도 오퍼를 먼저 잡아 서로 거꾸로 기다리지 않게 한다.
   async lockCollaboration(
     collaborationId: string,
     tx: Prisma.TransactionClient,
   ): Promise<void> {
+    await tx.$queryRaw`
+      SELECT o.id FROM offers o
+      JOIN collaborations c ON c.offer_id = o.id
+      WHERE c.id = ${collaborationId}::uuid FOR UPDATE OF o`;
     await tx.$queryRaw`
       SELECT id FROM collaborations WHERE id = ${collaborationId}::uuid FOR UPDATE`;
   }

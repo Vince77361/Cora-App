@@ -12,9 +12,11 @@ Method | HTTP request | Description
 [**acceptOffer**](OffersApi.md#acceptoffer) | **POST** /offers/{id}/accept | 
 [**cancelOffer**](OffersApi.md#canceloffer) | **POST** /offers/{id}/cancel | 
 [**declineOffer**](OffersApi.md#declineoffer) | **POST** /offers/{id}/decline | 
+[**endOffer**](OffersApi.md#endoffer) | **POST** /offers/{id}/end | 
 [**getMyStoreSummary**](OffersApi.md#getmystoresummary) | **GET** /stores/me/summary | 
 [**listReceivedOffers**](OffersApi.md#listreceivedoffers) | **GET** /offers/received | 
 [**listSentOffers**](OffersApi.md#listsentoffers) | **GET** /offers/sent | 
+[**proposeOfferVersion**](OffersApi.md#proposeofferversion) | **POST** /offers/{id}/versions | 
 [**sendOffer**](OffersApi.md#sendoffer) | **POST** /offers | 
 [**undoDeclineOffer**](OffersApi.md#undodeclineoffer) | **POST** /offers/{id}/undo-decline | 
 
@@ -162,6 +164,55 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **endOffer**
+> EndedOfferModel endOffer(id, endOfferDto)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = OffersApi();
+final id = id_example; // String | 
+final endOfferDto = EndOfferDto(); // EndOfferDto | 
+
+try {
+    final result = api_instance.endOffer(id, endOfferDto);
+    print(result);
+} catch (e) {
+    print('Exception when calling OffersApi->endOffer: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **endOfferDto** | [**EndOfferDto**](EndOfferDto.md)|  | 
+
+### Return type
+
+[**EndedOfferModel**](EndedOfferModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **getMyStoreSummary**
 > StoreHomeSummaryModel getMyStoreSummary()
 
@@ -291,6 +342,55 @@ This endpoint does not need any parameter.
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **proposeOfferVersion**
+> OfferVersionModel proposeOfferVersion(id, proposeVersionDto)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = OffersApi();
+final id = id_example; // String | 
+final proposeVersionDto = ProposeVersionDto(); // ProposeVersionDto | 
+
+try {
+    final result = api_instance.proposeOfferVersion(id, proposeVersionDto);
+    print(result);
+} catch (e) {
+    print('Exception when calling OffersApi->proposeOfferVersion: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **proposeVersionDto** | [**ProposeVersionDto**](ProposeVersionDto.md)|  | 
+
+### Return type
+
+[**OfferVersionModel**](OfferVersionModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

@@ -42,10 +42,15 @@ export class OpsRepository {
   }
 
   // 협업 행을 잠가 같은 협업에 대한 명령·정산·장부 쓰기를 한 줄로 세운다. 협업이 없으면 false다.
+  // 잠금 순서는 오퍼 → 협업이다: 끝 단계로 옮길 때 연결된 오퍼도 닫으므로, 오퍼를 먼저 잠그는 길(결제 승인, 판본 수락)과 맞춘다.
   async lockCollaboration(
     collaborationId: string,
     tx: Prisma.TransactionClient,
   ): Promise<boolean> {
+    await tx.$queryRaw`
+      SELECT o.id FROM offers o
+      JOIN collaborations c ON c.offer_id = o.id
+      WHERE c.id = ${collaborationId}::uuid FOR UPDATE OF o`;
     const rows = await tx.$queryRaw<{ id: string }[]>`
       SELECT id FROM collaborations WHERE id = ${collaborationId}::uuid FOR UPDATE`;
     return rows.length > 0;

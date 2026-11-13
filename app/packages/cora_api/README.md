@@ -85,9 +85,11 @@ Class | Method | HTTP request | Description
 *OffersApi* | [**acceptOffer**](doc//OffersApi.md#acceptoffer) | **POST** /offers/{id}/accept | 
 *OffersApi* | [**cancelOffer**](doc//OffersApi.md#canceloffer) | **POST** /offers/{id}/cancel | 
 *OffersApi* | [**declineOffer**](doc//OffersApi.md#declineoffer) | **POST** /offers/{id}/decline | 
+*OffersApi* | [**endOffer**](doc//OffersApi.md#endoffer) | **POST** /offers/{id}/end | 
 *OffersApi* | [**getMyStoreSummary**](doc//OffersApi.md#getmystoresummary) | **GET** /stores/me/summary | 
 *OffersApi* | [**listReceivedOffers**](doc//OffersApi.md#listreceivedoffers) | **GET** /offers/received | 
 *OffersApi* | [**listSentOffers**](doc//OffersApi.md#listsentoffers) | **GET** /offers/sent | 
+*OffersApi* | [**proposeOfferVersion**](doc//OffersApi.md#proposeofferversion) | **POST** /offers/{id}/versions | 
 *OffersApi* | [**sendOffer**](doc//OffersApi.md#sendoffer) | **POST** /offers | 
 *OffersApi* | [**undoDeclineOffer**](doc//OffersApi.md#undodeclineoffer) | **POST** /offers/{id}/undo-decline | 
 *PaymentsApi* | [**createPayment**](doc//PaymentsApi.md#createpayment) | **POST** /collaborations/{id}/payments | 
@@ -143,6 +145,8 @@ Class | Method | HTTP request | Description
  - [CreatorProfileModel](doc//CreatorProfileModel.md)
  - [CreatorSummaryModel](doc//CreatorSummaryModel.md)
  - [DraftSceneModel](doc//DraftSceneModel.md)
+ - [EndOfferDto](doc//EndOfferDto.md)
+ - [EndedOfferModel](doc//EndedOfferModel.md)
  - [FeeRatesModel](doc//FeeRatesModel.md)
  - [FixedCashMaxModel](doc//FixedCashMaxModel.md)
  - [FixedCashRangeModel](doc//FixedCashRangeModel.md)
@@ -161,7 +165,12 @@ Class | Method | HTTP request | Description
  - [NotificationTab](doc//NotificationTab.md)
  - [NotificationTabFilter](doc//NotificationTabFilter.md)
  - [NotificationTargetModel](doc//NotificationTargetModel.md)
+ - [OfferEndReason](doc//OfferEndReason.md)
+ - [OfferEndStatus](doc//OfferEndStatus.md)
+ - [OfferParty](doc//OfferParty.md)
  - [OfferTermsModel](doc//OfferTermsModel.md)
+ - [OfferVersionModel](doc//OfferVersionModel.md)
+ - [OfferVersionSeriesModel](doc//OfferVersionSeriesModel.md)
  - [OfferView](doc//OfferView.md)
  - [PaymentCreatedModel](doc//PaymentCreatedModel.md)
  - [PaymentMethod](doc//PaymentMethod.md)
@@ -172,6 +181,7 @@ Class | Method | HTTP request | Description
  - [PayoutStatus](doc//PayoutStatus.md)
  - [PerViewInputDto](doc//PerViewInputDto.md)
  - [PhotoUploadModel](doc//PhotoUploadModel.md)
+ - [ProposeVersionDto](doc//ProposeVersionDto.md)
  - [QuietHours](doc//QuietHours.md)
  - [ReceivedOfferModel](doc//ReceivedOfferModel.md)
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)

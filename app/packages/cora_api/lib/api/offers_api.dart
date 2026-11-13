@@ -217,6 +217,77 @@ class OffersApi {
   ///
   ///
   /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [EndOfferDto] endOfferDto (required):
+  Future<Response> endOfferWithHttpInfo(
+    String id,
+    EndOfferDto endOfferDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/offers/{id}/end'.replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = endOfferDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  ///
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [EndOfferDto] endOfferDto (required):
+  Future<EndedOfferModel?> endOffer(
+    String id,
+    EndOfferDto endOfferDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await endOfferWithHttpInfo(
+      id,
+      endOfferDto,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(
+        await _decodeBodyBytes(response),
+        'EndedOfferModel',
+      ) as EndedOfferModel;
+    }
+    return null;
+  }
+
+  ///
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getMyStoreSummaryWithHttpInfo({
     Future<void>? abortTrigger,
   }) async {
@@ -386,6 +457,77 @@ class OffersApi {
               responseBody, 'List<SentOfferModel>') as List)
           .cast<SentOfferModel>()
           .toList(growable: false);
+    }
+    return null;
+  }
+
+  ///
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ProposeVersionDto] proposeVersionDto (required):
+  Future<Response> proposeOfferVersionWithHttpInfo(
+    String id,
+    ProposeVersionDto proposeVersionDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/offers/{id}/versions'.replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = proposeVersionDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  ///
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ProposeVersionDto] proposeVersionDto (required):
+  Future<OfferVersionModel?> proposeOfferVersion(
+    String id,
+    ProposeVersionDto proposeVersionDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await proposeOfferVersionWithHttpInfo(
+      id,
+      proposeVersionDto,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(
+        await _decodeBodyBytes(response),
+        'OfferVersionModel',
+      ) as OfferVersionModel;
     }
     return null;
   }

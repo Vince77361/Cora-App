@@ -706,6 +706,58 @@
         ],
         "type": "object"
       },
+      "EndOfferDto": {
+        "properties": {
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferEndReason"
+              }
+            ]
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "EndedOfferModel": {
+        "properties": {
+          "endReason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferEndReason"
+              }
+            ]
+          },
+          "endedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferParty"
+              }
+            ],
+            "description": "끝낸 쪽."
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferEndStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "endReason",
+          "endedBy"
+        ],
+        "type": "object"
+      },
       "FeeRatesModel": {
         "properties": {
           "bid": {
@@ -1150,6 +1202,30 @@
         ],
         "type": "object"
       },
+      "OfferEndReason": {
+        "enum": [
+          "SCHEDULE",
+          "TERMS",
+          "OTHER_PARTNER",
+          "NO_REASON"
+        ],
+        "type": "string"
+      },
+      "OfferEndStatus": {
+        "enum": [
+          "CANCELLED",
+          "DECLINED"
+        ],
+        "type": "string"
+      },
+      "OfferParty": {
+        "description": "이 판본을 쓴 쪽.",
+        "enum": [
+          "STORE",
+          "CREATOR"
+        ],
+        "type": "string"
+      },
       "OfferTermsModel": {
         "properties": {
           "fixedCash": {
@@ -1220,6 +1296,84 @@
           "usageRights",
           "maxCashBurden",
           "settlementMethod"
+        ],
+        "type": "object"
+      },
+      "OfferVersionModel": {
+        "properties": {
+          "authorParty": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferParty"
+              }
+            ],
+            "description": "이 판본을 쓴 쪽."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "idea": {
+            "nullable": true,
+            "type": "string"
+          },
+          "number": {
+            "description": "판본 번호. 1부터 시작한다.",
+            "type": "integer"
+          },
+          "principles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "series": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferVersionSeriesModel"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "terms": {
+            "$ref": "#/components/schemas/OfferTermsModel"
+          }
+        },
+        "required": [
+          "number",
+          "authorParty",
+          "terms",
+          "idea",
+          "principles",
+          "series",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "OfferVersionSeriesModel": {
+        "properties": {
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ],
+            "nullable": true
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "note": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "format",
+          "note"
         ],
         "type": "object"
       },
@@ -1435,6 +1589,45 @@
         "required": [
           "uploadUrl",
           "path"
+        ],
+        "type": "object"
+      },
+      "ProposeVersionDto": {
+        "properties": {
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "idea": {
+            "description": "내 방식의 한 줄 설명. 크리에이터만 쓴다.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "principles": {
+            "description": "내가 지키는 원칙. 최대 3개, 각 10자까지. 크리에이터만 쓴다.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "reward": {
+            "$ref": "#/components/schemas/RewardInputDto"
+          },
+          "usageRights": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsageRights"
+              }
+            ],
+            "description": "없으면 앞 판본의 사용권."
+          }
+        },
+        "required": [
+          "format",
+          "reward"
         ],
         "type": "object"
       },
@@ -1669,7 +1862,7 @@
             "type": "string"
           },
           "myTurn": {
-            "description": "사장님가 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.",
+            "description": "사장님이 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.",
             "type": "boolean"
           },
           "paymentDaysLeft": {
@@ -2222,13 +2415,23 @@
           },
           "maxPeople": {
             "type": "integer"
+          },
+          "maxValue": {
+            "description": "식사권 금액의 최댓값(원).",
+            "type": "integer"
+          },
+          "minValue": {
+            "description": "식사권 금액의 최솟값(원).",
+            "type": "integer"
           }
         },
         "required": [
           "defaultName",
           "defaultValue",
           "defaultPeople",
-          "maxPeople"
+          "maxPeople",
+          "minValue",
+          "maxValue"
         ],
         "type": "object"
       },
@@ -3455,6 +3658,52 @@
         ]
       }
     },
+    "/offers/{id}/end": {
+      "post": {
+        "operationId": "endOffer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndOfferDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndedOfferModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Offers"
+        ]
+      }
+    },
     "/offers/{id}/undo-decline": {
       "post": {
         "operationId": "undoDeclineOffer",
@@ -3474,6 +3723,52 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReceivedOfferModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Offers"
+        ]
+      }
+    },
+    "/offers/{id}/versions": {
+      "post": {
+        "operationId": "proposeOfferVersion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposeVersionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferVersionModel"
                 }
               }
             },

@@ -5,6 +5,7 @@ import request from 'supertest';
 import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
 import { JobScheduler } from '../src/jobs/job-scheduler';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { OffersRepository } from '../src/offers/offers.repository';
 import {
   addVersion,
@@ -16,7 +17,7 @@ import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
 import { FakeJobScheduler } from './support/fake-job-scheduler';
 import { FakePushPort } from './support/fake-push.port';
-import { USER_A } from './support/fake-token-verifier';
+import { OTHER, USER_A } from './support/fake-token-verifier';
 
 const auth = { Authorization: 'Bearer user-a' };
 const T0 = new Date('2026-12-01T00:00:00.000Z');
@@ -269,6 +270,8 @@ describe('offers', () => {
     await request(server).get('/offers/received?tab=new').expect(401);
     await request(server).post(`/offers/${randomUUID()}/cancel`).expect(401);
     await request(server).post(`/offers/${randomUUID()}/accept`).expect(401);
+    await request(server).post(`/offers/${randomUUID()}/versions`).expect(401);
+    await request(server).post(`/offers/${randomUUID()}/end`).expect(401);
     await request(server).get('/stores/me/summary').expect(401);
   });
 
@@ -1060,7 +1063,8 @@ describe('offers', () => {
 
     it('forbids creator-only actions', async () => {
       await received('new').expect(403);
-      await accept(randomUUID()).expect(403);
+      // 사장님도 수락한다: 내 오퍼가 아니면 404이고, 거절·되돌리기는 크리에이터만 쓴다.
+      await accept(randomUUID()).expect(404);
       await decline(randomUUID()).expect(403);
       await undo(randomUUID()).expect(403);
     });
@@ -1092,6 +1096,595 @@ describe('offers', () => {
       await sentList().expect(403);
       await cancel(randomUUID()).expect(403);
       await summary().expect(403);
+    });
+  });
+
+  // 사장님은 user-a, 크리에이터는 user-b다. 양쪽이 판본을 주고받는다.
+  describe('with versions', () => {
+    const authB = { Authorization: 'Bearer user-b' };
+    const STORE_VERSION = {
+      format: 'REELS',
+      reward: { voucher: {}, fixedCash: 30000 },
+    };
+    let storeId: string;
+    let offerId: string;
+
+    const post = (
+      headers: Record<string, string>,
+      path: string,
+      body: Record<string, unknown> = {},
+    ) => request(server).post(path).set(headers).send(body);
+    const propose = (
+      headers: Record<string, string>,
+      id: string,
+      body: Record<string, unknown> = STORE_VERSION,
+    ) => post(headers, `/offers/${id}/versions`, body);
+    const acceptAs = (
+      headers: Record<string, string>,
+      id: string,
+      version: number,
+    ) => post(headers, `/offers/${id}/accept`, { version });
+    const endAs = (
+      headers: Record<string, string>,
+      id: string,
+      reason = 'SCHEDULE',
+    ) => post(headers, `/offers/${id}/end`, { reason });
+    const offerRow = (id: string) =>
+      prisma.offer.findUniqueOrThrow({ where: { id } });
+    const versionCount = (id: string) =>
+      prisma.offerVersion.count({ where: { offerId: id } });
+
+    beforeEach(async () => {
+      storeId = await publishMine();
+      await prisma.user.create({ data: { id: OTHER, role: 'CREATOR' } });
+      await prisma.creatorProfile.create({
+        data: { userId: OTHER, displayName: '하루 한 컵', ...REGION },
+      });
+      offerId = (await seedOffer(storeId, OTHER)).id;
+    });
+
+    it('lets the creator answer a store offer with version 2 and passes the turn to the store', async () => {
+      const res = await propose(authB, offerId, {
+        ...STORE_VERSION,
+        idea: '아침 햇살 속 한 컵 릴스',
+        principles: ['광고 티 안 내기'],
+      }).expect(201);
+      expect(res.body).toMatchObject({
+        number: 2,
+        authorParty: 'CREATOR',
+        idea: '아침 햇살 속 한 컵 릴스',
+        principles: ['광고 티 안 내기'],
+        terms: {
+          fixedCash: 30000,
+          voucherName: '식사권',
+          maxCashBurden: 30000,
+        },
+      });
+      expect(await offerRow(offerId)).toMatchObject({
+        latestVersion: 2,
+        turn: 'STORE',
+        status: 'SENT',
+      });
+      expect(await versionCount(offerId)).toBe(2);
+    });
+
+    it('lets the store send version 3 back after the creator version', async () => {
+      await propose(authB, offerId).expect(201);
+      const res = await propose(auth, offerId, {
+        format: 'REELS',
+        reward: { voucher: {}, fixedCash: 20000 },
+        idea: '사장님이 보내도 저장하지 않아요',
+        principles: ['무시돼요'],
+      }).expect(201);
+      expect(res.body).toMatchObject({
+        number: 3,
+        authorParty: 'STORE',
+        idea: null,
+        principles: [],
+        terms: { fixedCash: 20000 },
+      });
+      expect(await offerRow(offerId)).toMatchObject({
+        latestVersion: 3,
+        turn: 'CREATOR',
+      });
+    });
+
+    it('ignores idea and principles sent by the store', async () => {
+      await addVersion(prisma, offerId, 'CREATOR', {
+        idea: '크리에이터의 생각',
+      });
+      await propose(auth, offerId, {
+        ...STORE_VERSION,
+        idea: '사장님의 생각',
+        principles: ['사장님 원칙'],
+      }).expect(201);
+      const row = await prisma.offerVersion.findFirstOrThrow({
+        where: { offerId, number: 3 },
+      });
+      expect(row).toMatchObject({ idea: null, principles: [] });
+    });
+
+    it('restarts the 7 day response window with each new version', async () => {
+      clock.advance(2 * DAY);
+      await propose(authB, offerId).expect(201);
+      const secondDeadline = new Date(T0.getTime() + 9 * DAY);
+      expect((await offerRow(offerId)).expiresAt).toEqual(secondDeadline);
+      expect(scheduler.pending()).toMatchObject([
+        {
+          name: 'offer-response-expiry',
+          payload: { offerId, version: 2 },
+          runAt: secondDeadline,
+          jobKey: `offer-expiry:${offerId}:2`,
+        },
+      ]);
+      clock.advance(3 * DAY);
+      await propose(auth, offerId).expect(201);
+      expect((await offerRow(offerId)).expiresAt).toEqual(
+        new Date(T0.getTime() + 12 * DAY),
+      );
+    });
+
+    it('schedules the response expiry of version 1 when an offer is sent', async () => {
+      await prisma.offerVersion.deleteMany({ where: { offerId } });
+      await prisma.offer.delete({ where: { id: offerId } });
+      const res = await send({ creatorId: OTHER, ...REELS_VOUCHER }).expect(
+        201,
+      );
+      const id = (res.body as SentBody).id;
+      expect(scheduler.pending()).toMatchObject([
+        {
+          name: 'offer-response-expiry',
+          payload: { offerId: id, version: 1 },
+          runAt: new Date(T0.getTime() + 7 * DAY),
+          jobKey: `offer-expiry:${id}:1`,
+        },
+      ]);
+    });
+
+    it('refuses a new version from the party that wrote the latest one', async () => {
+      // 처음 판본은 사장님이 썼으니 사장님은 낼 수 없다.
+      const res = await propose(auth, offerId).expect(409);
+      expect(res.body).toMatchObject({
+        error: { code: 'CONFLICT', message: '지금은 상대가 답할 차례예요.' },
+      });
+      await propose(authB, offerId).expect(201);
+      await propose(authB, offerId).expect(409);
+      expect(await versionCount(offerId)).toBe(2);
+    });
+
+    it('refuses an eleventh version', async () => {
+      for (let n = 2; n <= 10; n += 1) {
+        await addVersion(prisma, offerId, n % 2 === 0 ? 'CREATOR' : 'STORE');
+      }
+      // 열 번째 판본은 크리에이터가 썼으니 사장님 차례다.
+      const res = await propose(auth, offerId).expect(409);
+      expect(res.body).toMatchObject({
+        error: { code: 'CONFLICT', message: '판본은 10개까지 낼 수 있어요.' },
+      });
+      expect(await versionCount(offerId)).toBe(10);
+    });
+
+    it('refuses a creator version with view pay when instagram is not connected', async () => {
+      const body = { format: 'REELS', reward: { perView: {} } };
+      const res = await propose(authB, offerId, body).expect(409);
+      expect(res.body).toMatchObject({
+        error: {
+          code: 'CONFLICT',
+          message: '인스타그램을 연동하면 수락할 수 있어요.',
+        },
+      });
+      expect(await versionCount(offerId)).toBe(1);
+      await post(authB, '/instagram/connect/complete', {
+        code: 'haru_cafe',
+      }).expect(200);
+      await propose(authB, offerId, body).expect(201);
+    });
+
+    it('does not ask the store for instagram when it sends a view pay version', async () => {
+      await addVersion(prisma, offerId, 'CREATOR');
+      await propose(auth, offerId, {
+        format: 'REELS',
+        reward: { perView: {} },
+      }).expect(201);
+    });
+
+    it('validates the version body', async () => {
+      await propose(authB, offerId, {
+        ...STORE_VERSION,
+        principles: ['열 글자를 넘는 원칙입니다 정말로'],
+      }).expect(400);
+      await propose(authB, offerId, {
+        ...STORE_VERSION,
+        principles: ['하나', '둘', '셋', '넷'],
+      }).expect(400);
+      await propose(authB, offerId, {
+        ...STORE_VERSION,
+        idea: 'ㅇ'.repeat(201),
+      }).expect(400);
+      await propose(authB, offerId, { format: 'REELS' }).expect(400);
+      // 범위 밖 단가는 조건 검사에서 막힌다.
+      await propose(authB, offerId, {
+        format: 'REELS',
+        reward: { perView: { ratePerThousand: 9000 } },
+      }).expect(400);
+      expect(await versionCount(offerId)).toBe(1);
+    });
+
+    it('lets the store accept the creator version and creates the collaboration', async () => {
+      await propose(authB, offerId).expect(201);
+      const res = await acceptAs(auth, offerId, 2).expect(200);
+      const collaboration = await prisma.collaboration.findUniqueOrThrow({
+        where: { offerId },
+      });
+      expect(res.body).toMatchObject({
+        view: 'ACCEPTED',
+        collaborationId: collaboration.id,
+        version: 2,
+      });
+      expect(collaboration).toMatchObject({
+        commissionerId: USER_A,
+        creatorId: OTHER,
+        stage: 'AWAITING_PAYMENT',
+        settlementMethod: 'FIXED',
+      });
+      expect(collaboration.terms).toMatchObject({
+        version: 2,
+        fixedCash: 30000,
+      });
+      expect(await offerRow(offerId)).toMatchObject({ status: 'ACCEPTED' });
+      // 결제 기한 작업이 올라가고, 크리에이터에게만 알림이 간다.
+      expect(scheduler.pending().map((j) => j.name)).toContain(
+        'payment-due-expiry',
+      );
+    });
+
+    it('notifies the creator with the revised and accepted wordings', async () => {
+      await addVersion(prisma, offerId, 'CREATOR');
+      await propose(auth, offerId).expect(201);
+      await addVersion(prisma, offerId, 'CREATOR');
+      await acceptAs(auth, offerId, 4).expect(200);
+      const rows = await prisma.notification.findMany({
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(rows.map((r) => r.kind)).toEqual([
+        'OFFER_REVISED',
+        'OFFER_ACCEPTED_BY_STORE',
+      ]);
+      expect(rows[0]).toMatchObject({
+        userId: OTHER,
+        role: 'CREATOR',
+        tab: 'MATCHING',
+        actorUserId: USER_A,
+        targetKind: 'PROPOSAL',
+        targetId: offerId,
+        dedupeKey: `offer-version:${offerId}:3`,
+      });
+      expect(rows[1]).toMatchObject({
+        userId: OTHER,
+        role: 'CREATOR',
+        targetKind: 'PROPOSAL',
+        targetId: offerId,
+        dedupeKey: `offer-accepted:${offerId}`,
+      });
+      const bodies = push.sent.map((p) => p.body);
+      expect(bodies[0]).toMatch(/[이가] 조건을 바꿔 다시 보냈어요\.$/);
+      expect(bodies[1]).toMatch(
+        /[이가] 제안을 수락했어요\. 결제하면 알려드릴게요\.$/,
+      );
+    });
+
+    it('notifies the store with the counter proposal wording', async () => {
+      await propose(authB, offerId).expect(201);
+      expect(push.sent).toMatchObject([
+        { userId: USER_A, body: '하루 한 컵님이 조건을 바꿔 제안했어요.' },
+      ]);
+      expect(await prisma.notification.findFirstOrThrow()).toMatchObject({
+        userId: USER_A,
+        role: 'STORE',
+        kind: 'OFFER_COUNTERED',
+        actorUserId: OTHER,
+        actorName: '하루 한 컵',
+        targetKind: 'PROPOSAL',
+        targetId: offerId,
+        dedupeKey: `offer-version:${offerId}:2`,
+      });
+    });
+
+    it('does nothing for a repeated version notification', async () => {
+      await propose(authB, offerId).expect(201);
+      await app.get(NotificationsService).notify({
+        userId: USER_A,
+        role: 'STORE',
+        kind: 'OFFER_COUNTERED',
+        actor: { userId: OTHER, name: '하루 한 컵', photoPath: null },
+        target: { kind: 'PROPOSAL', id: offerId },
+        dedupeKey: `offer-version:${offerId}:2`,
+      });
+      expect(await prisma.notification.count()).toBe(1);
+      expect(push.sent).toHaveLength(1);
+    });
+
+    it('refuses an accept from the party whose turn it is not', async () => {
+      // 처음 판본은 사장님이 썼다: 사장님은 수락할 수 없다.
+      const store = await acceptAs(auth, offerId, 1).expect(409);
+      expect(store.body).toMatchObject({
+        error: { code: 'CONFLICT', message: '지금은 상대가 답할 차례예요.' },
+      });
+      await propose(authB, offerId).expect(201);
+      // 이제 크리에이터 차례가 아니다.
+      expect(codeOf(await acceptAs(authB, offerId, 2).expect(409))).toBe(
+        'CONFLICT',
+      );
+      expect(await prisma.collaboration.count()).toBe(0);
+      expect((await offerRow(offerId)).status).toBe('SENT');
+    });
+
+    it('refuses the store accept when the creator disconnected instagram', async () => {
+      await addVersion(prisma, offerId, 'CREATOR', {
+        voucherName: null,
+        voucherValue: null,
+        voucherPeople: null,
+        viewRatePerThousand: 2000,
+        perViewCap: 60000,
+      });
+      const res = await acceptAs(auth, offerId, 2).expect(409);
+      expect(res.body).toMatchObject({
+        error: {
+          code: 'CONFLICT',
+          message:
+            '크리에이터가 인스타그램 연동을 끊어 지금은 수락할 수 없어요.',
+        },
+      });
+      expect(await prisma.collaboration.count()).toBe(0);
+    });
+
+    it('lets only one of a concurrent accept and a new version win', async () => {
+      await addVersion(prisma, offerId, 'CREATOR');
+      const [accepted, proposed] = await Promise.all([
+        acceptAs(auth, offerId, 2),
+        propose(auth, offerId),
+      ]);
+      const row = await offerRow(offerId);
+      if (accepted.status === 200) {
+        // 수락이 이기면 새 판본은 409이고 판본은 늘지 않는다.
+        expect(proposed.status).toBe(409);
+        expect(row).toMatchObject({ status: 'ACCEPTED', latestVersion: 2 });
+        expect(await versionCount(offerId)).toBe(2);
+        expect(await prisma.collaboration.count()).toBe(1);
+      } else {
+        // 새 판본이 이기면 수락은 STALE_VERSION이고 협업은 없다.
+        expect(proposed.status).toBe(201);
+        expect(accepted.status).toBe(409);
+        expect(codeOf(accepted)).toBe('STALE_VERSION');
+        expect(
+          (accepted.body as { error: { details: unknown } }).error.details,
+        ).toEqual({ latestVersion: 3 });
+        expect(row).toMatchObject({ status: 'SENT', latestVersion: 3 });
+        expect(await prisma.collaboration.count()).toBe(0);
+      }
+    });
+
+    it('lets only one of two concurrent new versions from the same party win', async () => {
+      const results = await Promise.all([
+        propose(authB, offerId),
+        propose(authB, offerId),
+      ]);
+      expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+      expect(await versionCount(offerId)).toBe(2);
+    });
+
+    it('ends as DECLINED when the receiving party ends it and stores the reason', async () => {
+      const applicationId = await seedApplication(storeId, OTHER, 'OFFERED');
+      await prisma.offer.update({
+        where: { id: offerId },
+        data: { applicationId },
+      });
+      const res = await endAs(authB, offerId, 'TERMS').expect(200);
+      expect(res.body).toEqual({
+        id: offerId,
+        status: 'DECLINED',
+        endReason: 'TERMS',
+        endedBy: 'CREATOR',
+      });
+      expect(await offerRow(offerId)).toMatchObject({
+        status: 'DECLINED',
+        endReason: 'TERMS',
+        endedBy: 'CREATOR',
+        declinedAt: null,
+      });
+      expect(
+        (
+          await prisma.application.findUniqueOrThrow({
+            where: { id: applicationId },
+          })
+        ).status,
+      ).toBe('CLOSED');
+      expect(await prisma.notification.findFirstOrThrow()).toMatchObject({
+        userId: USER_A,
+        role: 'STORE',
+        kind: 'OFFER_ENDED',
+        actorName: '하루 한 컵',
+        targetKind: 'PROPOSAL',
+        targetId: offerId,
+        dedupeKey: `offer-ended:${offerId}`,
+      });
+      expect(push.sent[0].body).toBe('하루 한 컵님과의 제안이 종료됐어요.');
+      // 되돌릴 수 없다.
+      await post(authB, `/offers/${offerId}/undo-decline`).expect(409);
+      await endAs(authB, offerId).expect(409);
+    });
+
+    it('ends as CANCELLED when the writing party ends it', async () => {
+      const res = await endAs(auth, offerId, 'OTHER_PARTNER').expect(200);
+      expect(res.body).toEqual({
+        id: offerId,
+        status: 'CANCELLED',
+        endReason: 'OTHER_PARTNER',
+        endedBy: 'STORE',
+      });
+      expect(await offerRow(offerId)).toMatchObject({
+        status: 'CANCELLED',
+        endReason: 'OTHER_PARTNER',
+        endedBy: 'STORE',
+      });
+      expect(await prisma.notification.findFirstOrThrow()).toMatchObject({
+        userId: OTHER,
+        role: 'CREATOR',
+        kind: 'OFFER_ENDED',
+        targetKind: 'PROPOSAL',
+      });
+    });
+
+    it('ends a creator version as DECLINED when the store ends it', async () => {
+      await propose(authB, offerId).expect(201);
+      const res = await endAs(auth, offerId, 'NO_REASON').expect(200);
+      expect(res.body).toMatchObject({ status: 'DECLINED', endedBy: 'STORE' });
+    });
+
+    it('rejects an unknown end reason', async () => {
+      await endAs(auth, offerId, 'BORED').expect(400);
+      await post(auth, `/offers/${offerId}/end`).expect(400);
+    });
+
+    it('returns 404 to a third user for versions, accept and end', async () => {
+      const otherStore = await seedStore();
+      const otherCreator = await seedCreator();
+      const theirs = (await seedOffer(otherStore.id, otherCreator)).id;
+      // user-a(사장님)는 남의 오퍼에, user-b(크리에이터)는 내 가게와 다른 크리에이터의 오퍼에 당사자가 아니다.
+      const mine = (await seedOffer(storeId, otherCreator)).id;
+      for (const [headers, id] of [
+        [auth, theirs],
+        [authB, mine],
+      ] as const) {
+        expect(codeOf(await propose(headers, id).expect(404))).toBe(
+          'NOT_FOUND',
+        );
+        await acceptAs(headers, id, 1).expect(404);
+        await endAs(headers, id).expect(404);
+      }
+      await propose(auth, 'not-a-uuid').expect(404);
+      expect(await versionCount(theirs)).toBe(1);
+      expect(await versionCount(mine)).toBe(1);
+      expect((await offerRow(mine)).status).toBe('SENT');
+    });
+
+    it('requires a login for the new routes', async () => {
+      await request(server).post(`/offers/${offerId}/versions`).expect(401);
+      await request(server).post(`/offers/${offerId}/end`).expect(401);
+    });
+
+    it('refuses the 30 second decline when it is not the creator turn', async () => {
+      await addVersion(prisma, offerId, 'CREATOR');
+      const res = await post(authB, `/offers/${offerId}/decline`).expect(409);
+      expect(res.body).toMatchObject({
+        error: { code: 'CONFLICT', message: '지금은 상대가 답할 차례예요.' },
+      });
+      expect((await offerRow(offerId)).status).toBe('SENT');
+    });
+
+    it('stores NO_REASON and the creator on a 30 second decline and clears them on undo', async () => {
+      await post(authB, `/offers/${offerId}/decline`).expect(200);
+      expect(await offerRow(offerId)).toMatchObject({
+        status: 'DECLINED',
+        endReason: 'NO_REASON',
+        endedBy: 'CREATOR',
+      });
+      await post(authB, `/offers/${offerId}/undo-decline`).expect(200);
+      expect(await offerRow(offerId)).toMatchObject({
+        status: 'SENT',
+        endReason: null,
+        endedBy: null,
+      });
+    });
+
+    it('lets the store cancel only an offer whose latest version it wrote', async () => {
+      await propose(authB, offerId).expect(201);
+      const res = await post(auth, `/offers/${offerId}/cancel`).expect(409);
+      expect(res.body).toMatchObject({
+        error: { code: 'CONFLICT', message: '받은 제안은 종료로 끝내 주세요.' },
+      });
+      await propose(auth, offerId).expect(201);
+      await post(auth, `/offers/${offerId}/cancel`).expect(200);
+      expect((await offerRow(offerId)).status).toBe('CANCELLED');
+    });
+
+    it('shows version 2 terms and number on the sent list', async () => {
+      await propose(authB, offerId).expect(201);
+      const rows = (await sentList().expect(200)).body as (SentBody & {
+        version: number;
+        myTurn: boolean;
+      })[];
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ id: offerId, version: 2, myTurn: true });
+      expect(rows[0].terms).toMatchObject({
+        fixedCash: 30000,
+        maxCashBurden: 30000,
+        settlementMethod: 'FIXED',
+      });
+    });
+
+    describe('response expiry jobs', () => {
+      it('expires the offer when the latest version goes unanswered for 7 days', async () => {
+        const applicationId = await seedApplication(storeId, OTHER, 'OFFERED');
+        await prisma.offer.update({
+          where: { id: offerId },
+          data: { applicationId },
+        });
+        await propose(authB, offerId).expect(201);
+        clock.advance(7 * DAY - SECOND);
+        await scheduler.runDue(clock.now());
+        expect((await offerRow(offerId)).status).toBe('SENT');
+
+        clock.advance(SECOND);
+        await scheduler.runDue(clock.now());
+        expect((await offerRow(offerId)).status).toBe('EXPIRED');
+        expect(
+          (
+            await prisma.application.findUniqueOrThrow({
+              where: { id: applicationId },
+            })
+          ).status,
+        ).toBe('CLOSED');
+      });
+
+      it('does nothing when the expiry job of an older version runs', async () => {
+        await propose(authB, offerId).expect(201);
+        // 최신 판본(2)의 기한이 이미 지난 오퍼에 판본 1의 작업이 돈다: 번호가 달라 아무 일도 하지 않는다.
+        await prisma.offer.update({
+          where: { id: offerId },
+          data: { expiresAt: new Date(T0.getTime() - SECOND) },
+        });
+        await scheduler.schedule(
+          'offer-response-expiry',
+          { offerId, version: 1 },
+          clock.now(),
+          'old-version-job',
+        );
+        await scheduler.runDue(clock.now());
+        expect((await offerRow(offerId)).status).toBe('SENT');
+
+        // 판본 2의 작업은 읽을 때 만료와 같은 길로 만료한다.
+        await scheduler.schedule(
+          'offer-response-expiry',
+          { offerId, version: 2 },
+          clock.now(),
+          'latest-version-job',
+        );
+        await scheduler.runDue(clock.now());
+        expect((await offerRow(offerId)).status).toBe('EXPIRED');
+      });
+
+      it('does nothing when the offer was ended before the job runs', async () => {
+        await endAs(authB, offerId).expect(200);
+        await scheduler.schedule(
+          'offer-response-expiry',
+          { offerId, version: 1 },
+          clock.now(),
+          'late-job',
+        );
+        await scheduler.runDue(clock.now());
+        expect((await offerRow(offerId)).status).toBe('DECLINED');
+      });
     });
   });
 
@@ -1458,13 +2051,16 @@ describe('offers', () => {
     });
 
     it('checks the version before the turn and the turn before instagram', async () => {
-      await connectInstagram();
+      // 인스타그램을 연결하지 않았고 조회수 수당이 있는 판본이지만, 차례가 아니므로 인스타그램 안내보다 차례가 먼저다.
       const offer = await seedOffer(store.id, USER_A, {
         ...PER_VIEW_TERMS,
         turn: 'STORE',
       });
-      // 차례가 아닌 쪽의 수락은 409 CONFLICT, 낡은 번호는 그보다 먼저 STALE_VERSION이다.
-      expect(codeOf(await accept(offer.id, 1).expect(409))).toBe('CONFLICT');
+      const notTurn = await accept(offer.id, 1).expect(409);
+      expect(notTurn.body).toMatchObject({
+        error: { code: 'CONFLICT', message: '지금은 상대가 답할 차례예요.' },
+      });
+      // 낡은 번호는 그보다 먼저 STALE_VERSION이다.
       expect(codeOf(await accept(offer.id, 3).expect(409))).toBe(
         'STALE_VERSION',
       );

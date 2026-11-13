@@ -34,6 +34,8 @@ const _configJson = {
       'defaultPeople': 2,
       'defaultValue': 40000,
       'maxPeople': 10,
+      'minValue': 1000,
+      'maxValue': 1000000,
     },
   },
 };
@@ -68,6 +70,8 @@ void main() {
       expect(config.reward.fixedCash.storeMax, 1000000);
       expect(config.reward.fixedCash.brandMax, 10000000);
       expect(config.reward.voucher.maxPeople, 10);
+      expect(config.reward.voucher.minValue, 1000);
+      expect(config.reward.voucher.maxValue, 1000000);
       expect(config.reward.usageRightsDefault, UsageRights.storeRepost3m);
       expect(config.reward.countingDays, 7);
       expect(config.feeRates.storeOffer, 10);

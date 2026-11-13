@@ -39,6 +39,13 @@ void main() {
 
     //
     //
+    //Future<EndedOfferModel> endOffer(String id, EndOfferDto endOfferDto) async
+    test('test endOffer', () async {
+      // TODO
+    });
+
+    //
+    //
     //Future<StoreHomeSummaryModel> getMyStoreSummary() async
     test('test getMyStoreSummary', () async {
       // TODO
@@ -55,6 +62,13 @@ void main() {
     //
     //Future<List<SentOfferModel>> listSentOffers() async
     test('test listSentOffers', () async {
+      // TODO
+    });
+
+    //
+    //
+    //Future<OfferVersionModel> proposeOfferVersion(String id, ProposeVersionDto proposeVersionDto) async
+    test('test proposeOfferVersion', () async {
       // TODO
     });
 

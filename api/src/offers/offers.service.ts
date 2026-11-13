@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { OfferEndReason, OfferParty, Prisma } from '@prisma/client';
 import { ApplicationsService } from '../applications/applications.service';
 import { scheduleSubmissionDeadlineJobs } from '../collaborations/collaboration-jobs';
 import {
@@ -8,6 +8,7 @@ import {
 } from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
+import { PROPOSAL_POLICY } from '../common/collaboration-policy';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
 import { InstagramService } from '../instagram/instagram.service';
@@ -23,6 +24,9 @@ import {
   defaultsOfStore,
 } from '../stores/reward-terms';
 import { UsersService } from '../users/users.service';
+import { EndedOfferModel } from './dto/ended-offer.model';
+import { OfferVersionModel } from './dto/offer-version.model';
+import { ProposeVersionDto } from './dto/propose-version.dto';
 import { ReceivedOfferModel } from './dto/received-offer.model';
 import { SendOfferDto } from './dto/send-offer.dto';
 import { SentOfferModel } from './dto/sent-offer.model';
@@ -37,7 +41,14 @@ import {
   viewForCreator,
   viewForStore,
 } from './offer-rules';
-import { termsOfVersion } from './proposal-rules';
+import {
+  defaultsOfVersion,
+  endStatusOf,
+  partyOf,
+  proposalExtras,
+  termsOfVersion,
+  versionModelOf,
+} from './proposal-rules';
 import {
   InSameTransaction,
   latestVersionOf,
@@ -48,9 +59,18 @@ import {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// 오퍼 모듈이 읽는 가게 카드(소유자, 요약, 소개).
+type OfferCard = NonNullable<
+  Awaited<ReturnType<StoresService['getOfferCard']>>
+>;
+
 // 거절마다 다른 키: 같은 오퍼를 되돌렸다 다시 거절해도 옛 작업과 새 작업이 서로 가리지 않는다.
 const declineJobKey = (offerId: string, declinedAt: Date): string =>
   `decline:${offerId}:${declinedAt.getTime()}`;
+
+// 판본마다 다른 키: 새 판본이 나오면 새 기한 작업이 올라가고, 옛 판본의 작업은 처리기가 건너뛴다.
+const offerExpiryJobKey = (offerId: string, version: number): string =>
+  `offer-expiry:${offerId}:${version}`;
 
 // 서비스는 규칙을 복제하지 않는다. 상태·보임·남은 날은 offer-rules의 순수 함수만 쓴다.
 @Injectable()
@@ -122,6 +142,7 @@ export class OffersService {
       throw this.alreadySent();
     }
 
+    await this.scheduleExpiry(created.id, 1, created.expiresAt);
     await this.notify({
       userId: creator.userId,
       role: 'CREATOR',
@@ -180,6 +201,10 @@ export class OffersService {
       throw this.expired();
     }
     if (stored !== 'SENT' && stored !== 'ACCEPTED') throw this.alreadyHandled();
+    // 받은 제안(크리에이터가 쓴 판본이 최신)은 취소가 아니라 사유를 고르는 종료로 끝낸다.
+    if (stored === 'SENT' && row.turn !== 'CREATOR') {
+      throw new AppError('CONFLICT', '받은 제안은 종료로 끝내 주세요.');
+    }
 
     // 결제한 뒤(협업이 AWAITING_PAYMENT를 지난 뒤)에는 사장님 혼자 취소할 수 없고 취소 요청을 보내야 한다.
     // 협업이 아직 없는 수락(3번 계획 이전에 수락된 오퍼)은 낼 돈이 없으므로 기존대로 취소된다.
@@ -250,15 +275,15 @@ export class OffersService {
     return items;
   }
 
-  // 검사 순서: 역할 → 내 오퍼(아니면 404) → 기한 → 상태 → 판본 번호 → 차례 → 인스타그램.
+  // 크리에이터도 사장님도 수락한다(차례인 쪽만). 검사 순서: 내 오퍼(아니면 404) → 역할 → 기한 → 상태 → 판본 번호 → 차례 → 인스타그램.
   // 판본 번호는 읽은 값과 갱신 조건에 모두 걸어, 읽은 뒤 새 판본이 나오면 수락이 0행이 되게 한다.
+  // 응답은 받은 오퍼 모양이다. 사장님은 응답의 collaborationId로 결제 화면에 간다.
   async accept(
     userId: string,
     id: string,
     version: number,
   ): Promise<ReceivedOfferModel> {
-    await this.assertRole(userId, 'CREATOR', '크리에이터 계정만 쓸 수 있어요.');
-    const row = await this.requireReceived(userId, id);
+    const { row, card, party } = await this.requireParty(userId, id);
     const now = this.clock.now();
     const stored = storedStatusAt(row, now);
     if (stored === 'EXPIRED') {
@@ -268,22 +293,26 @@ export class OffersService {
     if (stored !== 'SENT') throw this.alreadyHandled();
     if (version !== row.latestVersion)
       throw this.staleVersion(row.latestVersion);
-    // 응답할 차례가 아니면(내가 쓴 판본이 최신이면) 수락할 수 없다. Task 6부터 크리에이터가 판본을 낼 수 있다.
-    if (row.turn !== 'CREATOR') {
-      throw new AppError('CONFLICT', '지금은 상대가 답할 차례예요.');
-    }
+    // 응답할 차례가 아니면(내가 쓴 판본이 최신이면) 수락할 수 없다.
+    if (row.turn !== party) throw this.notYourTurn();
     const terms = this.termsOf(row);
     // 조회수 보상은 인스타그램 연결이 있어야 정산이 조회수를 읽을 수 있다. 수락 뒤에 알게 되지 않게 여기서 막는다.
-    const connected = (await this.instagram.getConnection(userId)) !== null;
+    // 사장님이 수락할 때는 판본을 낸 뒤 크리에이터가 연동을 끊었을 수 있다.
+    const connected =
+      (await this.instagram.getConnection(row.creatorId)) !== null;
     if (needsInstagram(terms, connected)) {
-      throw new AppError('CONFLICT', '인스타그램을 연동하면 수락할 수 있어요.');
+      throw new AppError(
+        'CONFLICT',
+        party === 'CREATOR'
+          ? '인스타그램을 연동하면 수락할 수 있어요.'
+          : '크리에이터가 인스타그램 연동을 끊어 지금은 수락할 수 없어요.',
+      );
     }
-    const card = await this.requireCard(row.storeId);
     // 수락과 협업 만들기는 한 트랜잭션이다. 식사권만 있는 오퍼는 낼 돈이 없어 결제 기한 없이 바로 FUNDED로 시작한다.
     const initial = initialStoreOfferState(terms, now);
     const accepted = await this.offers.accept(
       row.id,
-      userId,
+      row.creatorId,
       version,
       now,
       initial.paymentDueAt,
@@ -293,7 +322,7 @@ export class OffersService {
             kind: 'STORE_OFFER',
             stage: initial.stage,
             commissionerId: card.ownerId,
-            creatorId: userId,
+            creatorId: row.creatorId,
             offerId: row.id,
             storeId: row.storeId,
             // 수락된 판본의 조건과 번호를 그대로 사본으로 남긴다.
@@ -345,20 +374,171 @@ export class OffersService {
       }
     }
     // 이미 저장된 수락은 알림 때문에 500이 되면 안 된다. 상대 이름을 읽지 못해도 알림은 기본 이름으로 보낸다.
-    await this.notify(async () => ({
-      userId: card.ownerId,
-      role: 'STORE',
-      kind: 'OFFER_ACCEPTED',
-      actor: await this.actorOf(userId),
-      // 결제할 것이 있으면 결제 화면으로, 식사권만 있어 바로 FUNDED면 협업 화면으로 보낸다.
-      target: {
-        kind:
-          initial.stage === 'AWAITING_PAYMENT' ? 'PAYMENT' : 'COLLABORATION',
-        id: collaboration?.id ?? null,
-      },
-      dedupeKey: `offer-accepted:${row.id}`,
-    }));
-    return this.reload(userId, row.id, card, now, collaboration);
+    if (party === 'CREATOR') {
+      await this.notify(async () => ({
+        userId: card.ownerId,
+        role: 'STORE',
+        kind: 'OFFER_ACCEPTED',
+        actor: await this.actorOf(userId),
+        // 결제할 것이 있으면 결제 화면으로, 식사권만 있어 바로 FUNDED면 협업 화면으로 보낸다.
+        target: {
+          kind:
+            initial.stage === 'AWAITING_PAYMENT' ? 'PAYMENT' : 'COLLABORATION',
+          id: collaboration?.id ?? null,
+        },
+        dedupeKey: `offer-accepted:${row.id}`,
+      }));
+    } else {
+      // 사장님에게는 알림 대신 응답의 collaborationId로 결제 화면에 간다. 크리에이터는 제안 상세로 보낸다.
+      await this.notify({
+        userId: row.creatorId,
+        role: 'CREATOR',
+        kind: 'OFFER_ACCEPTED_BY_STORE',
+        actor: this.storeActor(card),
+        target: { kind: 'PROPOSAL', id: row.id },
+        dedupeKey: `offer-accepted:${row.id}`,
+      });
+    }
+    return this.reload(row.id, card, now, collaboration);
+  }
+
+  // 새 판본을 낸다(양쪽 모두). 검사 순서: 내 오퍼(아니면 404) → 역할 → 기한 → 상태 → 차례 → 열 개 미만 → 조건 → 인스타그램.
+  // 읽은 번호를 갱신 조건에 걸어, 같은 오퍼에 수락과 새 판본이 동시에 와도 하나만 이긴다.
+  async proposeVersion(
+    userId: string,
+    id: string,
+    input: ProposeVersionDto,
+  ): Promise<OfferVersionModel> {
+    const { row, card, party } = await this.requireParty(userId, id);
+    const now = this.clock.now();
+    const stored = storedStatusAt(row, now);
+    if (stored === 'EXPIRED') {
+      await this.settle(row, now);
+      throw this.expired();
+    }
+    if (stored !== 'SENT') throw this.alreadyHandled();
+    if (row.turn !== party) throw this.notYourTurn();
+    if (row.latestVersion >= PROPOSAL_POLICY.maxVersions) {
+      throw new AppError(
+        'CONFLICT',
+        `판본은 ${PROPOSAL_POLICY.maxVersions}개까지 낼 수 있어요.`,
+      );
+    }
+    const terms = buildTerms(input, defaultsOfVersion(latestVersionOf(row)));
+    // 조회수 수당이 켜진 판본은 크리에이터가 인스타그램을 연동해야 수락할 수 있다. 사장님의 판본은 크리에이터가 수락할 때 본다.
+    if (party === 'CREATOR') {
+      const connected = (await this.instagram.getConnection(userId)) !== null;
+      if (needsInstagram(terms, connected)) {
+        throw new AppError(
+          'CONFLICT',
+          '인스타그램을 연동하면 수락할 수 있어요.',
+        );
+      }
+    }
+    const expiresAt = new Date(
+      now.getTime() + PROPOSAL_POLICY.responseDays * DAY_MS,
+    );
+    const created = await this.offers.propose({
+      offerId: row.id,
+      author: party,
+      readVersion: row.latestVersion,
+      terms,
+      ...proposalExtras(party, input),
+      now,
+      expiresAt,
+    });
+    if (!created) {
+      await this.settleLatest(row.id, now);
+      // 읽은 뒤 수락·종료·기한 만료로 끝났거나, 같은 쪽의 다른 요청이 먼저 새 판본을 냈다.
+      const fresh = await this.offers.findById(row.id);
+      if (fresh?.status === 'SENT') throw this.notYourTurn();
+      throw this.alreadyHandled();
+    }
+
+    await this.scheduleExpiry(row.id, created.number, expiresAt);
+    // 사장님이 냈으면 크리에이터에게 "다시 보냈어요", 크리에이터가 냈으면 사장님에게 "제안했어요".
+    const dedupeKey = `offer-version:${row.id}:${created.number}`;
+    const target = { kind: 'PROPOSAL', id: row.id } as const;
+    if (party === 'STORE') {
+      await this.notify({
+        userId: row.creatorId,
+        role: 'CREATOR',
+        kind: 'OFFER_REVISED',
+        actor: this.storeActor(card),
+        target,
+        dedupeKey,
+      });
+    } else {
+      await this.notify(async () => ({
+        userId: card.ownerId,
+        role: 'STORE',
+        kind: 'OFFER_COUNTERED',
+        actor: await this.actorOf(userId),
+        target,
+        dedupeKey,
+      }));
+    }
+    return versionModelOf(created);
+  }
+
+  // 사유를 골라 제안을 끝낸다(양쪽 모두, 되돌릴 수 없다). 최신 판본을 쓴 쪽이 끝내면 CANCELLED, 받은 쪽이 끝내면 DECLINED다.
+  async end(
+    userId: string,
+    id: string,
+    reason: OfferEndReason,
+  ): Promise<EndedOfferModel> {
+    const { row, card, party } = await this.requireParty(userId, id);
+    const now = this.clock.now();
+    const stored = storedStatusAt(row, now);
+    if (stored === 'EXPIRED') {
+      await this.settle(row, now);
+      throw this.expired();
+    }
+    if (stored !== 'SENT') throw this.alreadyHandled();
+    const status = endStatusOf(party, row.turn);
+    if (
+      !(await this.offers.end(
+        row.id,
+        party,
+        status,
+        reason,
+        row.latestVersion,
+        now,
+      ))
+    ) {
+      await this.settleLatest(row.id, now);
+      throw this.alreadyHandled();
+    }
+    // 끝난 제안의 지원은 바로 닫는다(거절의 30초 되돌리기와 달리 되돌릴 수 없다).
+    await this.closeApplication({ ...row, status });
+    await this.notify(
+      party === 'CREATOR'
+        ? async () => ({
+            userId: card.ownerId,
+            role: 'STORE' as const,
+            kind: 'OFFER_ENDED' as const,
+            actor: await this.actorOf(userId),
+            target: { kind: 'PROPOSAL' as const, id: row.id },
+            dedupeKey: `offer-ended:${row.id}`,
+          })
+        : {
+            userId: row.creatorId,
+            role: 'CREATOR',
+            kind: 'OFFER_ENDED',
+            actor: this.storeActor(card),
+            target: { kind: 'PROPOSAL', id: row.id },
+            dedupeKey: `offer-ended:${row.id}`,
+          },
+    );
+    return { id: row.id, status, endReason: reason, endedBy: party };
+  }
+
+  // 작업 큐가 판본의 응답 기한에 부른다. 최신 판본의 작업만 일한다: 그사이 새 판본이 나왔으면(번호가 다르면) 건너뛰고,
+  // 수락·종료로 이미 끝났어도 건너뛴다. 읽을 때 만료와 같은 길(settle)을 쓰므로 두 번 돌아도 같다.
+  async expireUnanswered(offerId: string, version: number): Promise<void> {
+    const row = await this.offers.findById(offerId);
+    if (row?.status !== 'SENT' || row.latestVersion !== version) return;
+    await this.settle(row, this.clock.now());
   }
 
   // 거절은 누르는 즉시 저장한다. 연결된 지원은 30초가 지나 확정된 뒤 목록을 읽을 때 닫는다.
@@ -372,6 +552,8 @@ export class OffersService {
       throw this.expired();
     }
     if (stored !== 'SENT') throw this.alreadyHandled();
+    // 30초 되돌리기 거절은 받은 쪽(크리에이터가 답할 차례)만 쓴다. 내가 쓴 판본의 제안은 종료로 끝낸다.
+    if (row.turn !== 'CREATOR') throw this.notYourTurn();
     const card = await this.requireCard(row.storeId);
     if (!(await this.offers.decline(row.id, userId, now))) {
       await this.settleLatest(row.id, now);
@@ -385,7 +567,7 @@ export class OffersService {
       new Date(now.getTime() + DECLINE_UNDO_SECONDS * 1000),
       declineJobKey(row.id, now),
     );
-    return this.reload(userId, row.id, card, now);
+    return this.reload(row.id, card, now);
   }
 
   async undoDecline(userId: string, id: string): Promise<ReceivedOfferModel> {
@@ -405,7 +587,7 @@ export class OffersService {
     // 취소하지 못해 작업이 남아도 처리기가 거절 시각이 다른 옛 작업은 건너뛴다.
     if (row.declinedAt)
       await this.cancelJob(declineJobKey(row.id, row.declinedAt));
-    return this.reload(userId, row.id, card, now);
+    return this.reload(row.id, card, now);
   }
 
   // 작업 큐가 거절 30초 뒤에 부른다. 작업이 올라갈 때의 거절 시각(declinedAt)이 오퍼의 지금 거절 시각과 같고,
@@ -571,15 +753,38 @@ export class OffersService {
     return row;
   }
 
-  private async reload(
+  // 이 오퍼의 당사자(가게 사장님 또는 크리에이터)를 찾는다. 당사자가 아니면 없는 오퍼와 같게 404다.
+  // 당사자이면 지금 역할이 그쪽이어야 한다(아니면 403).
+  private async requireParty(
     userId: string,
     id: string,
-    card: NonNullable<Awaited<ReturnType<typeof this.card>>>,
+  ): Promise<{
+    row: OfferRow;
+    card: OfferCard;
+    party: OfferParty;
+  }> {
+    const row = UUID.test(id) ? await this.offers.findById(id) : null;
+    const card = row ? await this.card(row.storeId) : null;
+    const party = row && card ? partyOf(row, userId, card.ownerId) : null;
+    if (!row || !card || !party) throw this.notFound();
+    await this.assertRole(
+      userId,
+      party,
+      party === 'STORE'
+        ? '가게 계정만 쓸 수 있어요.'
+        : '크리에이터 계정만 쓸 수 있어요.',
+    );
+    return { row, card, party };
+  }
+
+  private async reload(
+    id: string,
+    card: OfferCard,
     now: Date,
     // 이미 읽은 협업이 있으면 다시 읽지 않는다.
     known?: { id: string } | null,
   ): Promise<ReceivedOfferModel> {
-    const fresh = await this.offers.findForCreator(id, userId);
+    const fresh = await this.offers.findById(id);
     if (!fresh) throw this.notFound();
     const collaboration =
       known ?? (await this.collaborations.findByOfferId(fresh.id));
@@ -588,7 +793,7 @@ export class OffersService {
       card,
       now,
       collaboration?.id ?? null,
-      (await this.instagram.getConnection(userId)) !== null,
+      (await this.instagram.getConnection(fresh.creatorId)) !== null,
     );
   }
 
@@ -614,7 +819,7 @@ export class OffersService {
 
   // 작업을 올리거나 지우지 못해도 이미 저장된 변경은 유효하다. 화면은 읽을 때 계산으로 맞고, 처리기는 오퍼의 현재 상태를 본다.
   private async schedule(
-    name: 'decline-notice' | 'payment-due-expiry',
+    name: 'decline-notice' | 'payment-due-expiry' | 'offer-response-expiry',
     payload: OfferJobPayload,
     runAt: Date,
     jobKey: string,
@@ -628,6 +833,20 @@ export class OffersService {
     }
   }
 
+  // 판본의 응답 기한 작업. 가장 새 판본의 기한마다 하나씩 올린다.
+  private scheduleExpiry(
+    offerId: string,
+    version: number,
+    runAt: Date,
+  ): Promise<void> {
+    return this.schedule(
+      'offer-response-expiry',
+      { offerId, version },
+      runAt,
+      offerExpiryJobKey(offerId, version),
+    );
+  }
+
   private async cancelJob(jobKey: string): Promise<void> {
     try {
       await this.jobs.cancel(jobKey);
@@ -636,6 +855,15 @@ export class OffersService {
         `오퍼 작업을 지우지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
       );
     }
+  }
+
+  // 알림에 넣을 가게. 이름은 가게 이름, 사진은 대표 사진 경로 사본이다.
+  private storeActor(card: OfferCard) {
+    return {
+      userId: card.ownerId,
+      name: card.summary.name || '가게',
+      photoPath: card.coverPhotoPath,
+    };
   }
 
   // 알림에 넣을 크리에이터. 프로필이 없거나 읽지 못하면 기본 이름을 쓴다.
@@ -693,7 +921,7 @@ export class OffersService {
 
   private toReceived(
     row: OfferRow,
-    card: NonNullable<Awaited<ReturnType<typeof this.card>>>,
+    card: OfferCard,
     now: Date,
     collaborationId: string | null,
     instagramConnected: boolean,
@@ -737,6 +965,10 @@ export class OffersService {
     return new AppError('STALE_VERSION', '이전 판본이라 수락할 수 없어요.', {
       latestVersion,
     });
+  }
+
+  private notYourTurn(): AppError {
+    return new AppError('CONFLICT', '지금은 상대가 답할 차례예요.');
   }
 
   private alreadyHandled(): AppError {

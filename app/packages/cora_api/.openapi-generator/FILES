@@ -36,6 +36,8 @@ doc/CreatorProfileModel.md
 doc/CreatorSummaryModel.md
 doc/CreatorsApi.md
 doc/DraftSceneModel.md
+doc/EndOfferDto.md
+doc/EndedOfferModel.md
 doc/FeeRatesModel.md
 doc/FixedCashMaxModel.md
 doc/FixedCashRangeModel.md
@@ -58,7 +60,12 @@ doc/NotificationTab.md
 doc/NotificationTabFilter.md
 doc/NotificationTargetModel.md
 doc/NotificationsApi.md
+doc/OfferEndReason.md
+doc/OfferEndStatus.md
+doc/OfferParty.md
 doc/OfferTermsModel.md
+doc/OfferVersionModel.md
+doc/OfferVersionSeriesModel.md
 doc/OfferView.md
 doc/OffersApi.md
 doc/PaymentCreatedModel.md
@@ -72,6 +79,7 @@ doc/PayoutAccountsApi.md
 doc/PayoutStatus.md
 doc/PerViewInputDto.md
 doc/PhotoUploadModel.md
+doc/ProposeVersionDto.md
 doc/QuietHours.md
 doc/ReceivedOfferModel.md
 doc/ReceivedOfferTab.md
@@ -167,6 +175,8 @@ lib/model/create_photo_upload_dto.dart
 lib/model/creator_profile_model.dart
 lib/model/creator_summary_model.dart
 lib/model/draft_scene_model.dart
+lib/model/end_offer_dto.dart
+lib/model/ended_offer_model.dart
 lib/model/fee_rates_model.dart
 lib/model/fixed_cash_max_model.dart
 lib/model/fixed_cash_range_model.dart
@@ -185,7 +195,12 @@ lib/model/notification_settings_model.dart
 lib/model/notification_tab.dart
 lib/model/notification_tab_filter.dart
 lib/model/notification_target_model.dart
+lib/model/offer_end_reason.dart
+lib/model/offer_end_status.dart
+lib/model/offer_party.dart
 lib/model/offer_terms_model.dart
+lib/model/offer_version_model.dart
+lib/model/offer_version_series_model.dart
 lib/model/offer_view.dart
 lib/model/payment_created_model.dart
 lib/model/payment_method.dart
@@ -196,6 +211,7 @@ lib/model/payout_account_model.dart
 lib/model/payout_status.dart
 lib/model/per_view_input_dto.dart
 lib/model/photo_upload_model.dart
+lib/model/propose_version_dto.dart
 lib/model/quiet_hours.dart
 lib/model/received_offer_model.dart
 lib/model/received_offer_tab.dart
@@ -266,6 +282,8 @@ test/creator_profile_model_test.dart
 test/creator_summary_model_test.dart
 test/creators_api_test.dart
 test/draft_scene_model_test.dart
+test/end_offer_dto_test.dart
+test/ended_offer_model_test.dart
 test/fee_rates_model_test.dart
 test/fixed_cash_max_model_test.dart
 test/fixed_cash_range_model_test.dart
@@ -288,7 +306,12 @@ test/notification_tab_filter_test.dart
 test/notification_tab_test.dart
 test/notification_target_model_test.dart
 test/notifications_api_test.dart
+test/offer_end_reason_test.dart
+test/offer_end_status_test.dart
+test/offer_party_test.dart
 test/offer_terms_model_test.dart
+test/offer_version_model_test.dart
+test/offer_version_series_model_test.dart
 test/offer_view_test.dart
 test/offers_api_test.dart
 test/payment_created_model_test.dart
@@ -302,6 +325,7 @@ test/payout_accounts_api_test.dart
 test/payout_status_test.dart
 test/per_view_input_dto_test.dart
 test/photo_upload_model_test.dart
+test/propose_version_dto_test.dart
 test/quiet_hours_test.dart
 test/received_offer_model_test.dart
 test/received_offer_tab_test.dart

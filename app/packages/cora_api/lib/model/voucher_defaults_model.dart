@@ -17,6 +17,8 @@ class VoucherDefaultsModel {
     required this.defaultPeople,
     required this.defaultValue,
     required this.maxPeople,
+    required this.maxValue,
+    required this.minValue,
   });
 
   String defaultName;
@@ -27,6 +29,12 @@ class VoucherDefaultsModel {
 
   int maxPeople;
 
+  /// 식사권 금액의 최댓값(원).
+  int maxValue;
+
+  /// 식사권 금액의 최솟값(원).
+  int minValue;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -34,7 +42,9 @@ class VoucherDefaultsModel {
           other.defaultName == defaultName &&
           other.defaultPeople == defaultPeople &&
           other.defaultValue == defaultValue &&
-          other.maxPeople == maxPeople;
+          other.maxPeople == maxPeople &&
+          other.maxValue == maxValue &&
+          other.minValue == minValue;
 
   @override
   int get hashCode =>
@@ -42,11 +52,13 @@ class VoucherDefaultsModel {
       (defaultName.hashCode) +
       (defaultPeople.hashCode) +
       (defaultValue.hashCode) +
-      (maxPeople.hashCode);
+      (maxPeople.hashCode) +
+      (maxValue.hashCode) +
+      (minValue.hashCode);
 
   @override
   String toString() =>
-      'VoucherDefaultsModel[defaultName=$defaultName, defaultPeople=$defaultPeople, defaultValue=$defaultValue, maxPeople=$maxPeople]';
+      'VoucherDefaultsModel[defaultName=$defaultName, defaultPeople=$defaultPeople, defaultValue=$defaultValue, maxPeople=$maxPeople, maxValue=$maxValue, minValue=$minValue]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -54,6 +66,8 @@ class VoucherDefaultsModel {
     json[r'defaultPeople'] = this.defaultPeople;
     json[r'defaultValue'] = this.defaultValue;
     json[r'maxPeople'] = this.maxPeople;
+    json[r'maxValue'] = this.maxValue;
+    json[r'minValue'] = this.minValue;
     return json;
   }
 
@@ -84,6 +98,14 @@ class VoucherDefaultsModel {
             'Required key "VoucherDefaultsModel[maxPeople]" is missing from JSON.');
         assert(json[r'maxPeople'] != null,
             'Required key "VoucherDefaultsModel[maxPeople]" has a null value in JSON.');
+        assert(json.containsKey(r'maxValue'),
+            'Required key "VoucherDefaultsModel[maxValue]" is missing from JSON.');
+        assert(json[r'maxValue'] != null,
+            'Required key "VoucherDefaultsModel[maxValue]" has a null value in JSON.');
+        assert(json.containsKey(r'minValue'),
+            'Required key "VoucherDefaultsModel[minValue]" is missing from JSON.');
+        assert(json[r'minValue'] != null,
+            'Required key "VoucherDefaultsModel[minValue]" has a null value in JSON.');
         return true;
       }());
 
@@ -92,6 +114,8 @@ class VoucherDefaultsModel {
         defaultPeople: mapValueOfType<int>(json, r'defaultPeople')!,
         defaultValue: mapValueOfType<int>(json, r'defaultValue')!,
         maxPeople: mapValueOfType<int>(json, r'maxPeople')!,
+        maxValue: mapValueOfType<int>(json, r'maxValue')!,
+        minValue: mapValueOfType<int>(json, r'minValue')!,
       );
     }
     return null;
@@ -152,5 +176,7 @@ class VoucherDefaultsModel {
     'defaultPeople',
     'defaultValue',
     'maxPeople',
+    'maxValue',
+    'minValue',
   };
 }

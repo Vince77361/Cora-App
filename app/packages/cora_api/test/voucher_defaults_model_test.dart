@@ -35,5 +35,17 @@ void main() {
     test('to test the property `maxPeople`', () async {
       // TODO
     });
+
+    // 식사권 금액의 최댓값(원).
+    // int maxValue
+    test('to test the property `maxValue`', () async {
+      // TODO
+    });
+
+    // 식사권 금액의 최솟값(원).
+    // int minValue
+    test('to test the property `minValue`', () async {
+      // TODO
+    });
   });
 }

@@ -44,6 +44,8 @@ ServerConfig serverConfigFromWire(api.AppConfigModel m) {
         value: r.voucher.defaultValue,
         people: r.voucher.defaultPeople,
         maxPeople: r.voucher.maxPeople,
+        minValue: r.voucher.minValue,
+        maxValue: r.voucher.maxValue,
       ),
       usageRightsDefault: usageRightsFromWire(r.usageRightsDefault),
       countingDays: r.countingDays,

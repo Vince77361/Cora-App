@@ -12,7 +12,12 @@ export type CollaborationJobPayload = {
 // attempt는 결제 대기 재확인의 몇 번째 시도인지(1부터)다.
 export type PaymentJobPayload = { paymentId: string; attempt: number };
 // declinedAt(ISO 시각)은 거절 알림 작업만 싣는다: 어느 거절에 대한 작업인지 처리기가 알아야 옛 작업을 건너뛴다.
-export type OfferJobPayload = { offerId: string; declinedAt?: string };
+// version은 판본 응답 기한 작업만 싣는다: 최신 판본이 아닌 작업은 처리기가 건너뛴다.
+export type OfferJobPayload = {
+  offerId: string;
+  declinedAt?: string;
+  version?: number;
+};
 // 지급 송금 작업은 지급 행에 붙는다.
 export type PayoutJobPayload = { payoutId: string };
 // 사장님의 취소 요청 만료 작업은 요청 행에 붙는다.

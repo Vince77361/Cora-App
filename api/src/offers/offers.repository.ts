@@ -1,9 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { OfferStatus, OfferVersion, Prisma } from '@prisma/client';
+import {
+  OfferEndReason,
+  OfferParty,
+  OfferStatus,
+  OfferVersion,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OfferTermsModel } from '../stores/dto/offer-terms.model';
 import { DECLINE_UNDO_SECONDS } from './offer-rules';
 import { OfferVersionsRepository } from './offer-versions.repository';
+import { turnAfter } from './proposal-rules';
 
 // 연결된 지원의 상태를 함께 읽어, 이미 닫힌 지원에 닫기를 다시 부르지 않게 한다.
 // 조건은 판본에 있어서 가장 새 판본 하나를 함께 읽는다(오퍼를 만드는 트랜잭션이 번호와 판본을 같이 올린다).
@@ -30,6 +37,19 @@ export interface NewOffer {
   applicationId: string | null;
   terms: OfferTermsModel;
   createdAt: Date;
+  expiresAt: Date;
+}
+
+// 새 판본 하나. readVersion은 서비스가 읽은 최신 번호다(갱신 조건에 걸어 읽은 뒤 바뀌었으면 0행이 되게 한다).
+export interface NewProposal {
+  offerId: string;
+  author: OfferParty;
+  readVersion: number;
+  terms: OfferTermsModel;
+  idea: string | null;
+  principles: string[];
+  now: Date;
+  // 새 판본이 나올 때마다 응답 기한을 다시 센다.
   expiresAt: Date;
 }
 
@@ -148,6 +168,63 @@ export class OffersRepository {
     }
   }
 
+  // 새 판본: 오퍼를 읽은 번호·차례·기한 전일 때만 갱신(번호 +1, 차례를 상대에게, 응답 기한을 다시 셈)하고 판본을 넣는다.
+  // 수락과 같은 번호 조건을 쓰므로 동시에 오면 하나만 이긴다(수락이 이기면 0행, 새 판본이 이기면 수락이 0행).
+  // 0행이면 null이다.
+  propose(data: NewProposal): Promise<OfferVersion | null> {
+    const number = data.readVersion + 1;
+    return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.offer.updateMany({
+        where: {
+          id: data.offerId,
+          status: 'SENT',
+          latestVersion: data.readVersion,
+          turn: data.author,
+          expiresAt: { gt: data.now },
+          deletedAt: null,
+        },
+        data: {
+          latestVersion: number,
+          turn: turnAfter(data.author),
+          expiresAt: data.expiresAt,
+        },
+      });
+      if (count !== 1) return null;
+      return this.versions.insert(tx, {
+        offerId: data.offerId,
+        number,
+        authorParty: data.author,
+        terms: data.terms,
+        idea: data.idea,
+        principles: data.principles,
+        createdAt: data.now,
+      });
+    });
+  }
+
+  // 사유를 골라 제안을 끝낸다. 읽은 판본 번호가 그대로일 때만이라, 그사이 새 판본이 나왔으면 0행이다.
+  // 거절 후 30초 되돌리기(declinedAt)는 쓰지 않는다: 종료는 되돌릴 수 없다.
+  async end(
+    id: string,
+    endedBy: OfferParty,
+    status: 'CANCELLED' | 'DECLINED',
+    reason: OfferEndReason,
+    version: number,
+    now: Date,
+  ): Promise<boolean> {
+    const { count } = await this.prisma.offer.updateMany({
+      where: {
+        id,
+        status: 'SENT',
+        latestVersion: version,
+        expiresAt: { gt: now },
+        deletedAt: null,
+      },
+      data: { status, endReason: reason, endedBy, respondedAt: now },
+    });
+    return count === 1;
+  }
+
   // 수락은 기한 전(expiresAt > now)일 때만. 기한과 갱신 사이에 시간이 지나도 늦게 수락되지 않는다.
   // 본 판본 번호(version)가 latest_version과 같을 때만이라, 읽은 뒤 새 판본이 나왔으면 0행이 된다.
   // paymentDueAt이 null이면 낼 돈이 없는 오퍼다. 협업 만들기는 같은 트랜잭션에서 한다.
@@ -187,10 +264,18 @@ export class OffersRepository {
         id,
         creatorId,
         status: 'SENT',
+        // 받은 쪽(차례인 쪽)만 거절한다. 내가 쓴 판본의 제안은 종료로 끝낸다.
+        turn: 'CREATOR',
         expiresAt: { gt: now },
         deletedAt: null,
       },
-      data: { status: 'DECLINED', declinedAt: now, respondedAt: now },
+      data: {
+        status: 'DECLINED',
+        declinedAt: now,
+        respondedAt: now,
+        endReason: 'NO_REASON',
+        endedBy: 'CREATOR',
+      },
     });
     return count === 1;
   }
@@ -211,7 +296,13 @@ export class OffersRepository {
           declinedAt: { gt: undoSince },
           deletedAt: null,
         },
-        data: { status: 'SENT', declinedAt: null, respondedAt: null },
+        data: {
+          status: 'SENT',
+          declinedAt: null,
+          respondedAt: null,
+          endReason: null,
+          endedBy: null,
+        },
       });
       return count === 1;
     } catch (error) {

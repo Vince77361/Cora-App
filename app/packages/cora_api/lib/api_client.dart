@@ -264,6 +264,10 @@ class ApiClient {
           return CreatorSummaryModel.fromJson(value);
         case 'DraftSceneModel':
           return DraftSceneModel.fromJson(value);
+        case 'EndOfferDto':
+          return EndOfferDto.fromJson(value);
+        case 'EndedOfferModel':
+          return EndedOfferModel.fromJson(value);
         case 'FeeRatesModel':
           return FeeRatesModel.fromJson(value);
         case 'FixedCashMaxModel':
@@ -300,8 +304,18 @@ class ApiClient {
           return NotificationTabFilterTypeTransformer().decode(value);
         case 'NotificationTargetModel':
           return NotificationTargetModel.fromJson(value);
+        case 'OfferEndReason':
+          return OfferEndReasonTypeTransformer().decode(value);
+        case 'OfferEndStatus':
+          return OfferEndStatusTypeTransformer().decode(value);
+        case 'OfferParty':
+          return OfferPartyTypeTransformer().decode(value);
         case 'OfferTermsModel':
           return OfferTermsModel.fromJson(value);
+        case 'OfferVersionModel':
+          return OfferVersionModel.fromJson(value);
+        case 'OfferVersionSeriesModel':
+          return OfferVersionSeriesModel.fromJson(value);
         case 'OfferView':
           return OfferViewTypeTransformer().decode(value);
         case 'PaymentCreatedModel':
@@ -322,6 +336,8 @@ class ApiClient {
           return PerViewInputDto.fromJson(value);
         case 'PhotoUploadModel':
           return PhotoUploadModel.fromJson(value);
+        case 'ProposeVersionDto':
+          return ProposeVersionDto.fromJson(value);
         case 'QuietHours':
           return QuietHoursTypeTransformer().decode(value);
         case 'ReceivedOfferModel':

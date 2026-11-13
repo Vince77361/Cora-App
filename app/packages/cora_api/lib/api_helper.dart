@@ -110,6 +110,15 @@ String parameterToString(dynamic value) {
   if (value is NotificationTabFilter) {
     return NotificationTabFilterTypeTransformer().encode(value).toString();
   }
+  if (value is OfferEndReason) {
+    return OfferEndReasonTypeTransformer().encode(value).toString();
+  }
+  if (value is OfferEndStatus) {
+    return OfferEndStatusTypeTransformer().encode(value).toString();
+  }
+  if (value is OfferParty) {
+    return OfferPartyTypeTransformer().encode(value).toString();
+  }
   if (value is OfferView) {
     return OfferViewTypeTransformer().encode(value).toString();
   }

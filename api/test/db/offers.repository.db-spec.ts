@@ -233,4 +233,112 @@ describe('OffersRepository', () => {
       second.id,
     ]);
   });
+
+  describe('proposing versions and ending', () => {
+    const proposal = (
+      offerId: string,
+      over: Partial<Parameters<typeof repo.propose>[0]> = {},
+    ) => ({
+      offerId,
+      author: 'CREATOR' as const,
+      readVersion: 1,
+      terms: base().terms,
+      idea: null,
+      principles: [],
+      now: at(DAY),
+      expiresAt: at(8 * DAY),
+      ...over,
+    });
+    const offerOf = (id: string) =>
+      prisma.offer.findUniqueOrThrow({ where: { id } });
+
+    it('raises the number, passes the turn and restarts the deadline in one step', async () => {
+      const offer = (await repo.create(base()))!;
+      const created = await repo.propose(proposal(offer.id));
+      expect(created).toMatchObject({
+        number: 2,
+        authorParty: 'CREATOR',
+        createdAt: at(DAY),
+      });
+      expect(await offerOf(offer.id)).toMatchObject({
+        latestVersion: 2,
+        turn: 'STORE',
+        expiresAt: at(8 * DAY),
+      });
+    });
+
+    it('returns null and adds no version when the read number is stale', async () => {
+      const offer = (await repo.create(base()))!;
+      expect(await repo.propose(proposal(offer.id))).not.toBeNull();
+      expect(
+        await repo.propose(proposal(offer.id, { author: 'STORE' })),
+      ).toBeNull();
+      expect(await prisma.offerVersion.count()).toBe(2);
+    });
+
+    it('returns null when it is not the turn of the author', async () => {
+      const offer = (await repo.create(base()))!;
+      expect(
+        await repo.propose(proposal(offer.id, { author: 'STORE' })),
+      ).toBeNull();
+    });
+
+    it('returns null once the offer is accepted, and the accept loses to a newer version', async () => {
+      const accepted = (await repo.create(base()))!;
+      expect(await repo.accept(accepted.id, CREATOR, 1, at(DAY), null)).toBe(
+        true,
+      );
+      expect(await repo.propose(proposal(accepted.id))).toBeNull();
+      expect(await prisma.offerVersion.count()).toBe(1);
+
+      await prisma.offer.update({
+        where: { id: accepted.id },
+        data: { status: 'CANCELLED' },
+      });
+      const offer = (await repo.create(base()))!;
+      expect(await repo.propose(proposal(offer.id))).not.toBeNull();
+      expect(await repo.accept(offer.id, CREATOR, 1, at(DAY), null)).toBe(
+        false,
+      );
+    });
+
+    it('does not propose after the deadline', async () => {
+      const offer = (await repo.create(base()))!;
+      expect(
+        await repo.propose(proposal(offer.id, { now: at(7 * DAY) })),
+      ).toBeNull();
+    });
+
+    it('ends with the reason and the party, only for the version that was read', async () => {
+      const offer = (await repo.create(base()))!;
+      expect(
+        await repo.end(offer.id, 'CREATOR', 'DECLINED', 'TERMS', 2, at(DAY)),
+      ).toBe(false);
+      expect(
+        await repo.end(offer.id, 'CREATOR', 'DECLINED', 'TERMS', 1, at(DAY)),
+      ).toBe(true);
+      expect(await offerOf(offer.id)).toMatchObject({
+        status: 'DECLINED',
+        endReason: 'TERMS',
+        endedBy: 'CREATOR',
+        declinedAt: null,
+        respondedAt: at(DAY),
+      });
+      expect(
+        await repo.end(offer.id, 'CREATOR', 'DECLINED', 'TERMS', 1, at(DAY)),
+      ).toBe(false);
+    });
+
+    it('declines only on the creator turn and stores NO_REASON', async () => {
+      const offer = (await repo.create(base()))!;
+      await repo.propose(proposal(offer.id));
+      expect(await repo.decline(offer.id, CREATOR, at(DAY))).toBe(false);
+      const other = (await repo.create({ ...base(), storeId: otherStoreId }))!;
+      expect(await repo.decline(other.id, CREATOR, at(DAY))).toBe(true);
+      expect(await offerOf(other.id)).toMatchObject({
+        endReason: 'NO_REASON',
+        endedBy: 'CREATOR',
+      });
+    });
+  });
 });

@@ -26,6 +26,8 @@ describe('app config', () => {
           defaultValue: 40000,
           defaultPeople: 2,
           maxPeople: 10,
+          minValue: 1000,
+          maxValue: 1000000,
         },
         usageRightsDefault: 'STORE_REPOST_3M',
         countingDays: 7,

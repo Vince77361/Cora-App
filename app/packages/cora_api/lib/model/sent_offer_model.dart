@@ -31,7 +31,7 @@ class SentOfferModel {
 
   String id;
 
-  /// 사장님가 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.
+  /// 사장님이 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.
   bool myTurn;
 
   /// 수락됐고 아직 결제 기한 전일 때 남은 날(올림). 아니면 null.

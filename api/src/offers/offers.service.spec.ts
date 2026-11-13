@@ -892,6 +892,10 @@ describe('OffersService', () => {
   });
 
   describe('scheduled jobs', () => {
+    // 보낼 때 판본 응답 기한 작업이 함께 올라간다. 아래 시험은 그 밖의 작업만 본다.
+    const pendingExceptExpiry = () =>
+      jobs.pending().filter((j) => j.name !== 'offer-response-expiry');
+
     const SECOND = 1000;
     let id: string;
     beforeEach(async () => {
@@ -922,8 +926,7 @@ describe('OffersService', () => {
       expect(collaboration.stage).toBe('FUNDED');
       // 기한 2026-12-15 09:00 KST: 환급은 그 시각에, 알림은 3일 전(12-12)과 하루 전(12-14) 10:00 KST에.
       expect(
-        jobs
-          .pending()
+        pendingExceptExpiry()
           .map((j) => ({ name: j.name, jobKey: j.jobKey, runAt: j.runAt }))
           .sort((a, b) => a.runAt.getTime() - b.runAt.getTime()),
       ).toEqual([
@@ -948,7 +951,7 @@ describe('OffersService', () => {
     it('does not schedule submission deadline jobs for an offer that still needs a payment', async () => {
       await acceptPerView();
       expect(
-        jobs.pending().filter((j) => j.name !== 'payment-due-expiry'),
+        pendingExceptExpiry().filter((j) => j.name !== 'payment-due-expiry'),
       ).toEqual([]);
     });
 
@@ -967,7 +970,7 @@ describe('OffersService', () => {
 
     it('schedules the decline notice 30 seconds after the decline', async () => {
       await service.decline(CREATOR, id);
-      expect(jobs.pending()).toMatchObject([
+      expect(pendingExceptExpiry()).toMatchObject([
         {
           name: 'decline-notice',
           payload: { offerId: id, declinedAt: T0.toISOString() },
@@ -981,11 +984,11 @@ describe('OffersService', () => {
       await service.decline(CREATOR, id);
       clock.advance(10 * SECOND);
       await service.undoDecline(CREATOR, id);
-      expect(jobs.pending()).toEqual([]);
+      expect(pendingExceptExpiry()).toEqual([]);
 
       clock.advance(10 * SECOND);
       await service.decline(CREATOR, id);
-      expect(jobs.pending()).toMatchObject([
+      expect(pendingExceptExpiry()).toMatchObject([
         {
           jobKey: `decline:${id}:${clock.now().getTime()}`,
           runAt: new Date(clock.now().getTime() + 30 * SECOND),
@@ -1083,7 +1086,7 @@ describe('OffersService', () => {
       clock.advance(10 * SECOND);
       await service.decline(CREATOR, id);
       // 취소가 실패해 첫 작업이 남았어도, 키가 달라 두 번째 작업이 막히지 않고 둘 다 올라가 있다.
-      expect(jobs.pending().map((j) => j.runAt)).toEqual([
+      expect(pendingExceptExpiry().map((j) => j.runAt)).toEqual([
         new Date(T0.getTime() + 30 * SECOND),
         new Date(T0.getTime() + 50 * SECOND),
       ]);
@@ -1131,7 +1134,7 @@ describe('OffersService', () => {
 
     it('schedules the payment due expiry at the due time for a per-view offer', async () => {
       const offerId = await acceptPerView();
-      expect(jobs.pending()).toMatchObject([
+      expect(pendingExceptExpiry()).toMatchObject([
         {
           name: 'payment-due-expiry',
           payload: { offerId },

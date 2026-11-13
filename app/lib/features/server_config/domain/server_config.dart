@@ -45,12 +45,18 @@ class VoucherDefaults {
     required this.value,
     required this.people,
     required this.maxPeople,
+    required this.minValue,
+    required this.maxValue,
   });
 
   final String name;
   final int value;
   final int people;
   final int maxPeople;
+
+  /// 식사권 금액의 범위(원). 서버가 정한 값이라 앱에 상수로 적지 않는다.
+  final int minValue;
+  final int maxValue;
 }
 
 /// 보상을 고를 때 쓰는 범위와 기본값.

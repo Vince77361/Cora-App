@@ -1,0 +1,95 @@
+//
+// AUTO-GENERATED FILE, DO NOT MODIFY!
+//
+// @dart=2.18
+
+// ignore_for_file: unused_element, unused_import
+// ignore_for_file: always_put_required_named_parameters_first
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: lines_longer_than_80_chars
+
+part of cora_api;
+
+enum OfferEndStatus {
+  CANCELLED._(r'CANCELLED'),
+  DECLINED._(r'DECLINED'),
+  ;
+
+  /// Instantiate a new enum with the provided value.
+  const OfferEndStatus._(this._value);
+
+  /// The underlying value of this enum member.
+  final String _value;
+
+  @override
+  String toString() => _value;
+
+  /// Encodes this enum as a value suitable for JSON.
+  String toJson() => _value;
+
+  /// Returns the instance of [OfferEndStatus] that was successfully decoded
+  /// from the passed [value] on success, null otherwise.
+  static OfferEndStatus? fromJson(dynamic value) =>
+      OfferEndStatusTypeTransformer().decode(value);
+
+  /// Returns a [List] containing instances of [OfferEndStatus]
+  /// that were successfully decoded from the passed [JSON][json].
+  static List<OfferEndStatus> listFromJson(
+    dynamic json, {
+    bool growable = false,
+  }) {
+    final result = <OfferEndStatus>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = OfferEndStatus.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [OfferEndStatus] to String,
+/// and [decode] dynamic data back to [OfferEndStatus].
+class OfferEndStatusTypeTransformer {
+  factory OfferEndStatusTypeTransformer() =>
+      _instance ??= const OfferEndStatusTypeTransformer._();
+
+  const OfferEndStatusTypeTransformer._();
+
+  /// Encodes this enum as a value suitable for JSON.
+  String encode(OfferEndStatus data) => data._value;
+
+  /// Returns the instance of [OfferEndStatus] that was successfully decoded
+  /// from the passed [data] value on success, null otherwise.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  OfferEndStatus? decode(dynamic data, {bool allowNull = true}) {
+    if (data is OfferEndStatus) {
+      return data;
+    }
+    if (data != null) {
+      switch (data) {
+        case r'CANCELLED':
+          return OfferEndStatus.CANCELLED;
+        case r'DECLINED':
+          return OfferEndStatus.DECLINED;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// The singleton instance of this transformer.
+  static OfferEndStatusTypeTransformer? _instance;
+}

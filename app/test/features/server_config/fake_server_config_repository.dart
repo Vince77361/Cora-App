@@ -25,6 +25,8 @@ const sampleServerConfig = ServerConfig(
       value: 40000,
       people: 2,
       maxPeople: 10,
+      minValue: 1000,
+      maxValue: 1000000,
     ),
     usageRightsDefault: UsageRights.storeRepost3m,
     countingDays: 7,

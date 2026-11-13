@@ -6,6 +6,7 @@ export const JOB_NAMES = [
   'submit-reminder',
   'decline-notice',
   'payment-due-expiry',
+  'offer-response-expiry',
   'payment-recheck',
   'cancel-request-expiry',
   'cancel-refund',

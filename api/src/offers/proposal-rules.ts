@@ -1,6 +1,6 @@
 import { OfferParty, OfferVersion } from '@prisma/client';
 import { OfferTermsModel } from '../stores/dto/offer-terms.model';
-import { termsModelOf } from '../stores/reward-terms';
+import { RewardDefaults, termsModelOf } from '../stores/reward-terms';
 import { OfferVersionModel } from './dto/offer-version.model';
 
 // 판본을 주고받는 규칙은 모두 순수 함수다. 시각과 DB를 모른다.
@@ -8,6 +8,14 @@ import { OfferVersionModel } from './dto/offer-version.model';
 // 응답할 차례는 최신 판본을 쓰지 않은 쪽이다.
 export function turnAfter(author: OfferParty): OfferParty {
   return author === 'STORE' ? 'CREATOR' : 'STORE';
+}
+
+// 제안을 끝냈을 때의 상태. 차례인 쪽(= 받은 쪽)이 끝내면 거절(DECLINED), 최신 판본을 쓴 쪽이 끝내면 취소(CANCELLED)다.
+export function endStatusOf(
+  party: OfferParty,
+  turn: OfferParty,
+): 'CANCELLED' | 'DECLINED' {
+  return party === turn ? 'DECLINED' : 'CANCELLED';
 }
 
 // 이 오퍼에서 내가 어느 쪽인가. 당사자가 아니면 null이다(호출하는 쪽이 404로 바꾼다).
@@ -109,5 +117,31 @@ export function versionModelOf(row: OfferVersion): OfferVersionModel {
         }
       : null,
     createdAt: row.createdAt,
+  };
+}
+
+// 새 판본에서 비워 둔 값은 앞 판본의 값으로 채운다. 가게의 기본 조건은 크리에이터가 쓸 때 알 수 없고,
+// 고쳐 보내는 화면도 앞 판본에서 출발하기 때문이다.
+export function defaultsOfVersion(row: OfferVersion): RewardDefaults {
+  return {
+    voucherName: row.voucherName,
+    voucherValue: row.voucherValue,
+    voucherPeople: row.voucherPeople,
+    viewRatePerThousand: row.viewRatePerThousand,
+    perViewCap: row.perViewCap,
+    usageRights: row.usageRights,
+  };
+}
+
+// 사장님이 보낸 idea·principles는 저장하지 않는다. 한 줄 설명과 원칙은 크리에이터의 판본에만 있다.
+export function proposalExtras(
+  author: OfferParty,
+  input: { idea?: string; principles?: string[] },
+): { idea: string | null; principles: string[] } {
+  if (author !== 'CREATOR') return { idea: null, principles: [] };
+  const idea = input.idea?.trim() ?? '';
+  return {
+    idea: idea === '' ? null : idea,
+    principles: input.principles ?? [],
   };
 }

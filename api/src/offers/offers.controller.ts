@@ -16,6 +16,10 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { AcceptOfferDto } from './dto/accept-offer.dto';
+import { EndedOfferModel } from './dto/ended-offer.model';
+import { EndOfferDto } from './dto/end-offer.dto';
+import { OfferVersionModel } from './dto/offer-version.model';
+import { ProposeVersionDto } from './dto/propose-version.dto';
 import { ReceivedOffersQueryDto } from './dto/received-offers-query.dto';
 import { ReceivedOfferModel } from './dto/received-offer.model';
 import { SendOfferDto } from './dto/send-offer.dto';
@@ -80,6 +84,29 @@ export class OffersController {
     @Body() dto: AcceptOfferDto,
   ): Promise<ReceivedOfferModel> {
     return this.offers.accept(user.userId, id, dto.version);
+  }
+
+  @Post('offers/:id/versions')
+  @ApiOperation({ operationId: 'proposeOfferVersion' })
+  @ApiCreatedResponse({ type: OfferVersionModel })
+  proposeVersion(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ProposeVersionDto,
+  ): Promise<OfferVersionModel> {
+    return this.offers.proposeVersion(user.userId, id, dto);
+  }
+
+  @Post('offers/:id/end')
+  @HttpCode(200)
+  @ApiOperation({ operationId: 'endOffer' })
+  @ApiOkResponse({ type: EndedOfferModel })
+  end(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: EndOfferDto,
+  ): Promise<EndedOfferModel> {
+    return this.offers.end(user.userId, id, dto.reason);
   }
 
   @Post('offers/:id/decline')
