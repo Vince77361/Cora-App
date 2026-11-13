@@ -6,6 +6,7 @@ import { scheduleSubmissionDeadlineJobs } from '../src/collaborations/collaborat
 import { Clock } from '../src/common/clock';
 import { FakePaymentAdapter } from '../src/integrations/payment/fake-payment.adapter';
 import { PaymentPort } from '../src/integrations/payment/payment.port';
+import { NotificationsService } from '../src/notifications/notifications.service';
 import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
 import { StoragePort } from '../src/integrations/storage/storage.port';
 import { FakePayoutAdapter } from '../src/integrations/payout/fake-payout.adapter';
@@ -310,6 +311,8 @@ describe('view report', () => {
     pg.refunds.length = 0;
     payoutPort.sent.length = 0;
     storage.signedReads.length = 0;
+    storage.missing.clear();
+    storage.failSigning = false;
     storage.uploadUrlBuckets.length = 0;
     storage.uploadUrlPaths.length = 0;
     alert.mockClear();
@@ -1236,6 +1239,143 @@ describe('view report', () => {
       await report(stranger.collaborationId).expect(404);
       await report(stranger.collaborationId, creator).expect(404);
       expect(storage.signedReads).toHaveLength(0);
+    });
+
+    it('does not halt a collaboration whose capture arrives while the deadline job runs', async () => {
+      for (let round = 0; round < 4; round += 1) {
+        await truncateTestDb(prisma);
+        scheduler.jobs.length = 0;
+        clock.set(T0);
+        alert.mockClear();
+        const s = await seed();
+        await submitUnreadableUntil(s, 7);
+        const path = await evidenceUpload();
+        clock.set(afterDays(10));
+        const [sent] = await Promise.all([
+          sendEvidence(s.collaborationId, path, 10000),
+          scheduler.registry.run('evidence-missing-halt', {
+            collaborationId: s.collaborationId,
+          }),
+        ]);
+        const stage = (await collaborationRow(s.collaborationId)).stage;
+        const settlements = await prisma.settlement.count();
+        const captures = await prisma.viewEvidence.count();
+        if (sent.status === 200) {
+          // 캡처가 이겼다: 계산이 있는 협업은 멈추지 않는다.
+          expect(stage).toBe('COUNTING');
+          expect([settlements, captures]).toEqual([1, 1]);
+        } else {
+          // 멈춤이 이겼다: 캡처는 409로 거절되고 계산도 없다. 어느 쪽이든 "계산이 있는데 멈춘" 협업은 없다.
+          expect(sent.status).toBe(409);
+          expect(stage).toBe('HALTED');
+          expect([settlements, captures]).toEqual([0, 0]);
+        }
+      }
+    });
+
+    it('does nothing when the deadline job runs after the capture made a calculation', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 7);
+      clock.set(afterDays(8));
+      await sendEvidence(s.collaborationId, await evidenceUpload()).expect(200);
+      await scheduler.registry.run('evidence-missing-halt', {
+        collaborationId: s.collaborationId,
+      });
+      expect((await collaborationRow(s.collaborationId)).stage).toBe(
+        'COUNTING',
+      );
+      expect((await settlementOf(s.collaborationId)).status).toBe(
+        'UNCONFIRMED',
+      );
+    });
+
+    it('still opens the report and answers the dispute when the capture url cannot be signed', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 7);
+      clock.set(afterDays(8));
+      await sendEvidence(
+        s.collaborationId,
+        await evidenceUpload(),
+        10000,
+      ).expect(200);
+      storage.failSigning = true;
+      for (const as of [owner, creator]) {
+        const view = await reportBody(s.collaborationId, as);
+        expect(view.status).toBe('UNCONFIRMED');
+        expect(view.evidence).toEqual({ imageUrl: null, statedViews: 10000 });
+      }
+      const res = await dispute(s.collaborationId).expect(200);
+      expect((res.body as { status: string }).status).toBe('DISPUTED');
+    });
+
+    it('refuses a capture whose file was never uploaded', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 3);
+      const issued = await evidenceUpload();
+      // 주소는 받았지만 올리기에 실패했다고 본다.
+      storage.missing.add(issued);
+      const res = await sendEvidence(s.collaborationId, issued).expect(400);
+      expect((res.body as { error: { code: string } }).error.code).toBe(
+        'VALIDATION_FAILED',
+      );
+      // 주소를 받은 적도 없는 내 폴더의 경로도 같다.
+      await sendEvidence(
+        s.collaborationId,
+        `evidence/${s.creatorId}/55555555-5555-4555-8555-555555555555.jpg`,
+      ).expect(400);
+      expect(await prisma.viewEvidence.count()).toBe(0);
+      storage.missing.clear();
+      await sendEvidence(s.collaborationId, issued).expect(200);
+    });
+
+    it('takes a capture after the period ended only once day seven was tried', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 6);
+      const path = await evidenceUpload();
+      // 기간이 끝났지만 정산 작업과 7일째 작업은 아직 돌지 않았다.
+      clock.set(afterDays(7));
+      expect(
+        (await reportBody(s.collaborationId, creator)).canUploadEvidence,
+      ).toBe(false);
+      await sendEvidence(s.collaborationId, path).expect(409);
+      expect(await prisma.viewEvidence.count()).toBe(0);
+
+      await scheduler.runDue(clock.now());
+      expect(jobKeys()).toContain(`evidence-halt:${s.collaborationId}`);
+      expect(
+        (await reportBody(s.collaborationId, creator)).canUploadEvidence,
+      ).toBe(true);
+      await sendEvidence(s.collaborationId, path).expect(200);
+      expect(await settlementOf(s.collaborationId)).toMatchObject({
+        evidenceSource: 'CAPTURE',
+      });
+    });
+
+    it('announces again through a quick settle retry when the notice failed right after the capture calculation', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 7);
+      clock.set(afterDays(8));
+      alert.mockClear();
+      const notify = jest
+        .spyOn(app.get(NotificationsService), 'notify')
+        .mockRejectedValueOnce(new Error('inbox down'));
+      try {
+        await sendEvidence(s.collaborationId, await evidenceUpload()).expect(
+          200,
+        );
+        expect(await notificationCount('VIEW_REPORT_REQUESTED')).toBe(0);
+        expect(alert).not.toHaveBeenCalled();
+        expect(jobKeys()).toContain(`settle:${s.collaborationId}`);
+        await scheduler.runDue(clock.now());
+        expect(await notificationCount('VIEW_REPORT_REQUESTED')).toBe(1);
+        expect(await notificationCount('VIEW_REPORT_READY')).toBe(1);
+        expect(alert).toHaveBeenCalledTimes(1);
+        // 계산은 하나뿐이고 자동 확인 작업은 여전히 없다.
+        expect(await prisma.settlement.count()).toBe(1);
+        expect(jobKeys()).not.toContain(`auto-confirm:${s.collaborationId}`);
+      } finally {
+        notify.mockRestore();
+      }
     });
 
     it('does not show the capture to anyone outside the collaboration', async () => {

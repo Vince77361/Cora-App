@@ -44,10 +44,12 @@ export class ViewReportCalcModel {
 
 export class ViewReportEvidenceModel {
   @ApiProperty({
+    type: String,
+    nullable: true,
     description:
-      '캡처 이미지를 읽는 주소(당사자에게만 주는, 기한이 있는 주소).',
+      '캡처 이미지를 읽는 주소(당사자에게만 주는, 기한이 있는 주소). 주소를 만들지 못했으면 null이다(화면은 그림 없이 조회수만 보여 준다).',
   })
-  imageUrl!: string;
+  imageUrl!: string | null;
 
   @ApiProperty({ type: 'integer', description: '크리에이터가 적은 조회수.' })
   statedViews!: number;

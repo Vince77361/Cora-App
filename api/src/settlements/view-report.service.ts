@@ -13,7 +13,10 @@ import { VIEW_REPORT_POLICY } from '../common/collaboration-policy';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
-import { StoragePort } from '../integrations/storage/storage.port';
+import {
+  PRIVATE_BUCKET,
+  StoragePort,
+} from '../integrations/storage/storage.port';
 import { JobRunContext, JobScheduler } from '../jobs/job-scheduler';
 import { postingsForSettlement } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
@@ -77,7 +80,7 @@ export interface ViewReportView {
   canConfirm: boolean;
   canDispute: boolean;
   canUploadEvidence: boolean;
-  evidence: { imageUrl: string; statedViews: number } | null;
+  evidence: { imageUrl: string | null; statedViews: number } | null;
 }
 
 // 조회수 수당이 있는 협업의 "계산 만들기 → 확인 → 확정" 가운데 계산과 확인을 맡는다.
@@ -411,14 +414,24 @@ export class ViewReportService {
       evidence: evidence
         ? {
             // 비공개 버킷의 파일이라 화면을 열 때마다 당사자에게만 기한이 있는 주소를 새로 서명해 준다.
-            imageUrl: await this.storage.signedReadUrl(
-              evidence.filePath,
-              EVIDENCE_URL_TTL_SECONDS,
-            ),
+            imageUrl: await this.signEvidence(evidence.filePath),
             statedViews: evidence.statedViews,
           }
         : null,
     };
+  }
+
+  // 캡처 이미지의 서명 주소. 만들지 못해도(저장소 장애, 없는 파일) 조회 자료 화면 전체를 실패시키지 않고 null로 둔다:
+  // 이 화면은 이의 제기와 확인의 응답이기도 하다. 원인은 로그에 종류만 남긴다.
+  private async signEvidence(path: string): Promise<string | null> {
+    try {
+      return await this.storage.signedReadUrl(path, EVIDENCE_URL_TTL_SECONDS);
+    } catch (error) {
+      this.logger.warn(
+        `캡처 읽기 주소를 만들지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+      return null;
+    }
   }
 
   // 커밋 부분만. 졌거나(다른 확인이 먼저, 이의, 운영자의 멈춤) 되돌렸으면 'lost'다.
@@ -680,6 +693,13 @@ export class ViewReportService {
     if (!hasViewPay(terms) || !collaboration.submittedAt) {
       throw this.notFound();
     }
+    // 올리지 않은 경로(PUT이 실패했거나 지어낸 경로)는 받지 않는다. 저장소 호출이라 트랜잭션 밖에서 한다.
+    if (!(await this.storage.exists(input.path, PRIVATE_BUCKET))) {
+      throw new AppError(
+        'VALIDATION_FAILED',
+        '올린 캡처 파일을 찾을 수 없어요. 다시 올려 주세요.',
+      );
+    }
     const now = this.clock.now();
     const calculated = await this.repository.transaction<boolean, 'closed'>(
       async (tx, rollback) => {
@@ -727,17 +747,35 @@ export class ViewReportService {
         await this.jobs.cancel(evidenceHaltJobKey(collaborationId));
         await this.announceCalculation(collaborationId);
       } catch (error) {
-        // 계산과 캡처는 이미 커밋됐다. 알림만 놓친 것이라 로그를 남기고 운영자가 show로 확인한다.
+        // 계산과 캡처는 이미 커밋됐다. 알림만 놓친 것이라 응답은 그대로 주고, 같은 settle 키를 바로 다시 올려 이어서 알린다
+        // (settle은 계산이 이미 있으면 announceCalculation만 다시 한다. 알림은 모두 같은 키라 한 번씩만 나간다).
         this.logger.error(
-          `캡처 계산 뒤 알림에 실패했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+          `캡처 계산 뒤 알림에 실패했어요. 다시 올려요: ${error instanceof Error ? error.name : 'unknown'}`,
         );
+        await this.retryAnnounce(collaborationId);
       }
     }
     return this.get(userId, collaborationId);
   }
 
+  private async retryAnnounce(collaborationId: string): Promise<void> {
+    try {
+      await this.jobs.schedule(
+        'settle',
+        { collaborationId },
+        this.clock.now(),
+        settleJobKey(collaborationId),
+      );
+    } catch (error) {
+      this.logger.error(
+        `알림을 다시 올리지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
+  }
+
   // 캡처를 받을 수 있는 때: 협업이 집계 중(COUNTING)이고 정산 행이 아직 없으며 조회수를 연속 3일 읽지 못했을 때다.
-  // 측정 기간이 끝났다면 5~7일을 날로 세는 판정까지 쓴다(정산 작업과 같은 규칙).
+  // 측정 기간이 끝났다면 5~7일을 날로 세는 판정까지 쓰되, 7일째를 읽어 보려 한 뒤에만 받는다(7일째 줄이 있어야 한다):
+  // 읽기 전에 캡처를 받으면 7일째가 읽혔을 협업이 캡처 계산으로 남는다. 정산 작업과 같은 규칙이다.
   private async isEvidenceOpen(
     collaboration: Collaboration,
     settlement: { id: string } | null,
@@ -747,10 +785,11 @@ export class ViewReportService {
     const periodOver =
       collaboration.countingEndsAt !== null &&
       collaboration.countingEndsAt.getTime() <= this.clock.now().getTime();
-    return isViewCountUnreadable(
-      await this.repository.listSnapshots(collaboration.id, tx),
-      { atSettlement: periodOver },
-    );
+    const snapshots = await this.repository.listSnapshots(collaboration.id, tx);
+    if (periodOver && !snapshots.some((x) => x.dayIndex === SNAPSHOT_DAYS)) {
+      return false;
+    }
+    return isViewCountUnreadable(snapshots, { atSettlement: periodOver });
   }
 
   private async requireParty(

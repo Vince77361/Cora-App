@@ -16,7 +16,7 @@ void main() {
   // final instance = ViewReportEvidenceModel();
 
   group('test ViewReportEvidenceModel', () {
-    // 캡처 이미지를 읽는 주소(당사자에게만 주는, 기한이 있는 주소).
+    // 캡처 이미지를 읽는 주소(당사자에게만 주는, 기한이 있는 주소). 주소를 만들지 못했으면 null이다(화면은 그림 없이 조회수만 보여 준다).
     // String imageUrl
     test('to test the property `imageUrl`', () async {
       // TODO

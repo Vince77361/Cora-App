@@ -20,6 +20,9 @@ export abstract class StoragePort {
   // 공개 버킷의 읽기 주소. 네트워크를 쓰지 않는다.
   abstract publicUrl(path: string): string;
 
+  // 그 버킷에 파일이 실제로 올라가 있는가. 클라이언트가 보낸 경로를 저장하기 전에 확인한다(올리지 않은 경로를 막으려고).
+  abstract exists(path: string, bucket: string): Promise<boolean>;
+
   // 비공개 버킷(PRIVATE_BUCKET)의 읽기 주소. ttlSeconds가 지나면 쓸 수 없다. 누구에게 줄지는 부르는 쪽이 정한다.
   abstract signedReadUrl(path: string, ttlSeconds: number): Promise<string>;
 }

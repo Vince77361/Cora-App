@@ -67,6 +67,14 @@ export class SupabaseStorageAdapter extends StoragePort {
     return this.storage().from(PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
   }
 
+  async exists(path: string, bucket: string): Promise<boolean> {
+    const { data, error } = await this.storage().from(bucket).exists(path);
+    if (error) {
+      throw new AppError('INTERNAL', '파일이 있는지 확인하지 못했어요.');
+    }
+    return data;
+  }
+
   async signedReadUrl(path: string, ttlSeconds: number): Promise<string> {
     const { data, error } = await this.storage()
       .from(PRIVATE_BUCKET)

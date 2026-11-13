@@ -401,7 +401,9 @@ export class SettlementsService {
     );
   }
 
-  // evidence-missing-halt 작업의 몸: 기한까지 캡처가 없으면 조회수를 읽지 못해 멈추는 길(halt)로 간다. 캡처가 있거나 계산이 있으면 아무 일도 없다.
+  // evidence-missing-halt 작업의 몸: 기한까지 캡처가 없으면 조회수를 읽지 못해 멈추는 길로 간다. 캡처가 있거나 계산이 있으면 아무 일도 없다.
+  // 멈춤 판정과 전이를 협업 행을 잠근 한 트랜잭션에서 한다(오퍼 → 협업): 캡처를 받는 쪽(submitEvidence)이 같은 잠금을 잡으므로,
+  // 판정 직후 캡처와 계산이 커밋돼도 그 계산이 있는 협업을 멈추지 않는다(멈추면 확인·재개·강제 끝내기가 모두 막혀 갇힌다).
   // 멈추는 도중에 죽어 다시 돌 때는 남은 정리를 마친다.
   async haltIfEvidenceMissing(collaborationId: string): Promise<void> {
     const collaboration = await this.collaborations.findById(collaborationId);
@@ -411,9 +413,34 @@ export class SettlementsService {
       return;
     }
     if (collaboration.stage !== 'COUNTING') return;
-    if (await this.repository.findSettlement(collaborationId)) return;
-    if (await this.repository.findEvidence(collaborationId)) return;
-    await this.halt(collaboration);
+    const halted = await this.repository.transaction<boolean, false>(
+      async (tx, rollback) => {
+        if (!(await this.repository.lockCollaboration(collaborationId, tx))) {
+          return rollback(false);
+        }
+        const fresh = await this.collaborations.findById(collaborationId, tx);
+        if (fresh?.stage !== 'COUNTING') return rollback(false);
+        if (
+          (await this.repository.findSettlement(collaborationId, tx)) ||
+          (await this.repository.findEvidence(collaborationId, tx))
+        ) {
+          return rollback(false);
+        }
+        return this.collaborations.advance(
+          collaborationId,
+          'COUNTING',
+          'HALTED',
+          {
+            stageBeforeHalt: 'COUNTING',
+            haltedReason: VIEW_COUNT_HALT_REASON,
+          },
+          tx,
+        );
+      },
+    );
+    if (!halted) return;
+    const fresh = await this.collaborations.findById(collaborationId);
+    if (fresh && isViewCountHalt(fresh)) await this.finishHalt(fresh);
   }
 
   // 조회수 집계를 읽지 못해 협업을 멈춘다. 돈은 에스크로에 그대로 있다.

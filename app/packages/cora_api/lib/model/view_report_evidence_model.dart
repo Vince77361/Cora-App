@@ -17,8 +17,8 @@ class ViewReportEvidenceModel {
     required this.statedViews,
   });
 
-  /// 캡처 이미지를 읽는 주소(당사자에게만 주는, 기한이 있는 주소).
-  String imageUrl;
+  /// 캡처 이미지를 읽는 주소(당사자에게만 주는, 기한이 있는 주소). 주소를 만들지 못했으면 null이다(화면은 그림 없이 조회수만 보여 준다).
+  String? imageUrl;
 
   /// 크리에이터가 적은 조회수.
   int statedViews;
@@ -33,7 +33,7 @@ class ViewReportEvidenceModel {
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
-      (imageUrl.hashCode) + (statedViews.hashCode);
+      (imageUrl == null ? 0 : imageUrl!.hashCode) + (statedViews.hashCode);
 
   @override
   String toString() =>
@@ -41,7 +41,11 @@ class ViewReportEvidenceModel {
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
-    json[r'imageUrl'] = this.imageUrl;
+    if (this.imageUrl != null) {
+      json[r'imageUrl'] = this.imageUrl;
+    } else {
+      json[r'imageUrl'] = null;
+    }
     json[r'statedViews'] = this.statedViews;
     return json;
   }
@@ -59,8 +63,6 @@ class ViewReportEvidenceModel {
       assert(() {
         assert(json.containsKey(r'imageUrl'),
             'Required key "ViewReportEvidenceModel[imageUrl]" is missing from JSON.');
-        assert(json[r'imageUrl'] != null,
-            'Required key "ViewReportEvidenceModel[imageUrl]" has a null value in JSON.');
         assert(json.containsKey(r'statedViews'),
             'Required key "ViewReportEvidenceModel[statedViews]" is missing from JSON.');
         assert(json[r'statedViews'] != null,
@@ -69,7 +71,7 @@ class ViewReportEvidenceModel {
       }());
 
       return ViewReportEvidenceModel(
-        imageUrl: mapValueOfType<String>(json, r'imageUrl')!,
+        imageUrl: mapValueOfType<String>(json, r'imageUrl'),
         statedViews: mapValueOfType<int>(json, r'statedViews')!,
       );
     }

@@ -70,7 +70,7 @@ yarn ops halt --collaboration <협업 id> --operator 김운영 --reason "신고 
 | 명령 | 하는 일 |
 |---|---|
 | `halt --collaboration <id>` | 돈을 보관 중인 단계를 `HALTED`로 멈추고(멈추기 전 단계를 저장) 등록된 정산·집계·제출 기한 작업을 취소한다. 조회 자료 확인이 끝나지 않은 계산(`UNCONFIRMED`·`DISPUTED`)이 있는 협업은 멈추지 않는다(갇히지 않게. 돈은 확인 전에는 나가지 않는다) |
-| `resume --collaboration <id>` | `HALTED`를 멈추기 전 단계로 되돌린다(신고로 멈춘 협업 포함). `COUNTING`이면 일찍 정산하지 않고 남은 날을 이어서 센다(기록되지 않은 날의 조회수 작업을 원래 시각으로 다시 올리고, 정산은 원래 정산 시각에 — 이미 지났으면 바로 — 올린다. 바로 정산하려면 `resume-settlement` 또는 `force-payout`), `FUNDED`면 미제출 환급·기한 알림을 다시 올린다(기한이 지났으면 미제출 환급이 바로 돈다) |
+| `resume --collaboration <id>` | `HALTED`를 멈추기 전 단계로 되돌린다(신고로 멈춘 협업 포함). `COUNTING`이면 일찍 정산하지 않고 남은 날을 이어서 센다(기록되지 않은 날의 조회수 작업을 원래 시각으로 다시 올리고, 정산은 원래 정산 시각에 — 이미 지났으면 바로 — 올린다. 바로 정산하려면 `resume-settlement` 또는 `force-payout`. 캡처를 기다리다 기한이 지나 `evidence-missing-halt`로 멈춘 협업은 `resume`하면 기한이 이미 지나 곧바로 다시 멈추니 `resume-settlement`를 쓴다), `FUNDED`면 미제출 환급·기한 알림을 다시 올린다(기한이 지났으면 미제출 환급이 바로 돈다) |
 | `resume-settlement --collaboration <id> --views <n>` | 조회수를 읽지 못해 멈춘 협업을 주어진 조회수로 정산한다 |
 | `force-refund --collaboration <id>` | 보관 중인 전액과 수수료를 사장님에게 환급하고 `REFUNDED`로 끝낸다 |
 | `force-payout --collaboration <id> --amount <n>` | 보관액 안에서 `n`원을 지급하고 남은 금액을 환급한 뒤 `SETTLED`로 끝낸다(보관액보다 크면 거절) |

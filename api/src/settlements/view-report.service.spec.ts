@@ -443,14 +443,45 @@ describe('ViewReportService', () => {
       ]);
     });
 
+    it('still opens the report with a missing image url when signing fails', async () => {
+      repository.settlement = settlement({ evidenceSource: 'CAPTURE' });
+      repository.evidence = {
+        id: 'e-1',
+        collaborationId: COLLAB,
+        filePath: `evidence/${CREATOR}/55555555-5555-4555-8555-555555555555.jpg`,
+        statedViews: 9800,
+        submittedById: CREATOR,
+        confirmedAt: null,
+        confirmedBy: null,
+        createdAt: NOW,
+        updatedAt: NOW,
+        deletedAt: null,
+      };
+      storage.failSigning = true;
+      const view = await service.get(STORE, COLLAB);
+      expect(view.evidence).toEqual({ imageUrl: null, statedViews: 9800 });
+      expect(view.status).toBe('UNCONFIRMED');
+    });
+
     it('lets only the creator upload a capture, and only when the last three days could not be read', async () => {
+      // 기간이 끝났으니(NOW = 종료 시각) 7일째를 읽어 보려 한 줄이 있어야 한다.
+      repository.snapshots = [
+        { dayIndex: 1, views: null },
+        { dayIndex: 2, views: null },
+        { dayIndex: 3, views: null },
+        { dayIndex: 7, views: null },
+      ];
+      expect((await service.get(CREATOR, COLLAB)).canUploadEvidence).toBe(true);
+      expect((await service.get(STORE, COLLAB)).canUploadEvidence).toBe(false);
+      // 기간이 끝났어도 7일째를 읽어 보기 전에는 받지 않는다.
       repository.snapshots = [
         { dayIndex: 1, views: null },
         { dayIndex: 2, views: null },
         { dayIndex: 3, views: null },
       ];
-      expect((await service.get(CREATOR, COLLAB)).canUploadEvidence).toBe(true);
-      expect((await service.get(STORE, COLLAB)).canUploadEvidence).toBe(false);
+      expect((await service.get(CREATOR, COLLAB)).canUploadEvidence).toBe(
+        false,
+      );
       // 측정 기간이 아직 남았다면 읽은 날이 끼어 있을 때 요청되지 않는다(기간이 끝나면 5~7일을 따로 본다).
       collaborations.row = collaboration({
         countingEndsAt: new Date(NOW.getTime() + 3 * 24 * HOUR),
@@ -517,6 +548,12 @@ describe('ViewReportService', () => {
           views: 100,
         }),
       ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
+    it('refuses a capture path that was never uploaded', async () => {
+      await expect(
+        service.submitEvidence(CREATOR, COLLAB, { path: own, views: 100 }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
     });
 
     it('refuses views that are not whole numbers', async () => {
