@@ -1,9 +1,13 @@
 import {
   CollaborationKind,
   CollaborationStage,
-  RewardType,
   SettlementMethod,
 } from '@prisma/client';
+import {
+  maxCashBurden,
+  RewardTerms,
+  settlementMethodOfReward,
+} from '../stores/reward-terms';
 
 // 협업 단계 규칙은 모두 순수 함수다. 시각은 인자로 받는다(Clock은 서비스가 쥔다).
 // 규칙의 원본은 공통 모델 1장의 두 그림이다.
@@ -83,11 +87,6 @@ export function isMoneyHeld(
   return stage === 'HALTED' || HALTABLE[kind].includes(stage);
 }
 
-// 보상에 조회수가 있으면 조회수당 지급이고, 식사권만 있으면 결제와 정산이 없다.
-export function settlementMethodOf(rewardType: RewardType): SettlementMethod {
-  return rewardType === 'VOUCHER' ? 'NONE' : 'PER_VIEW';
-}
-
 export interface InitialStoreOfferState {
   settlementMethod: SettlementMethod;
   stage: CollaborationStage;
@@ -97,14 +96,14 @@ export interface InitialStoreOfferState {
   submitDueAt: Date | null;
 }
 
-// 오퍼를 수락한 순간의 협업 상태.
+// 오퍼를 수락한 순간의 협업 상태. 최대 현금 부담이 0이면(식사권만 있으면) 결제 없이 바로 FUNDED로 시작한다.
 export function initialStoreOfferState(
-  rewardType: RewardType,
+  reward: Pick<RewardTerms, 'fixedCash' | 'perViewCap'>,
   now: Date,
 ): InitialStoreOfferState {
-  if (settlementMethodOf(rewardType) === 'PER_VIEW') {
+  if (maxCashBurden(reward) > 0) {
     return {
-      settlementMethod: 'PER_VIEW',
+      settlementMethod: settlementMethodOfReward(reward),
       stage: 'AWAITING_PAYMENT',
       paymentDueAt: new Date(now.getTime() + PAYMENT_DUE_DAYS * DAY_MS),
       fundedAt: null,

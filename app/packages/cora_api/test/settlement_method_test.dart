@@ -11,7 +11,7 @@
 import 'package:cora_api/api.dart';
 import 'package:test/test.dart';
 
-// tests for RewardType
+// tests for SettlementMethod
 void main() {
-  group('test RewardType', () {});
+  group('test SettlementMethod', () {});
 }

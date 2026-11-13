@@ -5,13 +5,14 @@ import { ContentFormat } from '@prisma/client';
 export class PaymentQuoteModel {
   @ApiProperty({
     type: 'integer',
-    description: '에스크로에 보관할 금액. 조건의 조회수당 상한이다.',
+    description:
+      '에스크로에 보관할 금액. 최대 현금 부담(고정 현금 + 조회수 수당 상한)이다.',
   })
   escrow!: number;
 
   @ApiProperty({
     type: 'integer',
-    description: '서비스 수수료. 상한 × 수수료율을 내림한 값.',
+    description: '서비스 수수료. 최대 현금 부담 × 수수료율을 내림한 값.',
   })
   fee!: number;
 
@@ -20,7 +21,7 @@ export class PaymentQuoteModel {
 
   @ApiProperty({
     type: 'integer',
-    description: '지금 결제할 금액(상한 + 수수료).',
+    description: '지금 결제할 금액(최대 현금 부담 + 수수료).',
   })
   total!: number;
 
@@ -48,4 +49,28 @@ export class PaymentQuoteModel {
     description: '식사권 이름. 보상에 식사권이 없으면 null.',
   })
   voucherName!: string | null;
+
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    description: '식사권 금액(원). 보상에 식사권이 없으면 null.',
+  })
+  voucherValue!: number | null;
+
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    description: '식사권 인원. 보상에 식사권이 없거나 모르면 null.',
+  })
+  voucherPeople!: number | null;
+
+  @ApiProperty({ type: 'integer', description: '고정 현금(원). 없으면 0.' })
+  fixedCash!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    description: '조회수 수당 상한(원). 조회수 수당이 없으면 null.',
+  })
+  perViewCap!: number | null;
 }

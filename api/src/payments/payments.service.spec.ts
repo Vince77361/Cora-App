@@ -137,11 +137,13 @@ function collaboration(over: Partial<Collaboration> = {}): Collaboration {
     storeId: 'store-1',
     terms: {
       format: 'REELS',
-      rewardType: 'BOTH',
-      voucherName: '2인 식사권',
+      voucherName: '식사권',
       voucherValue: 40000,
-      perViewAmount: 10,
+      voucherPeople: 2,
+      fixedCash: 0,
+      viewRatePerThousand: 2000,
       perViewCap: 100000,
+      usageRights: 'STORE_REPOST_3M',
     },
     settlementMethod: 'PER_VIEW',
     fundedAt: null,
@@ -273,7 +275,12 @@ describe('PaymentsService', () => {
     it('rounds the fee down so the ledger never holds more than the owner paid', async () => {
       const t = build(10);
       t.collaborations.row = collaboration({
-        terms: { format: 'REELS', perViewCap: 33333, voucherName: null },
+        terms: {
+          format: 'REELS',
+          perViewCap: 33333,
+          viewRatePerThousand: 2000,
+          voucherName: null,
+        },
       });
       const quote = await t.service.getQuote(OWNER, COLLAB);
       expect(quote).toMatchObject({
@@ -297,10 +304,77 @@ describe('PaymentsService', () => {
       });
     });
 
-    it('fails loudly when a collaboration awaiting payment has no cap', async () => {
+    it('fails loudly when a collaboration awaiting payment has nothing to pay', async () => {
       const t = build();
       t.collaborations.row = collaboration({ terms: { format: 'REELS' } });
-      await expect(t.service.getQuote(OWNER, COLLAB)).rejects.toThrow('상한');
+      await expect(t.service.getQuote(OWNER, COLLAB)).rejects.toThrow(
+        '낼 돈이 없어요',
+      );
+    });
+
+    it('quotes the maximum cash burden plus the fee for a new copy', async () => {
+      const t = build(10);
+      t.collaborations.row = collaboration({
+        terms: {
+          format: 'REELS',
+          voucherName: '식사권',
+          voucherValue: 40000,
+          voucherPeople: 2,
+          fixedCash: 0,
+          viewRatePerThousand: 2000,
+          perViewCap: 60000,
+          usageRights: 'STORE_REPOST_3M',
+        },
+      });
+      expect(await t.service.getQuote(OWNER, COLLAB)).toMatchObject({
+        escrow: 60000,
+        fee: 6000,
+        total: 66000,
+        fixedCash: 0,
+        perViewCap: 60000,
+        voucherName: '식사권',
+        voucherValue: 40000,
+        voucherPeople: 2,
+      });
+    });
+
+    it('adds fixed cash to the burden for a copy that has one', async () => {
+      const t = build(10);
+      t.collaborations.row = collaboration({
+        terms: {
+          format: 'REELS',
+          fixedCash: 30000,
+          viewRatePerThousand: 2000,
+          perViewCap: 60000,
+        },
+      });
+      expect(await t.service.getQuote(OWNER, COLLAB)).toMatchObject({
+        escrow: 90000,
+        fee: 9000,
+        total: 99000,
+        fixedCash: 30000,
+      });
+    });
+
+    it('quotes a legacy copy with the same amounts as before', async () => {
+      const t = build(10);
+      t.collaborations.row = collaboration({
+        terms: {
+          format: 'REELS',
+          rewardType: 'BOTH',
+          voucherName: '2인 식사권',
+          voucherValue: 40000,
+          perViewAmount: 10,
+          perViewCap: 100000,
+        },
+      });
+      expect(await t.service.getQuote(OWNER, COLLAB)).toMatchObject({
+        escrow: 100000,
+        fee: 10000,
+        total: 110000,
+        voucherName: '식사권',
+        voucherPeople: 2,
+      });
     });
 
     it('answers 404 to anyone but the commissioner and 403 to a non-store account', async () => {

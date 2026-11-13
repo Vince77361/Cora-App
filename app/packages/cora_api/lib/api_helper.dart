@@ -128,8 +128,8 @@ String parameterToString(dynamic value) {
   if (value is ReceivedOfferTab) {
     return ReceivedOfferTabTypeTransformer().encode(value).toString();
   }
-  if (value is RewardType) {
-    return RewardTypeTypeTransformer().encode(value).toString();
+  if (value is SettlementMethod) {
+    return SettlementMethodTypeTransformer().encode(value).toString();
   }
   if (value is SourceLinkKind) {
     return SourceLinkKindTypeTransformer().encode(value).toString();
@@ -139,6 +139,9 @@ String parameterToString(dynamic value) {
   }
   if (value is StoreStatus) {
     return StoreStatusTypeTransformer().encode(value).toString();
+  }
+  if (value is UsageRights) {
+    return UsageRightsTypeTransformer().encode(value).toString();
   }
   if (value is UserRole) {
     return UserRoleTypeTransformer().encode(value).toString();

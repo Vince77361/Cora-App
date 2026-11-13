@@ -157,9 +157,13 @@ describe('runMockSeed', () => {
       regionSigungu: '성동구',
       signatureMenu: '돈코츠 라멘 11,000원',
       defaultFormat: 'REELS',
-      defaultRewardType: 'BOTH',
-      defaultVoucherName: '2인 식사권',
+      defaultVoucherName: '식사권',
       defaultVoucherValue: 40000,
+      defaultVoucherPeople: 2,
+      defaultFixedCash: 0,
+      defaultViewRatePerThousand: 2000,
+      defaultPerViewCap: 60000,
+      defaultUsageRights: 'STORE_REPOST_3M',
       publishedAt: NOW,
     });
     expect(db.links.map((l) => [l.kind, l.summary])).toEqual([
@@ -203,11 +207,13 @@ describe('runMockSeed', () => {
     expect(offer).toMatchObject({
       creatorId: idOf('010-0000-0007'),
       format: 'REELS',
-      rewardType: 'BOTH',
-      voucherName: '2인 식사권',
+      voucherName: '식사권',
       voucherValue: 40000,
-      perViewAmount: 10,
-      perViewCap: 100000,
+      voucherPeople: 2,
+      fixedCash: 0,
+      viewRatePerThousand: 2000,
+      perViewCap: 60000,
+      usageRights: 'STORE_REPOST_3M',
     });
     expect(NOW.getTime() - offer.declinedAt.getTime()).toBeGreaterThan(30_000);
     // 오퍼 사본은 아직 기한 안에 거절된 것으로 모순이 없어야 한다.

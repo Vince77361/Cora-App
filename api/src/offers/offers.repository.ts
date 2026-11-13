@@ -17,11 +17,13 @@ export interface NewOffer {
   creatorId: string;
   applicationId: string | null;
   format: Offer['format'];
-  rewardType: Offer['rewardType'];
   voucherName: string | null;
   voucherValue: number | null;
-  perViewAmount: number | null;
+  voucherPeople: number | null;
+  fixedCash: number;
+  viewRatePerThousand: number | null;
   perViewCap: number | null;
+  usageRights: Offer['usageRights'];
   createdAt: Date;
   expiresAt: Date;
 }

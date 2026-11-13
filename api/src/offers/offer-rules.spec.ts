@@ -131,27 +131,19 @@ describe('offer rules', () => {
   });
 
   describe('needsInstagram', () => {
-    it('needs a connection for a per-view reels or card-news offer', () => {
+    it('needs a connection for a reels or card-news offer with view pay', () => {
       for (const format of ['REELS', 'CARD_NEWS'] as const) {
-        for (const rewardType of ['PER_VIEW', 'BOTH'] as const) {
-          expect(needsInstagram({ format, rewardType }, false)).toBe(true);
-          expect(needsInstagram({ format, rewardType }, true)).toBe(false);
-        }
+        expect(needsInstagram({ format, perViewCap: 60000 }, false)).toBe(true);
+        expect(needsInstagram({ format, perViewCap: 60000 }, true)).toBe(false);
       }
     });
 
-    it('does not need one for a voucher-only offer or other formats', () => {
-      expect(
-        needsInstagram({ format: 'REELS', rewardType: 'VOUCHER' }, false),
-      ).toBe(false);
-      expect(
-        needsInstagram({ format: 'CARD_NEWS', rewardType: 'VOUCHER' }, false),
-      ).toBe(false);
+    it('does not need one without view pay or for other formats', () => {
+      for (const format of ['REELS', 'CARD_NEWS'] as const) {
+        expect(needsInstagram({ format, perViewCap: null }, false)).toBe(false);
+      }
       for (const format of ['SHORTS', 'BLOG'] as const) {
-        expect(needsInstagram({ format, rewardType: 'PER_VIEW' }, false)).toBe(
-          false,
-        );
-        expect(needsInstagram({ format, rewardType: 'BOTH' }, false)).toBe(
+        expect(needsInstagram({ format, perViewCap: 60000 }, false)).toBe(
           false,
         );
       }

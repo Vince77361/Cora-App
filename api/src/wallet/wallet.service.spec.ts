@@ -145,11 +145,13 @@ function collaboration(over: Partial<Collaboration> = {}): Collaboration {
     storeId: 'store-ramen',
     terms: {
       format: 'REELS',
-      rewardType: 'PER_VIEW',
       voucherName: null,
       voucherValue: null,
-      perViewAmount: 10,
-      perViewCap: 100000,
+      voucherPeople: null,
+      fixedCash: 0,
+      viewRatePerThousand: 2000,
+      perViewCap: 60000,
+      usageRights: 'STORE_REPOST_3M',
     },
     settlementMethod: 'PER_VIEW',
     fundedAt: new Date('2026-11-02T03:00:00.000Z'),
@@ -323,11 +325,13 @@ describe('WalletService', () => {
       stage: 'SETTLED',
       terms: {
         format: 'REELS',
-        rewardType: 'BOTH',
-        voucherName: '2인 식사권',
+        voucherName: '식사권',
         voucherValue: 40000,
-        perViewAmount: 10,
-        perViewCap: 100000,
+        voucherPeople: 2,
+        fixedCash: 0,
+        viewRatePerThousand: 2000,
+        perViewCap: 60000,
+        usageRights: 'STORE_REPOST_3M',
       },
       submittedAt: new Date('2026-11-03T03:00:00.000Z'),
     });
@@ -337,11 +341,13 @@ describe('WalletService', () => {
       storeId: 'store-cup',
       terms: {
         format: 'CARD_NEWS',
-        rewardType: 'PER_VIEW',
         voucherName: null,
         voucherValue: null,
-        perViewAmount: 10,
-        perViewCap: 100000,
+        voucherPeople: null,
+        fixedCash: 0,
+        viewRatePerThousand: 2000,
+        perViewCap: 60000,
+        usageRights: 'STORE_REPOST_3M',
       },
       fundedAt: new Date('2026-11-05T03:00:00.000Z'),
     });
@@ -388,11 +394,13 @@ describe('WalletService', () => {
   it('marks the voucher used once the link is submitted', async () => {
     const terms = {
       format: 'REELS',
-      rewardType: 'VOUCHER',
-      voucherName: '2인 식사권',
+      voucherName: '식사권',
       voucherValue: 40000,
-      perViewAmount: null,
+      voucherPeople: 2,
+      fixedCash: 0,
+      viewRatePerThousand: null,
       perViewCap: null,
+      usageRights: 'STORE_REPOST_3M',
     };
     const before = collaboration({
       terms,
@@ -413,21 +421,50 @@ describe('WalletService', () => {
     expect(entries.map((e) => e.kind)).toEqual(['VOUCHER', 'VOUCHER']);
     const byId = new Map(entries.map((e) => [e.collaborationId, e]));
     expect(byId.get(before.id)).toMatchObject({
-      voucherName: '2인 식사권',
+      voucherName: '식사권',
       voucherUsed: false,
       amount: null,
     });
     expect(byId.get(after.id)?.voucherUsed).toBe(true);
   });
 
+  it('still lists a collaboration whose copy has the legacy shape', async () => {
+    // 이전이 빠뜨린 옛 모양의 사본도 읽어야 한다(이름은 새 규칙으로 읽힌다).
+    const legacy = collaboration({
+      stage: 'SETTLED',
+      terms: {
+        format: 'REELS',
+        rewardType: 'VOUCHER',
+        voucherName: '2인 식사권',
+        voucherValue: 40000,
+        perViewAmount: null,
+        perViewCap: null,
+      },
+      settlementMethod: 'NONE',
+      submittedAt: new Date('2026-11-06T03:00:00.000Z'),
+    });
+    fakeCollaborations.rows = [legacy];
+
+    const { entries } = await service.get(CREATOR);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      kind: 'VOUCHER',
+      voucherName: '식사권',
+      voucherUsed: true,
+    });
+  });
+
   it('leaves out cancelled and refunded collaborations', async () => {
     const voucherTerms = {
       format: 'REELS',
-      rewardType: 'BOTH',
-      voucherName: '2인 식사권',
+      voucherName: '식사권',
       voucherValue: 40000,
-      perViewAmount: 10,
-      perViewCap: 100000,
+      voucherPeople: 2,
+      fixedCash: 0,
+      viewRatePerThousand: 2000,
+      perViewCap: 60000,
+      usageRights: 'STORE_REPOST_3M',
     };
     fakeCollaborations.rows = [
       collaboration({ stage: 'CANCELLED', terms: voucherTerms }),

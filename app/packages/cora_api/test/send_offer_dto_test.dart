@@ -27,20 +27,14 @@ void main() {
       // TODO
     });
 
-    // RewardType rewardType
-    test('to test the property `rewardType`', () async {
+    // RewardInputDto reward
+    test('to test the property `reward`', () async {
       // TODO
     });
 
-    // 식사권이 보상에 들어갈 때만 쓴다. 없으면 \"2인 식사권\".
-    // String voucherName
-    test('to test the property `voucherName`', () async {
-      // TODO
-    });
-
-    // 식사권이 보상에 들어갈 때만 쓴다. 없으면 40000.
-    // int voucherValue
-    test('to test the property `voucherValue`', () async {
+    // 없으면 가게의 기본 사용권.
+    // UsageRights usageRights
+    test('to test the property `usageRights`', () async {
       // TODO
     });
   });

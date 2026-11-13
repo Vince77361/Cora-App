@@ -10,6 +10,7 @@ import { InstagramService } from '../instagram/instagram.service';
 import { ViewCountPort } from '../integrations/view-count/view-count.port';
 import { JobScheduler } from '../jobs/job-scheduler';
 import { NotificationsService } from '../notifications/notifications.service';
+import { readTerms } from '../stores/reward-terms';
 import { UsersService } from '../users/users.service';
 import { settleJobKey, SNAPSHOT_DAYS, snapshotJobKey } from './job-keys';
 import { isAcceptedLink } from './link-rules';
@@ -65,7 +66,7 @@ export class SubmissionsService {
       throw this.notSubmittable();
     }
     const url = rawUrl.trim();
-    const format = readFormat(collaboration.terms);
+    const { format } = readTerms(collaboration.terms);
     if (!isAcceptedLink(format, url)) {
       throw new AppError('VALIDATION_FAILED', '링크 형식을 확인해 주세요.');
     }
@@ -80,7 +81,10 @@ export class SubmissionsService {
     }
 
     const now = this.clock.now();
-    const perView = collaboration.settlementMethod === 'PER_VIEW';
+    // 조회수 수당이 있는 협업은 집계를 거쳐 정산한다(고정 현금과 함께여도 같다).
+    const perView =
+      collaboration.settlementMethod === 'PER_VIEW' ||
+      collaboration.settlementMethod === 'FIXED_AND_PER_VIEW';
     const countingEndsAt = new Date(now.getTime() + SNAPSHOT_DAYS * DAY_MS);
     // 같은 제출이 동시에 와도 조건부 갱신이 한 번만 통과시킨다.
     const moved = await this.collaborations.advance(
@@ -203,18 +207,4 @@ export class SubmissionsService {
       '이미 제출했거나 지금은 제출할 수 없는 협업이에요.',
     );
   }
-}
-
-// 협업에 사본으로 남은 수락 당시의 조건에서 형식을 꺼낸다. 없으면 데이터가 어긋난 것이라 던진다.
-function readFormat(terms: unknown): Parameters<typeof isAcceptedLink>[0] {
-  const format = (terms as Record<string, unknown> | null)?.format;
-  if (
-    format === 'SHORTS' ||
-    format === 'REELS' ||
-    format === 'CARD_NEWS' ||
-    format === 'BLOG'
-  ) {
-    return format;
-  }
-  throw new Error('협업의 조건에 콘텐츠 형식이 없어요.');
 }

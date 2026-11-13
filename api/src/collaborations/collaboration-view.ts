@@ -4,7 +4,8 @@ import {
   SettlementMethod,
   TransferStatus,
 } from '@prisma/client';
-import { settle } from '../settlements/settlement-math';
+import { settleReward } from '../settlements/settlement-math';
+import { RewardTerms } from '../stores/reward-terms';
 
 // 협업 조회 모델을 만드는 순수 함수들. 시각과 DB를 모른다(시각은 호출한 쪽이 인자로 준다).
 
@@ -117,20 +118,23 @@ export function payoutStatusOf(
     : { status: 'NEEDS_ACCOUNT', scheduledFor: null };
 }
 
-// 집계 중에 "지금 받을 금액"과 "예상 환급액". 정산과 같은 계산(settle)에 최신 조회수를 넣는다.
-// 집계 중(COUNTING)이 아니거나 아직 읽은 조회수가 없으면 null이다.
+// 집계 중에 "지금 받을 금액"과 "예상 환급액". 정산과 같은 계산(settleReward)에 최신 조회수를 넣는다.
+// 집계 중(COUNTING)이 아니거나 아직 읽은 조회수가 없거나 조회수 수당이 없으면 null이다.
 export function liveAmounts(p: {
   stage: CollaborationStage;
   views: number | null;
-  perViewAmount: number | null;
-  escrow: number;
+  terms: Pick<RewardTerms, 'viewRatePerThousand' | 'perViewCap' | 'fixedCash'>;
 }): { earned: number; refund: number } | null {
   if (p.stage !== 'COUNTING') return null;
-  if (p.views === null || p.perViewAmount === null) return null;
-  const { payout, refund } = settle({
+  const { viewRatePerThousand, perViewCap, fixedCash } = p.terms;
+  if (p.views === null || viewRatePerThousand === null || perViewCap === null) {
+    return null;
+  }
+  const { payout, refund } = settleReward({
     views: p.views,
-    perViewAmount: p.perViewAmount,
-    cap: p.escrow,
+    ratePerThousand: viewRatePerThousand,
+    cap: perViewCap,
+    fixedCash,
   });
   return { earned: payout, refund };
 }

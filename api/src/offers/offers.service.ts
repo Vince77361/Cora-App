@@ -17,7 +17,12 @@ import {
   NotifyInput,
 } from '../notifications/notifications.service';
 import { StoresService } from '../stores/stores.service';
-import { buildTerms } from '../stores/offer-terms';
+import {
+  buildTerms,
+  copyOfTerms,
+  defaultsOfStore,
+  termsModelOf,
+} from '../stores/reward-terms';
 import { UsersService } from '../users/users.service';
 import { ReceivedOfferModel } from './dto/received-offer.model';
 import { SendOfferDto } from './dto/send-offer.dto';
@@ -78,7 +83,8 @@ export class OffersService {
     if (!creator) {
       throw new AppError('NOT_FOUND', '크리에이터를 찾을 수 없어요.');
     }
-    const terms = buildTerms(input);
+    // 조회수 단가와 상한, 식사권, 사용권을 비우면 가게의 기본 조건으로 채운다.
+    const terms = buildTerms(input, defaultsOfStore(store));
 
     const now = this.clock.now();
     // 기한이 지난 오퍼가 새 오퍼를 막지 않도록, 열린 오퍼를 보기 전에 만료를 저장한다.
@@ -99,7 +105,14 @@ export class OffersService {
         storeId: store.id,
         creatorId: creator.userId,
         applicationId,
-        ...terms,
+        format: terms.format,
+        voucherName: terms.voucherName,
+        voucherValue: terms.voucherValue,
+        voucherPeople: terms.voucherPeople,
+        fixedCash: terms.fixedCash,
+        viewRatePerThousand: terms.viewRatePerThousand,
+        perViewCap: terms.perViewCap,
+        usageRights: terms.usageRights,
         // 보낸 시각을 DB 기본값이 아니라 Clock으로 정해, 만료 기한과 같은 기준을 쓴다.
         createdAt: now,
         expiresAt: new Date(now.getTime() + OFFER_RESPONSE_DAYS * DAY_MS),
@@ -260,7 +273,8 @@ export class OffersService {
     }
     const card = await this.requireCard(row.storeId);
     // 수락과 협업 만들기는 한 트랜잭션이다. 식사권만 있는 오퍼는 낼 돈이 없어 결제 기한 없이 바로 FUNDED로 시작한다.
-    const initial = initialStoreOfferState(row.rewardType, now);
+    const terms = this.termsOf(row);
+    const initial = initialStoreOfferState(terms, now);
     const accepted = await this.offers.accept(
       row.id,
       userId,
@@ -275,7 +289,7 @@ export class OffersService {
             creatorId: userId,
             offerId: row.id,
             storeId: row.storeId,
-            terms: this.termsOf(row),
+            terms: copyOfTerms(terms),
             settlementMethod: initial.settlementMethod,
             fundedAt: initial.fundedAt,
             submitDueAt: initial.submitDueAt,
@@ -640,14 +654,18 @@ export class OffersService {
   }
 
   private termsOf(row: OfferRow) {
-    return {
-      format: row.format,
-      rewardType: row.rewardType,
-      voucherName: row.voucherName,
-      voucherValue: row.voucherValue,
-      perViewAmount: row.perViewAmount,
-      perViewCap: row.perViewCap,
-    };
+    return termsModelOf(
+      row.format,
+      {
+        voucherName: row.voucherName,
+        voucherValue: row.voucherValue,
+        voucherPeople: row.voucherPeople,
+        fixedCash: row.fixedCash,
+        viewRatePerThousand: row.viewRatePerThousand,
+        perViewCap: row.perViewCap,
+      },
+      row.usageRights,
+    );
   }
 
   private toSent(

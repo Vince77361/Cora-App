@@ -275,11 +275,16 @@ class FakeStores extends StoresService {
         coverPhotoUrl: null,
         defaultTerms: {
           format: 'REELS',
-          rewardType: 'VOUCHER',
-          voucherName: '2인 식사권',
+          pieces: 1,
+          voucherName: '식사권',
           voucherValue: 40000,
-          perViewAmount: null,
+          voucherPeople: 2,
+          fixedCash: 0,
+          viewRatePerThousand: null,
           perViewCap: null,
+          usageRights: 'STORE_REPOST_3M',
+          maxCashBurden: 0,
+          settlementMethod: 'NONE',
         },
       },
     });
@@ -387,6 +392,13 @@ function makeStore(): Store {
     status: 'PUBLISHED',
     name: '한그릇 라멘',
     coverPhotoPath: 'stores/ramen.jpg',
+    defaultVoucherName: '식사권',
+    defaultVoucherValue: 40000,
+    defaultVoucherPeople: 2,
+    defaultFixedCash: 0,
+    defaultViewRatePerThousand: 2000,
+    defaultPerViewCap: 60000,
+    defaultUsageRights: 'STORE_REPOST_3M',
   } as Store;
 }
 
@@ -405,7 +417,7 @@ describe('OffersService', () => {
   const REELS = {
     creatorId: CREATOR,
     format: 'REELS',
-    rewardType: 'VOUCHER',
+    reward: { voucher: {} },
   } as const;
 
   beforeEach(() => {
@@ -464,9 +476,65 @@ describe('OffersService', () => {
       service.send(OWNER, {
         creatorId: CREATOR,
         format: 'BLOG',
-        rewardType: 'PER_VIEW',
+        reward: { perView: {} },
       }),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
+  it('sends an offer with the store default view pay when values are omitted', async () => {
+    stores.store = {
+      ...stores.store,
+      defaultViewRatePerThousand: 3000,
+      defaultPerViewCap: 100000,
+      defaultUsageRights: 'STORE_REPOST_6M',
+    };
+    await service.send(OWNER, {
+      creatorId: CREATOR,
+      format: 'REELS',
+      reward: { perView: {} },
+    });
+    expect(repo.rows[0]).toMatchObject({
+      voucherName: null,
+      fixedCash: 0,
+      viewRatePerThousand: 3000,
+      perViewCap: 100000,
+      usageRights: 'STORE_REPOST_6M',
+    });
+  });
+
+  it('keeps the values the store gives over its defaults', async () => {
+    await service.send(OWNER, {
+      creatorId: CREATOR,
+      format: 'REELS',
+      reward: { perView: { ratePerThousand: 1500, cap: 30000 } },
+      usageRights: 'NONE',
+    });
+    expect(repo.rows[0]).toMatchObject({
+      viewRatePerThousand: 1500,
+      perViewCap: 30000,
+      usageRights: 'NONE',
+    });
+  });
+
+  it('rejects a rate outside the allowed range and fixed cash for now', async () => {
+    await expect(
+      service.send(OWNER, {
+        creatorId: CREATOR,
+        format: 'REELS',
+        reward: { perView: { ratePerThousand: 10000 } },
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    await expect(
+      service.send(OWNER, {
+        creatorId: CREATOR,
+        format: 'REELS',
+        reward: { voucher: {}, fixedCash: 30000 },
+      }),
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+      message: '고정 현금은 아직 쓸 수 없어요.',
+    });
+    expect(repo.rows).toEqual([]);
   });
 
   it('stores the linked application id and the clock time on send', async () => {
@@ -596,7 +664,7 @@ describe('OffersService', () => {
       const sent = await service.send(OWNER, {
         creatorId: CREATOR,
         format,
-        rewardType: reward,
+        reward: reward === 'PER_VIEW' ? { perView: {} } : { voucher: {} },
       });
       users.role = 'CREATOR';
       return sent.id;
@@ -648,7 +716,7 @@ describe('OffersService', () => {
       const perView = await service.send(OWNER, {
         creatorId: CREATOR,
         format: 'REELS',
-        rewardType: 'PER_VIEW',
+        reward: { perView: {} },
       });
       push.sent.length = 0;
       users.role = 'CREATOR';
@@ -691,8 +759,23 @@ describe('OffersService', () => {
         commissionerId: OWNER,
         creatorId: CREATOR,
         offerId: id,
-        terms: { format: 'REELS', rewardType: 'VOUCHER' },
+        terms: {
+          format: 'REELS',
+          pieces: 1,
+          voucherName: '식사권',
+          voucherValue: 40000,
+          voucherPeople: 2,
+          fixedCash: 0,
+          viewRatePerThousand: null,
+          perViewCap: null,
+          usageRights: 'STORE_REPOST_3M',
+        },
       });
+      // 계산 값은 사본에 넣지 않고 읽을 때 계산한다.
+      expect(collaborations.rows[0].terms).not.toHaveProperty('maxCashBurden');
+      expect(collaborations.rows[0].terms).not.toHaveProperty(
+        'settlementMethod',
+      );
     });
 
     it('creates no collaboration when the conditional update is lost', async () => {
@@ -733,7 +816,9 @@ describe('OffersService', () => {
       expect(list).toHaveLength(1);
       expect(list[0].terms).toMatchObject({
         format: 'REELS',
-        rewardType: 'VOUCHER',
+        voucherName: '식사권',
+        maxCashBurden: 0,
+        settlementMethod: 'NONE',
       });
       expect(list[0].receivedAt).toBe(T0.toISOString());
     });
@@ -757,7 +842,7 @@ describe('OffersService', () => {
       const perView = await service.send(OWNER, {
         creatorId: CREATOR,
         format: 'REELS',
-        rewardType: 'PER_VIEW',
+        reward: { perView: {} },
       });
       users.role = 'CREATOR';
       await service.accept(CREATOR, perView.id);
@@ -1003,7 +1088,7 @@ describe('OffersService', () => {
       const perView = await service.send(OWNER, {
         creatorId: CREATOR,
         format: 'REELS',
-        rewardType: 'PER_VIEW',
+        reward: { perView: {} },
       });
       users.role = 'CREATOR';
       jest.spyOn(jobs, 'schedule').mockRejectedValueOnce(new Error('redis'));

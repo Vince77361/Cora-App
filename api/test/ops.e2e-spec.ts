@@ -96,7 +96,6 @@ describe('ops commands', () => {
         neighborhood: '성수동',
         ...REGION,
         defaultFormat: 'REELS',
-        defaultRewardType: 'BOTH',
         publishedAt: T0,
       },
     });
@@ -120,19 +119,23 @@ describe('ops commands', () => {
         refreshedAt: T0,
       },
     });
-    const terms = {
+    // 단가는 옛 협업과 같은 금액이 나오도록 10,000원(1,000회당)이다. 이 파일의 숫자는 이 값에 맞춰져 있다.
+    const columns = {
       format: 'REELS' as const,
-      rewardType: 'PER_VIEW' as const,
       voucherName: null,
       voucherValue: null,
-      perViewAmount: 10,
+      voucherPeople: null,
+      fixedCash: 0,
+      viewRatePerThousand: 10000,
       perViewCap: 100000,
+      usageRights: 'STORE_REPOST_3M' as const,
     };
+    const terms = { ...columns, pieces: 1 };
     const offer = await prisma.offer.create({
       data: {
         storeId: store.id,
         creatorId: USER_A,
-        ...terms,
+        ...columns,
         status: 'ACCEPTED',
         expiresAt: new Date(T0.getTime() + 7 * DAY),
         createdAt: T0,

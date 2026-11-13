@@ -33,11 +33,16 @@ String _storeJson({String status = 'DRAFT', String step = 'PAGE'}) =>
       'intro': '소개',
       'defaultTerms': {
         'format': 'CARD_NEWS',
-        'rewardType': 'BOTH',
-        'voucherName': '2인 식사권',
+        'pieces': 1,
+        'voucherName': '식사권',
         'voucherValue': 40000,
-        'perViewAmount': 10,
+        'voucherPeople': 2,
+        'fixedCash': 0,
+        'viewRatePerThousand': 10000,
         'perViewCap': 100000,
+        'usageRights': 'STORE_REPOST_3M',
+        'maxCashBurden': 100000,
+        'settlementMethod': 'PER_VIEW',
       },
       'sourceLinks': [
         {'kind': 'NAVER_MAP', 'url': 'https://naver.me/abc', 'summary': '찾음'},
@@ -83,7 +88,7 @@ void main() {
         const OfferTerms(
           format: ContentFormat.cardNews,
           rewardType: RewardType.both,
-          voucherName: '2인 식사권',
+          voucherName: '식사권',
           voucherValue: 40000,
           perViewAmount: 10,
           perViewCap: 100000,
@@ -219,8 +224,10 @@ void main() {
 
       final body = _bodyOf(fake.requests.single);
       expect(body['format'], 'REELS');
-      expect(body['rewardType'], 'VOUCHER');
-      expect(body['voucherValue'], 40000);
+      // 보상은 세 요소로 보낸다: 식사권만 고르면 voucher만 있고 조회수 수당은 없다.
+      final reward = body['reward'] as Map<String, dynamic>;
+      expect((reward['voucher'] as Map<String, dynamic>)['value'], 40000);
+      expect(reward['perView'], isNull);
     });
   });
 

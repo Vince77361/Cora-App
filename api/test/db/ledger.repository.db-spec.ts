@@ -29,7 +29,11 @@ describe('LedgerService', () => {
         commissionerId: OWNER,
         creatorId: CREATOR,
         storeId: store.id,
-        terms: { format: 'REELS', rewardType: 'PER_VIEW' },
+        terms: {
+          format: 'REELS',
+          viewRatePerThousand: 2000,
+          perViewCap: 100000,
+        },
         settlementMethod: 'PER_VIEW',
       },
     });
@@ -155,7 +159,11 @@ describe('LedgerService', () => {
         commissionerId: OWNER,
         creatorId: CREATOR,
         storeId: store.id,
-        terms: { format: 'REELS', rewardType: 'PER_VIEW' },
+        terms: {
+          format: 'REELS',
+          viewRatePerThousand: 2000,
+          perViewCap: 100000,
+        },
         settlementMethod: 'PER_VIEW',
       },
     });

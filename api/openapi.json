@@ -1063,6 +1063,10 @@
       },
       "OfferTermsModel": {
         "properties": {
+          "fixedCash": {
+            "description": "고정 현금(원). 없으면 0.",
+            "type": "integer"
+          },
           "format": {
             "allOf": [
               {
@@ -1070,24 +1074,45 @@
               }
             ]
           },
-          "perViewAmount": {
-            "nullable": true,
+          "maxCashBurden": {
+            "description": "최대 현금 부담. 고정 현금 + 조회수 수당 상한이다.",
             "type": "integer"
           },
           "perViewCap": {
+            "description": "조회수 수당 상한(원). 수당이 없으면 null.",
             "nullable": true,
             "type": "integer"
           },
-          "rewardType": {
+          "pieces": {
+            "description": "콘텐츠 편 수. 오퍼는 지금 한 편이다.",
+            "type": "integer"
+          },
+          "settlementMethod": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RewardType"
+                "$ref": "#/components/schemas/SettlementMethod"
               }
             ]
+          },
+          "usageRights": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsageRights"
+              }
+            ]
+          },
+          "viewRatePerThousand": {
+            "description": "조회수 수당 단가. 1,000회당 원이다. 수당이 없으면 null.",
+            "nullable": true,
+            "type": "integer"
           },
           "voucherName": {
             "nullable": true,
             "type": "string"
+          },
+          "voucherPeople": {
+            "nullable": true,
+            "type": "integer"
           },
           "voucherValue": {
             "nullable": true,
@@ -1096,11 +1121,16 @@
         },
         "required": [
           "format",
-          "rewardType",
+          "pieces",
           "voucherName",
           "voucherValue",
-          "perViewAmount",
-          "perViewCap"
+          "voucherPeople",
+          "fixedCash",
+          "viewRatePerThousand",
+          "perViewCap",
+          "usageRights",
+          "maxCashBurden",
+          "settlementMethod"
         ],
         "type": "object"
       },
@@ -1151,15 +1181,19 @@
             "type": "string"
           },
           "escrow": {
-            "description": "에스크로에 보관할 금액. 조건의 조회수당 상한이다.",
+            "description": "에스크로에 보관할 금액. 최대 현금 부담(고정 현금 + 조회수 수당 상한)이다.",
             "type": "integer"
           },
           "fee": {
-            "description": "서비스 수수료. 상한 × 수수료율을 내림한 값.",
+            "description": "서비스 수수료. 최대 현금 부담 × 수수료율을 내림한 값.",
             "type": "integer"
           },
           "feeRate": {
             "description": "수수료율(%).",
+            "type": "integer"
+          },
+          "fixedCash": {
+            "description": "고정 현금(원). 없으면 0.",
             "type": "integer"
           },
           "format": {
@@ -1173,18 +1207,33 @@
             "description": "PG에 넘기는 주문 이름.",
             "type": "string"
           },
+          "perViewCap": {
+            "description": "조회수 수당 상한(원). 조회수 수당이 없으면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
           "pieces": {
             "description": "콘텐츠 편 수. 오퍼는 지금 한 편이다.",
             "type": "integer"
           },
           "total": {
-            "description": "지금 결제할 금액(상한 + 수수료).",
+            "description": "지금 결제할 금액(최대 현금 부담 + 수수료).",
             "type": "integer"
           },
           "voucherName": {
             "description": "식사권 이름. 보상에 식사권이 없으면 null.",
             "nullable": true,
             "type": "string"
+          },
+          "voucherPeople": {
+            "description": "식사권 인원. 보상에 식사권이 없거나 모르면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "voucherValue": {
+            "description": "식사권 금액(원). 보상에 식사권이 없으면 null.",
+            "nullable": true,
+            "type": "integer"
           }
         },
         "required": [
@@ -1197,7 +1246,11 @@
           "creatorPhotoUrl",
           "format",
           "pieces",
-          "voucherName"
+          "voucherName",
+          "voucherValue",
+          "voucherPeople",
+          "fixedCash",
+          "perViewCap"
         ],
         "type": "object"
       },
@@ -1267,6 +1320,19 @@
           "FAILED"
         ],
         "type": "string"
+      },
+      "PerViewInputDto": {
+        "properties": {
+          "cap": {
+            "description": "조회수 수당 상한(원). 없으면 가게의 모집 조건, 그것도 없으면 60000.",
+            "type": "integer"
+          },
+          "ratePerThousand": {
+            "description": "조회수 단가(1,000회당 원). 없으면 가게의 모집 조건, 그것도 없으면 2000.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
       },
       "PhotoUploadModel": {
         "properties": {
@@ -1359,13 +1425,32 @@
         ],
         "type": "string"
       },
-      "RewardType": {
-        "enum": [
-          "VOUCHER",
-          "PER_VIEW",
-          "BOTH"
-        ],
-        "type": "string"
+      "RewardInputDto": {
+        "properties": {
+          "fixedCash": {
+            "description": "고정 현금(원). 없으면 0.",
+            "type": "integer"
+          },
+          "perView": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PerViewInputDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "voucher": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VoucherInputDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "type": "object"
       },
       "SendOfferDto": {
         "properties": {
@@ -1381,30 +1466,22 @@
               }
             ]
           },
-          "rewardType": {
+          "reward": {
+            "$ref": "#/components/schemas/RewardInputDto"
+          },
+          "usageRights": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RewardType"
+                "$ref": "#/components/schemas/UsageRights"
               }
-            ]
-          },
-          "voucherName": {
-            "description": "식사권이 보상에 들어갈 때만 쓴다. 없으면 \"2인 식사권\".",
-            "maxLength": 20,
-            "minLength": 1,
-            "type": "string"
-          },
-          "voucherValue": {
-            "description": "식사권이 보상에 들어갈 때만 쓴다. 없으면 40000.",
-            "maximum": 1000000,
-            "minimum": 1000,
-            "type": "integer"
+            ],
+            "description": "없으면 가게의 기본 사용권."
           }
         },
         "required": [
           "creatorId",
           "format",
-          "rewardType"
+          "reward"
         ],
         "type": "object"
       },
@@ -1465,31 +1542,32 @@
               }
             ]
           },
-          "rewardType": {
+          "reward": {
+            "$ref": "#/components/schemas/RewardInputDto"
+          },
+          "usageRights": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RewardType"
+                "$ref": "#/components/schemas/UsageRights"
               }
-            ]
-          },
-          "voucherName": {
-            "description": "식사권이 보상에 들어갈 때만 쓴다. 없으면 \"2인 식사권\".",
-            "maxLength": 20,
-            "minLength": 1,
-            "type": "string"
-          },
-          "voucherValue": {
-            "description": "식사권이 보상에 들어갈 때만 쓴다. 없으면 40000.",
-            "maximum": 1000000,
-            "minimum": 1000,
-            "type": "integer"
+            ],
+            "description": "없으면 STORE_REPOST_3M."
           }
         },
         "required": [
           "format",
-          "rewardType"
+          "reward"
         ],
         "type": "object"
+      },
+      "SettlementMethod": {
+        "enum": [
+          "PER_VIEW",
+          "FIXED",
+          "NONE",
+          "FIXED_AND_PER_VIEW"
+        ],
+        "type": "string"
       },
       "SourceLinkInputDto": {
         "properties": {
@@ -1937,6 +2015,14 @@
         ],
         "type": "object"
       },
+      "UsageRights": {
+        "enum": [
+          "STORE_REPOST_3M",
+          "STORE_REPOST_6M",
+          "NONE"
+        ],
+        "type": "string"
+      },
       "UserRole": {
         "enum": [
           "STORE",
@@ -1944,6 +2030,25 @@
           "CREATOR"
         ],
         "type": "string"
+      },
+      "VoucherInputDto": {
+        "properties": {
+          "name": {
+            "description": "식사권 이름. 없으면 \"식사권\".",
+            "maxLength": 20,
+            "minLength": 1,
+            "type": "string"
+          },
+          "people": {
+            "description": "식사권 인원. 없으면 가게의 기본값, 그것도 없으면 2.",
+            "type": "integer"
+          },
+          "value": {
+            "description": "식사권 금액(원). 없으면 가게의 기본값, 그것도 없으면 40000.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
       },
       "WalletAccountModel": {
         "properties": {

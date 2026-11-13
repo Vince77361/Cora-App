@@ -308,6 +308,8 @@ class ApiClient {
           return PayoutAccountModel.fromJson(value);
         case 'PayoutStatus':
           return PayoutStatusTypeTransformer().decode(value);
+        case 'PerViewInputDto':
+          return PerViewInputDto.fromJson(value);
         case 'PhotoUploadModel':
           return PhotoUploadModel.fromJson(value);
         case 'QuietHours':
@@ -316,14 +318,16 @@ class ApiClient {
           return ReceivedOfferModel.fromJson(value);
         case 'ReceivedOfferTab':
           return ReceivedOfferTabTypeTransformer().decode(value);
-        case 'RewardType':
-          return RewardTypeTypeTransformer().decode(value);
+        case 'RewardInputDto':
+          return RewardInputDto.fromJson(value);
         case 'SendOfferDto':
           return SendOfferDto.fromJson(value);
         case 'SentOfferModel':
           return SentOfferModel.fromJson(value);
         case 'SetDefaultTermsDto':
           return SetDefaultTermsDto.fromJson(value);
+        case 'SettlementMethod':
+          return SettlementMethodTypeTransformer().decode(value);
         case 'SourceLinkInputDto':
           return SourceLinkInputDto.fromJson(value);
         case 'SourceLinkKind':
@@ -354,8 +358,12 @@ class ApiClient {
           return UpsertCreatorProfileDto.fromJson(value);
         case 'UpsertPayoutAccountDto':
           return UpsertPayoutAccountDto.fromJson(value);
+        case 'UsageRights':
+          return UsageRightsTypeTransformer().decode(value);
         case 'UserRole':
           return UserRoleTypeTransformer().decode(value);
+        case 'VoucherInputDto':
+          return VoucherInputDto.fromJson(value);
         case 'WalletAccountModel':
           return WalletAccountModel.fromJson(value);
         case 'WalletEntryKind':

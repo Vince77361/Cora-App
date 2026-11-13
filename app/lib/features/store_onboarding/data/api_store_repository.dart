@@ -1,6 +1,7 @@
 import 'package:cora_api/api.dart' as api;
 
 import '../../../core/network/api_error.dart';
+import '../../offer_terms/data/offer_terms_from_wire.dart';
 import '../../offer_terms/domain/offer_terms.dart';
 import '../domain/my_store.dart';
 import '../domain/source_link.dart';
@@ -70,9 +71,7 @@ class ApiStoreRepository implements StoreRepository {
     () => _stores.setMyStoreDefaultTerms(
       api.SetDefaultTermsDto(
         format: _formatToWire(input.format),
-        rewardType: _rewardToWire(input.rewardType),
-        voucherName: input.voucherName,
-        voucherValue: input.voucherValue,
+        reward: rewardInputToWire(input),
       ),
     ),
   );
@@ -161,7 +160,9 @@ MyStore _toStore(api.MyStoreModel m) => MyStore(
   seats: m.seats,
   bestShootingTime: m.bestShootingTime,
   intro: m.intro,
-  defaultTerms: m.defaultTerms == null ? null : _toTerms(m.defaultTerms!),
+  defaultTerms: m.defaultTerms == null
+      ? null
+      : offerTermsFromWire(m.defaultTerms!),
   sourceLinks: [
     for (final link in m.sourceLinks)
       SourceLink(
@@ -170,15 +171,6 @@ MyStore _toStore(api.MyStoreModel m) => MyStore(
         summary: link.summary,
       ),
   ],
-);
-
-OfferTerms _toTerms(api.OfferTermsModel t) => OfferTerms(
-  format: _formatFromWire(t.format),
-  rewardType: _rewardFromWire(t.rewardType),
-  voucherName: t.voucherName,
-  voucherValue: t.voucherValue,
-  perViewAmount: t.perViewAmount,
-  perViewCap: t.perViewCap,
 );
 
 api.SourceLinkKind _linkKindToWire(SourceLinkKind kind) => switch (kind) {
@@ -198,25 +190,6 @@ api.ContentFormat _formatToWire(ContentFormat f) => switch (f) {
   ContentFormat.reels => api.ContentFormat.REELS,
   ContentFormat.cardNews => api.ContentFormat.CARD_NEWS,
   ContentFormat.blog => api.ContentFormat.BLOG,
-};
-
-ContentFormat _formatFromWire(api.ContentFormat f) => switch (f) {
-  api.ContentFormat.SHORTS => ContentFormat.shorts,
-  api.ContentFormat.REELS => ContentFormat.reels,
-  api.ContentFormat.CARD_NEWS => ContentFormat.cardNews,
-  _ => ContentFormat.blog,
-};
-
-api.RewardType _rewardToWire(RewardType r) => switch (r) {
-  RewardType.voucher => api.RewardType.VOUCHER,
-  RewardType.perView => api.RewardType.PER_VIEW,
-  RewardType.both => api.RewardType.BOTH,
-};
-
-RewardType _rewardFromWire(api.RewardType r) => switch (r) {
-  api.RewardType.VOUCHER => RewardType.voucher,
-  api.RewardType.PER_VIEW => RewardType.perView,
-  _ => RewardType.both,
 };
 
 const _industries = <IndustryCategory, api.IndustryCategory>{

@@ -58,9 +58,7 @@ class ApiStoreHomeRepository implements StoreHomeRepository {
           api.SendOfferDto(
             creatorId: creatorId,
             format: _formatToWire(terms.format),
-            rewardType: _rewardToWire(terms.rewardType),
-            voucherName: terms.voucherName,
-            voucherValue: terms.voucherValue,
+            reward: rewardInputToWire(terms),
           ),
         );
       });
@@ -109,10 +107,4 @@ api.ContentFormat _formatToWire(ContentFormat f) => switch (f) {
   ContentFormat.reels => api.ContentFormat.REELS,
   ContentFormat.cardNews => api.ContentFormat.CARD_NEWS,
   ContentFormat.blog => api.ContentFormat.BLOG,
-};
-
-api.RewardType _rewardToWire(RewardType r) => switch (r) {
-  RewardType.voucher => api.RewardType.VOUCHER,
-  RewardType.perView => api.RewardType.PER_VIEW,
-  RewardType.both => api.RewardType.BOTH,
 };

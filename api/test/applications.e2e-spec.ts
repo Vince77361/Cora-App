@@ -80,7 +80,6 @@ describe('applications', () => {
         regionSigungu:
           over.regionSigungu === undefined ? '성동구' : over.regionSigungu,
         defaultFormat: 'REELS',
-        defaultRewardType: 'VOUCHER',
         defaultVoucherName: '2인 식사권',
         defaultVoucherValue: 40000,
         publishedAt: status === 'PUBLISHED' ? new Date() : null,
@@ -110,7 +109,7 @@ describe('applications', () => {
     await request(server)
       .put('/stores/me/default-terms')
       .set(auth)
-      .send({ format: 'REELS', rewardType: 'VOUCHER' })
+      .send({ format: 'REELS', reward: { voucher: {} } })
       .expect(200);
     const res = await request(server)
       .post('/stores/me/publish')

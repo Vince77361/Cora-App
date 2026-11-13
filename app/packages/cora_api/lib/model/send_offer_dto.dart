@@ -15,9 +15,8 @@ class SendOfferDto {
   SendOfferDto({
     required this.creatorId,
     required this.format,
-    required this.rewardType,
-    this.voucherName,
-    this.voucherValue,
+    required this.reward,
+    this.usageRights,
   });
 
   /// 오퍼를 받을 크리에이터의 ID.
@@ -25,28 +24,16 @@ class SendOfferDto {
 
   ContentFormat format;
 
-  RewardType rewardType;
+  RewardInputDto reward;
 
-  /// 식사권이 보상에 들어갈 때만 쓴다. 없으면 \"2인 식사권\".
+  /// 없으면 가게의 기본 사용권.
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? voucherName;
-
-  /// 식사권이 보상에 들어갈 때만 쓴다. 없으면 40000.
-  ///
-  /// Minimum value: 1000
-  /// Maximum value: 1000000
-  ///
-  /// Please note: This property should have been non-nullable! Since the specification file
-  /// does not include a default value (using the "default:" property), however, the generated
-  /// source code must fall back to having a nullable type.
-  /// Consider adding a "default:" property in the specification file to hide this note.
-  ///
-  int? voucherValue;
+  UsageRights? usageRights;
 
   @override
   bool operator ==(Object other) =>
@@ -54,37 +41,30 @@ class SendOfferDto {
       other is SendOfferDto &&
           other.creatorId == creatorId &&
           other.format == format &&
-          other.rewardType == rewardType &&
-          other.voucherName == voucherName &&
-          other.voucherValue == voucherValue;
+          other.reward == reward &&
+          other.usageRights == usageRights;
 
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
       (creatorId.hashCode) +
       (format.hashCode) +
-      (rewardType.hashCode) +
-      (voucherName == null ? 0 : voucherName!.hashCode) +
-      (voucherValue == null ? 0 : voucherValue!.hashCode);
+      (reward.hashCode) +
+      (usageRights == null ? 0 : usageRights!.hashCode);
 
   @override
   String toString() =>
-      'SendOfferDto[creatorId=$creatorId, format=$format, rewardType=$rewardType, voucherName=$voucherName, voucherValue=$voucherValue]';
+      'SendOfferDto[creatorId=$creatorId, format=$format, reward=$reward, usageRights=$usageRights]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
     json[r'creatorId'] = this.creatorId;
     json[r'format'] = this.format;
-    json[r'rewardType'] = this.rewardType;
-    if (this.voucherName != null) {
-      json[r'voucherName'] = this.voucherName;
+    json[r'reward'] = this.reward;
+    if (this.usageRights != null) {
+      json[r'usageRights'] = this.usageRights;
     } else {
-      json[r'voucherName'] = null;
-    }
-    if (this.voucherValue != null) {
-      json[r'voucherValue'] = this.voucherValue;
-    } else {
-      json[r'voucherValue'] = null;
+      json[r'usageRights'] = null;
     }
     return json;
   }
@@ -108,19 +88,18 @@ class SendOfferDto {
             'Required key "SendOfferDto[format]" is missing from JSON.');
         assert(json[r'format'] != null,
             'Required key "SendOfferDto[format]" has a null value in JSON.');
-        assert(json.containsKey(r'rewardType'),
-            'Required key "SendOfferDto[rewardType]" is missing from JSON.');
-        assert(json[r'rewardType'] != null,
-            'Required key "SendOfferDto[rewardType]" has a null value in JSON.');
+        assert(json.containsKey(r'reward'),
+            'Required key "SendOfferDto[reward]" is missing from JSON.');
+        assert(json[r'reward'] != null,
+            'Required key "SendOfferDto[reward]" has a null value in JSON.');
         return true;
       }());
 
       return SendOfferDto(
         creatorId: mapValueOfType<String>(json, r'creatorId')!,
         format: ContentFormat.fromJson(json[r'format'])!,
-        rewardType: RewardType.fromJson(json[r'rewardType'])!,
-        voucherName: mapValueOfType<String>(json, r'voucherName'),
-        voucherValue: mapValueOfType<int>(json, r'voucherValue'),
+        reward: RewardInputDto.fromJson(json[r'reward'])!,
+        usageRights: UsageRights.fromJson(json[r'usageRights']),
       );
     }
     return null;
@@ -179,6 +158,6 @@ class SendOfferDto {
   static const requiredKeys = <String>{
     'creatorId',
     'format',
-    'rewardType',
+    'reward',
   };
 }

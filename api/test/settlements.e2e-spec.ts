@@ -4,7 +4,6 @@ import {
   CollaborationStage,
   ContentFormat,
   PrismaClient,
-  RewardType,
 } from '@prisma/client';
 import request from 'supertest';
 import { scheduleSubmissionDeadlineJobs } from '../src/collaborations/collaboration-jobs';
@@ -126,22 +125,28 @@ describe('settlements', () => {
   const pushTo = (userId: string) =>
     push.sent.filter((p) => p.userId === userId);
 
+  // 조회수 수당의 단가는 옛 협업과 같은 금액이 나오도록 기본을 10,000원(1,000회당)으로 둔다. 새 범위의 단가는 시나리오가 준다.
   // 크리에이터는 로그인한 USER_A다. 사장님은 따로 만든다. 협업은 보관이 시작된(FUNDED) 상태로 DB에 바로 만들고,
   // 장부와 결제도 결제 승인 직후와 같게 채운다(상한 = 에스크로, 수수료 10%).
   async function seed(
     over: {
       stage?: CollaborationStage;
       format?: ContentFormat;
-      rewardType?: RewardType;
-      perViewAmount?: number;
+      rewardType?: 'VOUCHER' | 'PER_VIEW' | 'BOTH';
+      ratePerThousand?: number;
       perViewCap?: number;
       connected?: boolean;
+      // 조건 사본을 옛 모양(rewardType, 건당 금액)으로 넣는다. 이전이 빠뜨린 줄을 흉내 낸다.
+      legacyCopy?: boolean;
+      // 결제로 보관한 금액. 기본은 조건의 상한이다(어긋난 보관액을 만들 때만 준다).
+      paidEscrow?: number;
     } = {},
   ): Promise<Seeded> {
     const rewardType = over.rewardType ?? 'BOTH';
     const perView = rewardType !== 'VOUCHER';
-    const perViewAmount = over.perViewAmount ?? 10;
+    const ratePerThousand = over.ratePerThousand ?? 10000;
     const perViewCap = over.perViewCap ?? 100000;
+    const escrow = over.paidEscrow ?? perViewCap;
     const ownerId = randomUUID();
     await prisma.user.create({ data: { id: ownerId, role: 'STORE' } });
     const store = await prisma.store.create({
@@ -153,7 +158,6 @@ describe('settlements', () => {
         neighborhood: '성수동',
         ...REGION,
         defaultFormat: 'REELS',
-        defaultRewardType: 'BOTH',
         publishedAt: T0,
       },
     });
@@ -179,19 +183,32 @@ describe('settlements', () => {
         },
       });
     }
-    const terms = {
+    const hasVoucher = rewardType !== 'PER_VIEW';
+    const columns = {
       format: over.format ?? 'REELS',
-      rewardType,
-      voucherName: rewardType === 'PER_VIEW' ? null : '2인 식사권',
-      voucherValue: rewardType === 'PER_VIEW' ? null : 40000,
-      perViewAmount: perView ? perViewAmount : null,
+      voucherName: hasVoucher ? '식사권' : null,
+      voucherValue: hasVoucher ? 40000 : null,
+      voucherPeople: hasVoucher ? 2 : null,
+      fixedCash: 0,
+      viewRatePerThousand: perView ? ratePerThousand : null,
       perViewCap: perView ? perViewCap : null,
+      usageRights: 'STORE_REPOST_3M' as const,
     };
+    const terms = over.legacyCopy
+      ? {
+          format: columns.format,
+          rewardType,
+          voucherName: hasVoucher ? '2인 식사권' : null,
+          voucherValue: columns.voucherValue,
+          perViewAmount: perView ? ratePerThousand / 1000 : null,
+          perViewCap: columns.perViewCap,
+        }
+      : { ...columns, pieces: 1 };
     const offer = await prisma.offer.create({
       data: {
         storeId: store.id,
         creatorId: USER_A,
-        ...terms,
+        ...columns,
         status: 'ACCEPTED',
         expiresAt: new Date(T0.getTime() + 7 * DAY),
         createdAt: T0,
@@ -213,11 +230,11 @@ describe('settlements', () => {
       },
     });
     if (perView) {
-      const fee = Math.floor(perViewCap / 10);
+      const fee = Math.floor(escrow / 10);
       const payment = await prisma.payment.create({
         data: {
           collaborationId: collaboration.id,
-          amountEscrow: perViewCap,
+          amountEscrow: escrow,
           amountFee: fee,
           feeRate: 10,
           method: 'CARD',
@@ -230,7 +247,7 @@ describe('settlements', () => {
       const batchId = randomUUID();
       await prisma.ledgerEntry.createMany({
         data: [
-          ['PG_IN', 'ESCROW', perViewCap, 'PAYMENT_ESCROW'],
+          ['PG_IN', 'ESCROW', escrow, 'PAYMENT_ESCROW'],
           ['PG_IN', 'FEE_REVENUE', fee, 'PAYMENT_FEE'],
         ].map(([debitAccount, creditAccount, amount, reason]) => ({
           collaborationId: collaboration.id,
@@ -661,6 +678,72 @@ describe('settlements', () => {
       expect(job).toEqual([`payout:${payouts[0].id}`]);
     });
 
+    it('settles 12500 views as 25000 paid and 35000 refunded', async () => {
+      // 캔버스 F4의 숫자: 1,000회당 2,000원, 상한 60,000원.
+      const s = await seed({ ratePerThousand: 2000, perViewCap: 60000 });
+      await submitAndSettle(s, 12500);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('SETTLED');
+      expect(
+        await prisma.settlement.findUniqueOrThrow({
+          where: { collaborationId: s.collaborationId },
+        }),
+      ).toMatchObject({
+        finalViews: 12500,
+        payoutAmount: 25000,
+        refundAmount: 35000,
+      });
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(0);
+      expect(await accountOf(s.collaborationId, 'CREATOR_PAYABLE')).toBe(25000);
+      expect(await accountOf(s.collaborationId, 'STORE_REFUND')).toBe(35000);
+      expect(await accountOf(s.collaborationId, 'FEE_REVENUE')).toBe(6000);
+      expect(await prisma.payout.findMany()).toMatchObject([{ amount: 25000 }]);
+      expect(await prisma.refund.findMany()).toMatchObject([{ amount: 35000 }]);
+    });
+
+    it('caps the view pay at the cap of the terms', async () => {
+      const s = await seed({ ratePerThousand: 2000, perViewCap: 60000 });
+      await submitAndSettle(s, 9999999);
+      expect(
+        await prisma.settlement.findUniqueOrThrow({
+          where: { collaborationId: s.collaborationId },
+        }),
+      ).toMatchObject({ payoutAmount: 60000, refundAmount: 0 });
+    });
+
+    it('settles a legacy collaboration with the same amounts as before', async () => {
+      // 조건 사본을 옛 모양(건당 10원)으로 넣는다: 4320회 → 43200 / 56800.
+      const s = await seed({ legacyCopy: true });
+      await submitAndSettle(s, 4320);
+      expect(
+        await prisma.settlement.findUniqueOrThrow({
+          where: { collaborationId: s.collaborationId },
+        }),
+      ).toMatchObject({
+        finalViews: 4320,
+        payoutAmount: 43200,
+        refundAmount: 56800,
+      });
+      expect(await accountOf(s.collaborationId, 'CREATOR_PAYABLE')).toBe(43200);
+      expect(await accountOf(s.collaborationId, 'STORE_REFUND')).toBe(56800);
+    });
+
+    it('refuses to settle when the escrow balance differs from the copied burden', async () => {
+      // 보관액(90,000)이 조건의 최대 현금 부담(100,000)과 다르면 돈을 움직이지 않고 되돌린다.
+      const s = await seed({ paidEscrow: 90000 });
+      await submit(s.collaborationId, `${REELS_URL}?views=4320`).expect(200);
+      clock.set(new Date(T0.getTime() + 7 * DAY));
+      const before = await ledgerOf(s.collaborationId);
+      const job = settleJob(s.collaborationId);
+      await expect(
+        scheduler.registry.run(job.name, job.payload),
+      ).rejects.toThrow('최대 현금 부담');
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
+      expect(await prisma.settlement.count()).toBe(0);
+      expect(await prisma.payout.count()).toBe(0);
+      expect(await prisma.refund.count()).toBe(0);
+      expect(await ledgerOf(s.collaborationId)).toHaveLength(before.length);
+    });
+
     it('notifies the settlement once with the canvas text', async () => {
       const s = await seed();
       await submitAndSettle(s, 4320);
@@ -858,20 +941,26 @@ describe('settlements', () => {
     });
 
     it('keeps every collaboration ledger balanced after each scenario', async () => {
-      for (const views of [0, 4320, 9999999]) {
-        const s = await seed();
-        await submitAndSettle(s, views);
-        const entries = await ledgerOf(s.collaborationId);
-        assertBalanced(entries);
-        expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(0);
-        // 낸 돈 전부(상한 + 수수료)가 지급 예정, 환급, 수수료로 남김없이 나뉜다.
-        const total =
-          (await accountOf(s.collaborationId, 'CREATOR_PAYABLE')) +
-          (await accountOf(s.collaborationId, 'STORE_REFUND')) +
-          (await accountOf(s.collaborationId, 'FEE_REVENUE'));
-        expect(total).toBe(110000);
-        scheduler.jobs.length = 0;
-        clock.set(T0);
+      // 옛 금액(단가 10,000원, 상한 100,000원)과 새 기본값(2,000원, 60,000원) 모두.
+      for (const [over, cap] of [
+        [{}, 100000],
+        [{ ratePerThousand: 2000, perViewCap: 60000 }, 60000],
+      ] as const) {
+        for (const views of [0, 4320, 12500, 9999999]) {
+          const s = await seed(over);
+          await submitAndSettle(s, views);
+          const entries = await ledgerOf(s.collaborationId);
+          assertBalanced(entries);
+          expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(0);
+          // 낸 돈 전부(최대 현금 부담 + 수수료)가 지급 예정, 환급, 수수료로 남김없이 나뉜다.
+          const total =
+            (await accountOf(s.collaborationId, 'CREATOR_PAYABLE')) +
+            (await accountOf(s.collaborationId, 'STORE_REFUND')) +
+            (await accountOf(s.collaborationId, 'FEE_REVENUE'));
+          expect(total).toBe(cap + Math.floor(cap / 10));
+          scheduler.jobs.length = 0;
+          clock.set(T0);
+        }
       }
     });
   });

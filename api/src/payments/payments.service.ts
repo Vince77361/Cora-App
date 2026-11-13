@@ -16,6 +16,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { OffersService } from '../offers/offers.service';
 import { paymentLedgerKey } from '../settlements/job-keys';
 import { feeFor } from '../settlements/settlement-math';
+import { maxCashBurden, readTerms } from '../stores/reward-terms';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { PaymentCreatedModel } from './dto/payment-created.model';
@@ -522,24 +523,32 @@ export class PaymentsService {
     collaboration: Collaboration,
   ): Promise<PaymentQuoteModel> {
     const terms = readTerms(collaboration.terms);
+    // 보관할 금액은 최대 현금 부담(고정 현금 + 조회수 수당 상한)이다. 결제를 기다리는 협업에는 반드시 있다.
+    const escrow = maxCashBurden(terms);
+    if (escrow <= 0) {
+      throw new Error('결제를 기다리는 협업의 조건에 낼 돈이 없어요.');
+    }
     const feeRate = this.feeRate();
-    const fee = feeFor(terms.perViewCap, feeRate);
+    const fee = feeFor(escrow, feeRate);
     const card = collaboration.storeId
       ? await this.stores.getOfferCard(collaboration.storeId)
       : null;
     const creator = await this.creators.getSummary(collaboration.creatorId);
     return {
-      escrow: terms.perViewCap,
+      escrow,
       fee,
       feeRate,
-      total: terms.perViewCap + fee,
+      total: escrow + fee,
       orderName: `${card?.summary.name ?? '가게'} 콘텐츠 제작비`,
       creatorName: creator?.displayName ?? '크리에이터',
       creatorPhotoUrl: creator?.photoUrl ?? null,
       format: terms.format,
-      // 오퍼는 지금 한 편짜리다(편 수를 고르는 화면이 없다).
-      pieces: 1,
+      pieces: terms.pieces,
       voucherName: terms.voucherName,
+      voucherValue: terms.voucherValue,
+      voucherPeople: terms.voucherPeople,
+      fixedCash: terms.fixedCash,
+      perViewCap: terms.perViewCap,
     };
   }
 
@@ -564,23 +573,4 @@ export class PaymentsService {
   private paymentNotFound(): AppError {
     return new AppError('NOT_FOUND', '결제를 찾을 수 없어요.');
   }
-}
-
-// 협업에 사본으로 남은 수락 당시의 조건에서 결제에 필요한 것만 꺼낸다.
-// 결제를 기다리는 협업에는 조회수 상한이 반드시 있다. 없으면 데이터가 어긋난 것이라 던진다.
-function readTerms(terms: unknown): {
-  format: PaymentQuoteModel['format'];
-  perViewCap: number;
-  voucherName: string | null;
-} {
-  const t = (terms ?? {}) as Record<string, unknown>;
-  const cap = t.perViewCap;
-  if (typeof cap !== 'number' || !Number.isInteger(cap) || cap <= 0) {
-    throw new Error('결제를 기다리는 협업의 조건에 조회수 상한이 없어요.');
-  }
-  return {
-    format: t.format as PaymentQuoteModel['format'],
-    perViewCap: cap,
-    voucherName: typeof t.voucherName === 'string' ? t.voucherName : null,
-  };
 }

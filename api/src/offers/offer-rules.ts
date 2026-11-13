@@ -1,4 +1,4 @@
-import { ContentFormat, OfferStatus, RewardType } from '@prisma/client';
+import { ContentFormat, OfferStatus } from '@prisma/client';
 import { PAYMENT_DUE_DAYS } from '../collaborations/collaboration-stage';
 
 // 오퍼 상태 규칙은 모두 순수 함수다. 시각은 인자로 받는다(Clock은 서비스가 쥔다).
@@ -75,14 +75,14 @@ export function paymentDaysLeft(offer: OfferTimes, now: Date): number | null {
   return Math.ceil((offer.paymentDueAt.getTime() - now.getTime()) / DAY_MS);
 }
 
-// 조회수당 지급을 받으려면 인스타그램을 연결해 조회수를 읽을 수 있어야 한다(공통 모델 2장).
-// 릴스와 카드뉴스에 조회수 보상(조회수만, 또는 식사권과 함께)이 있는데 연결이 없으면 수락할 수 없다.
+// 조회수 수당을 받으려면 인스타그램을 연결해 조회수를 읽을 수 있어야 한다(공통 모델 2장).
+// 릴스와 카드뉴스에 조회수 수당(다른 보상과 함께여도)이 있는데 연결이 없으면 수락할 수 없다.
 // 쇼츠와 블로그의 조회수는 이 연결로 읽지 않는다.
 export function needsInstagram(
-  terms: { format: ContentFormat; rewardType: RewardType },
+  terms: { format: ContentFormat; perViewCap: number | null },
   connected: boolean,
 ): boolean {
   if (connected) return false;
   if (terms.format !== 'REELS' && terms.format !== 'CARD_NEWS') return false;
-  return terms.rewardType !== 'VOUCHER';
+  return terms.perViewCap !== null;
 }

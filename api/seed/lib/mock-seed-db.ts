@@ -1,8 +1,8 @@
 import type {
   ContentFormat,
   PrismaClient,
-  RewardType,
   SourceLinkKind,
+  UsageRights,
 } from '@prisma/client';
 
 export interface MockCreatorProfileData {
@@ -27,9 +27,13 @@ export interface MockStoreData {
   bestShootingTime: string;
   intro: string;
   defaultFormat: ContentFormat;
-  defaultRewardType: RewardType;
   defaultVoucherName: string | null;
   defaultVoucherValue: number | null;
+  defaultVoucherPeople: number | null;
+  defaultFixedCash: number;
+  defaultViewRatePerThousand: number | null;
+  defaultPerViewCap: number | null;
+  defaultUsageRights: UsageRights;
   publishedAt: Date;
 }
 
@@ -47,11 +51,13 @@ export interface MockApplicationData {
 export interface MockOfferData {
   creatorId: string;
   format: ContentFormat;
-  rewardType: RewardType;
   voucherName: string | null;
   voucherValue: number | null;
-  perViewAmount: number | null;
+  voucherPeople: number | null;
+  fixedCash: number;
+  viewRatePerThousand: number | null;
   perViewCap: number | null;
+  usageRights: UsageRights;
   createdAt: Date;
   expiresAt: Date;
   declinedAt: Date;

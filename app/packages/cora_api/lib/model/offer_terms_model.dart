@@ -13,23 +13,43 @@ part of cora_api;
 class OfferTermsModel {
   /// Returns a new [OfferTermsModel] instance.
   OfferTermsModel({
+    required this.fixedCash,
     required this.format,
-    required this.perViewAmount,
+    required this.maxCashBurden,
     required this.perViewCap,
-    required this.rewardType,
+    required this.pieces,
+    required this.settlementMethod,
+    required this.usageRights,
+    required this.viewRatePerThousand,
     required this.voucherName,
+    required this.voucherPeople,
     required this.voucherValue,
   });
 
+  /// 고정 현금(원). 없으면 0.
+  int fixedCash;
+
   ContentFormat format;
 
-  int? perViewAmount;
+  /// 최대 현금 부담. 고정 현금 + 조회수 수당 상한이다.
+  int maxCashBurden;
 
+  /// 조회수 수당 상한(원). 수당이 없으면 null.
   int? perViewCap;
 
-  RewardType rewardType;
+  /// 콘텐츠 편 수. 오퍼는 지금 한 편이다.
+  int pieces;
+
+  SettlementMethod settlementMethod;
+
+  UsageRights usageRights;
+
+  /// 조회수 수당 단가. 1,000회당 원이다. 수당이 없으면 null.
+  int? viewRatePerThousand;
 
   String? voucherName;
+
+  int? voucherPeople;
 
   int? voucherValue;
 
@@ -37,45 +57,64 @@ class OfferTermsModel {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is OfferTermsModel &&
+          other.fixedCash == fixedCash &&
           other.format == format &&
-          other.perViewAmount == perViewAmount &&
+          other.maxCashBurden == maxCashBurden &&
           other.perViewCap == perViewCap &&
-          other.rewardType == rewardType &&
+          other.pieces == pieces &&
+          other.settlementMethod == settlementMethod &&
+          other.usageRights == usageRights &&
+          other.viewRatePerThousand == viewRatePerThousand &&
           other.voucherName == voucherName &&
+          other.voucherPeople == voucherPeople &&
           other.voucherValue == voucherValue;
 
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
+      (fixedCash.hashCode) +
       (format.hashCode) +
-      (perViewAmount == null ? 0 : perViewAmount!.hashCode) +
+      (maxCashBurden.hashCode) +
       (perViewCap == null ? 0 : perViewCap!.hashCode) +
-      (rewardType.hashCode) +
+      (pieces.hashCode) +
+      (settlementMethod.hashCode) +
+      (usageRights.hashCode) +
+      (viewRatePerThousand == null ? 0 : viewRatePerThousand!.hashCode) +
       (voucherName == null ? 0 : voucherName!.hashCode) +
+      (voucherPeople == null ? 0 : voucherPeople!.hashCode) +
       (voucherValue == null ? 0 : voucherValue!.hashCode);
 
   @override
   String toString() =>
-      'OfferTermsModel[format=$format, perViewAmount=$perViewAmount, perViewCap=$perViewCap, rewardType=$rewardType, voucherName=$voucherName, voucherValue=$voucherValue]';
+      'OfferTermsModel[fixedCash=$fixedCash, format=$format, maxCashBurden=$maxCashBurden, perViewCap=$perViewCap, pieces=$pieces, settlementMethod=$settlementMethod, usageRights=$usageRights, viewRatePerThousand=$viewRatePerThousand, voucherName=$voucherName, voucherPeople=$voucherPeople, voucherValue=$voucherValue]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    json[r'fixedCash'] = this.fixedCash;
     json[r'format'] = this.format;
-    if (this.perViewAmount != null) {
-      json[r'perViewAmount'] = this.perViewAmount;
-    } else {
-      json[r'perViewAmount'] = null;
-    }
+    json[r'maxCashBurden'] = this.maxCashBurden;
     if (this.perViewCap != null) {
       json[r'perViewCap'] = this.perViewCap;
     } else {
       json[r'perViewCap'] = null;
     }
-    json[r'rewardType'] = this.rewardType;
+    json[r'pieces'] = this.pieces;
+    json[r'settlementMethod'] = this.settlementMethod;
+    json[r'usageRights'] = this.usageRights;
+    if (this.viewRatePerThousand != null) {
+      json[r'viewRatePerThousand'] = this.viewRatePerThousand;
+    } else {
+      json[r'viewRatePerThousand'] = null;
+    }
     if (this.voucherName != null) {
       json[r'voucherName'] = this.voucherName;
     } else {
       json[r'voucherName'] = null;
+    }
+    if (this.voucherPeople != null) {
+      json[r'voucherPeople'] = this.voucherPeople;
+    } else {
+      json[r'voucherPeople'] = null;
     }
     if (this.voucherValue != null) {
       json[r'voucherValue'] = this.voucherValue;
@@ -96,31 +135,54 @@ class OfferTermsModel {
       // Note 1: the values aren't checked for validity beyond being non-null.
       // Note 2: this code is stripped in release mode!
       assert(() {
+        assert(json.containsKey(r'fixedCash'),
+            'Required key "OfferTermsModel[fixedCash]" is missing from JSON.');
+        assert(json[r'fixedCash'] != null,
+            'Required key "OfferTermsModel[fixedCash]" has a null value in JSON.');
         assert(json.containsKey(r'format'),
             'Required key "OfferTermsModel[format]" is missing from JSON.');
         assert(json[r'format'] != null,
             'Required key "OfferTermsModel[format]" has a null value in JSON.');
-        assert(json.containsKey(r'perViewAmount'),
-            'Required key "OfferTermsModel[perViewAmount]" is missing from JSON.');
+        assert(json.containsKey(r'maxCashBurden'),
+            'Required key "OfferTermsModel[maxCashBurden]" is missing from JSON.');
+        assert(json[r'maxCashBurden'] != null,
+            'Required key "OfferTermsModel[maxCashBurden]" has a null value in JSON.');
         assert(json.containsKey(r'perViewCap'),
             'Required key "OfferTermsModel[perViewCap]" is missing from JSON.');
-        assert(json.containsKey(r'rewardType'),
-            'Required key "OfferTermsModel[rewardType]" is missing from JSON.');
-        assert(json[r'rewardType'] != null,
-            'Required key "OfferTermsModel[rewardType]" has a null value in JSON.');
+        assert(json.containsKey(r'pieces'),
+            'Required key "OfferTermsModel[pieces]" is missing from JSON.');
+        assert(json[r'pieces'] != null,
+            'Required key "OfferTermsModel[pieces]" has a null value in JSON.');
+        assert(json.containsKey(r'settlementMethod'),
+            'Required key "OfferTermsModel[settlementMethod]" is missing from JSON.');
+        assert(json[r'settlementMethod'] != null,
+            'Required key "OfferTermsModel[settlementMethod]" has a null value in JSON.');
+        assert(json.containsKey(r'usageRights'),
+            'Required key "OfferTermsModel[usageRights]" is missing from JSON.');
+        assert(json[r'usageRights'] != null,
+            'Required key "OfferTermsModel[usageRights]" has a null value in JSON.');
+        assert(json.containsKey(r'viewRatePerThousand'),
+            'Required key "OfferTermsModel[viewRatePerThousand]" is missing from JSON.');
         assert(json.containsKey(r'voucherName'),
             'Required key "OfferTermsModel[voucherName]" is missing from JSON.');
+        assert(json.containsKey(r'voucherPeople'),
+            'Required key "OfferTermsModel[voucherPeople]" is missing from JSON.');
         assert(json.containsKey(r'voucherValue'),
             'Required key "OfferTermsModel[voucherValue]" is missing from JSON.');
         return true;
       }());
 
       return OfferTermsModel(
+        fixedCash: mapValueOfType<int>(json, r'fixedCash')!,
         format: ContentFormat.fromJson(json[r'format'])!,
-        perViewAmount: mapValueOfType<int>(json, r'perViewAmount'),
+        maxCashBurden: mapValueOfType<int>(json, r'maxCashBurden')!,
         perViewCap: mapValueOfType<int>(json, r'perViewCap'),
-        rewardType: RewardType.fromJson(json[r'rewardType'])!,
+        pieces: mapValueOfType<int>(json, r'pieces')!,
+        settlementMethod: SettlementMethod.fromJson(json[r'settlementMethod'])!,
+        usageRights: UsageRights.fromJson(json[r'usageRights'])!,
+        viewRatePerThousand: mapValueOfType<int>(json, r'viewRatePerThousand'),
         voucherName: mapValueOfType<String>(json, r'voucherName'),
+        voucherPeople: mapValueOfType<int>(json, r'voucherPeople'),
         voucherValue: mapValueOfType<int>(json, r'voucherValue'),
       );
     }
@@ -178,11 +240,16 @@ class OfferTermsModel {
 
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
+    'fixedCash',
     'format',
-    'perViewAmount',
+    'maxCashBurden',
     'perViewCap',
-    'rewardType',
+    'pieces',
+    'settlementMethod',
+    'usageRights',
+    'viewRatePerThousand',
     'voucherName',
+    'voucherPeople',
     'voucherValue',
   };
 }

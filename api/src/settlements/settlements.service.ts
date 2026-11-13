@@ -18,6 +18,7 @@ import {
 } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
 import { Clock } from '../common/clock';
+import { maxCashBurden, readTerms } from '../stores/reward-terms';
 import { InstagramService } from '../instagram/instagram.service';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import {
@@ -39,7 +40,7 @@ import {
 } from './job-keys';
 import { PayoutsService } from './payouts.service';
 import { RefundsService } from './refunds.service';
-import { settle as settleViews } from './settlement-math';
+import { settleReward } from './settlement-math';
 import { SettlementsRepository } from './settlements.repository';
 
 @Injectable()
@@ -141,19 +142,13 @@ export class SettlementsService {
       await this.halt(collaboration);
       return 'halted';
     }
-    const perViewAmount = readPerViewAmount(collaboration.terms);
-
     const outcome = await this.repository.transaction<'settled', 'gone'>(
       async (tx, rollback) => {
         const committed = await this.commitSettlement(
           tx,
           collaboration,
           'COUNTING',
-          // 상한은 에스크로에 실제로 있는 돈이다(결제한 상한과 같다).
-          (escrow) => ({
-            finalViews,
-            ...settleViews({ views: finalViews, perViewAmount, cap: escrow }),
-          }),
+          (escrow) => planByViews(collaboration, finalViews, escrow),
           key,
         );
         return committed ? 'settled' : rollback('gone');
@@ -242,15 +237,11 @@ export class SettlementsService {
     collaboration: Collaboration,
     views: number,
   ): Promise<{ payout: number; refund: number } | null> {
-    const perViewAmount = readPerViewAmount(collaboration.terms);
     return this.commitSettlement(
       tx,
       collaboration,
       'HALTED',
-      (escrow) => ({
-        finalViews: views,
-        ...settleViews({ views, perViewAmount, cap: escrow }),
-      }),
+      (escrow) => planByViews(collaboration, views, escrow),
       settleJobKey(collaboration.id),
       { patch: { haltedReason: null, stageBeforeHalt: null } },
     );
@@ -491,11 +482,29 @@ function pickFinalViews(
   return readable[0]?.views ?? null;
 }
 
-// 협업에 사본으로 남은 수락 당시의 조건에서 건당 금액을 꺼낸다. 조회수 협업에 없으면 데이터가 어긋난 것이라 던진다.
-function readPerViewAmount(terms: unknown): number {
-  const amount = (terms as Record<string, unknown> | null)?.perViewAmount;
-  if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 0) {
-    throw new Error('조회수 협업의 조건에 건당 금액이 없어요.');
+// 조건 사본(고정 현금, 조회수 단가, 상한)으로 지급·환급을 정한다. 상한은 에스크로 잔액이 아니라 조건의 값이다:
+// 같은 트랜잭션에서 읽은 잔액이 사본의 최대 현금 부담과 다르면 화면에 보인 금액과 보관액이 어긋난 것이라
+// 돈을 움직이지 않고 던져 되돌린다. 조회수 수당이 없는 협업은 조회수로 정산하지 않는다.
+function planByViews(
+  collaboration: Collaboration,
+  views: number,
+  escrow: number,
+): { finalViews: number; payout: number; refund: number } {
+  const terms = readTerms(collaboration.terms);
+  if (terms.viewRatePerThousand === null || terms.perViewCap === null) {
+    throw new Error('조회수 수당이 없는 협업은 조회수로 정산할 수 없어요.');
   }
-  return amount;
+  const burden = maxCashBurden(terms);
+  if (escrow !== burden) {
+    throw new Error(
+      `에스크로 잔액(${escrow})이 조건의 최대 현금 부담(${burden})과 달라요.`,
+    );
+  }
+  const { payout, refund } = settleReward({
+    views,
+    ratePerThousand: terms.viewRatePerThousand,
+    cap: terms.perViewCap,
+    fixedCash: terms.fixedCash,
+  });
+  return { finalViews: views, payout, refund };
 }

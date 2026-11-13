@@ -23,7 +23,7 @@ import { OfferTermsModel } from './dto/offer-terms.model';
 import { SetDefaultTermsDto } from './dto/set-default-terms.dto';
 import { StoreDetailModel, StoreSummaryModel } from './dto/store-public.model';
 import { UpdateStoreDto } from './dto/update-store.dto';
-import { buildTerms } from './offer-terms';
+import { buildTerms, termsModelOf } from './reward-terms';
 import {
   StoreFields,
   StoresRepository,
@@ -177,9 +177,13 @@ export class StoresService {
     return this.toMyStore(
       await this.stores.setDefaultTerms(store.id, {
         format: terms.format,
-        rewardType: terms.rewardType,
         voucherName: terms.voucherName,
         voucherValue: terms.voucherValue,
+        voucherPeople: terms.voucherPeople,
+        fixedCash: terms.fixedCash,
+        viewRatePerThousand: terms.viewRatePerThousand,
+        perViewCap: terms.perViewCap,
+        usageRights: terms.usageRights,
       }),
     );
   }
@@ -191,7 +195,7 @@ export class StoresService {
     if (!store.name) {
       throw new AppError('CONFLICT', '가게 이름을 넣어 주세요.');
     }
-    if (!store.defaultFormat || !store.defaultRewardType) {
+    if (!store.defaultFormat) {
       throw new AppError('CONFLICT', '기본 오퍼 조건을 정해 주세요.');
     }
     if (!store.regionSido) {
@@ -337,14 +341,21 @@ export class StoresService {
     return path ? this.storage.publicUrl(path) : null;
   }
 
+  // 저장된 기본 조건을 그대로 보여 준다(범위는 저장할 때 검사했다). 기본 형식이 비어 있으면 아직 정하지 않은 것이다.
   private termsOf(store: Store): OfferTermsModel | null {
-    if (!store.defaultFormat || !store.defaultRewardType) return null;
-    return buildTerms({
-      format: store.defaultFormat,
-      rewardType: store.defaultRewardType,
-      voucherName: store.defaultVoucherName,
-      voucherValue: store.defaultVoucherValue,
-    });
+    if (!store.defaultFormat) return null;
+    return termsModelOf(
+      store.defaultFormat,
+      {
+        voucherName: store.defaultVoucherName,
+        voucherValue: store.defaultVoucherValue,
+        voucherPeople: store.defaultVoucherPeople,
+        fixedCash: store.defaultFixedCash,
+        viewRatePerThousand: store.defaultViewRatePerThousand,
+        perViewCap: store.defaultPerViewCap,
+      },
+      store.defaultUsageRights,
+    );
   }
 
   private toMyStore(store: StoreWithLinks): MyStoreModel {

@@ -13,7 +13,7 @@ import { PayoutAccountsService } from '../payout-accounts/payout-accounts.servic
 import { RefundsService } from '../settlements/refunds.service';
 import { SettlementsRepository } from '../settlements/settlements.repository';
 import { StoresService } from '../stores/stores.service';
-import { OfferTermsModel } from '../stores/dto/offer-terms.model';
+import { readTerms } from '../stores/reward-terms';
 import { CancelRequestsRepository } from './cancel-requests.repository';
 import { submissionDeadlineJobKeys } from './collaboration-jobs';
 import { CollaborationsRepository } from './collaborations.repository';
@@ -506,8 +506,7 @@ export class CollaborationsService {
     const live = liveAmounts({
       stage: row.stage,
       views: currentViews,
-      perViewAmount: terms.perViewAmount,
-      escrow: escrowAmount,
+      terms,
     });
 
     // 지급 계좌 사정(NEEDS_ACCOUNT, 지급일)은 크리에이터에게만 보인다. 사장님에게는 그냥 지급 대기다.
@@ -623,23 +622,4 @@ export class CollaborationsService {
       photoUrl: summary?.photoUrl ?? null,
     };
   }
-}
-
-// 협업에 사본으로 남은 수락 당시의 조건. 형식과 보상 종류가 없으면 데이터가 어긋난 것이라 던진다.
-function readTerms(terms: unknown): OfferTermsModel {
-  const t = (terms ?? {}) as Record<string, unknown>;
-  if (typeof t.format !== 'string' || typeof t.rewardType !== 'string') {
-    throw new Error('협업의 조건이 올바르지 않아요.');
-  }
-  const text = (v: unknown) => (typeof v === 'string' ? v : null);
-  const int = (v: unknown) =>
-    typeof v === 'number' && Number.isInteger(v) ? v : null;
-  return {
-    format: t.format as OfferTermsModel['format'],
-    rewardType: t.rewardType as OfferTermsModel['rewardType'],
-    voucherName: text(t.voucherName),
-    voucherValue: int(t.voucherValue),
-    perViewAmount: int(t.perViewAmount),
-    perViewCap: int(t.perViewCap),
-  };
 }

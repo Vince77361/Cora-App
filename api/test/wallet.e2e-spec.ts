@@ -95,7 +95,6 @@ describe('wallet', () => {
         neighborhood: '성수동',
         ...REGION,
         defaultFormat: 'REELS',
-        defaultRewardType: 'BOTH',
         publishedAt: NOW,
       },
     });
@@ -110,11 +109,14 @@ describe('wallet', () => {
         storeId: store.id,
         terms: {
           format: over.format ?? 'REELS',
-          rewardType: voucher ? (hasMoney ? 'BOTH' : 'VOUCHER') : 'PER_VIEW',
-          voucherName: voucher ? '2인 식사권' : null,
+          pieces: 1,
+          voucherName: voucher ? '식사권' : null,
           voucherValue: voucher ? 40000 : null,
-          perViewAmount: hasMoney ? 10 : null,
+          voucherPeople: voucher ? 2 : null,
+          fixedCash: 0,
+          viewRatePerThousand: hasMoney ? 10000 : null,
           perViewCap: hasMoney ? 100000 : null,
+          usageRights: 'STORE_REPOST_3M',
         },
         settlementMethod: hasMoney ? 'PER_VIEW' : 'NONE',
         fundedAt: over.fundedAt ?? new Date('2026-11-02T03:00:00.000Z'),
@@ -267,7 +269,7 @@ describe('wallet', () => {
       at: SETTLED_AT.toISOString(),
     });
     expect(wallet.entries[1]).toMatchObject({
-      voucherName: '2인 식사권',
+      voucherName: '식사권',
       voucherUsed: true,
     });
     expect(wallet.entries[2]).toMatchObject({

@@ -105,10 +105,11 @@ export class InstagramService {
     userId: string,
     message: string,
   ): Promise<void> {
-    const perView = await this.collaborations.listForCreator(
-      userId,
+    // 조회수 수당이 있는 협업이면 고정 현금과 함께여도 조회수를 읽을 계정이 필요하다.
+    const perView = await this.collaborations.listForCreator(userId, [
       'PER_VIEW',
-    );
+      'FIXED_AND_PER_VIEW',
+    ]);
     if (
       perView.some(
         (c) => c.stage === 'AWAITING_PAYMENT' || isMoneyHeld(c.kind, c.stage),

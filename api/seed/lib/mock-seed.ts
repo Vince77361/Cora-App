@@ -3,7 +3,7 @@ import { extname, join } from 'node:path';
 import { Clock } from '../../src/common/clock';
 import { SIDO_LIST } from '../../src/common/regions';
 import { StoragePort } from '../../src/integrations/storage/storage.port';
-import { buildTerms } from '../../src/stores/offer-terms';
+import { buildTerms } from '../../src/stores/reward-terms';
 import { MockSeedDb } from './mock-seed-db';
 
 export interface MockSeedDeps {
@@ -136,8 +136,11 @@ export async function runMockSeed(
   const ownerId = idOf(STORE_OWNER_PHONE);
   const coverPhotoPath = `stores/${ownerId}/seed-cover${extname(mockStore.image)}`;
   await uploadImage(storage, mockStore.image, coverPhotoPath);
-  // 기본 조건은 앱 규칙(buildTerms)을 거친 값으로 저장한다: 릴스 + 식사권 + 조회수.
-  const terms = buildTerms({ format: 'REELS', rewardType: 'BOTH' });
+  // 기본 조건은 앱 규칙(buildTerms)을 거친 값으로 저장한다: 릴스 + 식사권 + 조회수 수당(빈 값은 기본값).
+  const terms = buildTerms({
+    format: 'REELS',
+    reward: { voucher: {}, perView: {} },
+  });
   const { storeId } = await db.upsertStore(
     ownerId,
     {
@@ -153,9 +156,13 @@ export async function runMockSeed(
       bestShootingTime: mockStore.bestShootingTime,
       intro: mockStore.intro,
       defaultFormat: terms.format,
-      defaultRewardType: terms.rewardType,
       defaultVoucherName: terms.voucherName,
       defaultVoucherValue: terms.voucherValue,
+      defaultVoucherPeople: terms.voucherPeople,
+      defaultFixedCash: terms.fixedCash,
+      defaultViewRatePerThousand: terms.viewRatePerThousand,
+      defaultPerViewCap: terms.perViewCap,
+      defaultUsageRights: terms.usageRights,
       publishedAt: now,
     },
     [
@@ -181,7 +188,10 @@ export async function runMockSeed(
   const offerCreatedAt = new Date(
     now.getTime() - DECLINED_OFFER.createdDaysAgo * DAY_MS,
   );
-  const offerTerms = buildTerms({ format: 'REELS', rewardType: 'BOTH' });
+  const offerTerms = buildTerms({
+    format: 'REELS',
+    reward: { voucher: {}, perView: {} },
+  });
   await db.resetCollaboration({
     storeId,
     mockCreatorIds: CREATORS.map((c) => idOf(c.phone)),
@@ -190,11 +200,13 @@ export async function runMockSeed(
       {
         creatorId: creatorOf(DECLINED_OFFER.key).userId,
         format: offerTerms.format,
-        rewardType: offerTerms.rewardType,
         voucherName: offerTerms.voucherName,
         voucherValue: offerTerms.voucherValue,
-        perViewAmount: offerTerms.perViewAmount,
+        voucherPeople: offerTerms.voucherPeople,
+        fixedCash: offerTerms.fixedCash,
+        viewRatePerThousand: offerTerms.viewRatePerThousand,
         perViewCap: offerTerms.perViewCap,
+        usageRights: offerTerms.usageRights,
         createdAt: offerCreatedAt,
         expiresAt: new Date(
           offerCreatedAt.getTime() + OFFER_RESPONSE_DAYS * DAY_MS,

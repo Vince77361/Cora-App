@@ -27,14 +27,18 @@ const T0 = new Date('2026-12-01T03:00:00.000Z');
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 const REGION = { regionSido: '서울특별시', regionSigungu: '성동구' };
-const TERMS = {
+// 새 기본 조건: 식사권 + 1,000회당 2,000원, 상한 60,000원(최대 현금 부담 60,000원, 수수료 6,000원).
+const COLUMNS = {
   format: 'REELS',
-  rewardType: 'BOTH',
-  voucherName: '2인 식사권',
+  voucherName: '식사권',
   voucherValue: 40000,
-  perViewAmount: 10,
-  perViewCap: 100000,
+  voucherPeople: 2,
+  fixedCash: 0,
+  viewRatePerThousand: 2000,
+  perViewCap: 60000,
+  usageRights: 'STORE_REPOST_3M',
 } as const;
+const TERMS = { ...COLUMNS, pieces: 1 } as const;
 
 interface QuoteBody {
   escrow: number;
@@ -106,6 +110,8 @@ describe('payments', () => {
       stage?: CollaborationStage;
       commissionerId?: string;
       paymentDueAt?: Date | null;
+      // 이미 저장된 협업의 조건 사본(고정 현금처럼 아직 새로 만들 수 없는 값을 읽는 길을 확인할 때).
+      copy?: Record<string, unknown>;
     } = {},
   ): Promise<Seeded> {
     const ownerId = over.commissionerId ?? USER_A;
@@ -123,7 +129,6 @@ describe('payments', () => {
         neighborhood: '성수동',
         ...REGION,
         defaultFormat: 'REELS',
-        defaultRewardType: 'BOTH',
         publishedAt: T0,
       },
     });
@@ -140,7 +145,7 @@ describe('payments', () => {
       data: {
         storeId: store.id,
         creatorId,
-        ...TERMS,
+        ...COLUMNS,
         status: 'ACCEPTED',
         expiresAt: new Date(T0.getTime() + 7 * DAY),
         createdAt: T0,
@@ -156,7 +161,7 @@ describe('payments', () => {
         creatorId,
         offerId: offer.id,
         storeId: store.id,
-        terms: TERMS,
+        terms: over.copy ?? TERMS,
         settlementMethod: 'PER_VIEW',
       },
     });
@@ -232,22 +237,57 @@ describe('payments', () => {
   });
 
   describe('quote', () => {
-    it('quotes cap plus a 10 percent fee with what the pay screen draws', async () => {
+    it('quotes the maximum cash burden plus a 10 percent fee', async () => {
+      // 최대 현금 부담 60,000원 + 수수료 6,000원 = 66,000원.
       const s = await seed();
       const res = await quote(s.collaborationId).expect(200);
       expect(res.body).toEqual({
-        escrow: 100000,
-        fee: 10000,
+        escrow: 60000,
+        fee: 6000,
         feeRate: 10,
-        total: 110000,
+        total: 66000,
         orderName: expect.any(String) as string,
         creatorName: '모카',
         creatorPhotoUrl: null,
         format: 'REELS',
         pieces: 1,
-        voucherName: '2인 식사권',
+        voucherName: '식사권',
+        voucherValue: 40000,
+        voucherPeople: 2,
+        fixedCash: 0,
+        perViewCap: 60000,
       });
       expect((res.body as QuoteBody).orderName.length).toBeGreaterThan(0);
+    });
+
+    it('quotes fixed cash plus the view pay cap for a copy that has fixed cash', async () => {
+      const s = await seed({ copy: { ...TERMS, fixedCash: 30000 } });
+      expect((await quote(s.collaborationId).expect(200)).body).toMatchObject({
+        escrow: 90000,
+        fee: 9000,
+        total: 99000,
+        fixedCash: 30000,
+        perViewCap: 60000,
+      });
+    });
+
+    it('quotes a legacy copy with the same amounts as before', async () => {
+      const s = await seed({
+        copy: {
+          format: 'REELS',
+          rewardType: 'BOTH',
+          voucherName: '2인 식사권',
+          voucherValue: 40000,
+          perViewAmount: 10,
+          perViewCap: 100000,
+        },
+      });
+      expect((await quote(s.collaborationId).expect(200)).body).toMatchObject({
+        escrow: 100000,
+        fee: 10000,
+        total: 110000,
+        voucherName: '식사권',
+      });
     });
 
     it('lets only the store owner who commissioned the collaboration read it', async () => {
@@ -308,8 +348,8 @@ describe('payments', () => {
       });
       expect(row).toMatchObject({
         collaborationId: s.collaborationId,
-        amountEscrow: 100000,
-        amountFee: 10000,
+        amountEscrow: 60000,
+        amountFee: 6000,
         feeRate: 10,
         method: 'EASY_PAY',
         status: 'PENDING',
@@ -370,6 +410,26 @@ describe('payments', () => {
   });
 
   describe('webhook', () => {
+    it('funds exactly the quoted escrow', async () => {
+      const s = await seed();
+      const quoted = (await quote(s.collaborationId).expect(200))
+        .body as QuoteBody;
+      const paymentId = await startPayment(s.collaborationId);
+      await webhook(paymentId, 'APPROVED').expect(200);
+
+      const ledger = await ledgerOf(s.collaborationId);
+      const escrow = ledger
+        .filter((e) => e.creditAccount === 'ESCROW')
+        .reduce((sum, e) => sum + e.amount, 0);
+      // 견적에 보인 금액이 그대로 보관되고, 그보다 큰 돈은 들어오지 않는다.
+      expect(escrow).toBe(quoted.escrow);
+      expect(escrow).toBe(60000);
+      const payment = await prisma.payment.findUniqueOrThrow({
+        where: { id: paymentId },
+      });
+      expect(payment.amountEscrow + payment.amountFee).toBe(quoted.total);
+    });
+
     it('funds the collaboration on an approved webhook', async () => {
       const s = await seed();
       const paymentId = await startPayment(s.collaborationId);
@@ -393,8 +453,8 @@ describe('payments', () => {
       expect(
         ledger.map((e) => [e.debitAccount, e.creditAccount, e.amount]).sort(),
       ).toEqual([
-        ['PG_IN', 'ESCROW', 100000],
-        ['PG_IN', 'FEE_REVENUE', 10000],
+        ['PG_IN', 'ESCROW', 60000],
+        ['PG_IN', 'FEE_REVENUE', 6000],
       ]);
       expect(new Set(ledger.map((e) => e.idempotencyKey))).toEqual(
         new Set([`payment:${paymentId}`]),
@@ -619,8 +679,8 @@ describe('payments', () => {
       expect(
         ledger.map((e) => [e.debitAccount, e.creditAccount, e.amount]).sort(),
       ).toEqual([
-        ['PG_IN', 'ESCROW', 100000],
-        ['PG_IN', 'FEE_REVENUE', 10000],
+        ['PG_IN', 'ESCROW', 60000],
+        ['PG_IN', 'FEE_REVENUE', 6000],
       ]);
       expect(new Set(ledger.map((e) => e.idempotencyKey))).toEqual(
         new Set([`payment:${first}`]),

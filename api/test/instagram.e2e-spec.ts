@@ -59,7 +59,11 @@ describe('instagram', () => {
         stage,
         commissionerId,
         creatorId: USER_A,
-        terms: { format: 'REELS', rewardType: 'PER_VIEW' },
+        terms: {
+          format: 'REELS',
+          viewRatePerThousand: 2000,
+          perViewCap: 60000,
+        },
         settlementMethod,
       },
     });

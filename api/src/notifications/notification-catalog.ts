@@ -4,7 +4,7 @@ import {
   NotificationSwitch,
   NotificationTab,
 } from '@prisma/client';
-import { josa } from './josa';
+import { josa } from '../common/josa';
 
 // 앱이 화면으로 바꾸는 가는 곳. 4~8번 계획이 종류를 더한다.
 export type NotificationTarget = {

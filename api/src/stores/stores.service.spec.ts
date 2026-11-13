@@ -150,9 +150,13 @@ class FakeStoresRepository extends StoresRepository {
     return Promise.resolve(
       Object.assign(this.byId(storeId), {
         defaultFormat: terms.format,
-        defaultRewardType: terms.rewardType,
         defaultVoucherName: terms.voucherName,
         defaultVoucherValue: terms.voucherValue,
+        defaultVoucherPeople: terms.voucherPeople,
+        defaultFixedCash: terms.fixedCash,
+        defaultViewRatePerThousand: terms.viewRatePerThousand,
+        defaultPerViewCap: terms.perViewCap,
+        defaultUsageRights: terms.usageRights,
       }),
     );
   }
@@ -256,9 +260,13 @@ function makeStore(over: Partial<StoreWithLinks> = {}): StoreWithLinks {
     bestShootingTime: null,
     intro: null,
     defaultFormat: null,
-    defaultRewardType: null,
     defaultVoucherName: null,
     defaultVoucherValue: null,
+    defaultVoucherPeople: null,
+    defaultFixedCash: 0,
+    defaultViewRatePerThousand: null,
+    defaultPerViewCap: null,
+    defaultUsageRights: 'STORE_REPOST_3M',
     publishedAt: null,
     createdAt: at,
     updatedAt: at,
@@ -332,7 +340,7 @@ describe('StoresService', () => {
       await service.analyze(OWNER, LINKS);
       await service.setDefaultTerms(OWNER, {
         format: 'REELS',
-        rewardType: 'VOUCHER',
+        reward: { voucher: {} },
       });
       await service.update(OWNER, { name: '고친 이름' });
       await service.advanceOnboarding(OWNER, 'TERMS');
@@ -347,7 +355,7 @@ describe('StoresService', () => {
           summary: '게시물 9개 찾음',
         },
       ]);
-      expect(store.defaultTerms?.voucherName).toBe('2인 식사권');
+      expect(store.defaultTerms?.voucherName).toBe('식사권');
       expect(repo.stores).toHaveLength(1);
     });
 
@@ -479,35 +487,93 @@ describe('StoresService', () => {
       await service.analyze(OWNER, LINKS);
     });
 
-    it('stores the normalized terms', async () => {
+    it('saves the default terms as three reward elements', async () => {
       const saved = await service.setDefaultTerms(OWNER, {
         format: 'REELS',
-        rewardType: 'BOTH',
+        reward: { voucher: {}, perView: {} },
       });
       expect(saved.defaultTerms).toEqual({
         format: 'REELS',
-        rewardType: 'BOTH',
-        voucherName: '2인 식사권',
+        pieces: 1,
+        voucherName: '식사권',
         voucherValue: 40000,
-        perViewAmount: 10,
-        perViewCap: 100000,
+        voucherPeople: 2,
+        fixedCash: 0,
+        viewRatePerThousand: 2000,
+        perViewCap: 60000,
+        usageRights: 'STORE_REPOST_3M',
+        maxCashBurden: 60000,
+        settlementMethod: 'PER_VIEW',
       });
+      // 보상에 넣지 않은 요소는 비운다.
       const perView = await service.setDefaultTerms(OWNER, {
         format: 'SHORTS',
-        rewardType: 'PER_VIEW',
-        voucherName: '무시됨',
-        voucherValue: 5000,
+        reward: { perView: { ratePerThousand: 3000, cap: 100000 } },
+        usageRights: 'STORE_REPOST_6M',
       });
-      expect(perView.defaultTerms?.voucherName).toBeNull();
-      expect(perView.defaultTerms?.voucherValue).toBeNull();
+      expect(perView.defaultTerms).toMatchObject({
+        voucherName: null,
+        voucherValue: null,
+        voucherPeople: null,
+        viewRatePerThousand: 3000,
+        perViewCap: 100000,
+        usageRights: 'STORE_REPOST_6M',
+        maxCashBurden: 100000,
+      });
     });
 
-    it('rejects a blog with a per-view reward', async () => {
+    it('fills 2000 won per thousand and a 60000 cap when view pay is on without values', async () => {
+      const saved = await service.setDefaultTerms(OWNER, {
+        format: 'REELS',
+        reward: { perView: {} },
+      });
+      expect(saved.defaultTerms).toMatchObject({
+        viewRatePerThousand: 2000,
+        perViewCap: 60000,
+      });
+    });
+
+    it('returns the maximum cash burden with the default terms', async () => {
+      const both = await service.setDefaultTerms(OWNER, {
+        format: 'REELS',
+        reward: { voucher: {}, perView: { cap: 80000 } },
+      });
+      expect(both.defaultTerms?.maxCashBurden).toBe(80000);
+      const voucherOnly = await service.setDefaultTerms(OWNER, {
+        format: 'REELS',
+        reward: { voucher: {} },
+      });
+      expect(voucherOnly.defaultTerms).toMatchObject({
+        maxCashBurden: 0,
+        settlementMethod: 'NONE',
+      });
+    });
+
+    it('rejects a rate outside the allowed range and fixed cash for now', async () => {
+      expect(
+        await codeOf(
+          service.setDefaultTerms(OWNER, {
+            format: 'REELS',
+            reward: { perView: { ratePerThousand: 10000 } },
+          }),
+        ),
+      ).toBe('VALIDATION_FAILED');
+      expect(
+        await codeOf(
+          service.setDefaultTerms(OWNER, {
+            format: 'REELS',
+            reward: { voucher: {}, fixedCash: 30000 },
+          }),
+        ),
+      ).toBe('VALIDATION_FAILED');
+    });
+
+    it('rejects a blog with view pay', async () => {
       expect(
         await codeOf(
           service.setDefaultTerms(OWNER, {
             format: 'BLOG',
-            rewardType: 'BOTH',
+            reward: { voucher: {}, perView: {} },
           }),
         ),
       ).toBe('VALIDATION_FAILED');
@@ -516,15 +582,15 @@ describe('StoresService', () => {
     it('is allowed on a published store too', async () => {
       await service.setDefaultTerms(OWNER, {
         format: 'REELS',
-        rewardType: 'VOUCHER',
+        reward: { voucher: {} },
       });
       await service.publish(OWNER);
       const saved = await service.setDefaultTerms(OWNER, {
         format: 'SHORTS',
-        rewardType: 'PER_VIEW',
+        reward: { perView: {} },
       });
       expect(saved.status).toBe('PUBLISHED');
-      expect(saved.defaultTerms?.rewardType).toBe('PER_VIEW');
+      expect(saved.defaultTerms?.settlementMethod).toBe('PER_VIEW');
     });
   });
 
@@ -534,7 +600,7 @@ describe('StoresService', () => {
       await service.analyze(OWNER, LINKS);
       await service.setDefaultTerms(OWNER, {
         format: 'REELS',
-        rewardType: 'VOUCHER',
+        reward: { voucher: {} },
       });
       await service.update(OWNER, { regionSido: '서울특별시' });
       expect(await codeOf(service.publish(OWNER))).toBe('CONFLICT');
@@ -550,7 +616,7 @@ describe('StoresService', () => {
       await service.analyze(OWNER, LINKS);
       await service.setDefaultTerms(OWNER, {
         format: 'REELS',
-        rewardType: 'VOUCHER',
+        reward: { voucher: {} },
       });
       expect(await codeOf(service.publish(OWNER))).toBe('CONFLICT');
       await service.update(OWNER, { regionSido: '서울특별시' });
@@ -561,7 +627,7 @@ describe('StoresService', () => {
       await service.analyze(OWNER, LINKS);
       await service.setDefaultTerms(OWNER, {
         format: 'REELS',
-        rewardType: 'VOUCHER',
+        reward: { voucher: {} },
       });
       const first = await service.publish(OWNER);
       expect(first).toMatchObject({
@@ -592,7 +658,9 @@ describe('StoresService', () => {
         status: 'PUBLISHED',
         name: '한그릇 라멘',
         defaultFormat: 'REELS',
-        defaultRewardType: 'VOUCHER',
+        defaultVoucherName: '식사권',
+        defaultVoucherValue: 40000,
+        defaultVoucherPeople: 2,
       });
       repo.stores.push(published);
       expect(

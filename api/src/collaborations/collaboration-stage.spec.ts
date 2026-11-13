@@ -3,7 +3,6 @@ import {
   canTransition,
   initialStoreOfferState,
   isMoneyHeld,
-  settlementMethodOf,
   storeInProgressStages,
 } from './collaboration-stage';
 
@@ -166,32 +165,45 @@ describe('storeInProgressStages', () => {
   });
 });
 
-describe('settlementMethodOf', () => {
-  it('is PER_VIEW when the reward has a per-view part and NONE for a voucher only', () => {
-    expect(settlementMethodOf('PER_VIEW')).toBe('PER_VIEW');
-    expect(settlementMethodOf('BOTH')).toBe('PER_VIEW');
-    expect(settlementMethodOf('VOUCHER')).toBe('NONE');
-  });
-});
+const voucherOnly = {
+  voucherName: '식사권',
+  voucherValue: 40000,
+  voucherPeople: 2,
+  fixedCash: 0,
+  viewRatePerThousand: null,
+  perViewCap: null,
+};
+const withViewPay = {
+  ...voucherOnly,
+  viewRatePerThousand: 2000,
+  perViewCap: 60000,
+};
 
 describe('initialStoreOfferState', () => {
-  it('waits for payment with a 3 day payment due date for a per-view offer', () => {
-    expect(initialStoreOfferState('BOTH', NOW)).toEqual({
+  it('starts a zero burden offer as FUNDED and any paid offer as AWAITING_PAYMENT', () => {
+    expect(initialStoreOfferState(voucherOnly, NOW)).toEqual({
+      settlementMethod: 'NONE',
+      stage: 'FUNDED',
+      paymentDueAt: null,
+      fundedAt: NOW,
+      submitDueAt: new Date(NOW.getTime() + 14 * DAY),
+    });
+    expect(initialStoreOfferState(withViewPay, NOW)).toEqual({
       settlementMethod: 'PER_VIEW',
       stage: 'AWAITING_PAYMENT',
       paymentDueAt: new Date(NOW.getTime() + 3 * DAY),
       fundedAt: null,
       submitDueAt: null,
     });
-  });
-
-  it('is funded at once with a 14 day submit date and no payment due date for a voucher-only offer', () => {
-    expect(initialStoreOfferState('VOUCHER', NOW)).toEqual({
-      settlementMethod: 'NONE',
-      stage: 'FUNDED',
-      paymentDueAt: null,
-      fundedAt: NOW,
-      submitDueAt: new Date(NOW.getTime() + 14 * DAY),
+    // 고정 현금만 있어도 낼 돈이 있으니 결제를 기다린다.
+    expect(
+      initialStoreOfferState({ ...voucherOnly, fixedCash: 30000 }, NOW),
+    ).toMatchObject({ settlementMethod: 'FIXED', stage: 'AWAITING_PAYMENT' });
+    expect(
+      initialStoreOfferState({ ...withViewPay, fixedCash: 30000 }, NOW),
+    ).toMatchObject({
+      settlementMethod: 'FIXED_AND_PER_VIEW',
+      stage: 'AWAITING_PAYMENT',
     });
   });
 });

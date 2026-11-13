@@ -199,41 +199,62 @@ describe('payoutStatusOf', () => {
 });
 
 describe('liveAmounts', () => {
+  const terms = {
+    viewRatePerThousand: 2000,
+    perViewCap: 60000,
+    fixedCash: 0,
+  };
+
   it('computes earned and refund from the latest views while counting', () => {
+    expect(liveAmounts({ stage: 'COUNTING', views: 12500, terms })).toEqual({
+      earned: 25000,
+      refund: 35000,
+    });
+  });
+
+  it('computes a legacy copy at 10000 won per thousand like before', () => {
     expect(
       liveAmounts({
         stage: 'COUNTING',
         views: 4320,
-        perViewAmount: 10,
-        escrow: 100000,
+        terms: { viewRatePerThousand: 10000, perViewCap: 100000, fixedCash: 0 },
       }),
     ).toEqual({ earned: 43200, refund: 56800 });
   });
 
-  it('caps earned at the escrow', () => {
+  it('caps earned at the view pay cap', () => {
+    expect(liveAmounts({ stage: 'COUNTING', views: 200000, terms })).toEqual({
+      earned: 60000,
+      refund: 0,
+    });
+  });
+
+  it('adds fixed cash to what the creator has earned and keeps it out of the refund', () => {
     expect(
       liveAmounts({
         stage: 'COUNTING',
-        views: 20000,
-        perViewAmount: 10,
-        escrow: 100000,
+        views: 12500,
+        terms: { ...terms, fixedCash: 30000 },
       }),
-    ).toEqual({ earned: 100000, refund: 0 });
+    ).toEqual({ earned: 55000, refund: 35000 });
   });
 
-  it('is null outside COUNTING or when nothing has been read', () => {
-    const base = { views: 4320, perViewAmount: 10, escrow: 100000 };
+  it('is null outside COUNTING, when nothing has been read or without view pay', () => {
     for (const stage of [
       'FUNDED',
       'HALTED',
       'SETTLED',
       'REFUNDED',
     ] as CollaborationStage[]) {
-      expect(liveAmounts({ ...base, stage })).toBeNull();
+      expect(liveAmounts({ stage, views: 4320, terms })).toBeNull();
     }
-    expect(liveAmounts({ ...base, stage: 'COUNTING', views: null })).toBeNull();
+    expect(liveAmounts({ stage: 'COUNTING', views: null, terms })).toBeNull();
     expect(
-      liveAmounts({ ...base, stage: 'COUNTING', perViewAmount: null }),
+      liveAmounts({
+        stage: 'COUNTING',
+        views: 4320,
+        terms: { ...terms, viewRatePerThousand: null, perViewCap: null },
+      }),
     ).toBeNull();
   });
 });

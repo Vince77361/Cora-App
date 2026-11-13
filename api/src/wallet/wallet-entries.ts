@@ -1,5 +1,6 @@
 import { Collaboration, Payout, Settlement } from '@prisma/client';
 import { isMoneyHeld } from '../collaborations/collaboration-stage';
+import { readTerms } from '../stores/reward-terms';
 import { WalletEntryModel } from './dto/wallet.model';
 
 // 정산 내역의 줄을 만드는 순수 함수. DB와 시각을 모른다(규칙의 원본은 계정·알림·설정 설계 4장).
@@ -27,19 +28,18 @@ export interface WalletInput {
 }
 
 // 수락 때 사본으로 남긴 조건에서 형식과 식사권만 읽는다. 읽을 수 없으면 null(그 협업은 내역에서 뺀다).
+// 조건을 읽는 규칙은 reward-terms의 readTerms 하나다.
 export function readWalletTerms(terms: unknown): ReadTerms | null {
-  const t = (terms ?? {}) as Record<string, unknown>;
-  if (typeof t.format !== 'string' || typeof t.rewardType !== 'string') {
+  try {
+    const t = readTerms(terms);
+    return {
+      format: t.format,
+      // 식사권 이름이 비어 있어도 보상에 식사권이 있으면(금액이 있으면) 줄은 만든다.
+      voucherName: t.voucherName ?? (t.voucherValue !== null ? '식사권' : null),
+    };
+  } catch {
     return null;
   }
-  const hasVoucher = t.rewardType === 'VOUCHER' || t.rewardType === 'BOTH';
-  const voucherName =
-    hasVoucher && typeof t.voucherName === 'string' ? t.voucherName : null;
-  return {
-    format: t.format as ReadTerms['format'],
-    // 식사권 이름이 비어 있어도 보상에 식사권이 있으면 줄은 만든다.
-    voucherName: hasVoucher ? (voucherName ?? '식사권') : null,
-  };
 }
 
 interface Group {

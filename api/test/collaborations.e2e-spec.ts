@@ -4,7 +4,6 @@ import {
   CollaborationStage,
   ContentFormat,
   PrismaClient,
-  RewardType,
 } from '@prisma/client';
 import request from 'supertest';
 import { scheduleSubmissionDeadlineJobs } from '../src/collaborations/collaboration-jobs';
@@ -153,13 +152,16 @@ describe('collaborations', () => {
   async function seed(
     over: {
       stage?: CollaborationStage;
-      rewardType?: RewardType;
+      rewardType?: 'VOUCHER' | 'PER_VIEW' | 'BOTH';
+      ratePerThousand?: number;
       perViewCap?: number;
       paymentDueAt?: Date;
     } = {},
   ): Promise<Seeded> {
     const rewardType = over.rewardType ?? 'BOTH';
     const perView = rewardType !== 'VOUCHER';
+    // 단가는 옛 협업과 같은 금액이 나오도록 기본을 10,000원(1,000회당)으로 둔다. 새 범위의 단가는 시나리오가 준다.
+    const ratePerThousand = over.ratePerThousand ?? 10000;
     const perViewCap = over.perViewCap ?? 100000;
     const awaiting = over.stage === 'AWAITING_PAYMENT';
     await prisma.user.create({ data: { id: OTHER, role: 'STORE' } });
@@ -172,7 +174,6 @@ describe('collaborations', () => {
         neighborhood: '성수동',
         ...REGION,
         defaultFormat: 'REELS',
-        defaultRewardType: 'BOTH',
         publishedAt: T0,
       },
     });
@@ -198,19 +199,23 @@ describe('collaborations', () => {
         },
       });
     }
-    const terms = {
+    const hasVoucher = rewardType !== 'PER_VIEW';
+    const columns = {
       format: 'REELS' as ContentFormat,
-      rewardType,
-      voucherName: rewardType === 'PER_VIEW' ? null : '2인 식사권',
-      voucherValue: rewardType === 'PER_VIEW' ? null : 40000,
-      perViewAmount: perView ? 10 : null,
+      voucherName: hasVoucher ? '식사권' : null,
+      voucherValue: hasVoucher ? 40000 : null,
+      voucherPeople: hasVoucher ? 2 : null,
+      fixedCash: 0,
+      viewRatePerThousand: perView ? ratePerThousand : null,
       perViewCap: perView ? perViewCap : null,
+      usageRights: 'STORE_REPOST_3M' as const,
     };
+    const terms = { ...columns, pieces: 1 };
     const offer = await prisma.offer.create({
       data: {
         storeId: store.id,
         creatorId: USER_A,
-        ...terms,
+        ...columns,
         status: 'ACCEPTED',
         expiresAt: new Date(T0.getTime() + 7 * DAY),
         createdAt: T0,
@@ -359,11 +364,16 @@ describe('collaborations', () => {
       });
       expect(body.terms).toEqual({
         format: 'REELS',
-        rewardType: 'BOTH',
-        voucherName: '2인 식사권',
+        pieces: 1,
+        voucherName: '식사권',
         voucherValue: 40000,
-        perViewAmount: 10,
+        voucherPeople: 2,
+        fixedCash: 0,
+        viewRatePerThousand: 10000,
         perViewCap: 100000,
+        usageRights: 'STORE_REPOST_3M',
+        maxCashBurden: 100000,
+        settlementMethod: 'PER_VIEW',
       });
     });
 
@@ -422,6 +432,28 @@ describe('collaborations', () => {
         expectedRefund: 56800,
         canRequestCancel: false,
       });
+    });
+
+    it('shows the amount earned so far with the per thousand rate', async () => {
+      // 1,000회당 2,000원, 상한 60,000원: 12,500회 → 25,000원, 환급 예정 35,000원.
+      const s = await seed({ ratePerThousand: 2000, perViewCap: 60000 });
+      await submit(s.collaborationId, `${REELS_URL}?views=12500`).expect(200);
+      await scheduler.runDue(clock.now());
+
+      const creator = bodyOf(await get(s.collaborationId).expect(200));
+      expect(creator).toMatchObject({
+        stage: 'COUNTING',
+        currentViews: 12500,
+        earnedSoFar: 25000,
+        escrowAmount: 60000,
+      });
+      expect(creator.terms).toMatchObject({
+        viewRatePerThousand: 2000,
+        perViewCap: 60000,
+        maxCashBurden: 60000,
+      });
+      const owner = bodyOf(await get(s.collaborationId, ownerAuth).expect(200));
+      expect(owner).toMatchObject({ expectedRefund: 35000 });
     });
 
     it('returns the collaboration model from the submission endpoint', async () => {
@@ -508,17 +540,19 @@ describe('collaborations', () => {
           name: '두 번째 가게',
           ...REGION,
           defaultFormat: 'REELS',
-          defaultRewardType: 'VOUCHER',
           publishedAt: T0,
         },
       });
       const terms = {
         format: 'REELS',
-        rewardType: 'VOUCHER',
+        pieces: 1,
         voucherName: '커피 쿠폰',
         voucherValue: 5000,
-        perViewAmount: null,
+        voucherPeople: null,
+        fixedCash: 0,
+        viewRatePerThousand: null,
         perViewCap: null,
+        usageRights: 'STORE_REPOST_3M',
       };
       const make = (stage: CollaborationStage, createdAt: Date) =>
         prisma.collaboration.create({

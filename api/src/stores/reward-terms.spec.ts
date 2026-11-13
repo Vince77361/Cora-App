@@ -1,9 +1,13 @@
 import { AppError } from '../common/errors/app-error';
 import {
   buildReward,
+  buildTerms,
+  copyOfTerms,
+  defaultsOfStore,
   fromLegacyTerms,
   hasViewPay,
   maxCashBurden,
+  readTerms,
   settlementMethodOfReward,
 } from './reward-terms';
 
@@ -210,5 +214,206 @@ describe('fromLegacyTerms', () => {
       voucherValue: 9000,
       viewRatePerThousand: 10000,
     });
+  });
+});
+
+describe('range error wording', () => {
+  it('uses the particle that matches the final sound of the label', () => {
+    // 고정 현금(받침 있음), 조회수 단가(받침 없음), 조회수 수당 상한(받침 있음).
+    expect(() => buildReward({ fixedCash: 35000 }, store)).toThrow(
+      /^고정 현금은 0원부터/,
+    );
+    expect(() =>
+      buildReward({ perView: { ratePerThousand: 999 } }, store),
+    ).toThrow(/^조회수 단가는 1,000원부터/);
+    expect(() => buildReward({ perView: { cap: 5000 } }, store)).toThrow(
+      /^조회수 수당 상한은 10,000원부터/,
+    );
+    try {
+      buildReward({ fixedCash: 35000 }, store);
+    } catch (e) {
+      expect((e as AppError).message).not.toContain('은(는)');
+    }
+  });
+});
+
+describe('buildTerms', () => {
+  it('adds pieces, usage rights and the two calculated values to the reward', () => {
+    expect(
+      buildTerms({ format: 'REELS', reward: { voucher: {}, perView: {} } }),
+    ).toEqual({
+      format: 'REELS',
+      pieces: 1,
+      voucherName: '식사권',
+      voucherValue: 40000,
+      voucherPeople: 2,
+      fixedCash: 0,
+      viewRatePerThousand: 2000,
+      perViewCap: 60000,
+      usageRights: 'STORE_REPOST_3M',
+      maxCashBurden: 60000,
+      settlementMethod: 'PER_VIEW',
+    });
+  });
+
+  it('keeps a voucher only reward at zero burden', () => {
+    expect(
+      buildTerms({ format: 'SHORTS', reward: { voucher: {} } }),
+    ).toMatchObject({
+      viewRatePerThousand: null,
+      perViewCap: null,
+      maxCashBurden: 0,
+      settlementMethod: 'NONE',
+    });
+  });
+
+  it('fills blanks from the store defaults before the policy defaults', () => {
+    const defaults = defaultsOfStore({
+      defaultVoucherName: '커피',
+      defaultVoucherValue: 9000,
+      defaultVoucherPeople: 1,
+      defaultViewRatePerThousand: 3000,
+      defaultPerViewCap: 100000,
+      defaultUsageRights: 'STORE_REPOST_6M',
+    });
+    expect(
+      buildTerms(
+        { format: 'REELS', reward: { voucher: {}, perView: {} } },
+        defaults,
+      ),
+    ).toMatchObject({
+      voucherName: '커피',
+      voucherValue: 9000,
+      voucherPeople: 1,
+      viewRatePerThousand: 3000,
+      perViewCap: 100000,
+      usageRights: 'STORE_REPOST_6M',
+    });
+    // 입력이 가게의 기본값보다 먼저다.
+    expect(
+      buildTerms(
+        {
+          format: 'REELS',
+          reward: { perView: { ratePerThousand: 1500 } },
+          usageRights: 'NONE',
+        },
+        defaults,
+      ),
+    ).toMatchObject({
+      viewRatePerThousand: 1500,
+      perViewCap: 100000,
+      usageRights: 'NONE',
+    });
+  });
+
+  it('refuses fixed cash for now', () => {
+    expect(() =>
+      buildTerms({
+        format: 'REELS',
+        reward: { voucher: {}, fixedCash: 30000 },
+      }),
+    ).toThrow(
+      new AppError('VALIDATION_FAILED', '고정 현금은 아직 쓸 수 없어요.'),
+    );
+  });
+
+  it('keeps the existing range and blog rules', () => {
+    expect(() =>
+      buildTerms({
+        format: 'REELS',
+        reward: { perView: { ratePerThousand: 10000 } },
+      }),
+    ).toThrow(AppError);
+    expect(() =>
+      buildTerms({ format: 'BLOG', reward: { perView: {} } }),
+    ).toThrow('블로그 글은 조회수를 셀 수 없어요.');
+  });
+});
+
+describe('readTerms', () => {
+  const newCopy = {
+    format: 'REELS',
+    pieces: 1,
+    voucherName: '식사권',
+    voucherValue: 40000,
+    voucherPeople: 2,
+    fixedCash: 30000,
+    viewRatePerThousand: 2000,
+    perViewCap: 60000,
+    usageRights: 'STORE_REPOST_3M',
+  };
+
+  it('reads a new copy and calculates the burden and method without storing them', () => {
+    expect(readTerms(newCopy)).toEqual({
+      ...newCopy,
+      maxCashBurden: 90000,
+      settlementMethod: 'FIXED_AND_PER_VIEW',
+    });
+  });
+
+  it('round trips what copyOfTerms stores', () => {
+    const terms = buildTerms({
+      format: 'CARD_NEWS',
+      reward: { voucher: { people: 4 }, perView: { cap: 80000 } },
+    });
+    const copy = copyOfTerms(terms);
+    expect(Object.keys(copy)).not.toContain('maxCashBurden');
+    expect(Object.keys(copy)).not.toContain('settlementMethod');
+    expect(readTerms(JSON.parse(JSON.stringify(copy)))).toEqual(terms);
+  });
+
+  it('does not check ranges when reading', () => {
+    expect(
+      readTerms({ ...newCopy, viewRatePerThousand: 10000, fixedCash: 35000 }),
+    ).toMatchObject({ viewRatePerThousand: 10000, fixedCash: 35000 });
+  });
+
+  it('reads a legacy copy as 10000 won per thousand with the same burden', () => {
+    expect(
+      readTerms({
+        format: 'REELS',
+        rewardType: 'BOTH',
+        voucherName: '2인 식사권',
+        voucherValue: 40000,
+        perViewAmount: 10,
+        perViewCap: 100000,
+      }),
+    ).toEqual({
+      format: 'REELS',
+      pieces: 1,
+      voucherName: '식사권',
+      voucherValue: 40000,
+      voucherPeople: 2,
+      fixedCash: 0,
+      viewRatePerThousand: 10000,
+      perViewCap: 100000,
+      usageRights: 'NONE',
+      maxCashBurden: 100000,
+      settlementMethod: 'PER_VIEW',
+    });
+  });
+
+  it('reads a legacy voucher only copy without a rate or cap', () => {
+    expect(
+      readTerms({
+        format: 'SHORTS',
+        rewardType: 'VOUCHER',
+        voucherName: '커피 2잔',
+        voucherValue: 9000,
+        perViewAmount: null,
+        perViewCap: null,
+      }),
+    ).toMatchObject({
+      voucherName: '커피 2잔',
+      viewRatePerThousand: null,
+      perViewCap: null,
+      maxCashBurden: 0,
+      settlementMethod: 'NONE',
+    });
+  });
+
+  it('throws when the format is missing so a broken copy never moves money', () => {
+    expect(() => readTerms({ ...newCopy, format: undefined })).toThrow();
+    expect(() => readTerms(null)).toThrow();
   });
 });

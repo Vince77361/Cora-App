@@ -37,7 +37,6 @@ function createOffer(input: {
       storeId,
       creatorId: CREATOR,
       format: 'REELS',
-      rewardType: 'VOUCHER',
       expiresAt: new Date('2026-12-01T00:00:00Z'),
       ...input,
     },

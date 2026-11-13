@@ -10,14 +10,15 @@
 
 part of cora_api;
 
-enum RewardType {
-  VOUCHER._(r'VOUCHER'),
+enum SettlementMethod {
   PER_VIEW._(r'PER_VIEW'),
-  BOTH._(r'BOTH'),
+  FIXED._(r'FIXED'),
+  NONE._(r'NONE'),
+  FIXED_AND_PER_VIEW._(r'FIXED_AND_PER_VIEW'),
   ;
 
   /// Instantiate a new enum with the provided value.
-  const RewardType._(this._value);
+  const SettlementMethod._(this._value);
 
   /// The underlying value of this enum member.
   final String _value;
@@ -28,21 +29,21 @@ enum RewardType {
   /// Encodes this enum as a value suitable for JSON.
   String toJson() => _value;
 
-  /// Returns the instance of [RewardType] that was successfully decoded
+  /// Returns the instance of [SettlementMethod] that was successfully decoded
   /// from the passed [value] on success, null otherwise.
-  static RewardType? fromJson(dynamic value) =>
-      RewardTypeTypeTransformer().decode(value);
+  static SettlementMethod? fromJson(dynamic value) =>
+      SettlementMethodTypeTransformer().decode(value);
 
-  /// Returns a [List] containing instances of [RewardType]
+  /// Returns a [List] containing instances of [SettlementMethod]
   /// that were successfully decoded from the passed [JSON][json].
-  static List<RewardType> listFromJson(
+  static List<SettlementMethod> listFromJson(
     dynamic json, {
     bool growable = false,
   }) {
-    final result = <RewardType>[];
+    final result = <SettlementMethod>[];
     if (json is List && json.isNotEmpty) {
       for (final row in json) {
-        final value = RewardType.fromJson(row);
+        final value = SettlementMethod.fromJson(row);
         if (value != null) {
           result.add(value);
         }
@@ -52,18 +53,18 @@ enum RewardType {
   }
 }
 
-/// Transformation class that can [encode] an instance of [RewardType] to String,
-/// and [decode] dynamic data back to [RewardType].
-class RewardTypeTypeTransformer {
-  factory RewardTypeTypeTransformer() =>
-      _instance ??= const RewardTypeTypeTransformer._();
+/// Transformation class that can [encode] an instance of [SettlementMethod] to String,
+/// and [decode] dynamic data back to [SettlementMethod].
+class SettlementMethodTypeTransformer {
+  factory SettlementMethodTypeTransformer() =>
+      _instance ??= const SettlementMethodTypeTransformer._();
 
-  const RewardTypeTypeTransformer._();
+  const SettlementMethodTypeTransformer._();
 
   /// Encodes this enum as a value suitable for JSON.
-  String encode(RewardType data) => data._value;
+  String encode(SettlementMethod data) => data._value;
 
-  /// Returns the instance of [RewardType] that was successfully decoded
+  /// Returns the instance of [SettlementMethod] that was successfully decoded
   /// from the passed [data] value on success, null otherwise.
   ///
   /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
@@ -72,18 +73,20 @@ class RewardTypeTypeTransformer {
   ///
   /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
   /// and users are still using an old app with the old code.
-  RewardType? decode(dynamic data, {bool allowNull = true}) {
-    if (data is RewardType) {
+  SettlementMethod? decode(dynamic data, {bool allowNull = true}) {
+    if (data is SettlementMethod) {
       return data;
     }
     if (data != null) {
       switch (data) {
-        case r'VOUCHER':
-          return RewardType.VOUCHER;
         case r'PER_VIEW':
-          return RewardType.PER_VIEW;
-        case r'BOTH':
-          return RewardType.BOTH;
+          return SettlementMethod.PER_VIEW;
+        case r'FIXED':
+          return SettlementMethod.FIXED;
+        case r'NONE':
+          return SettlementMethod.NONE;
+        case r'FIXED_AND_PER_VIEW':
+          return SettlementMethod.FIXED_AND_PER_VIEW;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');
@@ -94,5 +97,5 @@ class RewardTypeTypeTransformer {
   }
 
   /// The singleton instance of this transformer.
-  static RewardTypeTypeTransformer? _instance;
+  static SettlementMethodTypeTransformer? _instance;
 }

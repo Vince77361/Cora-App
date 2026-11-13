@@ -21,6 +21,7 @@
     "test:db": "node scripts/with-test-db.js jest --config ./test/jest-db.json --runInBand",
     "ops": "node dist/ops-main.js",
     "check:ledger": "ts-node scripts/check-ledger.ts",
+    "check:reward-migration": "ts-node scripts/check-reward-migration.ts",
     "openapi:export": "ts-node scripts/export-openapi.ts",
     "check:rls": "node scripts/check-rls.js",
     "seed:dev": "ts-node scripts/seed-dev.ts",

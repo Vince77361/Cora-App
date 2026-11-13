@@ -26,23 +26,28 @@ const PROFILE = {
   contentFocus: '카페 릴스',
   ...REGION,
 };
-const REELS_VOUCHER = { format: 'REELS', rewardType: 'VOUCHER' };
+const REELS_VOUCHER = { format: 'REELS', reward: { voucher: {} } };
 // 조회수 보상만 있는 오퍼를 DB에 바로 만들 때 쓰는 값.
 const PER_VIEW_TERMS = {
-  rewardType: 'PER_VIEW',
   voucherName: null,
   voucherValue: null,
-  perViewAmount: 10,
-  perViewCap: 100000,
+  voucherPeople: null,
+  viewRatePerThousand: 2000,
+  perViewCap: 60000,
 } as const;
 
 interface TermsBody {
   format: string;
-  rewardType: string;
+  pieces: number;
   voucherName: string | null;
   voucherValue: number | null;
-  perViewAmount: number | null;
+  voucherPeople: number | null;
+  fixedCash: number;
+  viewRatePerThousand: number | null;
   perViewCap: number | null;
+  usageRights: string;
+  maxCashBurden: number;
+  settlementMethod: string;
 }
 interface SentBody {
   id: string;
@@ -170,9 +175,9 @@ describe('offers', () => {
         regionSido: REGION.regionSido,
         regionSigungu: REGION.regionSigungu,
         defaultFormat: 'REELS',
-        defaultRewardType: 'VOUCHER',
-        defaultVoucherName: '2인 식사권',
+        defaultVoucherName: '식사권',
         defaultVoucherValue: 40000,
+        defaultVoucherPeople: 2,
         publishedAt: T0,
       },
     });
@@ -190,9 +195,9 @@ describe('offers', () => {
         storeId,
         creatorId,
         format: 'REELS',
-        rewardType: 'VOUCHER',
-        voucherName: '2인 식사권',
+        voucherName: '식사권',
         voucherValue: 40000,
+        voucherPeople: 2,
         status: 'SENT',
         expiresAt: new Date(clock.now().getTime() + 7 * DAY),
         createdAt: clock.now(),
@@ -207,7 +212,8 @@ describe('offers', () => {
       id: string;
       storeId: string;
       creatorId: string;
-      rewardType: string;
+      viewRatePerThousand: number | null;
+      perViewCap: number | null;
     },
     ownerId: string,
     stage: CollaborationStage,
@@ -220,8 +226,14 @@ describe('offers', () => {
         creatorId: offer.creatorId,
         offerId: offer.id,
         storeId: offer.storeId,
-        terms: { format: 'REELS', rewardType: offer.rewardType },
-        settlementMethod: offer.rewardType === 'VOUCHER' ? 'NONE' : 'PER_VIEW',
+        terms: {
+          format: 'REELS',
+          pieces: 1,
+          fixedCash: 0,
+          viewRatePerThousand: offer.viewRatePerThousand,
+          perViewCap: offer.perViewCap,
+        },
+        settlementMethod: offer.perViewCap === null ? 'NONE' : 'PER_VIEW',
       },
     });
   }
@@ -274,11 +286,16 @@ describe('offers', () => {
       });
       expect(body.terms).toEqual({
         format: 'REELS',
-        rewardType: 'VOUCHER',
-        voucherName: '2인 식사권',
+        pieces: 1,
+        voucherName: '식사권',
         voucherValue: 40000,
-        perViewAmount: null,
+        voucherPeople: 2,
+        fixedCash: 0,
+        viewRatePerThousand: null,
         perViewCap: null,
+        usageRights: 'STORE_REPOST_3M',
+        maxCashBurden: 0,
+        settlementMethod: 'NONE',
       });
       const offer = await prisma.offer.findUniqueOrThrow({
         where: { id: body.id },
@@ -305,30 +322,111 @@ describe('offers', () => {
       expect(offer.applicationId).toBeNull();
     });
 
+    it('sends an offer with the store default view pay when values are omitted', async () => {
+      // 가게의 모집 조건: 1,000회당 3,000원, 상한 100,000원, 사용권 6개월.
+      await request(server)
+        .put('/stores/me/default-terms')
+        .set(auth)
+        .send({
+          format: 'REELS',
+          reward: {
+            voucher: {},
+            perView: { ratePerThousand: 3000, cap: 100000 },
+          },
+          usageRights: 'STORE_REPOST_6M',
+        })
+        .expect(200);
+      const creatorId = await seedCreator();
+      const res = await send({
+        creatorId,
+        format: 'REELS',
+        reward: { perView: {} },
+      }).expect(201);
+      expect((res.body as SentBody).terms).toMatchObject({
+        voucherName: null,
+        fixedCash: 0,
+        viewRatePerThousand: 3000,
+        perViewCap: 100000,
+        usageRights: 'STORE_REPOST_6M',
+        maxCashBurden: 100000,
+        settlementMethod: 'PER_VIEW',
+      });
+      // 값을 주면 가게의 기본값보다 먼저다.
+      const other = await seedCreator('다른 사람');
+      const given = await send({
+        creatorId: other,
+        format: 'REELS',
+        reward: { perView: { ratePerThousand: 1500, cap: 30000 } },
+        usageRights: 'NONE',
+      }).expect(201);
+      expect((given.body as SentBody).terms).toMatchObject({
+        viewRatePerThousand: 1500,
+        perViewCap: 30000,
+        usageRights: 'NONE',
+        maxCashBurden: 30000,
+      });
+    });
+
+    it('rejects a rate outside the allowed range', async () => {
+      const creatorId = await seedCreator();
+      for (const reward of [
+        { perView: { ratePerThousand: 10000 } },
+        { perView: { ratePerThousand: 1250 } },
+        { perView: { cap: 5000 } },
+        { perView: { cap: 15000 } },
+      ]) {
+        const res = await send({ creatorId, format: 'REELS', reward }).expect(
+          400,
+        );
+        expect(codeOf(res)).toBe('VALIDATION_FAILED');
+      }
+      expect(await prisma.offer.count()).toBe(0);
+    });
+
+    it('rejects fixed cash for now', async () => {
+      const creatorId = await seedCreator();
+      const res = await send({
+        creatorId,
+        format: 'REELS',
+        reward: { voucher: {}, fixedCash: 30000 },
+      }).expect(400);
+      expect(codeOf(res)).toBe('VALIDATION_FAILED');
+      expect((res.body as { error: { message: string } }).error.message).toBe(
+        '고정 현금은 아직 쓸 수 없어요.',
+      );
+      expect(await prisma.offer.count()).toBe(0);
+    });
+
     it('copies terms so later default changes do not affect it', async () => {
       const creatorId = await seedCreator();
       await send({
         creatorId,
         format: 'REELS',
-        rewardType: 'BOTH',
-        voucherName: '커피 쿠폰',
-        voucherValue: 12000,
+        reward: {
+          voucher: { name: '커피 쿠폰', value: 12000 },
+          perView: {},
+        },
       }).expect(201);
       await request(server)
         .put('/stores/me/default-terms')
         .set(auth)
-        .send({ format: 'SHORTS', rewardType: 'PER_VIEW' })
+        .send({ format: 'SHORTS', reward: { perView: { cap: 100000 } } })
         .expect(200);
 
       const list = (await sentList().expect(200)).body as SentBody[];
       expect(list).toHaveLength(1);
       expect(list[0].terms).toEqual({
         format: 'REELS',
-        rewardType: 'BOTH',
+        pieces: 1,
         voucherName: '커피 쿠폰',
         voucherValue: 12000,
-        perViewAmount: 10,
-        perViewCap: 100000,
+        voucherPeople: 2,
+        fixedCash: 0,
+        viewRatePerThousand: 2000,
+        perViewCap: 60000,
+        usageRights: 'STORE_REPOST_3M',
+        maxCashBurden: 60000,
+        settlementMethod: 'PER_VIEW',
       });
     });
 
@@ -337,7 +435,7 @@ describe('offers', () => {
       const res = await send({
         creatorId,
         format: 'BLOG',
-        rewardType: 'PER_VIEW',
+        reward: { perView: {} },
       }).expect(400);
       expect(codeOf(res)).toBe('VALIDATION_FAILED');
       expect(await prisma.offer.count()).toBe(0);
@@ -348,6 +446,12 @@ describe('offers', () => {
       await send({
         creatorId: randomUUID(),
         format: 'X',
+        reward: { voucher: {} },
+      }).expect(400);
+      // 옛 모양(rewardType)은 받지 않는다.
+      await send({
+        creatorId: randomUUID(),
+        format: 'REELS',
         rewardType: 'VOUCHER',
       }).expect(400);
       await send({
@@ -670,11 +774,7 @@ describe('offers', () => {
     it('cancels the collaboration when the owner cancels an accepted offer', async () => {
       const creatorId = await seedCreator();
       const offer = await seedOffer(storeId, creatorId, {
-        rewardType: 'PER_VIEW',
-        perViewAmount: 10,
-        perViewCap: 100000,
-        voucherName: null,
-        voucherValue: null,
+        ...PER_VIEW_TERMS,
         status: 'ACCEPTED',
         acceptedAt: T0,
         paymentDueAt: new Date(T0.getTime() + 3 * DAY),
@@ -724,11 +824,7 @@ describe('offers', () => {
     it('cancels the collaboration when an accepted offer passes its payment due date', async () => {
       const creatorId = await seedCreator();
       const offer = await seedOffer(storeId, creatorId, {
-        rewardType: 'PER_VIEW',
-        perViewAmount: 10,
-        perViewCap: 100000,
-        voucherName: null,
-        voucherValue: null,
+        ...PER_VIEW_TERMS,
         status: 'ACCEPTED',
         acceptedAt: T0,
         paymentDueAt: new Date(T0.getTime() + 3 * DAY),
@@ -941,7 +1037,8 @@ describe('offers', () => {
       });
       expect(list[1].terms).toMatchObject({
         format: 'REELS',
-        rewardType: 'VOUCHER',
+        voucherName: '식사권',
+        maxCashBurden: 0,
       });
     });
 
@@ -1009,6 +1106,16 @@ describe('offers', () => {
       ]);
     });
 
+    it('needs instagram for a reels offer with view pay and not for a voucher only offer', async () => {
+      const withViewPay = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
+      const other = await seedStore();
+      const voucherOnly = await seedOffer(other.id, USER_A);
+      const list = (await received('new').expect(200)).body as ReceivedBody[];
+      const byId = new Map(list.map((o) => [o.id, o.needsInstagram]));
+      expect(byId.get(withViewPay.id)).toBe(true);
+      expect(byId.get(voucherOnly.id)).toBe(false);
+    });
+
     it('refuses to accept a per-view reels offer without a connection', async () => {
       const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
       const res = await accept(offer.id).expect(409);
@@ -1052,9 +1159,9 @@ describe('offers', () => {
       const offer = await seedOffer(store.id, USER_A, {
         ...PER_VIEW_TERMS,
         format: 'CARD_NEWS',
-        rewardType: 'BOTH',
-        voucherName: '2인 식사권',
+        voucherName: '식사권',
         voucherValue: 40000,
+        voucherPeople: 2,
       });
       await accept(offer.id).expect(409);
       await connectInstagram();
@@ -1085,9 +1192,9 @@ describe('offers', () => {
       await connectInstagram();
       const offer = await seedOffer(store.id, USER_A, {
         ...PER_VIEW_TERMS,
-        rewardType: 'BOTH',
-        voucherName: '2인 식사권',
+        voucherName: '식사권',
         voucherValue: 40000,
+        voucherPeople: 2,
       });
       const res = await accept(offer.id).expect(200);
       const collaboration = await prisma.collaboration.findUniqueOrThrow({
@@ -1105,12 +1212,16 @@ describe('offers', () => {
         fundedAt: null,
         submitDueAt: null,
       });
-      expect(collaboration.terms).toMatchObject({
+      expect(collaboration.terms).toEqual({
         format: 'REELS',
-        rewardType: 'BOTH',
-        perViewAmount: 10,
-        perViewCap: 100000,
-        voucherName: '2인 식사권',
+        pieces: 1,
+        voucherName: '식사권',
+        voucherValue: 40000,
+        voucherPeople: 2,
+        fixedCash: 0,
+        viewRatePerThousand: 2000,
+        perViewCap: 60000,
+        usageRights: 'NONE',
       });
       expect((res.body as ReceivedBody).collaborationId).toBe(collaboration.id);
     });
@@ -1199,13 +1310,7 @@ describe('offers', () => {
 
     it('sends the store owner to payment when the accepted offer awaits payment', async () => {
       await connectInstagram();
-      const offer = await seedOffer(store.id, USER_A, {
-        rewardType: 'PER_VIEW',
-        voucherName: null,
-        voucherValue: null,
-        perViewAmount: 10,
-        perViewCap: 100000,
-      });
+      const offer = await seedOffer(store.id, USER_A, PER_VIEW_TERMS);
       await accept(offer.id).expect(200);
       const collaboration = await prisma.collaboration.findUniqueOrThrow({
         where: { offerId: offer.id },

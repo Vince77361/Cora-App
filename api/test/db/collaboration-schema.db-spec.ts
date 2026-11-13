@@ -22,7 +22,6 @@ beforeEach(async () => {
       storeId,
       creatorId: CREATOR,
       format: 'REELS',
-      rewardType: 'VOUCHER',
       status: 'ACCEPTED',
       expiresAt: new Date('2026-12-01T00:00:00Z'),
     },
@@ -39,7 +38,7 @@ function createCollaboration(over: { offerId?: string | null } = {}) {
       creatorId: CREATOR,
       offerId: over.offerId === undefined ? offerId : over.offerId,
       storeId,
-      terms: { format: 'REELS', rewardType: 'VOUCHER' },
+      terms: { format: 'REELS', voucherName: '식사권' },
       settlementMethod: 'PER_VIEW',
     },
   });

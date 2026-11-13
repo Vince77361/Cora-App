@@ -43,11 +43,16 @@ Map<String, Object?> _json({String stage = 'COUNTING'}) => {
   'submittedUrl': 'https://www.instagram.com/reel/abc',
   'terms': {
     'format': 'REELS',
-    'perViewAmount': 10,
-    'perViewCap': 100000,
-    'rewardType': 'BOTH',
-    'voucherName': '2인 식사권',
+    'pieces': 1,
+    'voucherName': '식사권',
     'voucherValue': 40000,
+    'voucherPeople': 2,
+    'fixedCash': 0,
+    'viewRatePerThousand': 10000,
+    'perViewCap': 100000,
+    'usageRights': 'STORE_REPOST_3M',
+    'maxCashBurden': 100000,
+    'settlementMethod': 'PER_VIEW',
   },
 };
 
@@ -68,7 +73,7 @@ void main() {
     expect(c.steps.last.state, StepState.now);
     expect(c.steps.first.at, DateTime.utc(2026, 11, 10, 3));
     expect(c.terms.rewardType, RewardType.both);
-    expect(c.terms.voucherName, '2인 식사권');
+    expect(c.terms.voucherName, '식사권');
     expect(c.payoutStatus, PayoutStatus.none);
   });
 

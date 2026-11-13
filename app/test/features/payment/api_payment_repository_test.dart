@@ -18,11 +18,15 @@ final _quoteJson = jsonEncode({
   'escrow': 100000,
   'fee': 10000,
   'feeRate': 10,
+  'fixedCash': 0,
   'format': 'REELS',
   'orderName': '릴스 1편',
   'pieces': 1,
   'total': 110000,
+  'perViewCap': 100000,
   'voucherName': null,
+  'voucherPeople': null,
+  'voucherValue': null,
 });
 
 void main() {

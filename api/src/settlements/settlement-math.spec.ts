@@ -1,4 +1,4 @@
-import { feeFor, settle, settleReward } from './settlement-math';
+import { feeFor, settleReward } from './settlement-math';
 
 describe('feeFor', () => {
   it('charges a 10 percent fee rounded down', () => {
@@ -9,48 +9,6 @@ describe('feeFor', () => {
   it('charges nothing for a zero amount or a zero rate', () => {
     expect(feeFor(0, 10)).toBe(0);
     expect(feeFor(100000, 0)).toBe(0);
-  });
-});
-
-describe('settle', () => {
-  it('pays views times unit up to the cap', () => {
-    expect(settle({ views: 4320, perViewAmount: 10, cap: 100000 })).toEqual({
-      payout: 43200,
-      refund: 56800,
-    });
-  });
-
-  it('pays nothing and refunds everything for zero views', () => {
-    expect(settle({ views: 0, perViewAmount: 10, cap: 100000 })).toEqual({
-      payout: 0,
-      refund: 100000,
-    });
-  });
-
-  it('caps the payout and refunds nothing when views exceed the cap', () => {
-    expect(settle({ views: 250000, perViewAmount: 10, cap: 100000 })).toEqual({
-      payout: 100000,
-      refund: 0,
-    });
-  });
-
-  it('pays exactly the cap when views times unit equals it', () => {
-    expect(settle({ views: 10000, perViewAmount: 10, cap: 100000 })).toEqual({
-      payout: 100000,
-      refund: 0,
-    });
-  });
-
-  it('rejects negative or fractional views', () => {
-    expect(() =>
-      settle({ views: -1, perViewAmount: 10, cap: 100000 }),
-    ).toThrow();
-    expect(() =>
-      settle({ views: 1.5, perViewAmount: 10, cap: 100000 }),
-    ).toThrow();
-    expect(() =>
-      settle({ views: NaN, perViewAmount: 10, cap: 100000 }),
-    ).toThrow();
   });
 });
 
@@ -137,10 +95,12 @@ describe('settleReward', () => {
     });
   });
 
-  it('matches the legacy settle for every legacy collaboration shape', () => {
+  it('matches the old per-view calculation for every legacy collaboration shape', () => {
     for (let i = 0; i < 200; i += 1) {
       const views = Math.round((i * 250000) / 199);
-      const old = settle({ views, perViewAmount: 10, cap: 100000 });
+      // 옛 계산: 조회수 × 건당 10원, 상한 10만 원까지 지급하고 남은 상한을 환급한다.
+      const payout = Math.min(views * 10, 100000);
+      const old = { payout, refund: 100000 - payout };
       const next = settleReward({
         views,
         ratePerThousand: 10000,

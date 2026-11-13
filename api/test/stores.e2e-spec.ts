@@ -52,7 +52,7 @@ describe('stores', () => {
     request(server)
       .put('/stores/me/default-terms')
       .set(auth)
-      .send({ format: 'REELS', rewardType: 'VOUCHER', ...over });
+      .send({ format: 'REELS', reward: { voucher: {} }, ...over });
   const publish = () =>
     request(server).post('/stores/me/publish').set(auth).send();
   const codeOf = (res: request.Response) =>
@@ -90,9 +90,9 @@ describe('stores', () => {
           over.regionSido === undefined ? '서울특별시' : over.regionSido,
         regionSigungu: over.regionSigungu ?? null,
         defaultFormat: 'REELS',
-        defaultRewardType: 'VOUCHER',
-        defaultVoucherName: '2인 식사권',
+        defaultVoucherName: '식사권',
         defaultVoucherValue: 40000,
+        defaultVoucherPeople: 2,
         publishedAt: published ? (over.publishedAt ?? new Date()) : null,
       },
     });
@@ -369,40 +369,109 @@ describe('stores', () => {
       await analyze().expect(200);
     });
 
-    it('fills the voucher defaults and the per-view numbers', async () => {
-      const res = await putTerms({ rewardType: 'BOTH' }).expect(200);
+    it('saves the default terms as three reward elements', async () => {
+      const res = await putTerms({
+        reward: { voucher: {}, perView: {} },
+      }).expect(200);
       expect((res.body as StoreBody).defaultTerms).toEqual({
         format: 'REELS',
-        rewardType: 'BOTH',
-        voucherName: '2인 식사권',
+        pieces: 1,
+        voucherName: '식사권',
         voucherValue: 40000,
-        perViewAmount: 10,
-        perViewCap: 100000,
+        voucherPeople: 2,
+        fixedCash: 0,
+        viewRatePerThousand: 2000,
+        perViewCap: 60000,
+        usageRights: 'STORE_REPOST_3M',
+        maxCashBurden: 60000,
+        settlementMethod: 'PER_VIEW',
       });
       const perView = await putTerms({
-        rewardType: 'PER_VIEW',
-        voucherName: '커피',
+        reward: { perView: { ratePerThousand: 3000, cap: 100000 } },
+        usageRights: 'STORE_REPOST_6M',
       }).expect(200);
       expect((perView.body as StoreBody).defaultTerms).toMatchObject({
         voucherName: null,
         voucherValue: null,
-        perViewAmount: 10,
+        voucherPeople: null,
+        viewRatePerThousand: 3000,
+        perViewCap: 100000,
+        usageRights: 'STORE_REPOST_6M',
+      });
+    });
+
+    it('fills 2000 won per thousand and a 60000 cap when view pay is on without values', async () => {
+      const res = await putTerms({ reward: { perView: {} } }).expect(200);
+      expect((res.body as StoreBody).defaultTerms).toMatchObject({
+        viewRatePerThousand: 2000,
+        perViewCap: 60000,
+      });
+    });
+
+    it('returns the maximum cash burden with the default terms', async () => {
+      const both = await putTerms({
+        reward: { voucher: {}, perView: { cap: 80000 } },
+      }).expect(200);
+      expect((both.body as StoreBody).defaultTerms).toMatchObject({
+        maxCashBurden: 80000,
+        settlementMethod: 'PER_VIEW',
+      });
+      const voucherOnly = await putTerms().expect(200);
+      expect((voucherOnly.body as StoreBody).defaultTerms).toMatchObject({
+        maxCashBurden: 0,
+        settlementMethod: 'NONE',
+      });
+      // 저장한 값이 다시 읽혀도 같다.
+      const mine = await request(server)
+        .get('/stores/me')
+        .set(auth)
+        .expect(200);
+      expect((mine.body as StoreBody).defaultTerms).toMatchObject({
+        maxCashBurden: 0,
       });
     });
 
     it('rejects invalid terms', async () => {
       const blog = await putTerms({
         format: 'BLOG',
-        rewardType: 'PER_VIEW',
+        reward: { perView: {} },
       }).expect(400);
       expect(codeOf(blog)).toBe('VALIDATION_FAILED');
-      await putTerms({ voucherName: '' }).expect(400);
-      await putTerms({ voucherName: 'a'.repeat(21) }).expect(400);
-      await putTerms({ voucherValue: 999 }).expect(400);
-      await putTerms({ voucherValue: 1000001 }).expect(400);
-      await putTerms({ voucherValue: 1000 }).expect(200);
+      await putTerms({ reward: { voucher: { name: '' } } }).expect(400);
+      await putTerms({ reward: { voucher: { name: 'a'.repeat(21) } } }).expect(
+        400,
+      );
+      await putTerms({ reward: { voucher: { value: 999 } } }).expect(400);
+      await putTerms({ reward: { voucher: { value: 1000001 } } }).expect(400);
+      await putTerms({ reward: { voucher: { value: 1000 } } }).expect(200);
+      await putTerms({ reward: { voucher: { people: 0 } } }).expect(400);
       await putTerms({ format: 'PODCAST' }).expect(400);
-      await putTerms({ perViewAmount: 50 }).expect(400);
+      // 범위와 단위: 단가 1,000~5,000원(500원 단위), 상한 10,000~300,000원(10,000원 단위).
+      await putTerms({ reward: { perView: { ratePerThousand: 50 } } }).expect(
+        400,
+      );
+      await putTerms({
+        reward: { perView: { ratePerThousand: 5500 } },
+      }).expect(400);
+      await putTerms({
+        reward: { perView: { ratePerThousand: 1250 } },
+      }).expect(400);
+      await putTerms({ reward: { perView: { cap: 5000 } } }).expect(400);
+      await putTerms({ reward: { perView: { cap: 15000 } } }).expect(400);
+      await putTerms({ reward: { perView: { cap: 310000 } } }).expect(400);
+      await putTerms({
+        reward: { perView: { ratePerThousand: 1500, cap: 300000 } },
+      }).expect(200);
+      // 보상이 하나도 없거나 옛 모양으로 보내면 받지 않는다.
+      await putTerms({ reward: {} }).expect(400);
+      await putTerms({ rewardType: 'BOTH', reward: undefined }).expect(400);
+    });
+
+    it('rejects fixed cash for now', async () => {
+      const res = await putTerms({
+        reward: { voucher: {}, fixedCash: 30000 },
+      }).expect(400);
+      expect(codeOf(res)).toBe('VALIDATION_FAILED');
     });
   });
 
@@ -473,7 +542,7 @@ describe('stores', () => {
         .send({ intro: '공개 뒤에 고친 소개' })
         .expect(200);
       expect((res.body as StoreBody).intro).toBe('공개 뒤에 고친 소개');
-      await putTerms({ rewardType: 'PER_VIEW' }).expect(200);
+      await putTerms({ reward: { perView: {} } }).expect(200);
     });
   });
 
@@ -508,11 +577,16 @@ describe('stores', () => {
         coverPhotoUrl: null,
         defaultTerms: {
           format: 'REELS',
-          rewardType: 'VOUCHER',
-          voucherName: '2인 식사권',
+          pieces: 1,
+          voucherName: '식사권',
           voucherValue: 40000,
-          perViewAmount: null,
+          voucherPeople: 2,
+          fixedCash: 0,
+          viewRatePerThousand: null,
           perViewCap: null,
+          usageRights: 'STORE_REPOST_3M',
+          maxCashBurden: 0,
+          settlementMethod: 'NONE',
         },
       });
     });

@@ -82,12 +82,13 @@ enum ContentFormat {
   @@map("content_format")
 }
 
-enum RewardType {
-  VOUCHER
-  PER_VIEW
-  BOTH
+// 보상의 세 요소(식사권, 고정 현금, 조회수 수당)는 열의 값으로 말한다. 사용권은 오퍼마다 정한다.
+enum UsageRights {
+  STORE_REPOST_3M
+  STORE_REPOST_6M
+  NONE
 
-  @@map("reward_type")
+  @@map("usage_rights")
 }
 
 enum ApplicationStatus {
@@ -129,34 +130,39 @@ enum IndustryCategory {
 }
 
 model Store {
-  id                  String              @id @default(uuid()) @db.Uuid
+  id                         String              @id @default(uuid()) @db.Uuid
   // 한 계정에 가게는 하나다.
-  ownerId             String              @unique @map("owner_id") @db.Uuid
-  status              StoreStatus         @default(DRAFT)
-  onboardingStep      StoreOnboardingStep @default(PAGE) @map("onboarding_step")
-  name                String?
+  ownerId                    String              @unique @map("owner_id") @db.Uuid
+  status                     StoreStatus         @default(DRAFT)
+  onboardingStep             StoreOnboardingStep @default(PAGE) @map("onboarding_step")
+  name                       String?
   // 표시용 자유 입력 업종(예: 라멘집). 분류는 industry다.
-  category            String?
-  industry            IndustryCategory    @default(FOOD_CAFE)
+  category                   String?
+  industry                   IndustryCategory    @default(FOOD_CAFE)
   // 표시용 동네. 지역 정렬에는 regionSido, regionSigungu를 쓴다.
-  neighborhood        String?
-  regionSido          String?             @map("region_sido")
-  regionSigungu       String?             @map("region_sigungu")
-  coverPhotoPath      String?             @map("cover_photo_path")
-  signatureMenu       String?             @map("signature_menu")
-  hours               String?
-  seats               String?
-  bestShootingTime    String?             @map("best_shooting_time")
-  intro               String?
-  defaultFormat       ContentFormat?      @map("default_format")
-  defaultRewardType   RewardType?         @map("default_reward_type")
-  defaultVoucherName  String?             @map("default_voucher_name")
-  defaultVoucherValue Int?                @map("default_voucher_value")
+  neighborhood               String?
+  regionSido                 String?             @map("region_sido")
+  regionSigungu              String?             @map("region_sigungu")
+  coverPhotoPath             String?             @map("cover_photo_path")
+  signatureMenu              String?             @map("signature_menu")
+  hours                      String?
+  seats                      String?
+  bestShootingTime           String?             @map("best_shooting_time")
+  intro                      String?
+  defaultFormat              ContentFormat?      @map("default_format")
+  defaultVoucherName         String?             @map("default_voucher_name")
+  defaultVoucherValue        Int?                @map("default_voucher_value")
+  defaultVoucherPeople       Int?                @map("default_voucher_people")
+  defaultFixedCash           Int                 @default(0) @map("default_fixed_cash")
+  // 단가는 "1,000회당 원"이다. 조회수 수당이 없으면 단가와 상한이 모두 null이다.
+  defaultViewRatePerThousand Int?                @map("default_view_rate_per_thousand")
+  defaultPerViewCap          Int?                @map("default_per_view_cap")
+  defaultUsageRights         UsageRights         @default(STORE_REPOST_3M) @map("default_usage_rights")
   // 공개한 시각. 공개 목록의 "최근 공개 순"에 쓴다.
-  publishedAt         DateTime?           @map("published_at") @db.Timestamptz(3)
-  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(3)
+  publishedAt                DateTime?           @map("published_at") @db.Timestamptz(3)
+  createdAt                  DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                  DateTime?           @map("deleted_at") @db.Timestamptz(3)
 
   owner          User                @relation(fields: [ownerId], references: [id])
   sourceLinks    StoreSourceLink[]
@@ -246,25 +252,29 @@ model Application {
 
 // 같은 가게·크리에이터의 열린 오퍼(SENT, ACCEPTED)는 하나뿐이다. 부분 유니크 인덱스는 마이그레이션의 직접 SQL에 있다.
 model Offer {
-  id            String        @id @default(uuid()) @db.Uuid
-  storeId       String        @map("store_id") @db.Uuid
-  creatorId     String        @map("creator_id") @db.Uuid
-  applicationId String?       @map("application_id") @db.Uuid
-  format        ContentFormat
-  rewardType    RewardType    @map("reward_type")
-  voucherName   String?       @map("voucher_name")
-  voucherValue  Int?          @map("voucher_value")
-  perViewAmount Int?          @map("per_view_amount")
-  perViewCap    Int?          @map("per_view_cap")
-  status        OfferStatus
-  expiresAt     DateTime      @map("expires_at") @db.Timestamptz(3)
-  acceptedAt    DateTime?     @map("accepted_at") @db.Timestamptz(3)
-  paymentDueAt  DateTime?     @map("payment_due_at") @db.Timestamptz(3)
-  declinedAt    DateTime?     @map("declined_at") @db.Timestamptz(3)
-  respondedAt   DateTime?     @map("responded_at") @db.Timestamptz(3)
-  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt     DateTime?     @map("deleted_at") @db.Timestamptz(3)
+  id                  String        @id @default(uuid()) @db.Uuid
+  storeId             String        @map("store_id") @db.Uuid
+  creatorId           String        @map("creator_id") @db.Uuid
+  applicationId       String?       @map("application_id") @db.Uuid
+  format              ContentFormat
+  voucherName         String?       @map("voucher_name")
+  voucherValue        Int?          @map("voucher_value")
+  voucherPeople       Int?          @map("voucher_people")
+  fixedCash           Int           @default(0) @map("fixed_cash")
+  // 단가는 "1,000회당 원"이다. 조회수 수당이 없으면 단가와 상한이 모두 null이다.
+  viewRatePerThousand Int?          @map("view_rate_per_thousand")
+  perViewCap          Int?          @map("per_view_cap")
+  // 옛 오퍼에는 사용권 합의가 없어 NONE이고, 새 오퍼는 보낼 때 정한다.
+  usageRights         UsageRights   @default(NONE) @map("usage_rights")
+  status              OfferStatus
+  expiresAt           DateTime      @map("expires_at") @db.Timestamptz(3)
+  acceptedAt          DateTime?     @map("accepted_at") @db.Timestamptz(3)
+  paymentDueAt        DateTime?     @map("payment_due_at") @db.Timestamptz(3)
+  declinedAt          DateTime?     @map("declined_at") @db.Timestamptz(3)
+  respondedAt         DateTime?     @map("responded_at") @db.Timestamptz(3)
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?     @map("deleted_at") @db.Timestamptz(3)
 
   store         Store          @relation(fields: [storeId], references: [id])
   creator       User           @relation(fields: [creatorId], references: [id])
@@ -315,6 +325,7 @@ enum SettlementMethod {
   PER_VIEW
   FIXED
   NONE
+  FIXED_AND_PER_VIEW
 
   @@map("settlement_method")
 }

@@ -1,5 +1,9 @@
 import { Logger } from '@nestjs/common';
-import { Collaboration, InstagramConnection } from '@prisma/client';
+import {
+  Collaboration,
+  InstagramConnection,
+  SettlementMethod,
+} from '@prisma/client';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { SecretBox } from '../common/crypto/secret-box';
 import { AppError } from '../common/errors/app-error';
@@ -81,12 +85,12 @@ class FakeCreators extends CreatorsService {
 
 class FakeCollaborations extends CollaborationsRepository {
   held: Pick<Collaboration, 'kind' | 'stage'>[] = [];
-  asked: { creatorId: string; method: string }[] = [];
+  asked: { creatorId: string; methods: string[] }[] = [];
   constructor() {
     super(null as never);
   }
-  listForCreator(creatorId: string, method: 'PER_VIEW') {
-    this.asked.push({ creatorId, method });
+  listForCreator(creatorId: string, methods: SettlementMethod[]) {
+    this.asked.push({ creatorId, methods });
     return Promise.resolve(this.held);
   }
 }
@@ -234,7 +238,7 @@ describe('InstagramService', () => {
     await service.disconnect(CREATOR);
     expect(repo.rows.has(CREATOR)).toBe(false);
     expect(collaborations.asked).toEqual([
-      { creatorId: CREATOR, method: 'PER_VIEW' },
+      { creatorId: CREATOR, methods: ['PER_VIEW', 'FIXED_AND_PER_VIEW'] },
     ]);
   });
 

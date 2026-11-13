@@ -7,20 +7,6 @@ export function feeFor(escrow: number, feeRate: number): number {
   return Math.floor((escrow * feeRate) / 100);
 }
 
-// 조회수 × 건당 금액을 상한까지 지급하고, 남은 상한은 사장님에게 환급한다.
-// 조회수가 음수거나 정수가 아니면 계산하지 않고 던진다: 잘못 읽은 값으로 돈을 움직이지 않으려는 것이다.
-export function settle(p: {
-  views: number;
-  perViewAmount: number;
-  cap: number;
-}): { payout: number; refund: number } {
-  assertWholeWon(p.views, '조회수');
-  assertWholeWon(p.perViewAmount, '건당 금액');
-  assertWholeWon(p.cap, '상한');
-  const payout = Math.min(p.views * p.perViewAmount, p.cap);
-  return { payout, refund: p.cap - payout };
-}
-
 // 새 보상 계산: 고정 현금은 그대로 지급하고, 조회수 수당(1,000회당 단가)은 상한까지만 지급한다.
 // 환불은 상한에서 수당을 뺀 값이다. 고정 현금은 환불에 섞이지 않는다.
 // 지급액 + 환불액은 항상 고정 현금 + 상한이라 에스크로 잔액이 0이 된다.

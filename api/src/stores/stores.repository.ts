@@ -3,11 +3,11 @@ import {
   ApplicationStatus,
   ContentFormat,
   IndustryCategory,
-  RewardType,
   SourceLinkKind,
   Store,
   StoreOnboardingStep,
   StoreSourceLink,
+  UsageRights,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -36,9 +36,13 @@ export interface StoreFields {
 
 export interface DefaultTermsData {
   format: ContentFormat;
-  rewardType: RewardType;
   voucherName: string | null;
   voucherValue: number | null;
+  voucherPeople: number | null;
+  fixedCash: number;
+  viewRatePerThousand: number | null;
+  perViewCap: number | null;
+  usageRights: UsageRights;
 }
 
 export interface SourceLinkData {
@@ -58,7 +62,6 @@ const PUBLISHED = {
   status: 'PUBLISHED',
   deletedAt: null,
   defaultFormat: { not: null },
-  defaultRewardType: { not: null },
 } as const;
 
 // 가게 조회는 모두 여기를 거친다.
@@ -174,9 +177,13 @@ export class StoresRepository {
       where: { id: storeId },
       data: {
         defaultFormat: terms.format,
-        defaultRewardType: terms.rewardType,
         defaultVoucherName: terms.voucherName,
         defaultVoucherValue: terms.voucherValue,
+        defaultVoucherPeople: terms.voucherPeople,
+        defaultFixedCash: terms.fixedCash,
+        defaultViewRatePerThousand: terms.viewRatePerThousand,
+        defaultPerViewCap: terms.perViewCap,
+        defaultUsageRights: terms.usageRights,
       },
       include: WITH_LINKS,
     });
