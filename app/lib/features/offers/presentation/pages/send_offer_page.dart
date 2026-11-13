@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../offer_terms/domain/offer_terms.dart';
+import '../../../offer_terms/domain/proposal_draft.dart';
 import '../../../offer_terms/presentation/widgets/offer_terms_wizard.dart';
 import '../../../server_config/presentation/viewmodels/server_config_view_model.dart';
 import '../../../store_home/domain/applicant.dart';
@@ -13,18 +14,15 @@ import '../../../store_home/presentation/viewmodels/store_home_view_model.dart';
 import '../../../store_onboarding/presentation/viewmodels/my_store_view_model.dart';
 import '../viewmodels/send_offer_view_model.dart';
 
-/// A5 오퍼 보내기(NOffer / DarkNOffer). 오퍼 조건 3단계를 가게의 기본 조건에서 시작해 보여 주고,
-/// 마지막 단계에서 지원한 크리에이터에게 오퍼를 보낸다. 보내면 사장님 홈의 `보낸 오퍼` 탭으로
-/// 돌아가 `오퍼를 보냈어요.`를 잠깐 보인다.
+/// A5 오퍼 보내기(NOffer / DarkNOffer). 형식 → 보상(빠른 조합) → 확인 세 단계를 가게의 모집 조건에서
+/// 시작해 보여 주고, 마지막 단계의 `검토하고 보내기`가 F2를 연다. F2의 `이 조건으로 보내기`가 지원한
+/// 크리에이터에게 오퍼를 보내면 사장님 홈의 `보낸 오퍼` 탭으로 돌아가 `오퍼를 보냈어요.`를 잠깐 보인다.
 class SendOfferPage extends ConsumerStatefulWidget {
   const SendOfferPage({super.key, required this.creatorId});
 
   final String creatorId;
 
   static String pageLabel(String creatorName) => '$creatorName에게 오퍼';
-  static const confirmTitle = '이 오퍼를\n보낼까요?';
-  static const confirmDescription = '상대가 수락하면 그때 결제해요.';
-  static const submitLabel = '오퍼 보내기';
   static const sent = '오퍼를 보냈어요.';
   static const conflict = '이미 보낸 오퍼가 있어요.';
 
@@ -41,34 +39,21 @@ class _SendOfferPageState extends ConsumerState<SendOfferPage> {
   /// 그 사이 화면이 `찾지 못했어요`로 바뀌면 안 된다.
   Applicant? _applicant;
 
-  String? _failure;
-
-  void _leave() {
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go(AppRoutes.store);
-    }
-  }
-
+  /// F2의 마지막 버튼이 부른다. 실패하면 F2가 실패 이유에 맞는 문구를 보이도록 [ProposalSendFailure]로 알린다.
   Future<void> _send(OfferTerms terms) async {
     try {
       await ref
           .read(storeHomeViewModelProvider.notifier)
           .sendOffer(widget.creatorId, terms);
     } on StoreHomeFailure catch (failure) {
-      if (mounted) {
-        setState(() {
-          _failure = failure.conflict
-              ? SendOfferPage.conflict
-              : SendOfferPage.failed;
-        });
-      }
-      rethrow;
+      throw ProposalSendFailure(
+        failure.conflict ? SendOfferPage.conflict : SendOfferPage.failed,
+      );
     }
     if (!mounted) return;
     ref.read(storeHomeNoticeProvider.notifier).show(SendOfferPage.sent);
-    _leave();
+    // F1·F2가 위에 떠 있을 수 있어 홈으로 가며 함께 닫는다.
+    context.go(AppRoutes.store);
   }
 
   @override
@@ -91,17 +76,13 @@ class _SendOfferPageState extends ConsumerState<SendOfferPage> {
               },
             );
     } else {
-      final defaults = config.value!.defaultTerms;
+      final name = applicant.creator.displayName;
       body = OfferTermsWizard(
-        pageLabel: SendOfferPage.pageLabel(applicant.creator.displayName),
-        initial: store.defaultTerms ?? defaults,
-        defaults: defaults,
+        target: NewOfferTarget(creatorId: widget.creatorId, creatorName: name),
+        pageLabel: SendOfferPage.pageLabel(name),
         storeName: store.name ?? '',
-        confirmTitle: SendOfferPage.confirmTitle,
-        confirmDescription: SendOfferPage.confirmDescription,
-        submitLabel: SendOfferPage.submitLabel,
-        failureMessage: _failure ?? SendOfferPage.failed,
-        onSubmit: _send,
+        recipientPhotoUrl: applicant.creator.photoUrl,
+        onSend: _send,
       );
     }
     return Scaffold(body: SafeArea(bottom: false, child: body));

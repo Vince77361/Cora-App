@@ -21,31 +21,65 @@ class ProposalDraftViewModel extends AsyncNotifier<OfferTerms> {
 
   final ProposalTarget _target;
 
-  /// 조회수 수당을 껐다 켜도 고른 단가와 상한이 남도록 마지막 값을 든다.
+  /// 요소를 껐다 켜도 고른 값이 남도록 마지막 값을 든다(조회수 수당의 단가·상한, 식사권, 고정 현금).
+  Voucher? _lastVoucher;
+  int _lastFixedCash = 0;
   ViewPay? _lastViewPay;
+
+  /// 서버 설정의 기본 보상. 한 번도 켠 적 없는 요소를 켤 때 쓴다.
+  Reward _defaults = const Reward();
+
+  /// 블로그 글로 바꾸며 조회수 수당이 꺼졌다. 블로그 글이 아닌 형식으로 돌아오면 다시 켠다.
+  bool _viewPayDroppedByBlog = false;
 
   @override
   Future<OfferTerms> build() async {
     final config = await ref.watch(serverConfigViewModelProvider.future);
     // 가게 사장님이 만드는 모집 조건과 오퍼만 가게의 모집 조건에서 시작한다. 가게를 읽지 못해도 기본값으로 연다.
+    // 처음 값만 필요해서 한 번만 읽는다. 지켜보면 고르는 동안 가게가 새로 읽힐 때마다 초안이 처음 값으로
+    // 되돌아간다(오퍼 보내기에서 F1을 고치고 돌아오면 고친 값이 사라진다).
     MyStore? store;
     if (_target is RecruitTarget || _target is NewOfferTarget) {
       try {
-        store = await ref.watch(myStoreViewModelProvider.future);
+        store = await ref.read(myStoreViewModelProvider.future);
       } on Object {
         store = null;
       }
     }
+    _defaults = config.defaultTerms.reward;
+    _lastVoucher = _defaults.voucher;
+    _lastViewPay = _defaults.viewPay;
     final start = store?.defaultTerms ?? config.defaultTerms;
-    _lastViewPay = start.reward.viewPay ?? config.defaultTerms.reward.viewPay;
+    _remember(start.reward);
     return start;
   }
 
   OfferTerms? get _terms => state.value;
 
-  void _set(OfferTerms terms) => state = AsyncData(terms);
+  void _remember(Reward reward) {
+    _lastVoucher = reward.voucher ?? _lastVoucher;
+    _lastViewPay = reward.viewPay ?? _lastViewPay;
+    if (reward.fixedCash > 0) _lastFixedCash = reward.fixedCash;
+  }
 
-  /// 콘텐츠 형식을 바꾼다. 블로그 글은 조회수를 셀 수 없어 조회수 수당을 끈다.
+  void _set(OfferTerms terms) {
+    _remember(terms.reward);
+    state = AsyncData(terms);
+  }
+
+  /// 빠른 조합을 고를 때 쓰는 값: 지금 보상의 요소를 우선하고, 없으면 마지막으로 고른 값, 그것도 없으면
+  /// 서버 설정의 기본값으로 세 요소를 모두 채운다.
+  Reward get presetBase {
+    final reward = _terms?.reward ?? const Reward();
+    return Reward(
+      voucher: reward.voucher ?? _lastVoucher ?? _defaults.voucher,
+      fixedCash: reward.fixedCash > 0 ? reward.fixedCash : _lastFixedCash,
+      viewPay: reward.viewPay ?? _lastViewPay ?? _defaults.viewPay,
+    );
+  }
+
+  /// 콘텐츠 형식을 바꾼다. 블로그 글은 조회수를 셀 수 없어 조회수 수당을 끄고, 블로그 글이 아닌 형식으로
+  /// 돌아오면 그때 꺼진 조회수 수당을 마지막 값으로 다시 켠다.
   void setFormat(ContentFormat format) {
     final terms = _terms;
     if (terms == null) return;
@@ -53,21 +87,41 @@ class ProposalDraftViewModel extends AsyncNotifier<OfferTerms> {
     if (format == ContentFormat.blog && reward.viewPay != null) {
       _lastViewPay = reward.viewPay;
       reward = reward.withViewPay(null);
+      _viewPayDroppedByBlog = true;
+    } else if (format != ContentFormat.blog && _viewPayDroppedByBlog) {
+      _viewPayDroppedByBlog = false;
+      if (reward.viewPay == null) reward = reward.withViewPay(_lastViewPay);
     }
     _set(terms.copyWith(format: format, reward: reward));
+  }
+
+  /// 보상 요소를 직접 바꾸면 블로그 글에서 꺼졌던 조회수 수당을 다시 켜 주지 않는다.
+  void _changeReward(OfferTerms terms) {
+    _viewPayDroppedByBlog = false;
+    _set(terms);
+  }
+
+  /// 빠른 조합 하나를 고른다. 조합에 없는 요소는 끄고, 값은 [presetBase]에서 가져온다.
+  void pickPreset(RewardPreset preset) {
+    final terms = _terms;
+    if (terms == null) return;
+    if (preset == RewardPreset.benefitAndViewPay && !terms.viewPayAllowed) {
+      return;
+    }
+    _changeReward(terms.copyWith(reward: applyPreset(presetBase, preset)));
   }
 
   /// 제공 혜택을 바꾼다. null이면 `혜택 없음`이다.
   void setVoucher(Voucher? voucher) {
     final terms = _terms;
     if (terms == null) return;
-    _set(terms.copyWith(reward: terms.reward.withVoucher(voucher)));
+    _changeReward(terms.copyWith(reward: terms.reward.withVoucher(voucher)));
   }
 
   void setFixedCash(int amount) {
     final terms = _terms;
     if (terms == null) return;
-    _set(terms.copyWith(reward: terms.reward.withFixedCash(amount)));
+    _changeReward(terms.copyWith(reward: terms.reward.withFixedCash(amount)));
   }
 
   /// 조회수 수당을 켜고 끈다. 블로그 글에서는 켤 수 없다.
@@ -75,9 +129,7 @@ class ProposalDraftViewModel extends AsyncNotifier<OfferTerms> {
     final terms = _terms;
     if (terms == null) return;
     if (enabled && !terms.viewPayAllowed) return;
-    final current = terms.reward.viewPay;
-    if (current != null) _lastViewPay = current;
-    _set(
+    _changeReward(
       terms.copyWith(
         reward: terms.reward.withViewPay(enabled ? _lastViewPay : null),
       ),
@@ -95,9 +147,9 @@ class ProposalDraftViewModel extends AsyncNotifier<OfferTerms> {
     final terms = _terms;
     final current = terms?.reward.viewPay;
     if (terms == null || current == null) return;
-    final next = change(current);
-    _lastViewPay = next;
-    _set(terms.copyWith(reward: terms.reward.withViewPay(next)));
+    _changeReward(
+      terms.copyWith(reward: terms.reward.withViewPay(change(current))),
+    );
   }
 
   void setUsageRights(UsageRights rights) {

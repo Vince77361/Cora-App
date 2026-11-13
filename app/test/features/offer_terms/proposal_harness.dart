@@ -25,8 +25,12 @@ class SendRecorder {
   final sent = <OfferTerms>[];
   bool fail = false;
 
+  /// 설정하면 [fail]보다 먼저 이 예외를 던진다(보내는 쪽이 주는 실패 문구를 본다).
+  Exception? failure;
+
   Future<void> call(OfferTerms terms) async {
     sent.add(terms);
+    if (failure != null) throw failure!;
     if (fail) throw const SendFailure();
   }
 }

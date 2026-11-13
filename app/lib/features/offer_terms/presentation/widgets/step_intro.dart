@@ -9,10 +9,14 @@ class OfferStepIntro extends StatelessWidget {
     super.key,
     required this.title,
     required this.description,
+    this.descriptionTail,
   });
 
   final String title;
   final String description;
+
+  /// 설명 글 바로 뒤에 이어 붙는 조각(캔버스의 `자세히 설정` 같은 글 속 링크).
+  final InlineSpan? descriptionTail;
 
   @override
   Widget build(BuildContext context) {
@@ -30,8 +34,8 @@ class OfferStepIntro extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            description,
+          Text.rich(
+            TextSpan(text: description, children: [?descriptionTail]),
             style: CoraTextStyles.bodySmall.copyWith(color: c.textSecondary),
           ),
         ],

@@ -92,6 +92,34 @@ class Reward {
   int get hashCode => Object.hash(voucher, fixedCash, viewPay);
 }
 
+/// 오퍼 보내기(A5)가 보여 주는 빠른 보상 조합 셋. F1에서 요소를 따로 고른 보상은 어느 쪽에도 맞지 않을 수 있다.
+enum RewardPreset { benefitOnly, fixedCash, benefitAndViewPay }
+
+/// [reward]가 맞는 빠른 조합. 요소가 정확히 그 조합일 때만 맞고(금액은 따지지 않는다),
+/// 섞인 보상이거나 비어 있으면 null이다.
+RewardPreset? presetOf(Reward reward) {
+  final hasVoucher = reward.voucher != null;
+  final hasViewPay = reward.viewPay != null;
+  final hasCash = reward.fixedCash > 0;
+  if (hasCash) {
+    return !hasVoucher && !hasViewPay ? RewardPreset.fixedCash : null;
+  }
+  if (hasVoucher && hasViewPay) return RewardPreset.benefitAndViewPay;
+  if (hasVoucher) return RewardPreset.benefitOnly;
+  return null;
+}
+
+/// [preset]의 요소만 [base]에서 가져와 보상을 만든다. [base]는 세 요소의 값을 모두 든 보상이고
+/// (없던 요소의 기본값을 채운 것), 조합에 없는 요소는 버린다.
+Reward applyPreset(Reward base, RewardPreset preset) => switch (preset) {
+  RewardPreset.benefitOnly => Reward(voucher: base.voucher),
+  RewardPreset.fixedCash => Reward(fixedCash: base.fixedCash),
+  RewardPreset.benefitAndViewPay => Reward(
+    voucher: base.voucher,
+    viewPay: base.viewPay,
+  ),
+};
+
 /// 이용료(원) = 최대 현금 부담 × 수수료율(%)의 내림. 서버의 `Math.floor(최대 현금 부담 × 수수료율 / 100)`과
 /// 같다. 미리보기용이고 결제할 금액은 서버 견적이 정한다.
 int feeAmount(int maxCashBurden, int feeRate) => maxCashBurden * feeRate ~/ 100;

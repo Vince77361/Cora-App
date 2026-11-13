@@ -52,6 +52,14 @@ Future<void> _next(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// 확인 단계에서 F2를 열고 그 마지막 버튼으로 보낸다. 보내기는 F2의 버튼 하나뿐이다.
+Future<void> _reviewAndSend(WidgetTester tester) async {
+  await tester.tap(find.text('검토하고 보내기'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('이 조건으로 보내기'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUpAll(loadAppFonts);
 
@@ -81,6 +89,8 @@ void main() {
     expect(find.text('쇼츠 1편'), findsOneWidget);
     expect(find.text('빵 세트 30,000원'), findsOneWidget);
     expect(find.text('한그릇 라멘'), findsWidgets);
+    expect(find.text('검토하고 보내기'), findsOneWidget);
+    expect(find.text('오퍼 보내기'), findsNothing);
   });
 
   testWidgets('without default terms it starts from reels with a voucher', (
@@ -101,7 +111,12 @@ void main() {
 
     await _next(tester);
     await _next(tester);
-    await tester.tap(find.text('오퍼 보내기'));
+    // 확인 단계의 버튼은 보내지 않고 F2를 연다.
+    await tester.tap(find.text('검토하고 보내기'));
+    await tester.pumpAndSettle();
+    expect(home.sent, isEmpty);
+    expect(find.text('받는 사람과 조건을\n한 번 더 확인해요.'), findsOneWidget);
+    await tester.tap(find.text('이 조건으로 보내기'));
     await tester.pumpAndSettle();
 
     expect(home.sent, hasLength(1));
@@ -136,10 +151,11 @@ void main() {
 
     await _next(tester);
     await _next(tester);
-    await tester.tap(find.text('오퍼 보내기'));
-    await tester.pumpAndSettle();
+    await _reviewAndSend(tester);
 
+    // F2에 머물며 보내는 쪽이 준 문구를 보인다.
     expect(find.text('이미 보낸 오퍼가 있어요.'), findsOneWidget);
+    expect(find.text('이 조건으로 보내기'), findsOneWidget);
     expect(topPath(tester), AppRoutes.storeOfferNew('c1'));
   });
 
@@ -150,8 +166,7 @@ void main() {
 
     await _next(tester);
     await _next(tester);
-    await tester.tap(find.text('오퍼 보내기'));
-    await tester.pumpAndSettle();
+    await _reviewAndSend(tester);
 
     expect(find.text('오퍼를 보내지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
     expect(find.text('이미 보낸 오퍼가 있어요.'), findsNothing);

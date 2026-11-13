@@ -103,4 +103,64 @@ void main() {
       isTrue,
     );
   });
+
+  group('reward presets', () {
+    const base = Reward(voucher: _voucher, fixedCash: 30000, viewPay: _viewPay);
+
+    test(
+      'finds the preset that matches a reward and none for a mixed reward',
+      () {
+        expect(
+          presetOf(const Reward(voucher: _voucher)),
+          RewardPreset.benefitOnly,
+        );
+        expect(
+          presetOf(const Reward(fixedCash: 30000)),
+          RewardPreset.fixedCash,
+        );
+        expect(
+          presetOf(const Reward(voucher: _voucher, viewPay: _viewPay)),
+          RewardPreset.benefitAndViewPay,
+        );
+        // 금액은 따지지 않고 요소의 조합만 본다.
+        expect(
+          presetOf(const Reward(voucher: Voucher(name: '빵 세트', value: 9000))),
+          RewardPreset.benefitOnly,
+        );
+        // 섞인 보상, 조회수 수당만, 비어 있음은 어느 조합에도 맞지 않는다.
+        expect(presetOf(base), isNull);
+        expect(
+          presetOf(const Reward(voucher: _voucher, fixedCash: 30000)),
+          isNull,
+        );
+        expect(
+          presetOf(const Reward(fixedCash: 30000, viewPay: _viewPay)),
+          isNull,
+        );
+        expect(presetOf(const Reward(viewPay: _viewPay)), isNull);
+        expect(presetOf(const Reward()), isNull);
+      },
+    );
+
+    test('builds each preset from the elements of the base reward', () {
+      expect(
+        applyPreset(base, RewardPreset.benefitOnly),
+        const Reward(voucher: _voucher),
+      );
+      expect(
+        applyPreset(base, RewardPreset.fixedCash),
+        const Reward(fixedCash: 30000),
+      );
+      expect(
+        applyPreset(base, RewardPreset.benefitAndViewPay),
+        const Reward(voucher: _voucher, viewPay: _viewPay),
+      );
+    });
+
+    test('every preset it builds is found again by presetOf', () {
+      for (final preset in RewardPreset.values) {
+        expect(presetOf(applyPreset(base, preset)), preset);
+      }
+    });
+  });
 }

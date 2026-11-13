@@ -3,10 +3,6 @@ import '../domain/offer_terms.dart';
 // 오퍼 조건을 화면에 보이는 문구로 바꾸는 순수 함수들. 모집 조건·오퍼 보내기, 보상·예산 설정(F1),
 // 보내기 전 검토(F2), 오퍼 목록이 같은 문구를 쓰도록 한곳에 둔다.
 
-/// 식사권 금액으로 받을 수 있는 범위(서버 검증과 같다).
-const voucherValueMin = 1000;
-const voucherValueMax = 1000000;
-
 /// 식사권 이름의 최대 글자 수(서버 검증과 같다).
 const voucherNameMaxLength = 20;
 
@@ -105,6 +101,18 @@ String rewardHeadline(Reward reward) {
     if (reward.viewPay != null) '조회수 수당',
   ];
   return parts.isEmpty ? '없음' : parts.join(' + ');
+}
+
+/// 오퍼 보내기 확인 단계의 보상 칸. 요소마다 한 줄이고 둘째 줄부터 `+`로 잇는다.
+/// `식사권 40,000원 · 2인\n+ 1,000회당 2,000원, 최대 60,000원`. 요소가 하나도 없으면 `없음`.
+String rewardConfirmText(Reward reward) {
+  final parts = [
+    if (reward.voucher != null) benefitLine(reward.voucher!),
+    if (reward.fixedCash > 0) '고정 현금 ${wonExact(reward.fixedCash)}',
+    if (reward.viewPay != null) viewPayLineComma(reward.viewPay!),
+  ];
+  if (parts.isEmpty) return '없음';
+  return [parts.first, for (final part in parts.skip(1)) '+ $part'].join('\n');
 }
 
 /// 확정된 조건의 보상 요약(오퍼 상세, 취소 확인). 있는 요소마다 한 줄이다.

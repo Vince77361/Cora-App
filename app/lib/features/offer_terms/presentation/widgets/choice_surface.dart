@@ -7,8 +7,8 @@ import '../../../../core/ui/cora_pressable.dart';
 
 /// 형식 카드와 보상 카드가 함께 쓰는 선택 면(캔버스 NOffer `opt`).
 ///
-/// 고르지 않으면 `surface` 바탕에 `text`, 고르면 `surfaceSelected` 바탕에 `onSurfaceSelected`
-/// 글자다. 라이트와 다크의 색 차이는 토큰이 가지고 있다. 그림자는 없다(A1 역할 카드와 다르다).
+/// 고르지 않으면 `surface` 바탕, 고르면 `notifyTabSelected` 바탕(라이트 #E3E5E9, 다크 #33363D)이고
+/// 글자는 둘 다 `text`다(캔버스 NOffer·DarkNOffer의 `opt`). 라이트와 다크의 색 차이는 토큰이 가지고 있다. 그림자는 없다(A1 역할 카드와 다르다).
 /// 꺼진 카드는 흐려지고 누를 수 없다.
 class OfferChoiceSurface extends StatelessWidget {
   const OfferChoiceSurface({
@@ -58,12 +58,12 @@ class OfferChoiceSurface extends StatelessWidget {
             duration: CoraMotion.resolve(context, CoraMotion.stateDuration),
             curve: CoraMotion.standardCurve,
             builder: (context, t, _) {
-              final foreground = Color.lerp(c.text, c.onSurfaceSelected, t)!;
+              final foreground = c.text;
               return ConstrainedBox(
                 constraints: BoxConstraints(minHeight: minHeight),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Color.lerp(c.surface, c.surfaceSelected, t),
+                    color: Color.lerp(c.surface, c.notifyTabSelected, t),
                     borderRadius: BorderRadius.circular(CoraRadius.xl),
                   ),
                   child: Padding(

@@ -50,7 +50,8 @@ class BenefitEditSheet extends StatefulWidget {
   static const valueKey = ValueKey<String>('benefitEdit.value');
   static const peopleKey = ValueKey<String>('benefitEdit.people');
   static const emptyNameMessage = '식사권 이름을 적어 주세요.';
-  static const valueRangeMessage = '금액은 1,000원에서 1,000,000원 사이로 적어 주세요.';
+  static String valueRangeMessage(int min, int max) =>
+      '금액은 ${wonExact(min)}에서 ${wonExact(max)} 사이로 적어 주세요.';
   static String peopleRangeMessage(int max) => '인원은 1명에서 $max명 사이로 적어 주세요.';
 
   @override
@@ -82,12 +83,16 @@ class _BenefitEditSheetState extends State<BenefitEditSheet> {
     final value = int.tryParse(_value.text.trim());
     final people = int.tryParse(_people.text.trim());
     final maxPeople = widget.defaults.maxPeople;
+    final minValue = widget.defaults.minValue;
+    final maxValue = widget.defaults.maxValue;
     if (name.isEmpty) {
       setState(() => _error = BenefitEditSheet.emptyNameMessage);
       return;
     }
-    if (value == null || value < voucherValueMin || value > voucherValueMax) {
-      setState(() => _error = BenefitEditSheet.valueRangeMessage);
+    if (value == null || value < minValue || value > maxValue) {
+      setState(
+        () => _error = BenefitEditSheet.valueRangeMessage(minValue, maxValue),
+      );
       return;
     }
     if (people == null || people < 1 || people > maxPeople) {
@@ -128,8 +133,10 @@ class _BenefitEditSheetState extends State<BenefitEditSheet> {
           keyboardType: TextInputType.number,
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
-            // 100만 원이 일곱 자리다.
-            LengthLimitingTextInputFormatter(7),
+            // 서버가 정한 최대 금액의 자릿수까지만 받는다.
+            LengthLimitingTextInputFormatter(
+              widget.defaults.maxValue.toString().length,
+            ),
           ],
           textInputAction: TextInputAction.next,
         ),

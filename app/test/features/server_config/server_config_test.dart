@@ -108,6 +108,34 @@ void main() {
     });
   });
 
+  group('a step that is not positive', () {
+    // 눈금이 0 이하이면 값을 세는 반복이 끝나지 않으므로 설정 자체를 믿지 않는다.
+    for (final broken in ['viewRate', 'perViewCap']) {
+      test('in $broken fails the read', () async {
+        final json =
+            jsonDecode(jsonEncode(_configJson)) as Map<String, dynamic>;
+        ((json['reward'] as Map)[broken] as Map)['step'] = 0;
+        final fake = FakeHttpClient()..body = jsonEncode(json);
+
+        await expectLater(
+          _repo(fake).fetch(),
+          throwsA(isA<ServerConfigFailure>()),
+        );
+      });
+    }
+
+    test('in the fixed cash step fails the read', () async {
+      final json = jsonDecode(jsonEncode(_configJson)) as Map<String, dynamic>;
+      (((json['reward'] as Map)['fixedCash']) as Map)['step'] = -10000;
+      final fake = FakeHttpClient()..body = jsonEncode(json);
+
+      await expectLater(
+        _repo(fake).fetch(),
+        throwsA(isA<ServerConfigFailure>()),
+      );
+    });
+  });
+
   group('StepRange', () {
     test('knows which values are on its steps', () {
       const range = StepRange(

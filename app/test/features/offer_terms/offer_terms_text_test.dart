@@ -119,6 +119,33 @@ void main() {
     });
   });
 
+  group('reward confirm text', () {
+    const voucher = Voucher(name: '식사권', value: 40000, people: 2);
+    const viewPay = ViewPay(ratePerThousand: 2000, cap: 60000);
+
+    test('joins the elements with a plus from the second line', () {
+      expect(
+        rewardConfirmText(const Reward(voucher: voucher)),
+        '식사권 40,000원 · 2인',
+      );
+      expect(
+        rewardConfirmText(const Reward(voucher: voucher, viewPay: viewPay)),
+        '식사권 40,000원 · 2인\n+ 1,000회당 2,000원, 최대 60,000원',
+      );
+      expect(
+        rewardConfirmText(const Reward(fixedCash: 30000)),
+        '고정 현금 30,000원',
+      );
+      expect(
+        rewardConfirmText(
+          const Reward(voucher: voucher, fixedCash: 30000, viewPay: viewPay),
+        ),
+        '식사권 40,000원 · 2인\n+ 고정 현금 30,000원\n+ 1,000회당 2,000원, 최대 60,000원',
+      );
+      expect(rewardConfirmText(const Reward()), '없음');
+    });
+  });
+
   group('fee texts', () {
     test('writes the fee note from the server fee rate', () {
       expect(feeNote(60000, 10), '이용료 6,000원은 별도예요.');

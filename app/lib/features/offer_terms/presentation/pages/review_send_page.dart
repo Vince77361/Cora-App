@@ -84,23 +84,28 @@ class ReviewSendPage extends ConsumerStatefulWidget {
 
 class _ReviewSendPageState extends ConsumerState<ReviewSendPage> {
   bool _sending = false;
-  bool _failed = false;
+
+  /// 보내기에 실패했을 때 보일 문구. 실패하지 않았으면 null이다.
+  String? _failedMessage;
 
   Future<void> _send(OfferTerms terms) async {
     if (_sending) return;
     setState(() {
       _sending = true;
-      _failed = false;
+      _failedMessage = null;
     });
     try {
       await widget.onSend(terms);
       // 성공하면 보통 화면이 닫힌다. 그대로 남는 화면이면 다시 누를 수 있게 둔다.
       if (mounted) setState(() => _sending = false);
-    } on Exception {
+    } on Exception catch (error) {
       if (mounted) {
         setState(() {
           _sending = false;
-          _failed = true;
+          // 보내는 쪽이 실패 이유에 맞는 문구를 줬으면 그것을, 아니면 기본 문구를 보인다.
+          _failedMessage = error is ProposalSendFailure && error.message != null
+              ? error.message
+              : widget.failureMessage;
         });
       }
     }
@@ -146,7 +151,7 @@ class _ReviewSendPageState extends ConsumerState<ReviewSendPage> {
         recipientPhotoUrl: widget.recipientPhotoUrl,
         storeName: storeName,
         sending: _sending,
-        failedMessage: _failed ? widget.failureMessage : null,
+        failedMessage: _failedMessage,
         onSend: () => _send(draft.value!),
         onPickUsageRights: () => _pickUsageRights(draft.value!),
         onEdit: () => Navigator.of(context).maybePop(),

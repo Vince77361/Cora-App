@@ -26,8 +26,15 @@ class ApiServerConfigRepository implements ServerConfigRepository {
 }
 
 ServerConfig serverConfigFromWire(api.AppConfigModel m) {
-  StepRange range(api.RewardRangeModel r) =>
-      StepRange(min: r.min, max: r.max, step: r.step, defaultValue: r.default_);
+  // 눈금이 0 이하이면 고를 수 있는 값을 세는 반복이 끝나지 않는다. 그런 설정은 믿지 않는다.
+  int positiveStep(int step) =>
+      step > 0 ? step : throw const ServerConfigFailure();
+  StepRange range(api.RewardRangeModel r) => StepRange(
+    min: r.min,
+    max: r.max,
+    step: positiveStep(r.step),
+    defaultValue: r.default_,
+  );
   final r = m.reward;
   return ServerConfig(
     reward: RewardLimits(
@@ -36,7 +43,7 @@ ServerConfig serverConfigFromWire(api.AppConfigModel m) {
       fixedCash: FixedCashLimits(
         storeMax: r.fixedCash.maxByCommissioner.store,
         brandMax: r.fixedCash.maxByCommissioner.brand,
-        step: r.fixedCash.step,
+        step: positiveStep(r.fixedCash.step),
         presets: r.fixedCash.presets,
       ),
       voucher: VoucherDefaults(

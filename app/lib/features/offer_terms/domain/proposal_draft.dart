@@ -103,3 +103,14 @@ final class CounterTarget extends ProposalTarget {
   int get hashCode =>
       Object.hash(CounterTarget, storeId, offerId, storeName, nextVersion);
 }
+
+/// 보내는 쪽이 F2에 돌려주는 실패. F2는 [message]가 있으면 그것을, 없으면 자기 기본 문구를 보인다
+/// (보내는 화면마다 실패 이유에 맞는 말이 다르다: 예, 이미 보낸 오퍼가 있어요).
+class ProposalSendFailure implements Exception {
+  const ProposalSendFailure([this.message]);
+
+  final String? message;
+
+  @override
+  String toString() => 'ProposalSendFailure';
+}

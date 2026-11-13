@@ -229,6 +229,45 @@ void main() {
     expect(find.text('식사권 이름을 적어 주세요.'), findsOneWidget);
   });
 
+  testWidgets('F1 takes the benefit amount range from the server config', (
+    tester,
+  ) async {
+    final config = FakeServerConfigRepository(
+      config: const ServerConfigOverride(
+        voucherMin: 5000,
+        voucherMax: 200000,
+      ).apply(),
+    );
+    await pumpProposal(tester, config: config);
+    await tester.tap(find.text('식사권 40,000원 · 2인'));
+    await tester.pumpAndSettle();
+
+    // 앱에 적어 둔 1,000원~1,000,000원이 아니라 서버 설정의 범위로 가른다.
+    await tester.enterText(
+      find.byKey(const ValueKey('benefitEdit.value')),
+      '4000',
+    );
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+    expect(find.text('금액은 5,000원에서 200,000원 사이로 적어 주세요.'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('benefitEdit.value')),
+      '500000',
+    );
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+    expect(find.text('금액은 5,000원에서 200,000원 사이로 적어 주세요.'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('benefitEdit.value')),
+      '150000',
+    );
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+    expect(find.text('식사권 150,000원 · 2인'), findsOneWidget);
+  });
+
   testWidgets(
     'F1 takes a typed fixed cash in 10,000 won steps up to 1,000,000',
     (tester) async {
@@ -416,9 +455,15 @@ String _comma(int n) {
 
 /// 범위가 다른 서버 설정을 만든다(범위가 서버에서 오는지 보려는 테스트용).
 class ServerConfigOverride {
-  const ServerConfigOverride({required this.viewRateMax});
+  const ServerConfigOverride({
+    this.viewRateMax = 5000,
+    this.voucherMin = 1000,
+    this.voucherMax = 1000000,
+  });
 
   final int viewRateMax;
+  final int voucherMin;
+  final int voucherMax;
 
   ServerConfig apply() => ServerConfig(
     reward: RewardLimits(
@@ -430,7 +475,14 @@ class ServerConfigOverride {
       ),
       perViewCap: sampleServerConfig.reward.perViewCap,
       fixedCash: sampleServerConfig.reward.fixedCash,
-      voucher: sampleServerConfig.reward.voucher,
+      voucher: VoucherDefaults(
+        name: sampleServerConfig.reward.voucher.name,
+        value: sampleServerConfig.reward.voucher.value,
+        people: sampleServerConfig.reward.voucher.people,
+        maxPeople: sampleServerConfig.reward.voucher.maxPeople,
+        minValue: voucherMin,
+        maxValue: voucherMax,
+      ),
       usageRightsDefault: sampleServerConfig.reward.usageRightsDefault,
       countingDays: sampleServerConfig.reward.countingDays,
     ),

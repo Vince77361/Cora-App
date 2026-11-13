@@ -55,7 +55,7 @@ class ConfirmStep extends StatelessWidget {
               ),
               _SummaryTile(
                 label: '보상',
-                value: rewardSummary(terms),
+                value: rewardConfirmText(terms.reward),
                 emphasized: true,
               ),
             ],
