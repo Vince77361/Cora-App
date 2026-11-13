@@ -400,6 +400,27 @@ export class StoresService {
     };
   }
 
+  // 제안 상세처럼 당사자(가게 주인, 상대 크리에이터)가 읽는 가게 정보. 공개 여부와 관계없이 읽는다.
+  async getPartyCard(storeId: string): Promise<{
+    ownerId: string;
+    id: string;
+    name: string;
+    coverPhotoUrl: string | null;
+    recruitLine: string | null;
+  } | null> {
+    const store = UUID.test(storeId)
+      ? await this.stores.findById(storeId)
+      : null;
+    if (!store) return null;
+    return {
+      ownerId: store.ownerId,
+      id: store.id,
+      name: store.name ?? '가게',
+      coverPhotoUrl: this.coverUrl(store.coverPhotoPath),
+      recruitLine: store.recruitLine,
+    };
+  }
+
   private async requireMine(userId: string): Promise<StoreWithLinks> {
     const store = await this.stores.findActiveByOwnerId(userId);
     if (!store) throw new AppError('NOT_FOUND', '가게를 먼저 만들어 주세요.');

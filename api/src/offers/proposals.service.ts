@@ -103,7 +103,8 @@ export class ProposalsService {
   // 당사자만 본다. 남의 제안은 없는 제안과 같게 404다.
   async get(userId: string, id: string): Promise<ProposalDetailModel> {
     const found = UUID.test(id) ? await this.offers.findById(id) : null;
-    const card = found ? await this.stores.getOfferCard(found.storeId) : null;
+    // 당사자는 가게가 공개 상태인지와 관계없이 자기 제안을 읽는다.
+    const card = found ? await this.stores.getPartyCard(found.storeId) : null;
     const party = found && card ? partyOf(found, userId, card.ownerId) : null;
     if (!found || !card || !party) throw this.notFound();
 
@@ -136,8 +137,8 @@ export class ProposalsService {
     } else {
       counterpart = {
         userId: card.ownerId,
-        name: card.summary.name,
-        photoUrl: card.summary.coverPhotoUrl,
+        name: card.name,
+        photoUrl: card.coverPhotoUrl,
       };
     }
     return {
@@ -148,11 +149,10 @@ export class ProposalsService {
       latest: latestModel,
       previous,
       changed: changedFields(previous, latestModel),
-      // 모집 한 줄은 가게 페이지 작업(Task 12)이 열을 더하면 채운다.
       store: {
-        id: card.summary.id,
-        name: card.summary.name,
-        recruitLine: null,
+        id: card.id,
+        name: card.name,
+        recruitLine: card.recruitLine,
       },
       counterpart,
       feeRate: this.feeRate(),

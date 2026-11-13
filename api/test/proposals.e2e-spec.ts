@@ -370,6 +370,55 @@ describe('proposals', () => {
       expect(stored.status).toBe('EXPIRED');
     });
 
+    it('expires an overdue offer when its detail is read first', async () => {
+      const offer = await seedOffer(storeId, await seedCreator(), {
+        expiresAt: new Date(T0.getTime() + HOUR),
+      });
+      clock.set(new Date(T0.getTime() + 2 * HOUR));
+      const body = (await detail(offer.id).expect(200)).body as DetailBody;
+      expect(body).toMatchObject({
+        group: 'ENDED',
+        endKind: 'EXPIRED',
+        status: 'EXPIRED',
+      });
+      const stored = await prisma.offer.findUniqueOrThrow({
+        where: { id: offer.id },
+      });
+      expect(stored.status).toBe('EXPIRED');
+    });
+
+    it('still opens the detail for the owner when the store is not published', async () => {
+      const offer = await seedOffer(storeId, await seedCreator('하루 한 컵'));
+      await prisma.store.update({
+        where: { id: storeId },
+        data: { status: 'DRAFT' },
+      });
+      const body = (await detail(offer.id).expect(200)).body as DetailBody;
+      expect(body).toMatchObject({
+        myParty: 'STORE',
+        store: { id: storeId, name: '한그릇 라멘' },
+        counterpart: { name: '하루 한 컵' },
+      });
+      // 남의 제안은 그대로 404다.
+      const elsewhere = await seedOtherStore();
+      await prisma.store.update({
+        where: { id: elsewhere },
+        data: { status: 'DRAFT' },
+      });
+      const foreign = await seedOffer(elsewhere, await seedCreator());
+      await detail(foreign.id).expect(404);
+    });
+
+    it('returns the recruit line of the store with the detail', async () => {
+      await prisma.store.update({
+        where: { id: storeId },
+        data: { recruitLine: '사진 잘 찍어 주세요' },
+      });
+      const offer = await seedOffer(storeId, await seedCreator());
+      const body = (await detail(offer.id).expect(200)).body as DetailBody;
+      expect(body.store.recruitLine).toBe('사진 잘 찍어 주세요');
+    });
+
     it('does not list offers of other stores', async () => {
       const elsewhere = await seedOtherStore();
       await seedOffer(elsewhere, await seedCreator());
@@ -563,6 +612,56 @@ describe('proposals', () => {
           maxCashBurden: 60000,
         },
       });
+    });
+
+    it('returns the previous version and the changed fields to the creator too', async () => {
+      const store = await seedOtherStore('성수 카페');
+      const offer = await seedOffer(store, USER_A);
+      await addVersion(prisma, offer.id, 'CREATOR', {
+        fixedCash: 30000,
+        voucherValue: 50000,
+        idea: '신메뉴 소개',
+      });
+      const body = (await detail(offer.id).expect(200)).body as DetailBody;
+      expect(body).toMatchObject({
+        myParty: 'CREATOR',
+        changed: ['VOUCHER', 'FIXED_CASH', 'IDEA'],
+      });
+      expect(body.latest).toMatchObject({
+        number: 2,
+        authorParty: 'CREATOR',
+        terms: { fixedCash: 30000, voucherValue: 50000 },
+      });
+      expect(body.previous).toMatchObject({
+        number: 1,
+        authorParty: 'STORE',
+        terms: { fixedCash: 0, voucherValue: 40000 },
+      });
+    });
+
+    it('expires an overdue offer when the creator reads its detail first', async () => {
+      const store = await seedOtherStore();
+      const offer = await seedOffer(store, USER_A, {
+        expiresAt: new Date(T0.getTime() + HOUR),
+      });
+      clock.set(new Date(T0.getTime() + 2 * HOUR));
+      const body = (await detail(offer.id).expect(200)).body as DetailBody;
+      expect(body).toMatchObject({ group: 'ENDED', endKind: 'EXPIRED' });
+      const stored = await prisma.offer.findUniqueOrThrow({
+        where: { id: offer.id },
+      });
+      expect(stored.status).toBe('EXPIRED');
+    });
+
+    it('returns the recruit line of the store to the creator', async () => {
+      const store = await seedOtherStore('성수 카페');
+      await prisma.store.update({
+        where: { id: store },
+        data: { recruitLine: '주말 촬영 가능한 분' },
+      });
+      const offer = await seedOffer(store, USER_A);
+      const body = (await detail(offer.id).expect(200)).body as DetailBody;
+      expect(body.store.recruitLine).toBe('주말 촬영 가능한 분');
     });
 
     it('returns 404 for a proposal I am not part of', async () => {

@@ -97,6 +97,13 @@ export class StoresRepository {
     });
   }
 
+  // 공개 여부와 관계없이 읽는다(지워진 가게는 없는 것). 제안 상세처럼 당사자가 읽는 곳이 쓴다.
+  findById(storeId: string): Promise<Store | null> {
+    return this.prisma.store.findFirst({
+      where: { id: storeId, deletedAt: null },
+    });
+  }
+
   findPublishedById(storeId: string): Promise<Store | null> {
     return this.prisma.store.findFirst({
       where: { id: storeId, ...PUBLISHED },
