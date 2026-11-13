@@ -17,6 +17,9 @@ abstract class ProposalRepository {
   /// 사유를 골라 제안을 끝낸다. 되돌릴 수 없다.
   Future<void> end(String offerId, EndReason reason);
 
+  /// 사장님이 수락했지만 결제 전인 오퍼를 취소한다(사유 없이). 이미 처리됐으면 [ProposalFailure.conflict].
+  Future<void> cancel(String offerId);
+
   /// 내 차례에 [terms]로 다음 판본을 낸다(사장님이 고쳐서 다시 보내기).
   Future<void> reply(String offerId, OfferTerms terms);
 }

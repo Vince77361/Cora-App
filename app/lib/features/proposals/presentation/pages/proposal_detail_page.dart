@@ -10,9 +10,11 @@ import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_page_header.dart';
+import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
+import '../../../collaboration/domain/collaboration.dart';
 import '../../../instagram_connect/presentation/viewmodels/instagram_connect_view_model.dart';
 import '../../../offer_terms/domain/offer_terms.dart';
 import '../../../offer_terms/domain/proposal_draft.dart';
@@ -28,6 +30,7 @@ import '../open_contract.dart';
 import '../proposal_text.dart';
 import '../viewmodels/proposal_detail_view_model.dart';
 import '../viewmodels/proposals_view_model.dart';
+import '../widgets/cancel_offer_sheet.dart';
 import '../widgets/end_reason_sheet.dart';
 
 /// 제안 상세(캔버스에 없다. F2 `보내기 전 검토`의 줄 구성과 공용 위젯을 따른다). 머리는 `판본 {n}`이고, 받는 사람
@@ -142,6 +145,23 @@ class _ProposalDetailPageState extends ConsumerState<ProposalDetailPage> {
     if (mounted) await _vm.reload();
   }
 
+  /// 합의한 제안의 계약 화면: 크리에이터는 협업(A7), 사장님은 결제 전이면 결제(A8), 아니면 진행 화면이다(F3 줄과 같다).
+  /// 돌아오면 결제하거나 취소했을 수 있어 다시 읽는다.
+  Future<void> _openContract(ProposalDetail detail) async {
+    final id = detail.collaborationId;
+    if (id == null) return;
+    if (_store) {
+      await openStoreContract(context, ref, id);
+    } else {
+      await context.push(AppRoutes.creatorCollaboration(id));
+    }
+    if (mounted) await _vm.reload();
+  }
+
+  /// 결제 전 오퍼의 `오퍼 취소`: 옛 홈의 취소 시트(확인 단계 포함)를 연다.
+  Future<void> _cancelOffer(ProposalDetail detail) =>
+      showCancelOfferSheet(context, detail: detail, onCancel: _vm.cancelOffer);
+
   /// 크리에이터가 수락한 뒤의 `확인`: 협업 화면(A7)으로 간다.
   void _openCollaboration(String? collaborationId) {
     if (collaborationId == null) {
@@ -209,6 +229,45 @@ class _ProposalDetailPageState extends ConsumerState<ProposalDetailPage> {
       onCounter: () => _counter(state.detail),
       onConnect: _connectInstagram,
       onEnd: _end,
+      onOpenContract: () => _openContract(state.detail),
+      onCancelOffer: () => _cancelOffer(state.detail),
+    );
+  }
+}
+
+/// 끝난 제안의 맨 위 한 줄(캔버스 밖). 합의했으면 누르면 계약 화면(결제나 협업)이 열리고 끝에 `›`가 붙는다.
+class _EndedLine extends StatelessWidget {
+  const _EndedLine({required this.text, required this.onTap});
+
+  final String text;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final style = CoraTextStyles.bodySmall.copyWith(
+      fontWeight: FontWeight.w500,
+      color: c.textSecondary,
+    );
+    final line = Padding(
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+      child: Row(
+        spacing: 6,
+        children: [
+          Flexible(child: Text(text, style: style)),
+          if (onTap != null) Text('›', style: style),
+        ],
+      ),
+    );
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      button: onTap != null,
+      label: text,
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: onTap == null ? line : CoraPressable(onTap: onTap, child: line),
+      ),
     );
   }
 }
@@ -278,6 +337,8 @@ class _Loaded extends ConsumerWidget {
     required this.onCounter,
     required this.onConnect,
     required this.onEnd,
+    required this.onOpenContract,
+    required this.onCancelOffer,
   });
 
   final ProposalDetailState state;
@@ -287,6 +348,8 @@ class _Loaded extends ConsumerWidget {
   final VoidCallback onCounter;
   final VoidCallback onConnect;
   final ValueChanged<String> onEnd;
+  final VoidCallback onOpenContract;
+  final VoidCallback onCancelOffer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -311,18 +374,13 @@ class _Loaded extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (detail.ended)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        endedText(detail.endKind, detail.endReason),
-                        style: CoraTextStyles.bodySmall.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: c.textSecondary,
-                        ),
-                      ),
-                    ),
+                  _EndedLine(
+                    text: endedText(detail.endKind, detail.endReason),
+                    onTap:
+                        detail.endKind == ProposalEndKind.agreed &&
+                            detail.collaborationId != null
+                        ? onOpenContract
+                        : null,
                   ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -382,7 +440,18 @@ class _Loaded extends ConsumerWidget {
   List<Widget> _actions(BuildContext context) {
     final detail = state.detail;
     final busy = state.busy;
-    if (detail.ended) return const [];
+    if (detail.ended) {
+      // 수락했지만 결제 전인 오퍼는 사장님이 취소할 수 있다(결제한 뒤에는 협업의 취소 요청이 맡는다).
+      return store && state.contractStage == CollaborationStage.awaitingPayment
+          ? [
+              CoraSecondaryButton(
+                label: CancelOfferSheet.cancel,
+                tone: CoraSecondaryTone.subtle,
+                onPressed: busy ? null : onCancelOffer,
+              ),
+            ]
+          : const [];
+    }
     if (detail.waiting) {
       return [
         CoraSecondaryButton(

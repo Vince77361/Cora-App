@@ -53,6 +53,11 @@ class ApiProposalRepository implements ProposalRepository {
   });
 
   @override
+  Future<void> cancel(String offerId) => _guard(() async {
+    await _offers.cancelOffer(offerId);
+  });
+
+  @override
   Future<void> reply(String offerId, OfferTerms terms) => _guard(() async {
     await _offers.proposeOfferVersion(
       offerId,

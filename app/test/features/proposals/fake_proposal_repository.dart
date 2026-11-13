@@ -100,6 +100,7 @@ class FakeProposalRepository implements ProposalRepository {
   ProposalFailure? failAccept;
   ProposalFailure? failEnd;
   ProposalFailure? failReply;
+  ProposalFailure? failCancel;
 
   /// 수락이 돌려주는 협업 id.
   String? acceptedCollaborationId = 'collab-1';
@@ -107,6 +108,7 @@ class FakeProposalRepository implements ProposalRepository {
   final accepted = <({String offerId, int version})>[];
   final endedWith = <({String offerId, EndReason reason})>[];
   final replies = <({String offerId, OfferTerms terms})>[];
+  final cancelled = <String>[];
 
   /// 수락·끝내기·새 판본 뒤에 부른다(서버가 상세를 바꾼 것을 흉내 내려고).
   void Function(String offerId)? afterChange;
@@ -139,6 +141,14 @@ class FakeProposalRepository implements ProposalRepository {
     final failure = failEnd;
     if (failure != null) throw failure;
     endedWith.add((offerId: offerId, reason: reason));
+    afterChange?.call(offerId);
+  }
+
+  @override
+  Future<void> cancel(String offerId) async {
+    final failure = failCancel;
+    if (failure != null) throw failure;
+    cancelled.add(offerId);
     afterChange?.call(offerId);
   }
 

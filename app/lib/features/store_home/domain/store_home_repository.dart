@@ -5,7 +5,7 @@ import 'applicant.dart';
 import 'sent_offer.dart';
 import 'store_home_summary.dart';
 
-/// 사장님 홈이 서버와 주고받는 포트: 숫자, 지원자, 보낸 오퍼, 오퍼 보내기와 취소.
+/// 사장님 홈이 서버와 주고받는 포트: 숫자, 지원자, 보낸 오퍼, 오퍼 보내기.
 abstract class StoreHomeRepository {
   Future<StoreHomeSummary> fetchSummary();
   Future<List<Applicant>> fetchApplicants();
@@ -13,9 +13,6 @@ abstract class StoreHomeRepository {
 
   /// 이미 열린 오퍼가 있으면 [StoreHomeFailure.conflict].
   Future<void> sendOffer(String creatorId, OfferTerms terms);
-
-  /// 답을 기다리거나 수락한 오퍼를 취소한다. 그사이 상태가 바뀌었으면 [StoreHomeFailure.conflict].
-  Future<void> cancelOffer(String offerId);
 }
 
 /// 서버에 닿지 못했거나 서버가 거절했다. 서버 응답의 문구는 담지 않는다.

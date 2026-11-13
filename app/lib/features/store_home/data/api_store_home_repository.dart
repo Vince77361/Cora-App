@@ -9,7 +9,7 @@ import '../domain/sent_offer.dart';
 import '../domain/store_home_repository.dart';
 import '../domain/store_home_summary.dart';
 
-/// 생성된 API 클라이언트(`cora_api`)로 사장님 홈의 데이터를 읽고 오퍼를 보내고 취소한다.
+/// 생성된 API 클라이언트(`cora_api`)로 사장님 홈의 데이터를 읽고 오퍼를 보낸다.
 /// 생성된 타입은 이 파일 밖으로 내보내지 않는다.
 class ApiStoreHomeRepository implements StoreHomeRepository {
   ApiStoreHomeRepository(api.ApiClient client)
@@ -63,11 +63,6 @@ class ApiStoreHomeRepository implements StoreHomeRepository {
           ),
         );
       });
-
-  @override
-  Future<void> cancelOffer(String offerId) => _guard(() async {
-    await _offers.cancelOffer(offerId);
-  });
 
   /// 어떤 실패든 [StoreHomeFailure] 하나로 모은다. 서버 오류 본문과 예외 메시지는 버린다.
   static Future<T> _guard<T>(Future<T> Function() call) async {

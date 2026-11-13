@@ -83,8 +83,6 @@ class FakeStoreHomeRepository implements StoreHomeRepository {
   bool failFetch = false;
   bool failSend = false;
   bool conflictOnSend = false;
-  bool failCancel = false;
-  bool conflictOnCancel = false;
 
   /// 설정하면 [sendOffer]가 이 Completer가 끝날 때까지 기다린다.
   Completer<void>? holdSend;
@@ -94,7 +92,6 @@ class FakeStoreHomeRepository implements StoreHomeRepository {
 
   int fetchCalls = 0;
   final sent = <({String creatorId, OfferTerms terms})>[];
-  final cancelled = <String>[];
 
   @override
   Future<StoreHomeSummary> fetchSummary() async {
@@ -137,25 +134,6 @@ class FakeStoreHomeRepository implements StoreHomeRepository {
         name: applicant.creator.displayName,
       ),
       ...sentOffers,
-    ];
-  }
-
-  @override
-  Future<void> cancelOffer(String offerId) async {
-    if (conflictOnCancel) throw const StoreHomeFailure(conflict: true);
-    if (failCancel) throw const StoreHomeFailure();
-    cancelled.add(offerId);
-    sentOffers = [
-      for (final o in sentOffers)
-        if (o.id == offerId)
-          SentOffer(
-            id: o.id,
-            creator: o.creator,
-            terms: o.terms,
-            view: OfferView.cancelled,
-          )
-        else
-          o,
     ];
   }
 }

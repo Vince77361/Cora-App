@@ -1,15 +1,20 @@
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/ui/cora_state_view.dart';
+import 'package:cora/features/collaboration/domain/collaboration.dart';
+import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/instagram_connect/domain/instagram_connection.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart';
+import 'package:cora/features/offers/domain/offer_view.dart';
 import 'package:cora/features/payment/domain/payment_repository.dart';
 import 'package:cora/features/proposals/domain/offer_version.dart';
 import 'package:cora/features/proposals/domain/proposal.dart';
 import 'package:cora/features/proposals/domain/proposal_repository.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
+import '../collaboration/fake_collaboration_repository.dart';
 import '../instagram_connect/fake_instagram_repository.dart';
 import '../payment/fake_payment_repository.dart';
 import '../store_browse/creator_app_harness.dart' show pumpCreatorApp;
@@ -37,12 +42,14 @@ Future<void> _openStoreDetail(
   WidgetTester tester,
   FakeProposalRepository repo, {
   String id = 'p1',
+  List<Override> overrides = const [],
 }) async {
   await pumpStoreHome(
     tester,
     overrides: [
       proposalRepositoryProvider.overrideWithValue(repo),
       paymentRepositoryProvider.overrideWithValue(FakePaymentRepository()),
+      ...overrides,
     ],
   );
   routerOf(tester).push(AppRoutes.storeProposal(id));
@@ -55,13 +62,19 @@ Future<void> _openCreatorDetail(
   FakeInstagramRepository? instagram,
   FakeStoreBrowseRepository? stores,
   FakeCounterProposalRepository? counter,
+  FakeCollaborationRepository? collaborations,
+  List<Override> overrides = const [],
 }) async {
   await pumpCreatorApp(
     tester,
+    collaborations: collaborations,
     instagram: instagram ?? FakeInstagramRepository(connection: _connected),
     stores: stores,
     counter: counter,
-    overrides: [proposalRepositoryProvider.overrideWithValue(repo)],
+    overrides: [
+      proposalRepositoryProvider.overrideWithValue(repo),
+      ...overrides,
+    ],
   );
   routerOf(tester).push(AppRoutes.creatorProposal('p1'));
   await tester.pumpAndSettle();
@@ -270,9 +283,7 @@ void main() {
     expect(find.text('제안 종료'), findsNothing);
   });
 
-  testWidgets('the creator declines and a waiting owner cancels the same way', (
-    tester,
-  ) async {
+  testWidgets('the creator declines with a reason', (tester) async {
     final repo = _repo(
       proposalDetail(myParty: ProposalParty.creator, latest: _v1()),
     );
@@ -282,6 +293,188 @@ void main() {
     await tester.tap(find.text('일정이 맞지 않아요'));
     await tester.pumpAndSettle();
     expect(repo.endedWith, [(offerId: 'p1', reason: EndReason.schedule)]);
+  });
+
+  testWidgets('a waiting owner cancels with a reason', (tester) async {
+    final repo = _repo(proposalDetail(group: ProposalGroup.waiting));
+    await _openStoreDetail(tester, repo);
+    await tester.tap(find.text('제안 취소'));
+    await tester.pumpAndSettle();
+    expect(find.text('이유를 고르면 바로 끝나요. 끝난 제안은 되돌릴 수 없어요.'), findsOneWidget);
+    await tester.tap(find.text('조건이 맞지 않아요'));
+    await tester.pumpAndSettle();
+    expect(repo.endedWith, [(offerId: 'p1', reason: EndReason.terms)]);
+  });
+
+  group('agreed proposal', () {
+    ProposalDetail agreed({ProposalParty party = ProposalParty.store}) =>
+        proposalDetail(
+          myParty: party,
+          group: ProposalGroup.ended,
+          status: OfferView.accepted,
+          endKind: ProposalEndKind.agreed,
+          collaborationId: 'col-1',
+        );
+
+    List<Override> collab(CollaborationStage stage) => [
+      collaborationRepositoryProvider.overrideWithValue(
+        FakeCollaborationRepository(
+          active: [collaboration(id: 'col-1', stage: stage)],
+        ),
+      ),
+    ];
+
+    testWidgets('the owner can cancel an accepted offer before paying', (
+      tester,
+    ) async {
+      final repo = _repo(agreed());
+      repo.afterChange = (id) => repo.details[id] = proposalDetail(
+        group: ProposalGroup.ended,
+        status: OfferView.cancelled,
+        endKind: ProposalEndKind.ended,
+      );
+      await _openStoreDetail(
+        tester,
+        repo,
+        overrides: collab(CollaborationStage.awaitingPayment),
+      );
+
+      expect(find.text('합의 완료 · 계약으로 이동'), findsOneWidget);
+      await tester.tap(find.text('오퍼 취소'));
+      await tester.pumpAndSettle();
+      // 옛 취소 시트 그대로: 조건 요약과 `오퍼 취소`, 누르면 확인 단계.
+      expect(find.text('하루 한 컵에게 보낸 오퍼'), findsOneWidget);
+      expect(find.text('수락함, 결제를 기다려요'), findsOneWidget);
+      expect(find.text('릴스 1편'), findsOneWidget);
+      await tester.tap(find.text('오퍼 취소').last);
+      await tester.pumpAndSettle();
+      expect(find.text('이 오퍼를 취소할까요?'), findsOneWidget);
+      expect(find.text('그대로 두기'), findsOneWidget);
+      expect(repo.cancelled, isEmpty);
+
+      await tester.tap(find.text('취소하기'));
+      await tester.pumpAndSettle();
+      expect(repo.cancelled, ['p1']);
+      expect(find.text('이 오퍼를 취소할까요?'), findsNothing);
+      expect(find.text('오퍼 취소'), findsNothing);
+      expect(find.text('종료'), findsOneWidget);
+    });
+
+    testWidgets('keeps the offer when the owner backs out', (tester) async {
+      final repo = _repo(agreed());
+      await _openStoreDetail(
+        tester,
+        repo,
+        overrides: collab(CollaborationStage.awaitingPayment),
+      );
+      await tester.tap(find.text('오퍼 취소'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('오퍼 취소').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('그대로 두기'));
+      await tester.pumpAndSettle();
+      expect(repo.cancelled, isEmpty);
+      expect(find.text('이 오퍼를 취소할까요?'), findsNothing);
+      expect(find.text('오퍼 취소'), findsOneWidget);
+    });
+
+    testWidgets(
+      'says so when the offer was already handled or cancelling fails',
+      (tester) async {
+        final repo = _repo(agreed())
+          ..failCancel = const ProposalFailure(conflict: true);
+        await _openStoreDetail(
+          tester,
+          repo,
+          overrides: collab(CollaborationStage.awaitingPayment),
+        );
+        Future<void> tryCancel() async {
+          await tester.tap(find.text('취소하기'));
+          await tester.pumpAndSettle();
+        }
+
+        await tester.tap(find.text('오퍼 취소'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('오퍼 취소').last);
+        await tester.pumpAndSettle();
+        await tryCancel();
+        expect(find.text('이미 처리된 오퍼예요.'), findsOneWidget);
+        expect(find.text('이 오퍼를 취소할까요?'), findsOneWidget);
+
+        repo.failCancel = const ProposalFailure();
+        await tryCancel();
+        expect(find.text('취소하지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
+      },
+    );
+
+    testWidgets('there is no cancel once paid, and none for the creator', (
+      tester,
+    ) async {
+      await _openStoreDetail(
+        tester,
+        _repo(agreed()),
+        overrides: collab(CollaborationStage.funded),
+      );
+      expect(find.text('오퍼 취소'), findsNothing);
+      expect(find.text('합의 완료 · 계약으로 이동'), findsOneWidget);
+    });
+
+    testWidgets('the creator sees no cancel before payment either', (
+      tester,
+    ) async {
+      await _openCreatorDetail(
+        tester,
+        _repo(agreed(party: ProposalParty.creator)),
+        collaborations: FakeCollaborationRepository(
+          active: [
+            collaboration(
+              id: 'col-1',
+              stage: CollaborationStage.awaitingPayment,
+            ),
+          ],
+        ),
+      );
+      expect(find.text('오퍼 취소'), findsNothing);
+    });
+
+    testWidgets(
+      'the agreed line opens payment before paying and progress after',
+      (tester) async {
+        await _openStoreDetail(
+          tester,
+          _repo(agreed()),
+          overrides: collab(CollaborationStage.awaitingPayment),
+        );
+        await tester.tap(find.text('합의 완료 · 계약으로 이동'));
+        await tester.pumpAndSettle();
+        expect(topPath(tester), AppRoutes.storePay('col-1'));
+      },
+    );
+
+    testWidgets('the agreed line opens the progress screen once paid', (
+      tester,
+    ) async {
+      await _openStoreDetail(
+        tester,
+        _repo(agreed()),
+        overrides: collab(CollaborationStage.funded),
+      );
+      await tester.tap(find.text('합의 완료 · 계약으로 이동'));
+      await tester.pumpAndSettle();
+      expect(topPath(tester), AppRoutes.storeCollaboration('col-1'));
+    });
+
+    testWidgets('the agreed line opens the collaboration for the creator', (
+      tester,
+    ) async {
+      await _openCreatorDetail(
+        tester,
+        _repo(agreed(party: ProposalParty.creator)),
+      );
+      await tester.tap(find.text('합의 완료 · 계약으로 이동'));
+      await tester.pumpAndSettle();
+      expect(topPath(tester), AppRoutes.creatorCollaboration('col-1'));
+    });
   });
 
   testWidgets('shows the server message when ending fails', (tester) async {
