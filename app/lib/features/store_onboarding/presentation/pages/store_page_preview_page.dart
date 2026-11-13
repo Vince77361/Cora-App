@@ -84,7 +84,7 @@ class _StorePagePreviewPageState extends ConsumerState<StorePagePreviewPage> {
     if (url == null || !store.isPublished) return;
     try {
       await ref.read(shareLauncherProvider).shareText('https://$url');
-    } on Object {
+    } on Exception {
       // 공유 창을 못 열어도 화면에는 영향이 없다. 다시 누르면 된다.
     }
   }
@@ -268,9 +268,12 @@ class _Content extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          // 아래 글은 ExcludeSemantics로 가리므로 읽히도록 제목과 내용을 이 노드에 준다.
           child: Semantics(
             container: true,
             button: true,
+            label: StorePagePreviewPage.introTitle,
+            value: StorePageCopy.introLine(store),
             onTap: onEditIntro,
             child: ExcludeSemantics(
               child: CoraPressable(

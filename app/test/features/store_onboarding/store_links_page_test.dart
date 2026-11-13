@@ -249,6 +249,37 @@ void main() {
     expect(find.text('사진 12장, 메뉴 8개 찾음'), findsNothing);
   });
 
+  testWidgets('underlines the manual entry link with the text color', (
+    tester,
+  ) async {
+    TextSpan link() {
+      final rich = tester.widget<RichText>(
+        find.textContaining('링크가 없거나 안 열리면 직접 입력', findRichText: true),
+      );
+      TextSpan? found;
+      rich.text.visitChildren((span) {
+        if (span is TextSpan && span.text == '링크가 없거나 안 열리면 직접 입력') {
+          found = span;
+        }
+        return true;
+      });
+      return found!;
+    }
+
+    await pumpStoreApp(tester);
+    expect(link().style?.decoration, TextDecoration.underline);
+    expect(link().style?.decorationColor, CoraColors.light.text);
+    expect(CoraColors.light.text, const Color(0xFF17181C));
+
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await tester.pumpAndSettle();
+
+    expect(link().style?.decoration, TextDecoration.underline);
+    expect(link().style?.decorationColor, CoraColors.dark.text);
+    expect(CoraColors.dark.text, const Color(0xFFF2F3F5));
+  });
+
   testWidgets('uses the canvas colors in light and dark', (tester) async {
     Color? boxColor() =>
         (tester

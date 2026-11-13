@@ -247,6 +247,23 @@ void main() {
     }
   });
 
+  testWidgets('A3 keeps the intro box readable for screen readers', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await _pumpPage(tester);
+
+    final node = tester.getSemantics(
+      find.bySemanticsLabel(RegExp('^이런 가게가 맞나요\\? · 탭해서 고치기')),
+    );
+    expect(node.label, contains('이런 가게가 맞나요? · 탭해서 고치기'));
+    expect(node.value, contains('#진한국물 #바좌석 #조용한오후'));
+    expect(node.value, contains('“국물이 진해요”, “혼밥하기 좋아요”'));
+    expect(node.value, contains('공개 페이지에는 크리에이터 지원하기 버튼이 보여요.'));
+    expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    semantics.dispose();
+  });
+
   testWidgets('A3 edits the tags, phrases and recruit line in a sheet', (
     tester,
   ) async {
@@ -434,6 +451,24 @@ void main() {
       expect(find.text('가게 이름을 넣어 주세요.'), findsNothing);
     });
   }
+
+  testWidgets(
+    'the owner-home store page opens the recruit terms from "크리에이터 모집"',
+    (tester) async {
+      final stores = FakeStoreRepository(store: _published());
+      await _pumpPage(tester, stores);
+      routerOf(tester).push(AppRoutes.storePage);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('크리에이터 모집'));
+      await tester.pumpAndSettle();
+
+      // 공개된 가게는 등록 단계를 다시 올리지 않고 모집 조건 흐름(1단계)을 연다.
+      expect(stores.advanced, isEmpty);
+      expect(topPath(tester), AppRoutes.storeOnboardingTerms);
+      expect(find.text('어떤 콘텐츠를\n부탁할까요?'), findsOneWidget);
+    },
+  );
 
   testWidgets('the owner-home store page has the same page without the step', (
     tester,

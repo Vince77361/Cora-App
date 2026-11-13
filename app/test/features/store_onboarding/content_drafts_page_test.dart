@@ -236,7 +236,9 @@ void main() {
     expect(find.text('복사'), findsOneWidget);
   });
 
-  testWidgets('"오퍼 만들기" moves the step to terms and opens it', (tester) async {
+  testWidgets('A4 leads to the recruit terms during onboarding', (
+    tester,
+  ) async {
     final env = await _pumpDrafts(tester);
 
     await tester.tap(find.text('오퍼 만들기'));

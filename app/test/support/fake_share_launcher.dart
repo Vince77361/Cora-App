@@ -9,7 +9,7 @@ class FakeShareLauncher implements ShareLauncher {
 
   @override
   Future<void> shareText(String text) async {
-    if (fail) throw StateError('공유 창을 열지 못했어요.');
+    if (fail) throw Exception('공유 창을 열지 못했어요.');
     shared.add(text);
   }
 }

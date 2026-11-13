@@ -217,9 +217,12 @@ class _LinksFormState extends ConsumerState<_LinksForm> {
                             ? noteStyle
                             : noteStyle.copyWith(color: c.text),
                         action: StoreLinksPage.manualEntryLabel,
+                        // 캔버스의 `<a>`는 밑줄이 있고 밑줄 색은 글자색(라이트 #17181C, 다크 #F2F3F5)이다.
                         actionStyle: noteStyle.copyWith(
                           color: c.text,
                           fontWeight: FontWeight.w500,
+                          decoration: TextDecoration.underline,
+                          decorationColor: c.text,
                         ),
                         onTap: state.analyzing ? null : () => _enterManually(),
                       ),
