@@ -1,7 +1,13 @@
 /// 가게 정보를 가져올 링크의 종류. 서버의 `SourceLinkKind`와 같다.
+///
+/// 선언 순서가 A2 입력란의 순서다(캔버스: 네이버 지도, 캐치테이블, 체험단 후기 글, 인스타그램).
 enum SourceLinkKind {
   naverMap('네이버 지도', '네이버 지도', ['naver.me', 'map.naver.com']),
   catchtable('캐치테이블', '캐치테이블', ['app.catchtable.co.kr']),
+  reviewPost('체험단 후기 글 · 선택 · 인스타 게시물로 바꿔 드려요', '체험단 후기 글', [
+    'blog.naver.com',
+    'm.blog.naver.com',
+  ]),
   instagram('인스타그램 · 선택', '인스타그램', ['instagram.com', 'www.instagram.com']);
 
   const SourceLinkKind(this.fieldLabel, this.serviceName, this._hosts);
@@ -20,6 +26,7 @@ enum SourceLinkKind {
   String get example => switch (this) {
     naverMap => 'naver.me/[가게 링크]',
     catchtable => 'app.catchtable.co.kr/[가게 링크]',
+    reviewPost => 'blog.naver.com/[후기 글]',
     instagram => 'instagram.com/가게계정',
   };
 
@@ -36,8 +43,17 @@ enum SourceLinkKind {
     return url.scheme == 'https' &&
         url.userInfo.isEmpty &&
         !url.hasPort &&
-        _hosts.contains(url.host);
+        (_hosts.contains(url.host) || _isSubdomainHost(url.host));
   }
+
+  /// 티스토리는 블로그마다 주소(`이름.tistory.com`)가 달라 호스트 목록으로 못 센다. 서버
+  /// (`SUBDOMAIN_OF`)와 같은 규칙으로, 마침표까지 맞춰 `evil-tistory.com`을 막는다.
+  bool _isSubdomainHost(String host) =>
+      this == reviewPost && _tistoryHost.hasMatch(host);
+
+  static final _tistoryHost = RegExp(
+    r'^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+tistory\.com$',
+  );
 
   /// 앞뒤 공백을 지우고, 주소 형식 표시가 없으면 `https://`를 붙인다.
   static String normalize(String text) {

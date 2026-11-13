@@ -12,6 +12,7 @@ import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_step_header.dart';
 import '../../domain/source_link.dart';
 import '../viewmodels/store_links_view_model.dart';
+import '../widgets/inline_action_text.dart';
 import '../widgets/store_icons.dart';
 import '../widgets/store_text_box.dart';
 import 'store_edit_page.dart';
@@ -19,17 +20,17 @@ import 'store_edit_page.dart';
 /// A2 가게 링크 입력(NStoreLink / DarkNStoreLink), 등록 1/3.
 ///
 /// 링크를 하나 이상 넣고 `가게 페이지 만들기`를 누르면 서버가 분석한다. 성공하면 A3으로 간다.
-/// 링크에서 읽지 못하면 이 화면에 남아 안내와 `직접 입력하기`를 보여 준다.
+/// 링크가 없거나 읽지 못하면 직접 입력으로 간다.
 class StoreLinksPage extends ConsumerWidget {
   const StoreLinksPage({super.key});
 
-  static const title = '가게 링크만 넣으면\n소개 페이지를 만들어 드려요.';
-  static const subtitle = '사진, 메뉴, 영업시간을 링크에서 가져와요. 2개 이상 넣으면 더 정확해요.';
-  static const note = '가져온 정보는 다음 화면에서 고칠 수 있어요. 공개 정보만 사용해요.';
+  static const title = '가게 링크 하나면 돼요.';
+  static const subtitle =
+      '네이버 지도, 캐치테이블, 인스타그램, 체험단 후기 글 중 무엇이든 괜찮아요. 가입 없이 먼저 볼 수 있어요.';
+  static const note = '가져온 정보는 다음 화면에서 고칠 수 있어요. 공개 정보만 사용해요. ';
+  static const manualEntryLabel = '링크가 없거나 안 열리면 직접 입력';
   static const createLabel = '가게 페이지 만들기';
   static const analyzingLabel = '가게 정보를 가져오는 중이에요';
-  static const analysisFailedNote = '정보를 가져오지 못했어요. 직접 입력할 수 있어요.';
-  static const manualEntryLabel = '직접 입력하기';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -107,8 +108,15 @@ class _LinksFormState extends ConsumerState<_LinksForm> {
     final outcome = await ref
         .read(storeLinksViewModelProvider.notifier)
         .submit();
-    if (!mounted || outcome != StoreLinksOutcome.analyzed) return;
-    context.push(AppRoutes.storeOnboardingPage, extra: AppRoutes.stacked);
+    if (!mounted) return;
+    switch (outcome) {
+      case StoreLinksOutcome.analyzed:
+        context.push(AppRoutes.storeOnboardingPage, extra: AppRoutes.stacked);
+      case StoreLinksOutcome.analysisFailed:
+        _enterManually();
+      case StoreLinksOutcome.failed:
+        break;
+    }
   }
 
   void _enterManually() {
@@ -125,22 +133,15 @@ class _LinksFormState extends ConsumerState<_LinksForm> {
         ref.watch(storeLinksViewModelProvider).value ?? widget.initial;
     final vm = ref.read(storeLinksViewModelProvider.notifier);
     final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
-    final note = state.analysisFailed
-        ? StoreLinksPage.analysisFailedNote
-        : (state.errorMessage ?? StoreLinksPage.note);
+    final error = state.errorMessage;
     final noteStyle = CoraTextStyles.meta.copyWith(
       height: 1.6,
-      color: state.analysisFailed || state.errorMessage != null
-          ? c.text
-          : c.textSecondary,
+      color: c.textSecondary,
     );
 
     final String label;
     final VoidCallback? onPressed;
-    if (state.analysisFailed) {
-      label = StoreLinksPage.manualEntryLabel;
-      onPressed = _enterManually;
-    } else if (state.analyzing) {
+    if (state.analyzing) {
       label = StoreLinksPage.analyzingLabel;
       onPressed = null;
     } else {
@@ -208,7 +209,19 @@ class _LinksFormState extends ConsumerState<_LinksForm> {
                     padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
                     child: Semantics(
                       liveRegion: true,
-                      child: Text(note, style: noteStyle),
+                      child: InlineActionText(
+                        // 서버에 닿지 못했을 때는 안내 대신 그 문구를 보인다.
+                        text: error == null ? StoreLinksPage.note : '$error ',
+                        style: error == null
+                            ? noteStyle
+                            : noteStyle.copyWith(color: c.text),
+                        action: StoreLinksPage.manualEntryLabel,
+                        actionStyle: noteStyle.copyWith(
+                          color: c.text,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        onTap: state.analyzing ? null : _enterManually,
+                      ),
                     ),
                   ),
                 ],
@@ -276,10 +289,12 @@ class _LinkField extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        kind.fieldLabel,
-                        style: CoraTextStyles.label.copyWith(
-                          color: filled ? c.text : c.textSecondary,
+                      Flexible(
+                        child: Text(
+                          kind.fieldLabel,
+                          style: CoraTextStyles.label.copyWith(
+                            color: filled ? c.text : c.textSecondary,
+                          ),
                         ),
                       ),
                       if (summary != null)

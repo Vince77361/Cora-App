@@ -18,7 +18,7 @@ enum StoreLinksOutcome {
   /// 가게 페이지(A3)로 간다.
   analyzed,
 
-  /// 읽지 못했다. 빈 가게가 만들어졌으니 직접 입력할 수 있다.
+  /// 읽지 못했다. 화면이 직접 입력(F7)으로 보낸다(안내 문구와 함께).
   analysisFailed,
 
   /// 서버에 닿지 못했거나 서버가 거절했다. 입력은 그대로 남는다.
@@ -30,7 +30,6 @@ class StoreLinksState {
     required this.inputs,
     required this.analyzed,
     this.analyzing = false,
-    this.analysisFailed = false,
     this.errorMessage,
   });
 
@@ -40,9 +39,6 @@ class StoreLinksState {
   /// 서버가 이미 분석한 링크(저장된 가게의 링크). 입력이 이것과 같으면 요약을 보여 준다.
   final List<SourceLink> analyzed;
   final bool analyzing;
-
-  /// 방금 분석이 링크에서 정보를 읽지 못했다. 입력을 바꾸면 꺼진다.
-  final bool analysisFailed;
 
   /// 서버에 닿지 못했을 때 보여 줄 문구.
   final String? errorMessage;
@@ -81,13 +77,11 @@ class StoreLinksState {
     Map<SourceLinkKind, String>? inputs,
     List<SourceLink>? analyzed,
     bool? analyzing,
-    bool? analysisFailed,
     String? Function()? errorMessage,
   }) => StoreLinksState(
     inputs: inputs ?? this.inputs,
     analyzed: analyzed ?? this.analyzed,
     analyzing: analyzing ?? this.analyzing,
-    analysisFailed: analysisFailed ?? this.analysisFailed,
     errorMessage: errorMessage == null ? this.errorMessage : errorMessage(),
   );
 }
@@ -118,8 +112,7 @@ class StoreLinksViewModel extends AsyncNotifier<StoreLinksState> {
     state = AsyncData(
       current.copyWith(
         inputs: {...current.inputs, kind: text},
-        // 입력을 고치면 지난 실패와 오류는 더 이상 맞지 않는다.
-        analysisFailed: false,
+        // 입력을 고치면 지난 오류는 더 이상 맞지 않는다.
         errorMessage: () => null,
       ),
     );
@@ -144,7 +137,6 @@ class StoreLinksViewModel extends AsyncNotifier<StoreLinksState> {
       state = AsyncData(
         current.copyWith(
           analyzing: false,
-          analysisFailed: failed,
           // 방금 분석한 링크와 요약으로 바꿔, 뒤로 돌아왔을 때 ✓ 요약이 보이게 한다.
           analyzed:
               ref.read(myStoreViewModelProvider).value?.sourceLinks ??

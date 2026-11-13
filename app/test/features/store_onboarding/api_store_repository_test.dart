@@ -112,6 +112,11 @@ void main() {
         ),
       ]);
       expect(store.wasAutoFilled, isTrue);
+      expect(store.slug, 'hangeureut-ramen');
+      expect(store.publicUrl, 'cora.page/l/hangeureut-ramen');
+      expect(store.tags, ['진한국물']);
+      expect(store.customerPhrases, ['국물이 진해요']);
+      expect(store.recruitLine, isNull);
     });
 
     test('fetchMine is null when the user has no store yet (404)', () async {
@@ -157,6 +162,109 @@ void main() {
         ],
       });
     });
+
+    test('analyze sends a review post link as REVIEW_POST', () async {
+      final fake = FakeHttpClient()
+        ..body = jsonEncode({
+          'store': jsonDecode(_storeJson()),
+          'analysisFailed': false,
+        });
+
+      await _stores(fake).analyze(const [
+        SourceLink(
+          kind: SourceLinkKind.reviewPost,
+          url: 'https://blog.naver.com/shop/1',
+        ),
+      ]);
+
+      expect(_bodyOf(fake.requests.single), {
+        'links': [
+          {'kind': 'REVIEW_POST', 'url': 'https://blog.naver.com/shop/1'},
+        ],
+      });
+    });
+
+    test('findBranches asks by name and maps the branches', () async {
+      final fake = FakeHttpClient()
+        ..body = jsonEncode([
+          {
+            'label': '성수점',
+            'address': '서울 성동구 성수이로 100',
+            'neighborhood': '성수동2가',
+            'regionSido': '서울특별시',
+            'regionSigungu': '성동구',
+          },
+        ]);
+
+      final branches = await _stores(fake).findBranches('한그릇 라멘');
+
+      final request = fake.requests.single;
+      expect(request.method, 'GET');
+      expect(request.url.path, '/stores/me/branches');
+      expect(request.url.queryParameters['name'], '한그릇 라멘');
+      expect(branches.single.label, '성수점');
+      expect(branches.single.shownPlace, '성수동2가');
+      expect(branches.single.regionSigungu, '성동구');
+    });
+
+    test(
+      'createManually posts the name, branch, menu and photo path',
+      () async {
+        final fake = FakeHttpClient()..body = _storeJson();
+
+        final store = await _stores(fake).createManually(
+          const ManualStore(
+            name: '한그릇 라멘',
+            signatureMenu: '돈코츠 라멘 11,000원',
+            coverPhotoPath: 'stores/a.jpg',
+            branch: StoreBranch(
+              label: '성수점',
+              address: '서울 성동구 성수이로 100',
+              neighborhood: '성수동2가',
+              regionSido: '서울특별시',
+              regionSigungu: '성동구',
+            ),
+          ),
+        );
+
+        final request = fake.requests.single;
+        expect(request.method, 'POST');
+        expect(request.url.path, '/stores/me/manual');
+        expect(_bodyOf(request), {
+          'name': '한그릇 라멘',
+          'signatureMenu': '돈코츠 라멘 11,000원',
+          'coverPhotoPath': 'stores/a.jpg',
+          'branch': {
+            'label': '성수점',
+            'neighborhood': '성수동2가',
+            'regionSido': '서울특별시',
+            'regionSigungu': '성동구',
+          },
+        });
+        expect(store.name, '한그릇 라멘');
+      },
+    );
+
+    test(
+      'update sends the tags, phrases and recruit line when given',
+      () async {
+        final fake = FakeHttpClient()..body = _storeJson();
+
+        await _stores(fake).update(
+          const StoreEdit(
+            tags: ['진한국물'],
+            customerPhrases: [],
+            recruitLine: '조용한 오후에 찍어 주세요',
+          ),
+        );
+
+        expect(_bodyOf(fake.requests.single), {
+          'tags': ['진한국물'],
+          'customerPhrases': <String>[],
+          'recruitLine': '조용한 오후에 찍어 주세요',
+        });
+      },
+    );
 
     test('update sends only the fields that have a value (no nulls)', () async {
       final fake = FakeHttpClient()..body = _storeJson();

@@ -15,6 +15,10 @@ MyStore sampleStore({
   String? intro = '진한 국물을 12시간 끓이는 작은 라멘집이에요. 김이 오르는 첫 숟가락 장면을 담아주세요.',
   String? coverPhotoUrl,
   List<SourceLink>? sourceLinks,
+  String? publicUrl = 'cora.page/l/hangeureut-ramen',
+  List<String> tags = const ['진한국물', '바좌석', '조용한오후'],
+  List<String> customerPhrases = const ['국물이 진해요', '혼밥하기 좋아요'],
+  String? recruitLine,
 }) => MyStore(
   id: 'store-1',
   status: status,
@@ -31,6 +35,11 @@ MyStore sampleStore({
   seats: '18석, 바 좌석',
   bestShootingTime: '오후 3시 – 5시',
   intro: intro,
+  slug: publicUrl?.split('/').last,
+  publicUrl: publicUrl,
+  tags: tags,
+  customerPhrases: customerPhrases,
+  recruitLine: recruitLine,
   sourceLinks:
       sourceLinks ??
       const [
@@ -42,6 +51,24 @@ MyStore sampleStore({
       ],
 );
 
+/// 캔버스 F7의 지점 견본(`성수점`, `합정점`).
+const sampleBranches = [
+  StoreBranch(
+    label: '성수점',
+    address: '서울 성동구 성수이로 100',
+    neighborhood: '성수동2가',
+    regionSido: '서울특별시',
+    regionSigungu: '성동구',
+  ),
+  StoreBranch(
+    label: '합정점',
+    address: '서울 마포구 양화로 45',
+    neighborhood: '합정동',
+    regionSido: '서울특별시',
+    regionSigungu: '마포구',
+  ),
+];
+
 /// 링크를 읽지 못해 만들어진 빈 가게(링크만 있고 요약이 없다).
 MyStore emptyStore({List<SourceLink> links = const []}) => MyStore(
   id: 'store-1',
@@ -49,6 +76,50 @@ MyStore emptyStore({List<SourceLink> links = const []}) => MyStore(
   onboardingStep: StoreOnboardingStep.page,
   industry: IndustryCategory.foodCafe,
   sourceLinks: links,
+);
+
+/// [s]에서 일부만 바꾼 사본(가짜 저장소가 서버의 갱신을 흉내 낼 때 쓴다).
+MyStore _copy(
+  MyStore s, {
+  StoreOnboardingStep? step,
+  IndustryCategory? industry,
+  String? name,
+  String? category,
+  String? neighborhood,
+  String? regionSido,
+  String? regionSigungu,
+  String? signatureMenu,
+  String? hours,
+  String? seats,
+  String? bestShootingTime,
+  String? intro,
+  List<String>? tags,
+  List<String>? customerPhrases,
+  String? recruitLine,
+  StoreStatus? status,
+}) => MyStore(
+  id: s.id,
+  status: status ?? s.status,
+  onboardingStep: step ?? s.onboardingStep,
+  industry: industry ?? s.industry,
+  name: name ?? s.name,
+  category: category ?? s.category,
+  neighborhood: neighborhood ?? s.neighborhood,
+  regionSido: regionSido ?? s.regionSido,
+  regionSigungu: regionSigungu ?? s.regionSigungu,
+  coverPhotoUrl: s.coverPhotoUrl,
+  signatureMenu: signatureMenu ?? s.signatureMenu,
+  hours: hours ?? s.hours,
+  seats: seats ?? s.seats,
+  bestShootingTime: bestShootingTime ?? s.bestShootingTime,
+  intro: intro ?? s.intro,
+  defaultTerms: s.defaultTerms,
+  sourceLinks: s.sourceLinks,
+  slug: s.slug,
+  publicUrl: s.publicUrl,
+  tags: tags ?? s.tags,
+  customerPhrases: customerPhrases ?? s.customerPhrases,
+  recruitLine: recruitLine ?? s.recruitLine,
 );
 
 /// 손으로 쓴 가짜 가게 저장소. 서버가 가진 가게를 흉내 내고 실패와 지연을 정한다.
@@ -76,6 +147,13 @@ class FakeStoreRepository implements StoreRepository {
   int fetchCalls = 0;
   final analyzed = <List<SourceLink>>[];
   final edits = <StoreEdit>[];
+  final manuals = <ManualStore>[];
+
+  /// 이름(앞뒤 공백 뺀 값)별로 [findBranches]가 돌려줄 지점. 캔버스 F7의 견본이 기본이다.
+  final branchesByName = <String, List<StoreBranch>>{'한그릇 라멘': sampleBranches};
+  final branchLookups = <String>[];
+  bool failManual = false;
+  bool failBranches = false;
   final advanced = <StoreOnboardingStep>[];
   final terms = <OfferTerms>[];
   int publishCalls = 0;
@@ -113,28 +191,53 @@ class FakeStoreRepository implements StoreRepository {
   }
 
   @override
+  Future<MyStore> createManually(ManualStore input) async {
+    manuals.add(input);
+    if (failManual) throw const StoreFailure();
+    final branch = input.branch;
+    return store = MyStore(
+      id: 'store-1',
+      status: StoreStatus.draft,
+      onboardingStep: StoreOnboardingStep.page,
+      industry: IndustryCategory.foodCafe,
+      name: input.name,
+      neighborhood: branch?.neighborhood,
+      regionSido: branch?.regionSido,
+      regionSigungu: branch?.regionSigungu,
+      signatureMenu: input.signatureMenu,
+      slug: 'store-slug',
+      publicUrl: 'cora.page/l/store-slug',
+      sourceLinks: store?.sourceLinks ?? const [],
+    );
+  }
+
+  @override
+  Future<List<StoreBranch>> findBranches(String name) async {
+    branchLookups.add(name);
+    if (failBranches) throw const StoreFailure();
+    return branchesByName[name] ?? const [];
+  }
+
+  @override
   Future<MyStore> update(StoreEdit edit) async {
     edits.add(edit);
     if (failUpdate) throw const StoreFailure();
-    final s = store!;
-    return store = MyStore(
-      id: s.id,
-      status: s.status,
-      onboardingStep: s.onboardingStep,
-      industry: edit.industry ?? s.industry,
-      name: edit.name ?? s.name,
-      category: edit.category ?? s.category,
-      neighborhood: edit.neighborhood ?? s.neighborhood,
-      regionSido: edit.regionSido ?? s.regionSido,
-      regionSigungu: edit.regionSigungu ?? s.regionSigungu,
-      coverPhotoUrl: s.coverPhotoUrl,
-      signatureMenu: edit.signatureMenu ?? s.signatureMenu,
-      hours: edit.hours ?? s.hours,
-      seats: edit.seats ?? s.seats,
-      bestShootingTime: edit.bestShootingTime ?? s.bestShootingTime,
-      intro: edit.intro ?? s.intro,
-      defaultTerms: s.defaultTerms,
-      sourceLinks: s.sourceLinks,
+    return store = _copy(
+      store!,
+      industry: edit.industry,
+      name: edit.name,
+      category: edit.category,
+      neighborhood: edit.neighborhood,
+      regionSido: edit.regionSido,
+      regionSigungu: edit.regionSigungu,
+      signatureMenu: edit.signatureMenu,
+      hours: edit.hours,
+      seats: edit.seats,
+      bestShootingTime: edit.bestShootingTime,
+      intro: edit.intro,
+      tags: edit.tags,
+      customerPhrases: edit.customerPhrases,
+      recruitLine: edit.recruitLine,
     );
   }
 
@@ -143,26 +246,9 @@ class FakeStoreRepository implements StoreRepository {
     advanced.add(step);
     if (failAdvance) throw const StoreFailure();
     final s = store!;
-    return store = MyStore(
-      id: s.id,
-      status: s.status,
-      onboardingStep: step.index > s.onboardingStep.index
-          ? step
-          : s.onboardingStep,
-      industry: s.industry,
-      name: s.name,
-      category: s.category,
-      neighborhood: s.neighborhood,
-      regionSido: s.regionSido,
-      regionSigungu: s.regionSigungu,
-      coverPhotoUrl: s.coverPhotoUrl,
-      signatureMenu: s.signatureMenu,
-      hours: s.hours,
-      seats: s.seats,
-      bestShootingTime: s.bestShootingTime,
-      intro: s.intro,
-      defaultTerms: s.defaultTerms,
-      sourceLinks: s.sourceLinks,
+    return store = _copy(
+      s,
+      step: step.index > s.onboardingStep.index ? step : s.onboardingStep,
     );
   }
 

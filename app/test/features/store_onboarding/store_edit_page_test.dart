@@ -189,8 +189,6 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('가게 페이지 만들기'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('직접 입력하기'));
-    await tester.pumpAndSettle();
 
     await tester.enterText(_input('name'), '직접 쓴 가게');
     await tester.pump();

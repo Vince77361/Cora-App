@@ -42,17 +42,84 @@ void main() {
     expect(find.text('가게 등록'), findsNothing);
     expect(find.bySemanticsLabel(RegExp('^가게 등록')), findsOneWidget);
     expect(find.text('1 / 3'), findsOneWidget);
-    expect(find.text('가게 링크만 넣으면\n소개 페이지를 만들어 드려요.'), findsOneWidget);
+    expect(find.text('가게 링크 하나면 돼요.'), findsOneWidget);
     expect(
-      find.text('사진, 메뉴, 영업시간을 링크에서 가져와요. 2개 이상 넣으면 더 정확해요.'),
+      find.text(
+        '네이버 지도, 캐치테이블, 인스타그램, 체험단 후기 글 중 무엇이든 괜찮아요. 가입 없이 먼저 볼 수 있어요.',
+      ),
       findsOneWidget,
     );
-    expect(find.text('네이버 지도'), findsOneWidget);
-    expect(find.text('캐치테이블'), findsOneWidget);
-    expect(find.text('인스타그램 · 선택'), findsOneWidget);
-    expect(find.text('가져온 정보는 다음 화면에서 고칠 수 있어요. 공개 정보만 사용해요.'), findsOneWidget);
+    expect(
+      find.textContaining(
+        '가져온 정보는 다음 화면에서 고칠 수 있어요. 공개 정보만 사용해요.',
+        findRichText: true,
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('링크가 없거나 안 열리면 직접 입력', findRichText: true),
+      findsOneWidget,
+    );
     expect(find.text('가게 페이지 만들기'), findsOneWidget);
     semantics.dispose();
+  });
+
+  testWidgets(
+    'A2 shows the four link fields in canvas order and the new wording',
+    (tester) async {
+      await pumpStoreApp(tester);
+
+      final labels = [
+        '네이버 지도',
+        '캐치테이블',
+        '체험단 후기 글 · 선택 · 인스타 게시물로 바꿔 드려요',
+        '인스타그램 · 선택',
+      ];
+      final tops = [
+        for (final label in labels) tester.getTopLeft(find.text(label)).dy,
+      ];
+      expect([...tops]..sort(), tops);
+      expect(tops.toSet(), hasLength(4));
+      expect(find.text('blog.naver.com/[후기 글]'), findsOneWidget);
+      expect(find.text('instagram.com/가게계정'), findsOneWidget);
+    },
+  );
+
+  testWidgets('A2 enables the button with a single link', (tester) async {
+    await pumpStoreApp(tester);
+    expect(_createAction(tester), isNull);
+
+    await _type(tester, SourceLinkKind.catchtable, 'app.catchtable.co.kr/abc');
+
+    expect(_createAction(tester), isNotNull);
+  });
+
+  testWidgets('A2 accepts a naver blog url as a review post', (tester) async {
+    final stores = FakeStoreRepository();
+    await pumpStoreApp(tester, stores: stores);
+
+    await _type(tester, SourceLinkKind.reviewPost, 'blog.naver.com/shop/123');
+    expect(_createAction(tester), isNotNull);
+    await tester.tap(find.text('가게 페이지 만들기'));
+    await tester.pumpAndSettle();
+
+    expect(stores.analyzed.single.single.kind, SourceLinkKind.reviewPost);
+    expect(
+      stores.analyzed.single.single.url,
+      'https://blog.naver.com/shop/123',
+    );
+    expect(find.byType(StorePagePreviewPage), findsOneWidget);
+  });
+
+  testWidgets('A2 rejects a review post on another host', (tester) async {
+    await pumpStoreApp(tester);
+
+    await _type(tester, SourceLinkKind.reviewPost, 'https://example.com/post');
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+
+    expect(find.text('체험단 후기 글 링크가 맞는지 확인해 주세요.'), findsOneWidget);
+    expect(_createAction(tester), isNull);
   });
 
   testWidgets('create button is disabled until one link is entered', (
@@ -135,39 +202,27 @@ void main() {
     expect(find.byType(StorePagePreviewPage), findsOneWidget);
   });
 
-  testWidgets('offers manual entry when analysis fails', (tester) async {
+  testWidgets('sends a failed analysis on to manual input', (tester) async {
     final stores = FakeStoreRepository()..analysisFails = true;
     await pumpStoreApp(tester, stores: stores);
 
     await _type(tester, SourceLinkKind.naverMap, 'naver.me/fail');
     await tester.tap(find.text('가게 페이지 만들기'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(StoreLinksPage), findsOneWidget);
-    expect(find.text('정보를 가져오지 못했어요. 직접 입력할 수 있어요.'), findsOneWidget);
-    expect(find.text('직접 입력하기'), findsOneWidget);
-
-    await tester.tap(find.text('직접 입력하기'));
     await tester.pumpAndSettle();
 
     expect(find.byType(StoreEditPage), findsOneWidget);
-    expect(find.text('가게 정보 고치기'), findsOneWidget);
+    // 옛 안내와 버튼은 없다.
+    expect(find.text('정보를 가져오지 못했어요. 직접 입력할 수 있어요.'), findsNothing);
+    expect(find.text('직접 입력하기'), findsNothing);
   });
 
-  testWidgets('editing a link after a failed analysis brings the button back', (
-    tester,
-  ) async {
-    final stores = FakeStoreRepository()..analysisFails = true;
-    await pumpStoreApp(tester, stores: stores);
-    await _type(tester, SourceLinkKind.naverMap, 'naver.me/fail');
-    await tester.tap(find.text('가게 페이지 만들기'));
+  testWidgets('opens manual input from the bottom link', (tester) async {
+    await pumpStoreApp(tester);
+
+    await tester.tapOnText(find.textRange.ofSubstring('링크가 없거나 안 열리면 직접 입력'));
     await tester.pumpAndSettle();
 
-    await _type(tester, SourceLinkKind.naverMap, 'naver.me/other');
-
-    expect(find.text('가게 페이지 만들기'), findsOneWidget);
-    expect(find.text('직접 입력하기'), findsNothing);
-    expect(find.text('가져온 정보는 다음 화면에서 고칠 수 있어요. 공개 정보만 사용해요.'), findsOneWidget);
+    expect(find.byType(StoreEditPage), findsOneWidget);
   });
 
   testWidgets('keeps the input and says so when the server is unreachable', (
@@ -181,7 +236,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(StoreLinksPage), findsOneWidget);
-    expect(find.text('서버에 연결하지 못했어요.'), findsOneWidget);
+    expect(
+      find.textContaining('서버에 연결하지 못했어요.', findRichText: true),
+      findsOneWidget,
+    );
     expect(find.text('naver.me/abc'), findsOneWidget);
     expect(_createAction(tester), isNotNull);
   });

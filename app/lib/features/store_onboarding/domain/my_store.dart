@@ -49,6 +49,11 @@ class MyStore {
     this.intro,
     this.defaultTerms,
     this.sourceLinks = const [],
+    this.slug,
+    this.publicUrl,
+    this.tags = const [],
+    this.customerPhrases = const [],
+    this.recruitLine,
   });
 
   final String id;
@@ -70,6 +75,17 @@ class MyStore {
   final String? intro;
   final OfferTerms? defaultTerms;
   final List<SourceLink> sourceLinks;
+
+  /// 공개 주소 이름. 이름이 처음 생길 때 서버가 정하고 바뀌지 않는다. 이름이 없으면 null.
+  final String? slug;
+
+  /// 공개 주소(`cora.page/l/{slug}`, `https://` 없이). 이름이 없으면 null.
+  final String? publicUrl;
+
+  /// 꼬리표(`#` 없이)와 손님들이 자주 한 말, 모집 한 줄(A3).
+  final List<String> tags;
+  final List<String> customerPhrases;
+  final String? recruitLine;
 
   bool get isPublished => status == StoreStatus.published;
 
@@ -115,6 +131,9 @@ class StoreEdit {
     this.bestShootingTime,
     this.intro,
     this.coverPhotoPath,
+    this.tags,
+    this.customerPhrases,
+    this.recruitLine,
   });
 
   final String? name;
@@ -130,5 +149,65 @@ class StoreEdit {
   final String? intro;
 
   /// 사진 올리기가 돌려준 저장 위치. 이미 올린 사진을 가게에 연결할 때만 담는다.
+  final String? coverPhotoPath;
+
+  /// 꼬리표(`#` 없이), 손님들이 자주 한 말, 모집 한 줄. 빈 목록·빈 글자는 지운다는 뜻이고 null이면
+  /// 서버가 그대로 둔다.
+  final List<String>? tags;
+  final List<String>? customerPhrases;
+  final String? recruitLine;
+}
+
+/// 같은 이름의 가게 중 하나(F7 지점 고르기). 서버가 지점 이름과 동네·지역을 준다.
+class StoreBranch {
+  const StoreBranch({
+    required this.label,
+    required this.address,
+    this.neighborhood,
+    this.regionSido,
+    this.regionSigungu,
+  });
+
+  /// 지점 이름(예: `성수점`).
+  final String label;
+
+  /// 전체 주소. 화면에는 [neighborhood]를 보이고, 동네가 없을 때만 이것을 보인다.
+  final String address;
+  final String? neighborhood;
+  final String? regionSido;
+  final String? regionSigungu;
+
+  /// 지점 줄 오른쪽에 보이는 동네(캔버스: `성수동2가`).
+  String get shownPlace =>
+      (neighborhood ?? '').trim().isEmpty ? address : neighborhood!;
+
+  @override
+  bool operator ==(Object other) =>
+      other is StoreBranch &&
+      other.label == label &&
+      other.address == address &&
+      other.neighborhood == neighborhood &&
+      other.regionSido == regionSido &&
+      other.regionSigungu == regionSigungu;
+
+  @override
+  int get hashCode =>
+      Object.hash(label, address, neighborhood, regionSido, regionSigungu);
+}
+
+/// 링크 없이 직접 입력해 만드는 가게(F7).
+class ManualStore {
+  const ManualStore({
+    required this.name,
+    this.branch,
+    this.signatureMenu,
+    this.coverPhotoPath,
+  });
+
+  final String name;
+  final StoreBranch? branch;
+  final String? signatureMenu;
+
+  /// 사진 올리기가 돌려준 저장 위치.
   final String? coverPhotoPath;
 }

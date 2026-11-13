@@ -45,6 +45,22 @@ void main() {
     expect(SourceLinkKind.naverMap.accepts('https://user@naver.me/a'), isFalse);
   });
 
+  test('accepts naver blog and tistory urls as a review post', () {
+    const kind = SourceLinkKind.reviewPost;
+    expect(kind.accepts('blog.naver.com/shop/123'), isTrue);
+    expect(kind.accepts('https://m.blog.naver.com/shop/123'), isTrue);
+    expect(kind.accepts('https://shop.tistory.com/12'), isTrue);
+    expect(kind.accepts('https://evil-tistory.com/12'), isFalse);
+    expect(kind.accepts('https://tistory.com/12'), isFalse);
+    expect(kind.accepts('https://example.com/blog.naver.com'), isFalse);
+    // 다른 종류는 티스토리를 받지 않는다.
+    expect(
+      SourceLinkKind.instagram.accepts('https://a.tistory.com/1'),
+      isFalse,
+    );
+    expect(kind.invalidHint, '체험단 후기 글 링크가 맞는지 확인해 주세요.');
+  });
+
   test('one valid link enables submit, one invalid link disables it', () async {
     final c = await _open();
 
@@ -95,10 +111,8 @@ void main() {
     _vm(c).setInput(SourceLinkKind.naverMap, 'naver.me/fail');
 
     expect(await _vm(c).submit(), StoreLinksOutcome.analysisFailed);
-    expect(_state(c).analysisFailed, isTrue);
-
-    _vm(c).setInput(SourceLinkKind.naverMap, 'naver.me/other');
-    expect(_state(c).analysisFailed, isFalse);
+    expect(_state(c).analyzing, isFalse);
+    expect(_state(c).errorMessage, isNull);
   });
 
   test(

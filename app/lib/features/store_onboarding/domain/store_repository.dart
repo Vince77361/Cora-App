@@ -13,6 +13,13 @@ abstract class StoreRepository {
     List<SourceLink> links,
   );
 
+  /// 링크 없이 [store]로 등록 중인 가게를 만든다(이미 있으면 덮어쓴다. 링크는 남는다). 이미 공개한
+  /// 가게면 [StoreFailure.isConflict].
+  Future<MyStore> createManually(ManualStore store);
+
+  /// [name]과 같은 이름의 가게(지점)들. 서버가 못 찾으면 빈 목록이다.
+  Future<List<StoreBranch>> findBranches(String name);
+
   Future<MyStore> update(StoreEdit edit);
 
   /// 등록 단계를 [step]으로 올린다. 같거나 앞 단계면 그대로다.

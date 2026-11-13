@@ -49,6 +49,41 @@ class ApiStoreRepository implements StoreRepository {
   });
 
   @override
+  Future<MyStore> createManually(ManualStore store) => _guardStore(() {
+    final branch = store.branch;
+    return _stores.createMyStoreManually(
+      api.ManualStoreDto(
+        name: store.name,
+        signatureMenu: store.signatureMenu,
+        coverPhotoPath: store.coverPhotoPath,
+        branch: branch == null
+            ? null
+            : api.ManualBranchDto(
+                label: branch.label,
+                neighborhood: branch.neighborhood,
+                regionSido: branch.regionSido,
+                regionSigungu: branch.regionSigungu,
+              ),
+      ),
+    );
+  });
+
+  @override
+  Future<List<StoreBranch>> findBranches(String name) => _guard(() async {
+    final branches = await _stores.findMyStoreBranches(name);
+    return [
+      for (final b in branches ?? const <api.StoreBranchModel>[])
+        StoreBranch(
+          label: b.label,
+          address: b.address,
+          neighborhood: b.neighborhood,
+          regionSido: b.regionSido,
+          regionSigungu: b.regionSigungu,
+        ),
+    ];
+  });
+
+  @override
   Future<MyStore> update(StoreEdit edit) =>
       _guardStore(() => _stores.updateMyStore(_PartialUpdate(edit)));
 
@@ -133,6 +168,9 @@ class _PartialUpdate extends api.UpdateStoreDto {
       'bestShootingTime': ?e.bestShootingTime,
       'intro': ?e.intro,
       'coverPhotoPath': ?e.coverPhotoPath,
+      'tags': ?e.tags,
+      'customerPhrases': ?e.customerPhrases,
+      'recruitLine': ?e.recruitLine,
     };
   }
 }
@@ -161,6 +199,11 @@ MyStore _toStore(api.MyStoreModel m) => MyStore(
   seats: m.seats,
   bestShootingTime: m.bestShootingTime,
   intro: m.intro,
+  slug: m.slug,
+  publicUrl: m.publicUrl,
+  tags: m.tags,
+  customerPhrases: m.customerPhrases,
+  recruitLine: m.recruitLine,
   defaultTerms: m.defaultTerms == null
       ? null
       : offerTermsFromWire(m.defaultTerms!),
@@ -177,12 +220,14 @@ MyStore _toStore(api.MyStoreModel m) => MyStore(
 api.SourceLinkKind _linkKindToWire(SourceLinkKind kind) => switch (kind) {
   SourceLinkKind.naverMap => api.SourceLinkKind.NAVER_MAP,
   SourceLinkKind.catchtable => api.SourceLinkKind.CATCHTABLE,
+  SourceLinkKind.reviewPost => api.SourceLinkKind.REVIEW_POST,
   SourceLinkKind.instagram => api.SourceLinkKind.INSTAGRAM,
 };
 
 SourceLinkKind _linkKindFromWire(api.SourceLinkKind kind) => switch (kind) {
   api.SourceLinkKind.NAVER_MAP => SourceLinkKind.naverMap,
   api.SourceLinkKind.CATCHTABLE => SourceLinkKind.catchtable,
+  api.SourceLinkKind.REVIEW_POST => SourceLinkKind.reviewPost,
   _ => SourceLinkKind.instagram,
 };
 
