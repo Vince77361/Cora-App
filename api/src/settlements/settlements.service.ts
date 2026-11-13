@@ -18,7 +18,7 @@ import {
 } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
 import { Clock } from '../common/clock';
-import { maxCashBurden, readTerms } from '../stores/reward-terms';
+import { hasViewPay, maxCashBurden, readTerms } from '../stores/reward-terms';
 import { InstagramService } from '../instagram/instagram.service';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import {
@@ -86,6 +86,8 @@ export class SettlementsService {
       return;
     }
     if (collaboration.stage !== 'COUNTING') return;
+    // 조회수 수당이 없는 협업은 조회수를 세지 않는다(운영 재개가 남긴 작업이 돌아도 아무 일 없다).
+    if (!hasViewPay(readTerms(collaboration.terms))) return;
 
     await this.ensureSnapshot(collaboration, dayIndex, context);
     await this.haltIfUnreadable(collaboration);
@@ -127,6 +129,23 @@ export class SettlementsService {
     key: string,
     context?: JobRunContext,
   ): Promise<'settled' | 'halted' | 'gone'> {
+    // 조회수 수당이 없는 협업(고정 현금만)은 조회수를 읽지 않고 측정 기간이 끝나는 날 고정 현금으로 정산한다.
+    // 스냅샷이 없어 아래의 3일 실패 규칙을 보면 안 된다(거짓으로 멈춘다).
+    if (!hasViewPay(readTerms(collaboration.terms))) {
+      const fixed = await this.repository.transaction<'settled', 'gone'>(
+        async (tx, rollback) => {
+          const committed = await this.commitSettlement(
+            tx,
+            collaboration,
+            'COUNTING',
+            (escrow) => planFixed(collaboration, escrow),
+            key,
+          );
+          return committed ? 'settled' : rollback('gone');
+        },
+      );
+      return fixed === 'settled' ? 'settled' : 'gone';
+    }
     // 7일째 줄이 없으면 이 자리에서 읽는다: 같은 시각의 7일째 작업과 이 작업의 실행 순서에 기대지 않는다
     // (같은 날 줄은 유일 제약이 하나만 남긴다).
     await this.ensureSnapshot(collaboration, SNAPSHOT_DAYS, context);
@@ -482,9 +501,22 @@ function pickFinalViews(
   return readable[0]?.views ?? null;
 }
 
-// 조건 사본(고정 현금, 조회수 단가, 상한)으로 지급·환급을 정한다. 상한은 에스크로 잔액이 아니라 조건의 값이다:
-// 같은 트랜잭션에서 읽은 잔액이 사본의 최대 현금 부담과 다르면 화면에 보인 금액과 보관액이 어긋난 것이라
-// 돈을 움직이지 않고 던져 되돌린다. 조회수 수당이 없는 협업은 조회수로 정산하지 않는다.
+// 같은 트랜잭션에서 읽은 에스크로 잔액이 조건 사본의 최대 현금 부담과 다르면 화면에 보인 금액과 보관액이 어긋난 것이라
+// 돈을 움직이지 않고 던져 되돌린다.
+function assertEscrowMatches(
+  terms: ReturnType<typeof readTerms>,
+  escrow: number,
+): void {
+  const burden = maxCashBurden(terms);
+  if (escrow !== burden) {
+    throw new Error(
+      `에스크로 잔액(${escrow})이 조건의 최대 현금 부담(${burden})과 달라요.`,
+    );
+  }
+}
+
+// 조건 사본(고정 현금, 조회수 단가, 상한)으로 지급·환급을 정한다. 상한은 에스크로 잔액이 아니라 조건의 값이다.
+// 조회수 수당이 없는 협업은 조회수로 정산하지 않는다(planFixed).
 function planByViews(
   collaboration: Collaboration,
   views: number,
@@ -494,12 +526,7 @@ function planByViews(
   if (terms.viewRatePerThousand === null || terms.perViewCap === null) {
     throw new Error('조회수 수당이 없는 협업은 조회수로 정산할 수 없어요.');
   }
-  const burden = maxCashBurden(terms);
-  if (escrow !== burden) {
-    throw new Error(
-      `에스크로 잔액(${escrow})이 조건의 최대 현금 부담(${burden})과 달라요.`,
-    );
-  }
+  assertEscrowMatches(terms, escrow);
   const { payout, refund } = settleReward({
     views,
     ratePerThousand: terms.viewRatePerThousand,
@@ -507,4 +534,20 @@ function planByViews(
     fixedCash: terms.fixedCash,
   });
   return { finalViews: views, payout, refund };
+}
+
+// 고정 현금만 있는 협업의 정산: 조회수 없이(finalViews = null) 고정 현금 전부를 지급하고 환급은 없다.
+function planFixed(
+  collaboration: Collaboration,
+  escrow: number,
+): { finalViews: null; payout: number; refund: number } {
+  const terms = readTerms(collaboration.terms);
+  assertEscrowMatches(terms, escrow);
+  const { payout, refund } = settleReward({
+    views: 0,
+    ratePerThousand: 0,
+    cap: 0,
+    fixedCash: terms.fixedCash,
+  });
+  return { finalViews: null, payout, refund };
 }

@@ -81,8 +81,10 @@ export class SubmissionsService {
     }
 
     const now = this.clock.now();
-    // 조회수 수당이 있는 협업은 집계를 거쳐 정산한다(고정 현금과 함께여도 같다).
-    const perView =
+    // 낼 돈이 없는 오퍼(NONE)만 제출로 바로 끝난다. 돈이 있으면 측정 기간(7일)이 끝나는 날 정산한다.
+    // 조회수 수당이 있으면 그 기간에 조회수를 세고, 고정 현금만 있으면(FIXED) 세지 않고 정산 작업만 올린다.
+    const counted = collaboration.settlementMethod !== 'NONE';
+    const viewPay =
       collaboration.settlementMethod === 'PER_VIEW' ||
       collaboration.settlementMethod === 'FIXED_AND_PER_VIEW';
     const countingEndsAt = new Date(now.getTime() + SNAPSHOT_DAYS * DAY_MS);
@@ -90,33 +92,35 @@ export class SubmissionsService {
     const moved = await this.collaborations.advance(
       collaboration.id,
       'FUNDED',
-      perView ? 'COUNTING' : 'SETTLED',
+      counted ? 'COUNTING' : 'SETTLED',
       {
         submittedUrl: url,
         submittedAt: now,
-        ...(perView ? { countingEndsAt } : {}),
+        ...(counted ? { countingEndsAt } : {}),
       },
     );
     if (!moved) throw this.notSubmittable();
 
-    if (perView) {
-      await this.startCounting(collaboration, now, countingEndsAt);
+    if (counted) {
+      await this.startCounting(collaboration, now, countingEndsAt, viewPay);
     }
     await this.cancelDeadlineJobs(collaboration.id);
     await this.notifySubmitted(collaboration);
   }
 
   // 집계 작업을 올린다: 조회수 8번(0일째는 지금, 이후 하루 간격)과 정산 한 번.
+  // 조회수 수당이 없으면(고정 현금만) 조회수 작업 없이 정산 한 번만 올린다.
   // 올리지 못하면 단계를 FUNDED로 되돌려 크리에이터가 다시 제출할 수 있게 한다
   // (COUNTING인데 작업이 없으면 아무도 정산하지 않는다).
   private async startCounting(
     collaboration: Collaboration,
     now: Date,
     countingEndsAt: Date,
+    viewPay: boolean,
   ): Promise<void> {
     const keys: string[] = [];
     try {
-      for (let day = 0; day <= SNAPSHOT_DAYS; day += 1) {
+      for (let day = 0; viewPay && day <= SNAPSHOT_DAYS; day += 1) {
         const key = snapshotJobKey(collaboration.id, day);
         keys.push(key);
         await this.jobs.schedule(

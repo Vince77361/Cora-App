@@ -30,6 +30,7 @@ import { PayoutsService } from '../settlements/payouts.service';
 import { RefundsService } from '../settlements/refunds.service';
 import { SettlementsRepository } from '../settlements/settlements.repository';
 import { SettlementsService } from '../settlements/settlements.service';
+import { hasViewPay, readTerms } from '../stores/reward-terms';
 import { OpsError } from './ops-error';
 import { formatSnapshot } from './ops-format';
 import { OpsRepository } from './ops.repository';
@@ -177,12 +178,14 @@ export class OpsService {
     const submittedAt = c.submittedAt;
     const endsAt = c.countingEndsAt;
     if (!submittedAt || !endsAt) return;
+    // 조회수 수당이 없는 협업(고정 현금만)은 조회수를 세지 않으니 조회수 작업은 올리지 않고 정산만 올린다.
+    const viewPay = hasViewPay(readTerms(c.terms));
     const recorded = new Set(
       (await this.settlementsRepository.listSnapshots(c.id)).map(
         (snapshot) => snapshot.dayIndex,
       ),
     );
-    for (let day = 0; day <= SNAPSHOT_DAYS; day += 1) {
+    for (let day = 0; viewPay && day <= SNAPSHOT_DAYS; day += 1) {
       if (recorded.has(day)) continue;
       const key = snapshotJobKey(c.id, day);
       await this.jobs.cancel(key);

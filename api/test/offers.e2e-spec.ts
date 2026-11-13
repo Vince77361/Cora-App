@@ -383,17 +383,58 @@ describe('offers', () => {
       expect(await prisma.offer.count()).toBe(0);
     });
 
-    it('rejects fixed cash for now', async () => {
+    it('sends an offer with fixed cash and view pay together', async () => {
       const creatorId = await seedCreator();
       const res = await send({
         creatorId,
         format: 'REELS',
-        reward: { voucher: {}, fixedCash: 30000 },
-      }).expect(400);
-      expect(codeOf(res)).toBe('VALIDATION_FAILED');
-      expect((res.body as { error: { message: string } }).error.message).toBe(
-        '고정 현금은 아직 쓸 수 없어요.',
-      );
+        reward: {
+          voucher: {},
+          fixedCash: 30000,
+          perView: { ratePerThousand: 2000, cap: 60000 },
+        },
+      }).expect(201);
+      const body = res.body as SentBody;
+      expect(body.terms).toMatchObject({
+        voucherName: '식사권',
+        fixedCash: 30000,
+        viewRatePerThousand: 2000,
+        perViewCap: 60000,
+        maxCashBurden: 90000,
+        settlementMethod: 'FIXED_AND_PER_VIEW',
+      });
+      expect(
+        await prisma.offer.findUniqueOrThrow({ where: { id: body.id } }),
+      ).toMatchObject({ fixedCash: 30000, perViewCap: 60000 });
+    });
+
+    it('sends an offer with fixed cash only', async () => {
+      const creatorId = await seedCreator();
+      const res = await send({
+        creatorId,
+        format: 'REELS',
+        reward: { fixedCash: 30000 },
+      }).expect(201);
+      expect((res.body as SentBody).terms).toMatchObject({
+        voucherName: null,
+        fixedCash: 30000,
+        viewRatePerThousand: null,
+        perViewCap: null,
+        maxCashBurden: 30000,
+        settlementMethod: 'FIXED',
+      });
+    });
+
+    it('rejects fixed cash outside the range or the unit', async () => {
+      const creatorId = await seedCreator();
+      for (const fixedCash of [5000, 35000, 1010000, 10000000, -10000]) {
+        const res = await send({
+          creatorId,
+          format: 'REELS',
+          reward: { voucher: {}, fixedCash },
+        }).expect(400);
+        expect(codeOf(res)).toBe('VALIDATION_FAILED');
+      }
       expect(await prisma.offer.count()).toBe(0);
     });
 
@@ -1153,6 +1194,29 @@ describe('offers', () => {
       expect(list.map((o) => o.needsInstagram)).toEqual([false, false]);
       await accept(voucher.id).expect(200);
       await accept(shorts.id).expect(200);
+    });
+
+    it('does not require instagram for a fixed cash only reels offer', async () => {
+      const offer = await seedOffer(store.id, USER_A, {
+        voucherName: null,
+        voucherValue: null,
+        voucherPeople: null,
+        fixedCash: 30000,
+      });
+      const list = (await received('new').expect(200)).body as ReceivedBody[];
+      expect(list.map((o) => [o.id, o.needsInstagram])).toEqual([
+        [offer.id, false],
+      ]);
+      // 연결 없이 수락하면 결제를 기다리는 협업이 고정 현금 방식으로 만들어진다.
+      await accept(offer.id).expect(200);
+      expect(
+        await prisma.collaboration.findFirstOrThrow({
+          where: { offerId: offer.id },
+        }),
+      ).toMatchObject({
+        stage: 'AWAITING_PAYMENT',
+        settlementMethod: 'FIXED',
+      });
     });
 
     it('requires instagram for a card-news offer with both rewards', async () => {

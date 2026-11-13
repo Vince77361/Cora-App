@@ -243,10 +243,6 @@ export function buildTerms(
   },
   defaults: RewardDefaults = {},
 ): OfferTermsModel {
-  // 임시: 고정 현금은 결제 금액과 정산이 아직 따라오지 못한다. 고정 현금을 여는 작업(Task 4)이 이 검사를 지운다.
-  if ((input.reward.fixedCash ?? 0) !== 0) {
-    throw new AppError('VALIDATION_FAILED', '고정 현금은 아직 쓸 수 없어요.');
-  }
   const reward = buildReward(input.reward, {
     format: input.format,
     defaults,

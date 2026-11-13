@@ -132,7 +132,9 @@ describe('settlements', () => {
     over: {
       stage?: CollaborationStage;
       format?: ContentFormat;
-      rewardType?: 'VOUCHER' | 'PER_VIEW' | 'BOTH';
+      // FIXED_ONLY는 고정 현금만 있는 보상이다(식사권도 조회수 수당도 없다).
+      rewardType?: 'VOUCHER' | 'PER_VIEW' | 'BOTH' | 'FIXED_ONLY';
+      fixedCash?: number;
       ratePerThousand?: number;
       perViewCap?: number;
       connected?: boolean;
@@ -143,10 +145,20 @@ describe('settlements', () => {
     } = {},
   ): Promise<Seeded> {
     const rewardType = over.rewardType ?? 'BOTH';
-    const perView = rewardType !== 'VOUCHER';
+    const perView = rewardType === 'PER_VIEW' || rewardType === 'BOTH';
+    const fixedCash = over.fixedCash ?? 0;
     const ratePerThousand = over.ratePerThousand ?? 10000;
     const perViewCap = over.perViewCap ?? 100000;
-    const escrow = over.paidEscrow ?? perViewCap;
+    // 보관액 = 최대 현금 부담 = 고정 현금 + 조회수 수당 상한.
+    const escrow = over.paidEscrow ?? fixedCash + (perView ? perViewCap : 0);
+    const settlementMethod =
+      fixedCash > 0 && perView
+        ? 'FIXED_AND_PER_VIEW'
+        : fixedCash > 0
+          ? 'FIXED'
+          : perView
+            ? 'PER_VIEW'
+            : 'NONE';
     const ownerId = randomUUID();
     await prisma.user.create({ data: { id: ownerId, role: 'STORE' } });
     const store = await prisma.store.create({
@@ -183,13 +195,13 @@ describe('settlements', () => {
         },
       });
     }
-    const hasVoucher = rewardType !== 'PER_VIEW';
+    const hasVoucher = rewardType === 'VOUCHER' || rewardType === 'BOTH';
     const columns = {
       format: over.format ?? 'REELS',
       voucherName: hasVoucher ? '식사권' : null,
       voucherValue: hasVoucher ? 40000 : null,
       voucherPeople: hasVoucher ? 2 : null,
-      fixedCash: 0,
+      fixedCash,
       viewRatePerThousand: perView ? ratePerThousand : null,
       perViewCap: perView ? perViewCap : null,
       usageRights: 'STORE_REPOST_3M' as const,
@@ -224,12 +236,12 @@ describe('settlements', () => {
         offerId: offer.id,
         storeId: store.id,
         terms,
-        settlementMethod: perView ? 'PER_VIEW' : 'NONE',
+        settlementMethod,
         fundedAt: T0,
         submitDueAt: new Date(T0.getTime() + 14 * DAY),
       },
     });
-    if (perView) {
+    if (escrow > 0) {
       const fee = Math.floor(escrow / 10);
       const payment = await prisma.payment.create({
         data: {
@@ -428,7 +440,7 @@ describe('settlements', () => {
       );
     });
 
-    it('settles a voucher-only collaboration immediately on submission', async () => {
+    it('keeps the voucher only path settling on submission', async () => {
       const s = await seed({ rewardType: 'VOUCHER' });
       const res = await submit(s.collaborationId, REELS_URL).expect(200);
       expect(res.body).toMatchObject({
@@ -445,6 +457,28 @@ describe('settlements', () => {
       expect(await prisma.settlement.count()).toBe(0);
       expect(await prisma.ledgerEntry.count()).toBe(0);
       expect(jobKeys()).toEqual([]);
+    });
+
+    it('counts no views for a fixed cash only collaboration', async () => {
+      // 연동된 인스타그램 계정 없이도 제출된다(조회수를 읽지 않는다).
+      const s = await seed({ rewardType: 'FIXED_ONLY', fixedCash: 30000 });
+      const res = await submit(s.collaborationId, REELS_URL).expect(200);
+      expect(res.body).toMatchObject({ stage: 'COUNTING' });
+      expect(await collaborationOf(s.collaborationId)).toMatchObject({
+        stage: 'COUNTING',
+        settlementMethod: 'FIXED',
+        submittedAt: T0,
+        countingEndsAt: new Date(T0.getTime() + 7 * DAY),
+      });
+      // 스냅샷 작업 없이 정산 작업만 측정 기간이 끝나는 날에 올라간다.
+      expect(
+        scheduler.pending().filter((j) => j.name === 'view-snapshot'),
+      ).toEqual([]);
+      const settle = scheduler.pending().filter((j) => j.name === 'settle');
+      expect(settle).toHaveLength(1);
+      expect(settle[0].runAt).toEqual(new Date(T0.getTime() + 7 * DAY));
+      await scheduler.runDue(new Date(T0.getTime() + 6 * DAY));
+      expect(await snapshotsOf(s.collaborationId)).toEqual([]);
     });
 
     it('tells the store owner once that the content is up', async () => {
@@ -700,6 +734,74 @@ describe('settlements', () => {
       expect(await prisma.refund.findMany()).toMatchObject([{ amount: 35000 }]);
     });
 
+    it('settles fixed cash plus view pay and refunds only the unused cap', async () => {
+      // 고정 현금 30,000원 + 조회수 수당 상한 60,000원: 보관 90,000원 + 수수료 9,000원.
+      const s = await seed({
+        rewardType: 'PER_VIEW',
+        fixedCash: 30000,
+        ratePerThousand: 2000,
+        perViewCap: 60000,
+      });
+      await submitAndSettle(s, 12500);
+      expect(
+        await prisma.settlement.findUniqueOrThrow({
+          where: { collaborationId: s.collaborationId },
+        }),
+      ).toMatchObject({
+        finalViews: 12500,
+        payoutAmount: 55000,
+        refundAmount: 35000,
+      });
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(0);
+      expect(await accountOf(s.collaborationId, 'CREATOR_PAYABLE')).toBe(55000);
+      expect(await accountOf(s.collaborationId, 'STORE_REFUND')).toBe(35000);
+      expect(await accountOf(s.collaborationId, 'FEE_REVENUE')).toBe(9000);
+      expect(await prisma.payout.findMany()).toMatchObject([{ amount: 55000 }]);
+      expect(await prisma.refund.findMany()).toMatchObject([{ amount: 35000 }]);
+    });
+
+    it('does not settle a fixed cash only collaboration before the period ends', async () => {
+      const s = await seed({ rewardType: 'FIXED_ONLY', fixedCash: 30000 });
+      await submit(s.collaborationId, REELS_URL).expect(200);
+      clock.set(new Date(T0.getTime() + 7 * DAY - MINUTE));
+      await scheduler.runDue(clock.now());
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
+      expect(await prisma.settlement.count()).toBe(0);
+      expect(await prisma.payout.count()).toBe(0);
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(30000);
+    });
+
+    it('settles a fixed cash only collaboration on the day the period ends', async () => {
+      const s = await seed({ rewardType: 'FIXED_ONLY', fixedCash: 30000 });
+      await submitAndSettle(s, 'ignored');
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('SETTLED');
+      // 조회수를 읽지 않아 finalViews가 없고, 3일 실패 규칙에 걸리지도 않는다.
+      expect(
+        await prisma.settlement.findUniqueOrThrow({
+          where: { collaborationId: s.collaborationId },
+        }),
+      ).toMatchObject({
+        finalViews: null,
+        payoutAmount: 30000,
+        refundAmount: 0,
+        settledAt: new Date(T0.getTime() + 7 * DAY),
+      });
+      expect(await snapshotsOf(s.collaborationId)).toEqual([]);
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(0);
+      expect(await accountOf(s.collaborationId, 'CREATOR_PAYABLE')).toBe(30000);
+      expect(await accountOf(s.collaborationId, 'STORE_REFUND')).toBe(0);
+      expect(await accountOf(s.collaborationId, 'FEE_REVENUE')).toBe(3000);
+      expect(await prisma.payout.findMany()).toMatchObject([{ amount: 30000 }]);
+      // 환급할 돈이 없으니 PG 환급도 없다.
+      expect(pg.refunds).toHaveLength(0);
+      expect(alert).not.toHaveBeenCalled();
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'SETTLEMENT_CONFIRMED' },
+        }),
+      ).toBe(1);
+    });
+
     it('caps the view pay at the cap of the terms', async () => {
       const s = await seed({ ratePerThousand: 2000, perViewCap: 60000 });
       await submitAndSettle(s, 9999999);
@@ -941,10 +1043,21 @@ describe('settlements', () => {
     });
 
     it('keeps every collaboration ledger balanced after each scenario', async () => {
-      // 옛 금액(단가 10,000원, 상한 100,000원)과 새 기본값(2,000원, 60,000원) 모두.
-      for (const [over, cap] of [
+      // 옛 금액(단가 10,000원, 상한 100,000원), 새 기본값(2,000원, 60,000원), 고정 현금만, 고정 현금 + 조회수 수당 모두.
+      // burden은 최대 현금 부담이다.
+      for (const [over, burden] of [
         [{}, 100000],
         [{ ratePerThousand: 2000, perViewCap: 60000 }, 60000],
+        [{ rewardType: 'FIXED_ONLY', fixedCash: 30000 }, 30000],
+        [
+          {
+            rewardType: 'PER_VIEW',
+            fixedCash: 30000,
+            ratePerThousand: 2000,
+            perViewCap: 60000,
+          },
+          90000,
+        ],
       ] as const) {
         for (const views of [0, 4320, 12500, 9999999]) {
           const s = await seed(over);
@@ -957,7 +1070,7 @@ describe('settlements', () => {
             (await accountOf(s.collaborationId, 'CREATOR_PAYABLE')) +
             (await accountOf(s.collaborationId, 'STORE_REFUND')) +
             (await accountOf(s.collaborationId, 'FEE_REVENUE'));
-          expect(total).toBe(cap + Math.floor(cap / 10));
+          expect(total).toBe(burden + Math.floor(burden / 10));
           scheduler.jobs.length = 0;
           clock.set(T0);
         }

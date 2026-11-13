@@ -549,7 +549,7 @@ describe('StoresService', () => {
       });
     });
 
-    it('rejects a rate outside the allowed range and fixed cash for now', async () => {
+    it('rejects a rate and fixed cash outside the allowed range', async () => {
       expect(
         await codeOf(
           service.setDefaultTerms(OWNER, {
@@ -562,7 +562,7 @@ describe('StoresService', () => {
         await codeOf(
           service.setDefaultTerms(OWNER, {
             format: 'REELS',
-            reward: { voucher: {}, fixedCash: 30000 },
+            reward: { voucher: {}, fixedCash: 35000 },
           }),
         ),
       ).toBe('VALIDATION_FAILED');

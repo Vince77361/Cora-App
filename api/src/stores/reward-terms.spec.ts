@@ -306,15 +306,27 @@ describe('buildTerms', () => {
     });
   });
 
-  it('refuses fixed cash for now', () => {
-    expect(() =>
+  it('accepts fixed cash with the other rewards and derives the burden and method', () => {
+    expect(
       buildTerms({
         format: 'REELS',
         reward: { voucher: {}, fixedCash: 30000 },
       }),
-    ).toThrow(
-      new AppError('VALIDATION_FAILED', '고정 현금은 아직 쓸 수 없어요.'),
-    );
+    ).toMatchObject({
+      fixedCash: 30000,
+      maxCashBurden: 30000,
+      settlementMethod: 'FIXED',
+    });
+    expect(
+      buildTerms({
+        format: 'REELS',
+        reward: { fixedCash: 30000, perView: {} },
+      }),
+    ).toMatchObject({
+      fixedCash: 30000,
+      maxCashBurden: 90000,
+      settlementMethod: 'FIXED_AND_PER_VIEW',
+    });
   });
 
   it('keeps the existing range and blog rules', () => {

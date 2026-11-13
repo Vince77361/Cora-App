@@ -4,6 +4,7 @@ import {
   CollaborationStage,
   PaymentStatus,
   PrismaClient,
+  SettlementMethod,
 } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
@@ -112,6 +113,7 @@ describe('payments', () => {
       paymentDueAt?: Date | null;
       // 이미 저장된 협업의 조건 사본(고정 현금처럼 아직 새로 만들 수 없는 값을 읽는 길을 확인할 때).
       copy?: Record<string, unknown>;
+      settlementMethod?: SettlementMethod;
     } = {},
   ): Promise<Seeded> {
     const ownerId = over.commissionerId ?? USER_A;
@@ -162,7 +164,7 @@ describe('payments', () => {
         offerId: offer.id,
         storeId: store.id,
         terms: over.copy ?? TERMS,
-        settlementMethod: 'PER_VIEW',
+        settlementMethod: over.settlementMethod ?? 'PER_VIEW',
       },
     });
     if (due) {
@@ -260,7 +262,7 @@ describe('payments', () => {
       expect((res.body as QuoteBody).orderName.length).toBeGreaterThan(0);
     });
 
-    it('quotes fixed cash plus the view pay cap for a copy that has fixed cash', async () => {
+    it('quotes fixed cash plus the cap plus the fee', async () => {
       const s = await seed({ copy: { ...TERMS, fixedCash: 30000 } });
       expect((await quote(s.collaborationId).expect(200)).body).toMatchObject({
         escrow: 90000,
@@ -268,6 +270,28 @@ describe('payments', () => {
         total: 99000,
         fixedCash: 30000,
         perViewCap: 60000,
+      });
+    });
+
+    it('quotes fixed cash only without a view pay cap', async () => {
+      const s = await seed({
+        copy: {
+          ...TERMS,
+          voucherName: null,
+          voucherValue: null,
+          voucherPeople: null,
+          viewRatePerThousand: null,
+          perViewCap: null,
+          fixedCash: 30000,
+        },
+        settlementMethod: 'FIXED',
+      });
+      expect((await quote(s.collaborationId).expect(200)).body).toMatchObject({
+        escrow: 30000,
+        fee: 3000,
+        total: 33000,
+        fixedCash: 30000,
+        perViewCap: null,
       });
     });
 
@@ -428,6 +452,27 @@ describe('payments', () => {
         where: { id: paymentId },
       });
       expect(payment.amountEscrow + payment.amountFee).toBe(quoted.total);
+    });
+
+    it('funds fixed cash plus the cap as the quoted escrow and keeps the fee apart', async () => {
+      // 고정 현금 30,000원 + 상한 60,000원 = 보관 90,000원, 수수료 9,000원.
+      const s = await seed({
+        copy: { ...TERMS, fixedCash: 30000 },
+        settlementMethod: 'FIXED_AND_PER_VIEW',
+      });
+      const quoted = (await quote(s.collaborationId).expect(200))
+        .body as QuoteBody;
+      expect(quoted).toMatchObject({ escrow: 90000, fee: 9000, total: 99000 });
+      const paymentId = await startPayment(s.collaborationId);
+      await webhook(paymentId, 'APPROVED').expect(200);
+      const ledger = await ledgerOf(s.collaborationId);
+      const sum = (account: string) =>
+        ledger
+          .filter((e) => e.creditAccount === account)
+          .reduce((total, e) => total + e.amount, 0);
+      expect(sum('ESCROW')).toBe(90000);
+      expect(sum('FEE_REVENUE')).toBe(9000);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('FUNDED');
     });
 
     it('funds the collaboration on an approved webhook', async () => {

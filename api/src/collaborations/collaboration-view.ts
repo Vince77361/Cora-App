@@ -63,7 +63,7 @@ export function buildSteps(input: StepInput): Step[] {
   const ended = ENDED_WITHOUT_FINISH.includes(stage);
   const settled = stage === 'SETTLED';
   const submitted = input.submittedAt !== null || settled;
-  // 식사권만 있는 오퍼는 낼 돈이 없어 결제가 처음부터 끝나 있다.
+  // 낼 돈이 없는 오퍼(NONE)만 결제가 처음부터 끝나 있다. 고정 현금만 있어도 결제를 거친다.
   const paid = input.settlementMethod === 'NONE' || input.fundedAt !== null;
 
   const paidState: StepState = paid

@@ -467,11 +467,21 @@ describe('stores', () => {
       await putTerms({ rewardType: 'BOTH', reward: undefined }).expect(400);
     });
 
-    it('rejects fixed cash for now', async () => {
-      const res = await putTerms({
+    it('saves fixed cash as part of the default terms and rejects it outside the range', async () => {
+      const ok = await putTerms({
         reward: { voucher: {}, fixedCash: 30000 },
-      }).expect(400);
-      expect(codeOf(res)).toBe('VALIDATION_FAILED');
+      }).expect(200);
+      expect((ok.body as StoreBody).defaultTerms).toMatchObject({
+        fixedCash: 30000,
+        maxCashBurden: 30000,
+        settlementMethod: 'FIXED',
+      });
+      for (const fixedCash of [5000, 35000, 1010000]) {
+        const res = await putTerms({
+          reward: { voucher: {}, fixedCash },
+        }).expect(400);
+        expect(codeOf(res)).toBe('VALIDATION_FAILED');
+      }
     });
   });
 

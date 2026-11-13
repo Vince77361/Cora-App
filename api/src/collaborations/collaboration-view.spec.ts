@@ -102,6 +102,20 @@ describe('buildSteps', () => {
     ]);
   });
 
+  it('keeps PAID as the current step for a fixed cash offer that is not paid yet', () => {
+    for (const settlementMethod of ['FIXED', 'FIXED_AND_PER_VIEW'] as const) {
+      expect(
+        states(
+          input({
+            settlementMethod,
+            stage: 'AWAITING_PAYMENT',
+            fundedAt: null,
+          }),
+        ),
+      ).toEqual(['DONE', 'NOW', 'TODO', 'TODO', 'TODO']);
+    }
+  });
+
   it('settles a voucher-only offer on submission with the submit time as the settle time', () => {
     const steps = buildSteps(
       input({

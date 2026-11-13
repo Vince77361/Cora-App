@@ -516,7 +516,7 @@ describe('OffersService', () => {
     });
   });
 
-  it('rejects a rate outside the allowed range and fixed cash for now', async () => {
+  it('rejects a rate and fixed cash outside the allowed range', async () => {
     await expect(
       service.send(OWNER, {
         creatorId: CREATOR,
@@ -528,12 +528,9 @@ describe('OffersService', () => {
       service.send(OWNER, {
         creatorId: CREATOR,
         format: 'REELS',
-        reward: { voucher: {}, fixedCash: 30000 },
+        reward: { voucher: {}, fixedCash: 35000 },
       }),
-    ).rejects.toMatchObject({
-      code: 'VALIDATION_FAILED',
-      message: '고정 현금은 아직 쓸 수 없어요.',
-    });
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
     expect(repo.rows).toEqual([]);
   });
 

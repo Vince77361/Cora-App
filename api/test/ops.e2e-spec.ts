@@ -84,7 +84,13 @@ describe('ops commands', () => {
   }
 
   // 보관이 시작된 가게 오퍼 협업(상한 10만 원, 건당 10원, 수수료 1만 원)과 그 결제·장부를 DB에 바로 만든다.
-  async function seed(stage: CollaborationStage = 'COUNTING'): Promise<Seeded> {
+  async function seed(
+    stage: CollaborationStage = 'COUNTING',
+    // 고정 현금만 있는 협업(30,000원, 수수료 3,000원, 조회수 수당 없음)을 만든다.
+    fixedOnly = false,
+  ): Promise<Seeded> {
+    const escrow = fixedOnly ? 30000 : 100000;
+    const fee = escrow / 10;
     const ownerId = randomUUID();
     await prisma.user.create({ data: { id: ownerId, role: 'STORE' } });
     const store = await prisma.store.create({
@@ -125,9 +131,9 @@ describe('ops commands', () => {
       voucherName: null,
       voucherValue: null,
       voucherPeople: null,
-      fixedCash: 0,
-      viewRatePerThousand: 10000,
-      perViewCap: 100000,
+      fixedCash: fixedOnly ? 30000 : 0,
+      viewRatePerThousand: fixedOnly ? null : 10000,
+      perViewCap: fixedOnly ? null : 100000,
       usageRights: 'STORE_REPOST_3M' as const,
     };
     const terms = { ...columns, pieces: 1 };
@@ -152,7 +158,7 @@ describe('ops commands', () => {
         offerId: offer.id,
         storeId: store.id,
         terms,
-        settlementMethod: 'PER_VIEW',
+        settlementMethod: fixedOnly ? 'FIXED' : 'PER_VIEW',
         fundedAt: T0,
         submitDueAt: new Date(T0.getTime() + 14 * DAY),
         submittedUrl: counting
@@ -165,8 +171,8 @@ describe('ops commands', () => {
     const payment = await prisma.payment.create({
       data: {
         collaborationId: collaboration.id,
-        amountEscrow: 100000,
-        amountFee: 10000,
+        amountEscrow: escrow,
+        amountFee: fee,
         feeRate: 10,
         method: 'CARD',
         status: 'APPROVED',
@@ -178,8 +184,8 @@ describe('ops commands', () => {
     const batchId = randomUUID();
     await prisma.ledgerEntry.createMany({
       data: [
-        ['ESCROW', 100000, 'PAYMENT_ESCROW'],
-        ['FEE_REVENUE', 10000, 'PAYMENT_FEE'],
+        ['ESCROW', escrow, 'PAYMENT_ESCROW'],
+        ['FEE_REVENUE', fee, 'PAYMENT_FEE'],
       ].map(([credit, amount, reason]) => ({
         collaborationId: collaboration.id,
         batchId,
@@ -386,6 +392,44 @@ describe('ops commands', () => {
       expect(await collaborationOf(s.collaborationId)).toMatchObject({
         stage: 'COUNTING',
       });
+    });
+
+    it('settles a halted and resumed fixed cash only collaboration with the fixed cash on the due day', async () => {
+      const s = await seed('COUNTING', true);
+      await withWho('halt', '--collaboration', s.collaborationId);
+      expect(
+        (await withWho('resume', '--collaboration', s.collaborationId))
+          .exitCode,
+      ).toBe(0);
+      // 조회수를 세지 않으니 조회수 작업은 다시 올리지 않고 정산만 원래 시각에 올린다.
+      expect(
+        scheduler.pending().filter((j) => j.name === 'view-snapshot'),
+      ).toEqual([]);
+      expect(jobAt('settle', `settle:${s.collaborationId}`)?.getTime()).toBe(
+        T0.getTime() + 7 * DAY,
+      );
+      clock.set(new Date(T0.getTime() + 7 * DAY));
+      await scheduler.runDue(clock.now());
+      expect(await collaborationOf(s.collaborationId)).toMatchObject({
+        stage: 'SETTLED',
+      });
+      expect(
+        await prisma.settlement.findUniqueOrThrow({
+          where: { collaborationId: s.collaborationId },
+        }),
+      ).toMatchObject({
+        finalViews: null,
+        payoutAmount: 30000,
+        refundAmount: 0,
+      });
+      expect(await balanceOf(s.collaborationId, 'ESCROW')).toBe(0);
+      expect(await prisma.viewSnapshot.count()).toBe(0);
+      // 조회수를 읽지 못해 멈췄다는 거짓 알림이 가지 않는다.
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'COLLABORATION_HALTED' },
+        }),
+      ).toBe(0);
     });
 
     it('settles right away when a counting collaboration resumes after its settle time', async () => {

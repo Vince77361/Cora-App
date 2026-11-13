@@ -28,7 +28,8 @@ export const storeInProgressStages: CollaborationStage[] = [
 // 일반 전이. HALTED로 들어가고 나오는 길은 아래에서 따로 다룬다.
 const STORE_NEXT: Partial<Record<Stage, Stage[]>> = {
   AWAITING_PAYMENT: ['FUNDED', 'CANCELLED'],
-  // 식사권만 있는 오퍼는 링크 제출로 FUNDED에서 바로 SETTLED가 된다.
+  // FUNDED → SETTLED는 낼 돈이 없는 식사권만 오퍼(settlementMethod NONE)가 쓰는 길이다.
+  // 돈이 있는 오퍼는 고정 현금만 있어도 FUNDED → COUNTING을 거쳐 측정 기간이 끝나는 날 정산한다.
   FUNDED: ['COUNTING', 'SETTLED', 'REFUNDED', 'CANCELLED'],
   COUNTING: ['SETTLED'],
 };
