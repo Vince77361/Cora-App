@@ -1382,6 +1382,20 @@ describe('offers', () => {
       );
     });
 
+    it('leaves out the payment promise when the accepted version has no cash to pay', async () => {
+      // 식사권만 있는 판본은 결제가 없어 "결제하면 알려드릴게요."를 약속하지 않는다.
+      await addVersion(prisma, offerId, 'CREATOR', {
+        fixedCash: 0,
+        viewRatePerThousand: null,
+        perViewCap: null,
+      });
+      await acceptAs(auth, offerId, 2).expect(200);
+      const bodies = push.sent.map((p) => p.body);
+      expect(bodies).toHaveLength(1);
+      expect(bodies[0]).toMatch(/[이가] 제안을 수락했어요\.$/);
+      expect(bodies[0]).not.toContain('결제');
+    });
+
     it('notifies the store with the counter proposal wording', async () => {
       await propose(authB, offerId).expect(201);
       expect(push.sent).toMatchObject([

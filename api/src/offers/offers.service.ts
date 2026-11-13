@@ -406,6 +406,8 @@ export class OffersService {
         role: 'CREATOR',
         kind: 'OFFER_ACCEPTED_BY_STORE',
         actor: this.storeActor(card),
+        // 결제할 것이 없어 바로 FUNDED인 판본은 "결제하면 알려드릴게요."를 빼도록 알린다.
+        params: initial.stage === 'AWAITING_PAYMENT' ? {} : { noPayment: 1 },
         target: { kind: 'PROPOSAL', id: row.id },
         dedupeKey: `offer-accepted:${row.id}`,
       });

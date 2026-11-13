@@ -290,8 +290,13 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     glyph: null,
     requiredParams: {},
     needsActor: true,
-    render: ({ actorName }) =>
-      `${josa(actorName ?? STORE_FALLBACK, '이/가')} 제안을 수락했어요. 결제하면 알려드릴게요.`,
+    // 식사권만 있는 판본은 결제가 없어(바로 FUNDED) 결제 약속 문장을 뺀다(판단 R41·P11과 같은 분기, noPayment=1).
+    render: ({ actorName, params }) => {
+      const base = `${josa(actorName ?? STORE_FALLBACK, '이/가')} 제안을 수락했어요.`;
+      return Number(params.noPayment ?? 0) === 1
+        ? base
+        : `${base} 결제하면 알려드릴게요.`;
+    },
   },
   // 어느 쪽이 끝냈든 상대가 받는다. 이름은 끝낸 쪽이다(활동 이름 또는 가게 이름).
   OFFER_ENDED: {

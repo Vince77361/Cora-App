@@ -109,6 +109,10 @@ describe('NOTIFICATION_CATALOG', () => {
     expect(render('OFFER_ACCEPTED_BY_STORE', '한그릇 라멘')).toBe(
       '한그릇 라멘이 제안을 수락했어요. 결제하면 알려드릴게요.',
     );
+    // 결제할 현금이 없는 판본(식사권만)은 결제 약속 문장을 뺀다.
+    expect(
+      render('OFFER_ACCEPTED_BY_STORE', '한그릇 라멘', { noPayment: 1 }),
+    ).toBe('한그릇 라멘이 제안을 수락했어요.');
     expect(render('OFFER_ENDED', '하루 한 컵')).toBe(
       '하루 한 컵님과의 제안이 종료됐어요.',
     );
