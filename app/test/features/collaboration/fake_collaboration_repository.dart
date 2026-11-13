@@ -59,7 +59,7 @@ Collaboration collaboration({
   escrowAmount:
       escrowAmount ??
       (stage == CollaborationStage.awaitingPayment ||
-              terms.reward.viewPay == null
+              terms.reward.maxCashBurden == 0
           ? 0
           : 100000),
   steps:

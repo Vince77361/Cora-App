@@ -71,6 +71,31 @@ void main() {
     expect(find.text('문의하기'), findsOneWidget);
   });
 
+  testWidgets('shows the escrow as it is with the benefit line below', (
+    tester,
+  ) async {
+    final c = collaboration(
+      id: _id,
+      storeName: '하루 한 컵',
+      role: CollaborationRole.commissioner,
+      terms: const OfferTerms(
+        format: ContentFormat.reels,
+        reward: Reward(
+          voucher: Voucher(name: '식사권', value: 40000, people: 2),
+          fixedCash: 30000,
+          viewPay: ViewPay(ratePerThousand: 2000, cap: 60000),
+        ),
+      ),
+      escrowAmount: 90000,
+    );
+    await pumpStoreCollaboration(tester, repo: _repo(c));
+
+    expect(find.text('90,000원'), findsOneWidget);
+    expect(find.text('+ 식사권 40,000원 · 2인 (방문 때 사용)'), findsOneWidget);
+    // 마지막 단계의 부제는 보관액이 아니라 조회수 수당 상한이다.
+    expect(find.text('최대 6만 원'), findsOneWidget);
+  });
+
   testWidgets('uses the right particle for the activity name', (tester) async {
     final c = collaboration(
       id: _id,

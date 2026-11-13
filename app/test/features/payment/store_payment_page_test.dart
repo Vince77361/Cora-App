@@ -43,15 +43,22 @@ void main() {
     expect(find.text('하루 한 컵이\n오퍼를 수락했어요'), findsOneWidget);
     expect(find.text('콘텐츠'), findsOneWidget);
     expect(find.text('릴스 1편'), findsOneWidget);
-    expect(find.text('2인 식사권'), findsOneWidget);
+    expect(find.text('식사권 40,000원 · 2인'), findsOneWidget);
     expect(find.text('방문 때 가게에서 제공'), findsOneWidget);
-    expect(find.text('조회수당 (최대)'), findsOneWidget);
-    expect(find.text('100,000원'), findsOneWidget);
+    expect(find.text('고정 현금'), findsNothing);
+    expect(find.text('조회수 수당 (최대)'), findsOneWidget);
+    expect(find.text('60,000원'), findsOneWidget);
     expect(find.text('서비스 수수료'), findsOneWidget);
-    expect(find.text('10,000원'), findsOneWidget);
+    expect(find.text('6,000원'), findsOneWidget);
     expect(find.text('지금 결제할 금액'), findsOneWidget);
-    expect(find.text('110,000원'), findsOneWidget);
-    expect(find.text('조회수가 적어 다 쓰지 않은 금액은 7일 집계 후 돌려드려요.'), findsOneWidget);
+    expect(find.text('66,000원'), findsOneWidget);
+    expect(
+      find.text('최대 60,000원, 실제는 조회수만큼, 남으면 7일 집계 후 환불해요.'),
+      findsOneWidget,
+    );
+    // 옛 문구는 없다.
+    expect(find.text('조회수당 (최대)'), findsNothing);
+    expect(find.textContaining('조회수가 적어 다 쓰지 않은'), findsNothing);
     for (final label in ['카드', '계좌이체', '간편결제']) {
       expect(find.text(label), findsOneWidget);
     }
@@ -78,13 +85,49 @@ void main() {
   ) async {
     await pumpPayment(
       tester,
-      payments: FakePaymentRepository(quote: sampleQuote(voucherName: null)),
+      payments: FakePaymentRepository(quote: sampleQuote(voucher: null)),
     );
 
     expect(find.text('방문 때 가게에서 제공'), findsNothing);
-    expect(find.text('2인 식사권'), findsNothing);
+    expect(find.textContaining('식사권'), findsNothing);
     expect(find.text('릴스 1편'), findsOneWidget);
-    expect(find.text('110,000원'), findsOneWidget);
+    expect(find.text('66,000원'), findsOneWidget);
+  });
+
+  testWidgets('A8 adds a fixed cash row and the combined notice', (
+    tester,
+  ) async {
+    await pumpPayment(
+      tester,
+      payments: FakePaymentRepository(quote: sampleQuote(fixedCash: 30000)),
+    );
+
+    expect(find.text('고정 현금'), findsOneWidget);
+    expect(find.text('30,000원'), findsOneWidget);
+    expect(find.text('조회수 수당 (최대)'), findsOneWidget);
+    expect(find.text('60,000원'), findsOneWidget);
+    // 최대 현금 부담 90,000원 + 수수료 9,000원.
+    expect(find.text('9,000원'), findsOneWidget);
+    expect(find.text('99,000원'), findsOneWidget);
+    expect(
+      find.text('최대 90,000원, 조회수 수당은 조회수만큼, 남으면 7일 집계 후 환불해요.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('A8 drops the notice when there is no view pay', (tester) async {
+    await pumpPayment(
+      tester,
+      payments: FakePaymentRepository(
+        quote: sampleQuote(fixedCash: 30000, viewPayCap: null),
+      ),
+    );
+
+    expect(find.text('고정 현금'), findsOneWidget);
+    expect(find.text('조회수 수당 (최대)'), findsNothing);
+    expect(find.textContaining('환불해요'), findsNothing);
+    expect(find.text('3,000원'), findsOneWidget);
+    expect(find.text('33,000원'), findsOneWidget);
   });
 
   testWidgets('pays with the chosen method', (tester) async {
@@ -101,7 +144,7 @@ void main() {
       (collaborationId: 'col-1', method: PaymentMethod.transfer),
     ]);
     expect(launcher.opened.single.url, 'cora-dev://fake-pay?paymentId=pay-1');
-    expect(launcher.opened.single.amount, 110000);
+    expect(launcher.opened.single.amount, 66000);
     await tester.pumpAndSettle();
   });
 
@@ -323,7 +366,7 @@ void main() {
     payments.failQuote = false;
     await tester.tap(find.text('다시 시도'));
     await tester.pumpAndSettle();
-    expect(find.text('110,000원'), findsOneWidget);
+    expect(find.text('66,000원'), findsOneWidget);
   });
 
   testWidgets('says so when the quote is for an offer that cannot be paid', (
@@ -379,10 +422,10 @@ void main() {
           w.decoration is BoxDecoration &&
           (w.decoration as BoxDecoration).color == color,
     );
-    // 내역 카드와 카드가 아닌 두 수단 칸은 다크의 `surface`, 고른 수단은 밝은 회색(캔버스 DarkNPay).
+    // 내역 카드와 카드가 아닌 두 수단 칸은 다크의 `surface`, 고른 수단은 #33363D(캔버스 DarkNPay).
     expect(box(CoraColors.dark.surface), findsAtLeastNWidgets(3));
     expect(box(CoraColors.light.surface), findsNothing);
-    expect(box(CoraColors.dark.surfaceSelected), findsOneWidget);
+    expect(box(CoraColors.dark.notifyTabSelected), findsOneWidget);
     expect(box(CoraColors.dark.accent), findsOneWidget);
   });
 

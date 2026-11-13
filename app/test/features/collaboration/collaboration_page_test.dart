@@ -12,6 +12,16 @@ import '../store_browse/creator_app_harness.dart';
 import 'collaboration_harness.dart';
 import 'fake_collaboration_repository.dart';
 
+const _voucher = Voucher(name: '식사권', value: 40000, people: 2);
+const _fixedAndViewPay = OfferTerms(
+  format: ContentFormat.reels,
+  reward: Reward(
+    voucher: _voucher,
+    fixedCash: 30000,
+    viewPay: ViewPay(ratePerThousand: 2000, cap: 60000),
+  ),
+);
+
 const _id = 'c0ffee11-aaaa-bbbb-cccc-000000000001';
 
 FakeCollaborationRepository _repo(Collaboration c) =>
@@ -29,6 +39,49 @@ Collaboration _counting() => collaboration(
 void main() {
   setUpAll(loadAppFonts);
 
+  testWidgets('A7 writes the last step with the cap, not the escrow', (
+    tester,
+  ) async {
+    // 고정 현금 30,000원 + 조회수 수당 상한 60,000원이면 보관액은 90,000원이지만 마지막 단계는 상한이다.
+    final c = collaboration(terms: _fixedAndViewPay, escrowAmount: 90000);
+    await pumpCollaboration(tester, repo: _repo(c));
+
+    expect(find.text('90,000원'), findsOneWidget);
+    expect(find.text('+ 식사권 40,000원 · 2인 (방문 때 사용)'), findsOneWidget);
+    expect(find.text('7일간 조회수 집계 후 지급'), findsOneWidget);
+    expect(find.text('최대 6만 원'), findsOneWidget);
+    expect(find.text('최대 9만 원'), findsNothing);
+  });
+
+  testWidgets('A7 has no cap line when there is no view pay', (tester) async {
+    final c = collaboration(
+      terms: const OfferTerms(
+        format: ContentFormat.reels,
+        reward: Reward(voucher: _voucher, fixedCash: 30000),
+      ),
+      escrowAmount: 30000,
+    );
+    await pumpCollaboration(tester, repo: _repo(c));
+
+    expect(find.text('30,000원'), findsOneWidget);
+    expect(find.text('7일간 조회수 집계 후 지급'), findsOneWidget);
+    expect(find.textContaining('최대'), findsNothing);
+  });
+
+  testWidgets('A7 shows the maximum cash burden before the store pays', (
+    tester,
+  ) async {
+    final c = collaboration(
+      terms: _fixedAndViewPay,
+      stage: CollaborationStage.awaitingPayment,
+      now: StepKey.paid,
+    );
+    await pumpCollaboration(tester, repo: _repo(c));
+
+    expect(find.text('결제를 기다리고 있어요'), findsWidgets);
+    expect(find.text('90,000원'), findsOneWidget);
+  });
+
   testWidgets('shows the held amount and the visit step as current', (
     tester,
   ) async {
@@ -38,7 +91,7 @@ void main() {
     expect(find.text('한그릇 라멘 협업'), findsOneWidget);
     expect(find.text('Cora가 안전하게 보관 중'), findsOneWidget);
     expect(find.text('100,000원'), findsOneWidget);
-    expect(find.text('+ 2인 식사권 (방문 때 사용)'), findsOneWidget);
+    expect(find.text('+ 2인 식사권 40,000원 (방문 때 사용)'), findsOneWidget);
     expect(find.text('링크를 제출하면 집계가 시작돼요.'), findsOneWidget);
     for (final text in [
       '오퍼 수락',
@@ -341,7 +394,7 @@ void main() {
     // 상자 머리와 아래 꺼진 버튼이 같은 문구라 둘이다.
     expect(find.text('결제를 기다리고 있어요'), findsNWidgets(2));
     expect(find.text('100,000원'), findsOneWidget);
-    expect(find.text('+ 2인 식사권 (방문 때 사용)'), findsOneWidget);
+    expect(find.text('+ 2인 식사권 40,000원 (방문 때 사용)'), findsOneWidget);
     expect(find.text('링크를 제출하면 집계가 시작돼요.'), findsOneWidget);
     // 마지막 단계의 상한은 조건에서 읽는다.
     expect(find.text('최대 10만 원'), findsOneWidget);

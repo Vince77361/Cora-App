@@ -55,7 +55,6 @@ class StoreCollaborationPage extends ConsumerStatefulWidget {
 
   static String title(String name) =>
       '$name${josaOf(name, JosaPair.gwaWa)}의 협업';
-  static String heldVoucher(String name) => '+ $name (방문 때 사용)';
   static String settledSummary(int payout, int refund) =>
       '지급 ${wonExact(payout)} · 환급 ${wonExact(refund)}';
 
@@ -303,20 +302,18 @@ class _HeldBox extends StatelessWidget {
       case CollaborationStage.funded:
       case CollaborationStage.counting:
       case CollaborationStage.halted:
-        final voucher = co.terms.reward.voucher?.name;
+        final voucher = co.terms.reward.voucher;
         if (!co.hasEscrow) {
           // 식사권만 있는 협업: 맡긴 돈이 없다.
           return CollaborationBox(
             label: StoreCollaborationPage.voucherHeld,
-            big: voucher,
+            big: voucher?.name,
           );
         }
         return CollaborationBox(
           label: StoreCollaborationPage.held,
           big: wonExact(co.escrowAmount),
-          note: voucher == null
-              ? null
-              : StoreCollaborationPage.heldVoucher(voucher),
+          note: voucher == null ? null : heldVoucherNote(voucher),
           lower: _lower(context, c),
         );
     }

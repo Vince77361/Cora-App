@@ -17,6 +17,8 @@ class ApiPaymentRepository implements PaymentRepository {
   Future<PaymentQuote> fetchQuote(String collaborationId) => _guard(() async {
     final m = await _payments.getPaymentQuote(collaborationId);
     if (m == null) throw const PaymentFailure();
+    final voucherName = m.voucherName;
+    final voucherValue = m.voucherValue;
     return PaymentQuote(
       creatorName: m.creatorName,
       creatorPhotoUrl: m.creatorPhotoUrl,
@@ -27,7 +29,15 @@ class ApiPaymentRepository implements PaymentRepository {
         _ => ContentFormat.blog,
       },
       pieces: m.pieces,
-      voucherName: m.voucherName,
+      voucher: voucherName == null || voucherValue == null
+          ? null
+          : Voucher(
+              name: voucherName,
+              value: voucherValue,
+              people: m.voucherPeople,
+            ),
+      fixedCash: m.fixedCash,
+      viewPayCap: m.perViewCap,
       escrow: m.escrow,
       fee: m.fee,
       total: m.total,

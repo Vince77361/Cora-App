@@ -31,10 +31,10 @@ class StorePaymentPage extends ConsumerStatefulWidget {
   static const title = '결제';
   static const content = '콘텐츠';
   static const voucherNote = '방문 때 가게에서 제공';
-  static const perView = '조회수당 (최대)';
+  static const fixedCash = '고정 현금';
+  static const viewPay = '조회수 수당 (최대)';
   static const fee = '서비스 수수료';
   static const total = '지금 결제할 금액';
-  static const refundNote = '조회수가 적어 다 쓰지 않은 금액은 7일 집계 후 돌려드려요.';
   static const methodGroup = '결제 수단';
   static const methods = ['카드', '계좌이체', '간편결제'];
   static const escrowNote =
@@ -48,6 +48,11 @@ class StorePaymentPage extends ConsumerStatefulWidget {
   static const loadFailed = '결제 정보를 불러오지 못했어요.';
   static const unavailable = '이미 결제했거나 결제 기한이 지난 오퍼예요.';
   static const createFailed = '결제를 시작하지 못했어요. 다시 시도해 주세요.';
+
+  /// 조회수 수당이 있을 때 내역 아래 안내. 고정 현금도 있으면 최대 현금 부담 전체를 말한다.
+  static String refundNote(PaymentQuote quote) => quote.fixedCash > 0
+      ? '최대 ${wonExact(quote.escrow)}, 조회수 수당은 조회수만큼, 남으면 7일 집계 후 환불해요.'
+      : '최대 ${wonExact(quote.viewPayCap ?? quote.escrow)}, 실제는 조회수만큼, 남으면 7일 집계 후 환불해요.';
 
   static String heading(String creatorName) =>
       '${josa(creatorName, JosaPair.iGa)}\n오퍼를 수락했어요';
@@ -324,15 +329,21 @@ class _Breakdown extends StatelessWidget {
                   label: StorePaymentPage.content,
                   value: '${formatLabel(quote.format)} ${quote.pieces}편',
                 ),
-                if (quote.voucherName != null)
+                if (quote.voucher != null)
                   _Line(
-                    label: quote.voucherName!,
+                    label: benefitLine(quote.voucher!),
                     value: StorePaymentPage.voucherNote,
                   ),
-                _Line(
-                  label: StorePaymentPage.perView,
-                  value: wonExact(quote.escrow),
-                ),
+                if (quote.fixedCash > 0)
+                  _Line(
+                    label: StorePaymentPage.fixedCash,
+                    value: wonExact(quote.fixedCash),
+                  ),
+                if (quote.viewPayCap != null)
+                  _Line(
+                    label: StorePaymentPage.viewPay,
+                    value: wonExact(quote.viewPayCap!),
+                  ),
                 _Line(label: StorePaymentPage.fee, value: wonExact(quote.fee)),
               ],
             ),
@@ -371,11 +382,14 @@ class _Breakdown extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              StorePaymentPage.refundNote,
-              style: CoraTextStyles.legal.copyWith(color: c.textSecondary),
-            ),
+            // 조회수 수당이 없으면 돌려받을 돈이 없어 안내 줄도 없다.
+            if (quote.viewPayCap != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                StorePaymentPage.refundNote(quote),
+                style: CoraTextStyles.legal.copyWith(color: c.textSecondary),
+              ),
+            ],
           ],
         ),
       ),
@@ -421,7 +435,7 @@ class _Line extends StatelessWidget {
   }
 }
 
-/// 결제 수단 세 칸(높이 52, 모서리 18, 칸 사이 8). 고른 칸만 `surfaceSelected`.
+/// 결제 수단 세 칸(높이 52, 모서리 18, 칸 사이 8). 고른 칸만 `notifyTabSelected`(라이트 #E3E5E9, 다크 #33363D).
 class _Methods extends StatelessWidget {
   const _Methods({required this.selected, required this.onPick});
 
@@ -451,7 +465,7 @@ class _Methods extends StatelessWidget {
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: method == selected
-                            ? c.surfaceSelected
+                            ? c.notifyTabSelected
                             : c.surface,
                         borderRadius: BorderRadius.circular(CoraRadius.lg),
                       ),
@@ -464,9 +478,7 @@ class _Methods extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: CoraTextStyles.bodySmall.copyWith(
                               fontWeight: FontWeight.w500,
-                              color: method == selected
-                                  ? c.onSurfaceSelected
-                                  : c.text,
+                              color: c.text,
                             ),
                           ),
                         ),

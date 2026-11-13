@@ -1,4 +1,5 @@
 import '../../../core/time/kst.dart';
+import '../../offer_terms/domain/offer_terms.dart';
 import '../../offer_terms/presentation/offer_terms_text.dart';
 import '../domain/collaboration.dart';
 import '../domain/collaboration_repository.dart';
@@ -25,14 +26,18 @@ String? stepSubtitle(Collaboration c, StepKey key) => switch (key) {
     c.hasPerView ? '최대 ${won(c.terms.reward.viewPay!.cap)}' : null,
 };
 
-/// 보관 상자의 큰 글씨. 돈이 보관 중이면 그 금액, 결제 전이면 조회수당 상한, 식사권만이면 식사권
-/// 이름이다.
+/// 보관 상자의 큰 글씨. 돈이 보관 중이면 그 보관액 그대로, 결제 전이면 최대 현금 부담(고정 현금 + 조회수
+/// 수당 상한), 현금이 없는 식사권만이면 식사권 이름이다.
 String heldLabel(Collaboration c) {
   if (c.hasEscrow) return wonExact(c.escrowAmount);
-  final viewPay = c.terms.reward.viewPay;
-  if (viewPay != null) return wonExact(viewPay.cap);
+  final burden = c.terms.reward.maxCashBurden;
+  if (burden > 0) return wonExact(burden);
   return c.terms.reward.voucher?.name ?? '';
 }
+
+/// 보관 상자 아래 한 줄. `+ 식사권 40,000원 · 2인 (방문 때 사용)`.
+String heldVoucherNote(Voucher voucher) =>
+    '+ ${benefitLine(voucher)} (방문 때 사용)';
 
 /// `11월 23일까지`.
 String dueLabel(DateTime due) => '${_md(due)}까지';

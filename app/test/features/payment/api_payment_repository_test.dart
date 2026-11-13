@@ -18,15 +18,15 @@ final _quoteJson = jsonEncode({
   'escrow': 100000,
   'fee': 10000,
   'feeRate': 10,
-  'fixedCash': 0,
+  'fixedCash': 30000,
   'format': 'REELS',
   'orderName': '릴스 1편',
   'pieces': 1,
   'total': 110000,
-  'perViewCap': 100000,
-  'voucherName': null,
-  'voucherPeople': null,
-  'voucherValue': null,
+  'perViewCap': 70000,
+  'voucherName': '식사권',
+  'voucherPeople': 2,
+  'voucherValue': 40000,
 });
 
 void main() {
@@ -43,7 +43,9 @@ void main() {
     expect(quote.creatorPhotoUrl, 'https://example.test/c.jpg');
     expect(quote.format, ContentFormat.reels);
     expect(quote.pieces, 1);
-    expect(quote.voucherName, isNull);
+    expect(quote.voucher, const Voucher(name: '식사권', value: 40000, people: 2));
+    expect(quote.fixedCash, 30000);
+    expect(quote.viewPayCap, 70000);
     expect((quote.escrow, quote.fee, quote.total), (100000, 10000, 110000));
   });
 

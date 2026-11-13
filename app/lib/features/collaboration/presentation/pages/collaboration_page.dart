@@ -32,7 +32,6 @@ class CollaborationPage extends ConsumerStatefulWidget {
   final String collaborationId;
 
   static const keeping = 'Cora가 안전하게 보관 중';
-  static const heldWithVoucher = '(방문 때 사용)';
   static const earnedLabel = '지금 받을 금액';
   static const viewsLabel = '조회수';
   static const submitFirst = '링크를 제출하면 집계가 시작돼요.';
@@ -54,7 +53,6 @@ class CollaborationPage extends ConsumerStatefulWidget {
   static String counting(int days) => '집계 중이에요 · $days일 남음';
   static String payoutPending(DateTime on) => '지급 예정 · ${monthDay(on)}';
   static String paid(int amount) => '${wonExact(amount)}이 지급됐어요';
-  static String heldVoucher(String name) => '+ $name $heldWithVoucher';
   static String voucherNumber(String shortId) => '협업 번호 $shortId';
   static String cancelRequested(String name) =>
       '${josa(name, JosaPair.iGa)} 협업 취소를 요청했어요.';
@@ -344,8 +342,9 @@ class _HeldBox extends StatelessWidget {
     return CollaborationBox(
       label: headline,
       big: big,
-      note: co.hasPerView && co.hasVoucher && !settled
-          ? CollaborationPage.heldVoucher(co.terms.reward.voucher!.name)
+      // 돈이 걸린 협업(고정 현금이나 조회수 수당)에서만 혜택을 보관액 아래에 덧붙인다.
+      note: co.terms.reward.maxCashBurden > 0 && co.hasVoucher && !settled
+          ? heldVoucherNote(co.terms.reward.voucher!)
           : null,
       lower: lower,
     );

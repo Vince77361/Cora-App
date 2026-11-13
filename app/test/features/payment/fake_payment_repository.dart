@@ -5,20 +5,29 @@ import 'package:cora/features/payment/domain/payment_quote.dart';
 import 'package:cora/features/payment/domain/payment_repository.dart';
 import 'package:cora/features/payment/presentation/checkout_launcher.dart';
 
-/// 캔버스 A8의 견본 견적: 릴스 1편, 식사권 + 조회수당 상한 10만 원, 수수료 1만 원.
+/// 캔버스 A8의 견본 견적: 릴스 1편, 식사권 40,000원 · 2인, 조회수 수당 상한 6만 원, 수수료 6천 원(10%).
+/// 보관액은 최대 현금 부담(고정 현금 + 상한)이고 합계는 거기에 수수료를 더한 값이다.
 PaymentQuote sampleQuote({
   String creatorName = '하루 한 컵',
-  String? voucherName = '2인 식사권',
-}) => PaymentQuote(
-  creatorName: creatorName,
-  creatorPhotoUrl: null,
-  format: ContentFormat.reels,
-  pieces: 1,
-  voucherName: voucherName,
-  escrow: 100000,
-  fee: 10000,
-  total: 110000,
-);
+  Voucher? voucher = const Voucher(name: '식사권', value: 40000, people: 2),
+  int fixedCash = 0,
+  int? viewPayCap = 60000,
+}) {
+  final escrow = fixedCash + (viewPayCap ?? 0);
+  final fee = feeAmount(escrow, 10);
+  return PaymentQuote(
+    creatorName: creatorName,
+    creatorPhotoUrl: null,
+    format: ContentFormat.reels,
+    pieces: 1,
+    voucher: voucher,
+    fixedCash: fixedCash,
+    viewPayCap: viewPayCap,
+    escrow: escrow,
+    fee: fee,
+    total: escrow + fee,
+  );
+}
 
 /// 손으로 쓴 가짜 결제 저장소. 결제 상태는 [statuses]를 차례로 돌려주고, 다 쓰면 마지막 값을 반복한다.
 class FakePaymentRepository implements PaymentRepository {

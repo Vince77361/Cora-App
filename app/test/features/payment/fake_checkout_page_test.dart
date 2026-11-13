@@ -39,7 +39,7 @@ void main() {
 
     expect(find.byType(FakeCheckoutPage), findsOneWidget);
     expect(topPath(tester), AppRoutes.devFakeCheckout);
-    expect(find.text('110,000원'), findsOneWidget);
+    expect(find.text('66,000원'), findsOneWidget);
     for (final label in ['결제 승인', '결제 실패', '닫기']) {
       expect(find.text(label), findsOneWidget);
     }
