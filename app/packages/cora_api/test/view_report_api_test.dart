@@ -23,6 +23,13 @@ void main() {
       // TODO
     });
 
+    // 조회 자료에 이의를 제기한다(당사자 누구나, 확인 전인 계산에 한 사람이 한 번). 돈은 그대로 보관되고 운영팀이 처리한다. 낼 수 없는 상태면 409.
+    //
+    //Future<ViewReportModel> disputeViewReport(String id, DisputeViewReportDto disputeViewReportDto) async
+    test('test disputeViewReport', () async {
+      // TODO
+    });
+
     // 조회 자료 확인(F4). 당사자만 읽는다. 조회수 수당이 없거나 링크 제출 전이면 404.
     //
     //Future<ViewReportModel> getViewReport(String id) async

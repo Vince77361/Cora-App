@@ -41,6 +41,7 @@ doc/CreatorProfileModel.md
 doc/CreatorSeriesModel.md
 doc/CreatorSummaryModel.md
 doc/CreatorsApi.md
+doc/DisputeViewReportDto.md
 doc/DraftSceneModel.md
 doc/EndOfferDto.md
 doc/EndedOfferModel.md
@@ -222,6 +223,7 @@ lib/model/create_photo_upload_dto.dart
 lib/model/creator_profile_model.dart
 lib/model/creator_series_model.dart
 lib/model/creator_summary_model.dart
+lib/model/dispute_view_report_dto.dart
 lib/model/draft_scene_model.dart
 lib/model/end_offer_dto.dart
 lib/model/ended_offer_model.dart
@@ -363,6 +365,7 @@ test/creator_profile_model_test.dart
 test/creator_series_model_test.dart
 test/creator_summary_model_test.dart
 test/creators_api_test.dart
+test/dispute_view_report_dto_test.dart
 test/draft_scene_model_test.dart
 test/end_offer_dto_test.dart
 test/ended_offer_model_test.dart

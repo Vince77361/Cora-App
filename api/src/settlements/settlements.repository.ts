@@ -8,6 +8,7 @@ import {
   Settlement,
   SettlementConfirmer,
   SettlementStatus,
+  ViewEvidence,
   ViewSnapshot,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -40,6 +41,24 @@ export interface NewSettlement {
   settledAt: Date | null;
   confirmedAt: Date | null;
   confirmedBy: SettlementConfirmer | null;
+  // 계산의 근거 자료. 주지 않으면 연결 계정에서 읽은 값(CONNECTED_ACCOUNT)이다.
+  evidenceSource?: EvidenceSource;
+}
+
+export interface NewViewEvidence {
+  collaborationId: string;
+  filePath: string;
+  statedViews: number;
+  submittedById: string;
+}
+
+// 운영자가 조회수를 고쳐 이의를 처리할 때 정산 행에 덮어쓰는 계산 값.
+export interface CorrectedCalculation {
+  finalViews: number;
+  payoutAmount: number;
+  refundAmount: number;
+  fixedCashAmount: number;
+  viewPayAmount: number;
 }
 
 export interface NewPayout {
@@ -112,8 +131,11 @@ export class SettlementsRepository {
     }
   }
 
-  listSnapshots(collaborationId: string): Promise<ViewSnapshot[]> {
-    return this.prisma.viewSnapshot.findMany({
+  listSnapshots(
+    collaborationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<ViewSnapshot[]> {
+    return (tx ?? this.prisma).viewSnapshot.findMany({
       where: { collaborationId, deletedAt: null },
       orderBy: { dayIndex: 'asc' },
     });
@@ -222,31 +244,114 @@ export class SettlementsRepository {
     });
   }
 
-  // 조회 자료 확인 전 계산을 확인 완료로 바꾼다. UNCONFIRMED일 때만 바뀌어, 사장님 확인과 자동 확인이 겹쳐도 하나만 이긴다.
+  // 조회 자료 계산을 확인 완료로 바꾼다. from 상태일 때만 바뀌어(사장님 확인·자동 확인은 UNCONFIRMED, 이의 처리는 DISPUTED),
+  // 사장님 확인과 자동 확인이 겹치거나 이의가 먼저 이겨도 하나만 이긴다.
   // 이 갱신이 정산 행을 잠근다: 정산 행을 건드리는 길은 "정산 행 → 협업" 순서로 잠근다(원장 판단 P3).
   // onlySource를 주면 그 자료 출처인 계산만 바꾼다(사장님·자동 확인은 연결 계정 자료만 확인한다).
+  // corrected를 주면 운영자가 고친 조회수로 다시 계산한 값을 같이 쓴다(이의 처리).
   async confirmCalculation(
     collaborationId: string,
     by: SettlementConfirmer,
     at: Date,
-    onlySource: EvidenceSource | null,
+    options: {
+      from?: 'UNCONFIRMED' | 'DISPUTED';
+      onlySource?: EvidenceSource | null;
+      corrected?: CorrectedCalculation;
+    },
     tx: Prisma.TransactionClient,
   ): Promise<boolean> {
     const { count } = await tx.settlement.updateMany({
       where: {
         collaborationId,
-        status: 'UNCONFIRMED',
+        status: options.from ?? 'UNCONFIRMED',
         deletedAt: null,
-        ...(onlySource ? { evidenceSource: onlySource } : {}),
+        ...(options.onlySource ? { evidenceSource: options.onlySource } : {}),
       },
       data: {
         status: 'CONFIRMED',
         confirmedAt: at,
         settledAt: at,
         confirmedBy: by,
+        ...(options.corrected ?? {}),
       },
     });
     return count === 1;
+  }
+
+  // 이의를 받는다: 확인 전(UNCONFIRMED)인 계산만 DISPUTED로 바꾼다. 확인(사장님·자동)과 겹치면 하나만 이긴다.
+  // 정산 행을 먼저 잠그므로 "정산 행 → 협업" 순서를 지킨다.
+  async disputeCalculation(
+    collaborationId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const { count } = await tx.settlement.updateMany({
+      where: { collaborationId, status: 'UNCONFIRMED', deletedAt: null },
+      data: { status: 'DISPUTED' },
+    });
+    return count === 1;
+  }
+
+  // 한 사람이 한 번(유일 제약). 이미 있으면 예외 없이 false다.
+  async createDispute(
+    row: { collaborationId: string; raisedById: string; reason: string },
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const { count } = await tx.settlementDispute.createMany({
+      data: row,
+      skipDuplicates: true,
+    });
+    return count === 1;
+  }
+
+  // 운영자가 이의를 처리했다고 남긴다(아직 처리되지 않은 이의만).
+  async resolveDisputes(
+    collaborationId: string,
+    result: {
+      resolution: 'UPHELD_AS_IS' | 'VIEWS_CORRECTED';
+      resolvedViews: number | null;
+      at: Date;
+    },
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    await tx.settlementDispute.updateMany({
+      where: { collaborationId, resolvedAt: null, deletedAt: null },
+      data: {
+        resolvedAt: result.at,
+        resolution: result.resolution,
+        resolvedViews: result.resolvedViews,
+      },
+    });
+  }
+
+  // 협업의 캡처. 협업당 한 장만 받는다(받는 쪽이 협업 행을 잠근 뒤 확인한다).
+  findEvidence(
+    collaborationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<ViewEvidence | null> {
+    return (tx ?? this.prisma).viewEvidence.findFirst({
+      where: { collaborationId, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  createEvidence(
+    row: NewViewEvidence,
+    tx: Prisma.TransactionClient,
+  ): Promise<ViewEvidence> {
+    return tx.viewEvidence.create({ data: row });
+  }
+
+  // 운영자가 캡처를 확인했다고 표시한다(아직 확인되지 않은 캡처만).
+  async confirmEvidence(
+    collaborationId: string,
+    operator: string,
+    at: Date,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    await tx.viewEvidence.updateMany({
+      where: { collaborationId, confirmedAt: null, deletedAt: null },
+      data: { confirmedAt: at, confirmedBy: operator },
+    });
   }
 
   // 계산을 만들기 전에 오퍼 → 협업 순으로 행을 잠근다(운영 명령·결제·오퍼와 같은 순서). 협업이 없으면 false다.

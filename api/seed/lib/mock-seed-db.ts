@@ -305,6 +305,9 @@ export class PrismaMockSeedDb implements MockSeedDb {
       this.prisma.payout.deleteMany({ where: ofSeed }),
       this.prisma.refund.deleteMany({ where: ofSeed }),
       this.prisma.settlement.deleteMany({ where: ofSeed }),
+      // 협업을 가리키는 자식 표(캡처, 이의)도 시드가 만든 협업 것만 지운다. 협업보다 먼저 지워야 한다.
+      this.prisma.viewEvidence.deleteMany({ where: ofSeed }),
+      this.prisma.settlementDispute.deleteMany({ where: ofSeed }),
       this.prisma.payment.deleteMany({ where: ofSeed }),
       this.prisma.cancelRequest.deleteMany({ where: ofSeed }),
       this.prisma.opsAuditLog.deleteMany({ where: ofSeed }),

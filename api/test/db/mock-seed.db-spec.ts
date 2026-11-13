@@ -123,6 +123,63 @@ describe('PrismaMockSeedDb', () => {
     expect(await prisma.creatorSeries.count()).toBe(3);
   });
 
+  it('clears the captures and disputes of the seeded collaboration but keeps those of a foreign one', async () => {
+    await run();
+    const seeded = await prisma.collaboration.findFirstOrThrow();
+    const noodle = accountIds.get('010-0000-0006') as string;
+    const otherStore = await prisma.store.create({
+      data: { ownerId: OTHER_OWNER },
+    });
+    const foreign = await prisma.collaboration.create({
+      data: {
+        kind: 'STORE_OFFER',
+        stage: 'SETTLED',
+        commissionerId: OTHER_OWNER,
+        creatorId: noodle,
+        storeId: otherStore.id,
+        terms: {},
+        settlementMethod: 'PER_VIEW',
+      },
+    });
+    // 시연 중에 시드 협업과 남의 협업에 캡처와 이의가 달렸다.
+    for (const collaborationId of [seeded.id, foreign.id]) {
+      await prisma.viewEvidence.create({
+        data: {
+          collaborationId,
+          filePath: `evidence/${noodle}/x.jpg`,
+          statedViews: 100,
+          submittedById: noodle,
+        },
+      });
+      await prisma.settlementDispute.create({
+        data: { collaborationId, raisedById: OTHER_OWNER, reason: '확인 요청' },
+      });
+    }
+
+    await expect(run()).resolves.toBeUndefined();
+
+    expect(
+      await prisma.viewEvidence.count({
+        where: { collaborationId: seeded.id },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma.settlementDispute.count({
+        where: { collaborationId: seeded.id },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma.viewEvidence.count({
+        where: { collaborationId: foreign.id },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.settlementDispute.count({
+        where: { collaborationId: foreign.id },
+      }),
+    ).toBe(1);
+  });
+
   it('resets rows made during a demo but leaves other accounts alone', async () => {
     await run();
     const seoyun = accountIds.get('010-0000-0003') as string;

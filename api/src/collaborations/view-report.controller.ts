@@ -1,8 +1,9 @@
-import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { ViewReportService } from '../settlements/view-report.service';
+import { DisputeViewReportDto } from './dto/dispute-view-report.dto';
 import { ViewReportModel } from './dto/view-report.model';
 
 @ApiBearerAuth()
@@ -37,5 +38,21 @@ export class ViewReportController {
     @Param('id') id: string,
   ): Promise<ViewReportModel> {
     return this.viewReports.confirmByCommissioner(user.userId, id);
+  }
+
+  @Post(':id/view-report/dispute')
+  @HttpCode(200)
+  @ApiOperation({
+    operationId: 'disputeViewReport',
+    summary:
+      '조회 자료에 이의를 제기한다(당사자 누구나, 확인 전인 계산에 한 사람이 한 번). 돈은 그대로 보관되고 운영팀이 처리한다. 낼 수 없는 상태면 409.',
+  })
+  @ApiOkResponse({ type: ViewReportModel })
+  dispute(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: DisputeViewReportDto,
+  ): Promise<ViewReportModel> {
+    return this.viewReports.dispute(user.userId, id, dto.reason);
   }
 }

@@ -161,11 +161,11 @@ describe('collaboration lock order', () => {
       const now = new Date('2026-12-10T00:00:00.000Z');
       await prisma.$transaction(async (tx) => {
         await expect(
-          repo.confirmCalculation(collaborationId, 'AUTO', now, null, tx),
+          repo.confirmCalculation(collaborationId, 'AUTO', now, {}, tx),
         ).resolves.toBe(true);
         await expect(tryLockSettlement()).rejects.toThrow();
         await expect(
-          repo.confirmCalculation(collaborationId, 'AUTO', now, null, tx),
+          repo.confirmCalculation(collaborationId, 'AUTO', now, {}, tx),
         ).resolves.toBe(false);
       });
       expect(
@@ -194,12 +194,12 @@ describe('collaboration lock order', () => {
             collaborationId,
             'AUTO',
             now,
-            'CONNECTED_ACCOUNT',
+            { onlySource: 'CONNECTED_ACCOUNT' },
             tx,
           ),
         ).resolves.toBe(false);
         await expect(
-          repo.confirmCalculation(collaborationId, 'OPERATOR', now, null, tx),
+          repo.confirmCalculation(collaborationId, 'OPERATOR', now, {}, tx),
         ).resolves.toBe(true);
       });
     });
@@ -213,13 +213,7 @@ describe('collaboration lock order', () => {
       const repo = new SettlementsRepository(prisma as never);
       await prisma.$transaction(async (tx) => {
         await expect(
-          repo.confirmCalculation(
-            collaborationId,
-            'AUTO',
-            new Date(),
-            null,
-            tx,
-          ),
+          repo.confirmCalculation(collaborationId, 'AUTO', new Date(), {}, tx),
         ).resolves.toBe(false);
       });
     });

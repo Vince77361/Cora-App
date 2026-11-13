@@ -274,6 +274,8 @@ class ApiClient {
           return CreatorSeriesModel.fromJson(value);
         case 'CreatorSummaryModel':
           return CreatorSummaryModel.fromJson(value);
+        case 'DisputeViewReportDto':
+          return DisputeViewReportDto.fromJson(value);
         case 'DraftSceneModel':
           return DraftSceneModel.fromJson(value);
         case 'EndOfferDto':

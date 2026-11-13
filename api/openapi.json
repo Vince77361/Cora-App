@@ -830,6 +830,20 @@
         ],
         "type": "object"
       },
+      "DisputeViewReportDto": {
+        "properties": {
+          "reason": {
+            "description": "이의 사유. 앞뒤 공백을 뺀 글자 수가 1~200자여야 한다.",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
       "DraftSceneModel": {
         "properties": {
           "label": {
@@ -4157,6 +4171,52 @@
           }
         ],
         "summary": "맡긴 쪽이 \"자료 확인했어요\"를 누른다. 확인되면 정산이 이어진다. 확인할 수 없는 상태면 409, 크리에이터는 403.",
+        "tags": [
+          "ViewReport"
+        ]
+      }
+    },
+    "/collaborations/{id}/view-report/dispute": {
+      "post": {
+        "operationId": "disputeViewReport",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisputeViewReportDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewReportModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "조회 자료에 이의를 제기한다(당사자 누구나, 확인 전인 계산에 한 사람이 한 번). 돈은 그대로 보관되고 운영팀이 처리한다. 낼 수 없는 상태면 409.",
         "tags": [
           "ViewReport"
         ]

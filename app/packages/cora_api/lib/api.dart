@@ -85,6 +85,7 @@ part 'model/create_photo_upload_dto.dart';
 part 'model/creator_profile_model.dart';
 part 'model/creator_series_model.dart';
 part 'model/creator_summary_model.dart';
+part 'model/dispute_view_report_dto.dart';
 part 'model/draft_scene_model.dart';
 part 'model/end_offer_dto.dart';
 part 'model/ended_offer_model.dart';

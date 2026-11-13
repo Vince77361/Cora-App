@@ -13,6 +13,10 @@ export const settleJobKey = (collaborationId: string): string =>
 export const autoConfirmJobKey = (collaborationId: string): string =>
   `auto-confirm:${collaborationId}`;
 
+// 이의가 제기됐다는 알림의 중복 방지 키(상대 한 건).
+export const disputeDedupeKey = (collaborationId: string): string =>
+  `view-report-disputed:${collaborationId}`;
+
 // 계산이 만들어졌다는 알림의 중복 방지 키(사장님·크리에이터 각자 한 건).
 export const viewReportDedupeKey = (collaborationId: string): string =>
   `view-report:${collaborationId}`;
@@ -21,6 +25,9 @@ export const payoutJobKey = (payoutId: string): string => `payout:${payoutId}`;
 
 // 조회수를 읽지 못해 멈춘 협업의 사유. 운영 명령(10번 작업)이 이 값으로 조회수 정산 대상을 가린다.
 export const VIEW_COUNT_HALT_REASON = 'VIEW_COUNT_UNAVAILABLE';
+
+// 조회 자료(계산)에 이의가 제기돼 멈춘 협업의 사유. 운영 명령 resolve-dispute가 이 값으로 대상을 가린다.
+export const SETTLEMENT_DISPUTED_HALT_REASON = 'SETTLEMENT_DISPUTED';
 
 // 최근 이만큼 연속으로 읽지 못하면 멈춘다.
 export const HALT_AFTER_UNREADABLE_DAYS = 3;

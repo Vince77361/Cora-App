@@ -2,6 +2,7 @@ import { Collaboration, Settlement } from '@prisma/client';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
+import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import { JobScheduler } from '../jobs/job-scheduler';
 import { LedgerService } from '../ledger/ledger.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -170,6 +171,7 @@ describe('ViewReportService', () => {
       new FakeUsers(),
       null as unknown as JobScheduler,
       new FixedClock(),
+      null as unknown as OperatorAlertPort,
     );
   });
 
@@ -190,6 +192,7 @@ describe('ViewReportService', () => {
           settledAt: null,
           confirmedAt: null,
           confirmedBy: null,
+          evidenceSource: 'CONNECTED_ACCOUNT',
         },
       ]);
     });
@@ -365,6 +368,58 @@ describe('ViewReportService', () => {
       repository.settlement = settlement({ evidenceSource: 'CAPTURE' });
       await expect(
         service.confirmByCommissioner(STORE, COLLAB),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+    });
+  });
+
+  describe('get with dispute', () => {
+    it('lets either party dispute an unconfirmed calculation while counting', async () => {
+      repository.settlement = settlement();
+      expect((await service.get(STORE, COLLAB)).canDispute).toBe(true);
+      expect((await service.get(CREATOR, COLLAB)).canDispute).toBe(true);
+    });
+
+    it('lets them dispute a capture based calculation too', async () => {
+      repository.settlement = settlement({ evidenceSource: 'CAPTURE' });
+      expect((await service.get(STORE, COLLAB)).canDispute).toBe(true);
+    });
+
+    it('does not let anyone dispute a disputed, confirmed or missing calculation', async () => {
+      expect((await service.get(STORE, COLLAB)).canDispute).toBe(false);
+      repository.settlement = settlement({ status: 'DISPUTED' });
+      collaborations.row = collaboration({ stage: 'HALTED' });
+      expect((await service.get(STORE, COLLAB)).canDispute).toBe(false);
+      repository.settlement = settlement({ status: 'CONFIRMED' });
+      collaborations.row = collaboration({ stage: 'SETTLED' });
+      expect((await service.get(STORE, COLLAB)).canDispute).toBe(false);
+    });
+  });
+
+  describe('dispute', () => {
+    it('refuses someone who is not part of the collaboration with 404', async () => {
+      repository.settlement = settlement();
+      await expect(
+        service.dispute(OTHER, COLLAB, '조회수가 달라요'),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    });
+
+    it('refuses an empty or over-long reason', async () => {
+      repository.settlement = settlement();
+      await expect(service.dispute(STORE, COLLAB, '   ')).rejects.toMatchObject(
+        { code: 'VALIDATION_FAILED' },
+      );
+      await expect(
+        service.dispute(STORE, COLLAB, 'a'.repeat(201)),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    });
+
+    it('refuses with 409 when there is nothing to dispute', async () => {
+      await expect(
+        service.dispute(STORE, COLLAB, '조회수가 달라요'),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+      repository.settlement = settlement({ status: 'CONFIRMED' });
+      await expect(
+        service.dispute(STORE, COLLAB, '조회수가 달라요'),
       ).rejects.toMatchObject({ code: 'CONFLICT' });
     });
   });

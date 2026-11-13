@@ -313,12 +313,20 @@ describe('view report notifications', () => {
     expect(render('VIEW_REPORT_READY', null)).toBe(
       '조회수 집계가 끝났어요. 계산을 확인해 보세요.',
     );
+    expect(render('VIEW_EVIDENCE_REQUESTED', null)).toBe(
+      '조회수를 읽지 못했어요. 인사이트 캡처를 올려 주세요.',
+    );
+    expect(render('VIEW_REPORT_DISPUTED', null)).toBe(
+      '조회 자료에 이의가 제기됐어요. 운영팀이 확인하고 연락드릴게요.',
+    );
   });
 
-  it('puts both on the settlement tab, cannot be turned off, with the won glyph', () => {
+  it('puts all four on the settlement tab, cannot be turned off, with the won glyph', () => {
     for (const kind of [
       'VIEW_REPORT_REQUESTED',
       'VIEW_REPORT_READY',
+      'VIEW_EVIDENCE_REQUESTED',
+      'VIEW_REPORT_DISPUTED',
     ] as const) {
       expect(NOTIFICATION_CATALOG[kind]).toMatchObject({
         tab: 'SETTLEMENT',

@@ -6,6 +6,7 @@ import { scheduleSubmissionDeadlineJobs } from '../src/collaborations/collaborat
 import { Clock } from '../src/common/clock';
 import { FakePaymentAdapter } from '../src/integrations/payment/fake-payment.adapter';
 import { PaymentPort } from '../src/integrations/payment/payment.port';
+import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
 import { FakePayoutAdapter } from '../src/integrations/payout/fake-payout.adapter';
 import { PayoutPort } from '../src/integrations/payout/payout.port';
 import { PushPort } from '../src/integrations/push/push.port';
@@ -51,6 +52,7 @@ describe('view report', () => {
   let pg: FakePaymentAdapter;
   let payoutPort: FakePayoutAdapter;
   let runner: OpsRunner;
+  let alert: jest.SpyInstance;
 
   const submit = (id: string, views: number | string = 12500) =>
     request(server)
@@ -82,6 +84,23 @@ describe('view report', () => {
   const notificationCount = (kind: string) =>
     prisma.notification.count({ where: { kind: kind as never } });
   const jobKeys = () => scheduler.pending().map((j) => j.jobKey);
+  const dispute = (id: string, reason = '조회수가 실제와 달라요', as = owner) =>
+    request(server)
+      .post(`/collaborations/${id}/view-report/dispute`)
+      .set(as)
+      .send({ reason });
+  const reportBody = async (id: string, as = owner) =>
+    (await report(id, as).expect(200)).body as {
+      status: string;
+      views: number | null;
+      source: string;
+      canConfirm: boolean;
+      canDispute: boolean;
+      canUploadEvidence: boolean;
+      confirmDueAt: string | null;
+      evidence: { imageUrl: string; statedViews: number } | null;
+      calc: { payout: number; refund: number; viewPay: number } | null;
+    };
   const afterDays = (days: number, hours = 0) =>
     new Date(T0.getTime() + days * DAY + hours * HOUR);
 
@@ -146,7 +165,9 @@ describe('view report', () => {
       update: {},
       create: {
         creatorId,
-        handle: 'moca_daily',
+        // 인스타그램 아이디는 계정마다 하나라 다른 크리에이터는 따로 만든다.
+        handle:
+          creatorId === USER_A ? 'moca_daily' : `moca_${creatorId.slice(0, 8)}`,
         followers: 1200,
         refreshedAt: T0,
       },
@@ -243,6 +264,7 @@ describe('view report', () => {
     pg = app.get<FakePaymentAdapter>(PaymentPort);
     payoutPort = app.get<FakePayoutAdapter>(PayoutPort);
     runner = app.get(OpsRunner);
+    alert = jest.spyOn(app.get(OperatorAlertPort), 'alert');
   });
   beforeEach(async () => {
     await truncateTestDb(prisma);
@@ -250,6 +272,7 @@ describe('view report', () => {
     push.sent.length = 0;
     pg.refunds.length = 0;
     payoutPort.sent.length = 0;
+    alert.mockClear();
     clock.set(T0);
   });
   afterEach(async () => {
@@ -727,6 +750,186 @@ describe('view report', () => {
     });
   });
 
+  describe('disputing', () => {
+    it('halts the collaboration and keeps the money when a party disputes', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      const res = await dispute(s.collaborationId).expect(200);
+      expect(res.body).toMatchObject({
+        status: 'DISPUTED',
+        canConfirm: false,
+        canDispute: false,
+      });
+      expect(await collaborationRow(s.collaborationId)).toMatchObject({
+        stage: 'HALTED',
+        stageBeforeHalt: 'COUNTING',
+        haltedReason: 'SETTLEMENT_DISPUTED',
+      });
+      expect((await settlementOf(s.collaborationId)).status).toBe('DISPUTED');
+      expect(await settleLines(s.collaborationId)).toHaveLength(0);
+      expect(await balanceOf(s.collaborationId, 'ESCROW')).toBe(60000);
+      expect(await prisma.payout.count()).toBe(0);
+      expect(await prisma.refund.count()).toBe(0);
+      expect(pg.refunds).toHaveLength(0);
+      expect(
+        await prisma.settlementDispute.findMany({
+          where: { collaborationId: s.collaborationId },
+        }),
+      ).toMatchObject([
+        {
+          raisedById: s.ownerId,
+          reason: '조회수가 실제와 달라요',
+          resolvedAt: null,
+          resolution: null,
+        },
+      ]);
+    });
+
+    it('lets the creator dispute too and tells the other side once', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      await dispute(s.collaborationId, '낮게 읽힌 것 같아요', creator).expect(
+        200,
+      );
+      const notices = await prisma.notification.findMany({
+        where: { kind: 'VIEW_REPORT_DISPUTED' },
+      });
+      expect(notices).toMatchObject([
+        {
+          userId: s.ownerId,
+          role: 'STORE',
+          targetKind: 'VIEW_REPORT',
+          targetId: s.collaborationId,
+        },
+      ]);
+      expect((await reportBody(s.collaborationId)).status).toBe('DISPUTED');
+    });
+
+    it('cancels the auto confirm once disputed', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      expect(jobKeys()).toContain(`auto-confirm:${s.collaborationId}`);
+      await dispute(s.collaborationId).expect(200);
+      expect(jobKeys()).not.toContain(`auto-confirm:${s.collaborationId}`);
+      clock.set(afterDays(7, 49));
+      await scheduler.runDue(clock.now());
+      expect((await settlementOf(s.collaborationId)).status).toBe('DISPUTED');
+      expect((await collaborationRow(s.collaborationId)).stage).toBe('HALTED');
+      expect(await settleLines(s.collaborationId)).toHaveLength(0);
+    });
+
+    it('does nothing when an auto confirm job that was already running meets a disputed calculation', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      await dispute(s.collaborationId).expect(200);
+      await scheduler.registry.run('settlement-auto-confirm', {
+        collaborationId: s.collaborationId,
+      });
+      expect((await settlementOf(s.collaborationId)).status).toBe('DISPUTED');
+      expect(await settleLines(s.collaborationId)).toHaveLength(0);
+      expect(await notificationCount('SETTLEMENT_CONFIRMED')).toBe(0);
+    });
+
+    it('lets only one of a concurrent dispute and auto confirm win', async () => {
+      for (let round = 0; round < 4; round += 1) {
+        await truncateTestDb(prisma);
+        scheduler.jobs.length = 0;
+        clock.set(T0);
+        const s = await seed();
+        await submitAndCalculate(s);
+        const [disputed] = await Promise.all([
+          dispute(s.collaborationId),
+          scheduler.registry.run('settlement-auto-confirm', {
+            collaborationId: s.collaborationId,
+          }),
+        ]);
+        const settlement = await settlementOf(s.collaborationId);
+        const stage = (await collaborationRow(s.collaborationId)).stage;
+        if (disputed.status === 200) {
+          // 이의가 이겼다: 돈은 그대로 보관된다.
+          expect(settlement.status).toBe('DISPUTED');
+          expect(stage).toBe('HALTED');
+          expect(await settleLines(s.collaborationId)).toHaveLength(0);
+          expect(await balanceOf(s.collaborationId, 'ESCROW')).toBe(60000);
+          expect(await prisma.payout.count()).toBe(0);
+          expect(await prisma.refund.count()).toBe(0);
+          expect(await prisma.settlementDispute.count()).toBe(1);
+        } else {
+          // 자동 확인이 이겼다: 이의는 409고 흔적이 없다. 돈은 한 번만 나간다.
+          expect(disputed.status).toBe(409);
+          expect(settlement.status).toBe('CONFIRMED');
+          expect(stage).toBe('SETTLED');
+          expect(await settleLines(s.collaborationId)).toHaveLength(2);
+          expect(await prisma.payout.count()).toBe(1);
+          expect(await prisma.refund.count()).toBe(1);
+          expect(await prisma.settlementDispute.count()).toBe(0);
+        }
+      }
+    });
+
+    it('refuses a second dispute from the same person and a dispute after confirmation', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      await dispute(s.collaborationId).expect(200);
+      await dispute(s.collaborationId).expect(409);
+      await dispute(s.collaborationId, '저도 이상해요', creator).expect(409);
+      expect(await prisma.settlementDispute.count()).toBe(1);
+
+      await truncateTestDb(prisma);
+      scheduler.jobs.length = 0;
+      clock.set(T0);
+      const later = await seed();
+      await submitAndCalculate(later);
+      await confirm(later.collaborationId).expect(200);
+      const res = await dispute(later.collaborationId).expect(409);
+      expect((res.body as { error: { code: string } }).error.code).toBe(
+        'CONFLICT',
+      );
+      expect((await settlementOf(later.collaborationId)).status).toBe(
+        'CONFIRMED',
+      );
+      expect(await prisma.settlementDispute.count()).toBe(0);
+    });
+
+    it('refuses a dispute before there is a calculation', async () => {
+      const s = await seed();
+      await submit(s.collaborationId).expect(200);
+      await dispute(s.collaborationId).expect(409);
+    });
+
+    it('alerts the operator without the dispute text', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      alert.mockClear();
+      await dispute(s.collaborationId, '비밀 사유 글').expect(200);
+      expect(alert).toHaveBeenCalledTimes(1);
+      const [[sent]] = alert.mock.calls as [
+        { subject: string; body: string },
+      ][];
+      expect(sent.subject).toBe(
+        '조회 자료에 이의가 제기됐어요. 확인해 주세요.',
+      );
+      expect(sent.body).toContain(s.collaborationId);
+      expect(JSON.stringify(sent)).not.toContain('비밀 사유 글');
+    });
+
+    it('answers 404 to someone outside the collaboration and 400 to a bad reason', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      const other = await seed({
+        ownerId: '33333333-3333-4333-8333-333333333333',
+        creatorId: '44444444-4444-4444-8444-444444444444',
+      });
+      await dispute(other.collaborationId).expect(404);
+      await dispute(s.collaborationId, '').expect(400);
+      await dispute(s.collaborationId, '   ').expect(400);
+      await dispute(s.collaborationId, 'a'.repeat(201)).expect(400);
+      expect((await settlementOf(s.collaborationId)).status).toBe(
+        'UNCONFIRMED',
+      );
+    });
+  });
+
   describe('operator commands', () => {
     const ops = (...args: string[]) => runner.run([...args, ...WHO]);
     const text = (r: { output: string[] }) => r.output.join('\n');
@@ -762,13 +965,7 @@ describe('view report', () => {
     it('refuses to resume or settle a halted collaboration that has a disputed calculation', async () => {
       const s = await seed();
       await submitAndCalculate(s);
-      await prisma.settlement.update({
-        where: { collaborationId: s.collaborationId },
-        data: { status: 'DISPUTED' },
-      });
-      expect(
-        (await ops('halt', '--collaboration', s.collaborationId)).exitCode,
-      ).toBe(0);
+      await dispute(s.collaborationId).expect(200);
       for (const args of [
         ['resume', '--collaboration', s.collaborationId],
         [

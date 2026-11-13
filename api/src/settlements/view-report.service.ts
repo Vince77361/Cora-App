@@ -2,12 +2,17 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   Collaboration,
   EvidenceSource,
+  Prisma,
   SettlementConfirmer,
 } from '@prisma/client';
-import { CollaborationsRepository } from '../collaborations/collaborations.repository';
+import {
+  CollaborationPatch,
+  CollaborationsRepository,
+} from '../collaborations/collaborations.repository';
 import { VIEW_REPORT_POLICY } from '../common/collaboration-policy';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
+import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import { JobRunContext, JobScheduler } from '../jobs/job-scheduler';
 import { postingsForSettlement } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
@@ -17,6 +22,8 @@ import { UsersService } from '../users/users.service';
 import { assertEscrowMatches } from './escrow-check';
 import {
   autoConfirmJobKey,
+  disputeDedupeKey,
+  SETTLEMENT_DISPUTED_HALT_REASON,
   settleJobKey,
   settlePayoutKey,
   settleRefundKey,
@@ -27,7 +34,11 @@ import { PayoutsService } from './payouts.service';
 import { RefundsService } from './refunds.service';
 import { SettlementFinishService } from './settlement-finish.service';
 import { pickFinalViews, settleReward } from './settlement-math';
-import { SettlementsRepository } from './settlements.repository';
+import {
+  CorrectedCalculation,
+  NewSettlement,
+  SettlementsRepository,
+} from './settlements.repository';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HOUR_MS = 60 * 60 * 1000;
@@ -81,6 +92,7 @@ export class ViewReportService {
     private readonly users: UsersService,
     private readonly jobs: JobScheduler,
     private readonly clock: Clock,
+    private readonly operatorAlert: OperatorAlertPort,
   ) {}
 
   // 측정 기간이 끝났을 때 계산을 만든다: 정산 행을 UNCONFIRMED로 만들기만 한다. 장부, 단계, 지급·환급 행은 건드리지 않는다.
@@ -90,6 +102,32 @@ export class ViewReportService {
   ): Promise<'created' | 'exists' | 'gone'> {
     const collaboration = await this.collaborations.findById(collaborationId);
     if (!collaboration) return 'gone';
+    const views = pickFinalViews(
+      await this.repository.listSnapshots(collaborationId),
+      lastDayOf(collaboration),
+    );
+    // 읽은 값이 하나도 없으면 0으로 계산하지 않는다(호출한 쪽이 먼저 멈춘다).
+    if (views === null) throw new Error('읽은 조회수가 없어 계산할 수 없어요.');
+    const row = this.calculationRow(collaboration, views, 'CONNECTED_ACCOUNT');
+    return this.repository.transaction<'created', 'exists' | 'gone'>(
+      async (tx, rollback) => {
+        if (!(await this.repository.lockCollaboration(collaborationId, tx))) {
+          return rollback('gone');
+        }
+        const fresh = await this.collaborations.findById(collaborationId, tx);
+        if (fresh?.stage !== 'COUNTING') return rollback('gone');
+        const created = await this.repository.createSettlement(row, tx);
+        return created ? 'created' : rollback('exists');
+      },
+    );
+  }
+
+  // 조건과 조회수로 계산 행(UNCONFIRMED)을 만든다. 연결 계정 자료는 확인 기한(48시간)을 두고, 캡처 자료는 운영 명령만 확정하므로 기한이 없다.
+  private calculationRow(
+    collaboration: Collaboration,
+    views: number,
+    source: EvidenceSource,
+  ): NewSettlement {
     const terms = readTerms(collaboration.terms);
     if (
       terms.viewRatePerThousand === null ||
@@ -98,12 +136,6 @@ export class ViewReportService {
     ) {
       throw new Error('조회수 수당이 없는 협업은 계산을 만들지 않아요.');
     }
-    const views = pickFinalViews(
-      await this.repository.listSnapshots(collaborationId),
-      lastDayOf(collaboration),
-    );
-    // 읽은 값이 하나도 없으면 0으로 계산하지 않는다(호출한 쪽이 먼저 멈춘다).
-    if (views === null) throw new Error('읽은 조회수가 없어 계산할 수 없어요.');
     const { viewPay, payout, refund } = settleReward({
       views,
       ratePerThousand: terms.viewRatePerThousand,
@@ -111,39 +143,29 @@ export class ViewReportService {
       fixedCash: terms.fixedCash,
     });
     const now = this.clock.now();
-    return this.repository.transaction<'created', 'exists' | 'gone'>(
-      async (tx, rollback) => {
-        if (!(await this.repository.lockCollaboration(collaborationId, tx))) {
-          return rollback('gone');
-        }
-        const fresh = await this.collaborations.findById(collaborationId, tx);
-        if (fresh?.stage !== 'COUNTING') return rollback('gone');
-        const created = await this.repository.createSettlement(
-          {
-            collaborationId,
-            finalViews: views,
-            payoutAmount: payout,
-            refundAmount: refund,
-            fixedCashAmount: terms.fixedCash,
-            viewPayAmount: viewPay,
-            status: 'UNCONFIRMED',
-            calculatedAt: now,
-            confirmDueAt: new Date(
-              now.getTime() + VIEW_REPORT_POLICY.confirmHours * HOUR_MS,
-            ),
-            settledAt: null,
-            confirmedAt: null,
-            confirmedBy: null,
-          },
-          tx,
-        );
-        return created ? 'created' : rollback('exists');
-      },
-    );
+    return {
+      collaborationId: collaboration.id,
+      finalViews: views,
+      payoutAmount: payout,
+      refundAmount: refund,
+      fixedCashAmount: terms.fixedCash,
+      viewPayAmount: viewPay,
+      status: 'UNCONFIRMED',
+      calculatedAt: now,
+      confirmDueAt:
+        source === 'CAPTURE'
+          ? null
+          : new Date(now.getTime() + VIEW_REPORT_POLICY.confirmHours * HOUR_MS),
+      settledAt: null,
+      confirmedAt: null,
+      confirmedBy: null,
+      evidenceSource: source,
+    };
   }
 
   // 계산이 만들어진 뒤의 단계: 자동 확인 작업을 확인 기한에 올리고, 사장님에게 확인을, 크리에이터에게 계산을 알린다.
   // 모두 같은 키라 다시 불러도 한 번만 일어난다(작업이 커밋 뒤에 죽어도 다시 돌 때 이어서 한다).
+  // 그사이 협업이 멈췄다면(운영자의 멈춤, 이의) 알리지 않는다.
   async announceCalculation(collaborationId: string): Promise<void> {
     const collaboration = await this.collaborations.findById(collaborationId);
     const settlement = collaboration
@@ -153,7 +175,8 @@ export class ViewReportService {
       !collaboration ||
       !settlement ||
       settlement.status !== 'UNCONFIRMED' ||
-      !settlement.confirmDueAt
+      !settlement.confirmDueAt ||
+      collaboration.stage !== 'COUNTING'
     ) {
       return;
     }
@@ -165,10 +188,9 @@ export class ViewReportService {
     );
     const target = { kind: 'VIEW_REPORT', id: collaborationId } as const;
     const dedupeKey = viewReportDedupeKey(collaborationId);
-    const role = await this.users.getRole(collaboration.commissionerId);
     await this.notifications.notify({
       userId: collaboration.commissionerId,
-      role: role === 'BRAND' ? 'BRAND' : 'STORE',
+      role: await this.commissionerRole(collaboration),
       kind: 'VIEW_REPORT_REQUESTED',
       target,
       dedupeKey,
@@ -180,6 +202,14 @@ export class ViewReportService {
       target,
       dedupeKey,
     });
+  }
+
+  // 맡기는 쪽 알림의 역할은 그 사람의 지금 역할이다(가게 사장님 STORE, 브랜드 BRAND).
+  private async commissionerRole(
+    collaboration: Collaboration,
+  ): Promise<'STORE' | 'BRAND'> {
+    const role = await this.users.getRole(collaboration.commissionerId);
+    return role === 'BRAND' ? 'BRAND' : 'STORE';
   }
 
   // 확인 완료: 한 트랜잭션에서 정산 행 UNCONFIRMED → CONFIRMED(조건부) → 협업 COUNTING → SETTLED → 에스크로 잔액 검사 →
@@ -333,8 +363,8 @@ export class ViewReportService {
           ? (settlement.confirmDueAt?.toISOString() ?? null)
           : null,
       canConfirm: canConfirm(collaboration, settlement, userId),
-      // 이의 제기와 캡처 올리기는 Task 20이 연다.
-      canDispute: false,
+      canDispute: canDispute(collaboration, settlement),
+      // 캡처 올리기와 캡처 자료는 다음 커밋이 연다.
       canUploadEvidence: false,
       evidence: null,
     };
@@ -349,78 +379,230 @@ export class ViewReportService {
   ): Promise<'confirmed' | 'lost'> {
     return this.repository.transaction<'confirmed', 'lost'>(
       async (tx, rollback) => {
-        const now = this.clock.now();
+        const settled = await this.settleCalculation(tx, collaborationId, {
+          by,
+          key,
+          fromStatus: 'UNCONFIRMED',
+          fromStage: 'COUNTING',
+          onlySource: options.onlySource,
+        });
+        // 협업이 그사이 COUNTING이 아니게 됐다면 정산 행 변경까지 전부 되돌린다(돈은 그대로 보관된다).
+        return settled ? 'confirmed' : rollback('lost');
+      },
+    );
+  }
+
+  // 정산 행 확인 완료 → 협업 이동 → 에스크로 잔액 검사 → 장부(key) → 지급·환급 행을 호출한 쪽의 트랜잭션 안에서 한다.
+  // 사장님·자동 확인(UNCONFIRMED, COUNTING)과 운영 명령(캡처 확정은 UNCONFIRMED, 이의 처리는 DISPUTED·HALTED)이 같은 길을 쓴다.
+  // 졌으면(정산 행이 그 상태가 아니거나 협업이 그 단계가 아님) false다: 호출한 쪽이 반드시 트랜잭션을 되돌려야 한다(정산 행만 바뀐 채 남지 않게).
+  // correctedViews를 주면 그 조회수로 다시 계산한 금액을 정산 행에 쓴다(이의 처리). 지급 + 환급은 늘 고정 현금 + 상한이라 에스크로 잔액이 0이 된다.
+  async settleCalculation(
+    tx: Prisma.TransactionClient,
+    collaborationId: string,
+    p: {
+      by: SettlementConfirmer;
+      key: string;
+      fromStatus: 'UNCONFIRMED' | 'DISPUTED';
+      fromStage: 'COUNTING' | 'HALTED';
+      onlySource?: EvidenceSource;
+      patch?: CollaborationPatch;
+      correctedViews?: number;
+    },
+  ): Promise<boolean> {
+    const now = this.clock.now();
+    const before = await this.collaborations.findById(collaborationId, tx);
+    if (!before) throw new Error('확인한 정산의 협업을 찾을 수 없어요.');
+    const corrected =
+      p.correctedViews === undefined
+        ? undefined
+        : this.correctedCalculation(before, p.correctedViews);
+    // 이 갱신이 정산 행을 먼저 잠근다(정산 행 → 협업).
+    if (
+      !(await this.repository.confirmCalculation(
+        collaborationId,
+        p.by,
+        now,
+        { from: p.fromStatus, onlySource: p.onlySource, corrected },
+        tx,
+      ))
+    ) {
+      return false;
+    }
+    const settlement = await this.repository.findSettlement(
+      collaborationId,
+      tx,
+    );
+    const collaboration = await this.collaborations.findById(
+      collaborationId,
+      tx,
+    );
+    if (!settlement || !collaboration) {
+      throw new Error('확인한 정산의 협업을 찾을 수 없어요.');
+    }
+    if (
+      !(await this.collaborations.advance(
+        collaborationId,
+        p.fromStage,
+        'SETTLED',
+        p.patch ?? {},
+        tx,
+      ))
+    ) {
+      return false;
+    }
+    const escrow = await this.ledger.escrowBalance(collaborationId, tx);
+    assertEscrowMatches(readTerms(collaboration.terms), escrow);
+    if (settlement.payoutAmount + settlement.refundAmount !== escrow) {
+      throw new Error(
+        `정산 금액(${settlement.payoutAmount + settlement.refundAmount})이 에스크로 잔액(${escrow})과 달라요.`,
+      );
+    }
+    const posted = await this.ledger.post(
+      collaborationId,
+      postingsForSettlement({
+        payout: settlement.payoutAmount,
+        refund: settlement.refundAmount,
+      }),
+      p.key,
+      tx,
+    );
+    if (posted === 'duplicate') {
+      // 확인 전인 협업에 정산 장부가 이미 있다면 상태가 어긋난 것이다. 조용히 넘기지 않고 되돌려 드러낸다.
+      throw new Error('확인 전인 정산에 정산 장부 줄이 이미 있어요.');
+    }
+    await this.payouts.request(
+      collaborationId,
+      settlement.payoutAmount,
+      settlePayoutKey(collaborationId),
+      now,
+      tx,
+    );
+    await this.refunds.request(
+      collaborationId,
+      settlement.refundAmount,
+      settleRefundKey(collaborationId),
+      tx,
+    );
+    return true;
+  }
+
+  // 운영자가 고친 조회수로 다시 계산한 금액. 조건 사본(고정 현금, 단가, 상한)을 쓰고 상한은 에스크로 잔액이 아니라 조건의 값이다.
+  private correctedCalculation(
+    collaboration: Collaboration,
+    views: number,
+  ): CorrectedCalculation {
+    const row = this.calculationRow(collaboration, views, 'CONNECTED_ACCOUNT');
+    return {
+      finalViews: views,
+      payoutAmount: row.payoutAmount,
+      refundAmount: row.refundAmount,
+      fixedCashAmount: row.fixedCashAmount,
+      viewPayAmount: row.viewPayAmount,
+    };
+  }
+
+  // 이의 제기. 당사자 누구나 확인 전(UNCONFIRMED)인 계산에 한 번 낼 수 있다. 한 트랜잭션에서 정산 행 UNCONFIRMED → DISPUTED(조건부)
+  // → 이의 행 → 협업 COUNTING → HALTED를 하고, 돈은 에스크로에 그대로 둔다. 자동 확인과 겹치면 하나만 이긴다(진 쪽은 409 또는 'lost').
+  // 커밋 뒤: 자동 확인 작업 취소, 운영자 알림(사유 글은 넣지 않는다), 상대에게 알림. 실패해도 이의는 이미 유효하니 로그만 남긴다.
+  async dispute(
+    userId: string,
+    collaborationId: string,
+    reasonInput: string,
+  ): Promise<ViewReportView> {
+    const collaboration = await this.requireParty(userId, collaborationId);
+    const reason = reasonInput.trim();
+    if (
+      reason.length < 1 ||
+      reason.length > VIEW_REPORT_POLICY.disputeReasonMax
+    ) {
+      throw new AppError(
+        'VALIDATION_FAILED',
+        `사유는 1자 이상 ${VIEW_REPORT_POLICY.disputeReasonMax}자 이하로 적어 주세요.`,
+      );
+    }
+    const settlement = await this.repository.findSettlement(collaborationId);
+    if (!canDispute(collaboration, settlement)) throw this.cannotDispute();
+    const outcome = await this.repository.transaction<'disputed', 'lost'>(
+      async (tx, rollback) => {
         // 이 갱신이 정산 행을 먼저 잠근다(정산 행 → 협업).
+        if (!(await this.repository.disputeCalculation(collaborationId, tx))) {
+          return rollback('lost');
+        }
         if (
-          !(await this.repository.confirmCalculation(
-            collaborationId,
-            by,
-            now,
-            options.onlySource ?? null,
+          !(await this.repository.createDispute(
+            { collaborationId, raisedById: userId, reason },
             tx,
           ))
         ) {
           return rollback('lost');
         }
-        const settlement = await this.repository.findSettlement(
-          collaborationId,
-          tx,
-        );
-        const collaboration = await this.collaborations.findById(
-          collaborationId,
-          tx,
-        );
-        if (!settlement || !collaboration) {
-          throw new Error('확인한 정산의 협업을 찾을 수 없어요.');
-        }
-        // 협업이 그사이 COUNTING이 아니게 됐다면 정산 행 변경까지 전부 되돌린다(돈은 그대로 보관된다).
+        // 운영자가 그사이 멈췄다면 정산 행 변경까지 되돌린다.
         if (
           !(await this.collaborations.advance(
             collaborationId,
             'COUNTING',
-            'SETTLED',
-            {},
+            'HALTED',
+            {
+              stageBeforeHalt: 'COUNTING',
+              haltedReason: SETTLEMENT_DISPUTED_HALT_REASON,
+            },
             tx,
           ))
         ) {
           return rollback('lost');
         }
-        const escrow = await this.ledger.escrowBalance(collaborationId, tx);
-        assertEscrowMatches(readTerms(collaboration.terms), escrow);
-        if (settlement.payoutAmount + settlement.refundAmount !== escrow) {
-          throw new Error(
-            `정산 금액(${settlement.payoutAmount + settlement.refundAmount})이 에스크로 잔액(${escrow})과 달라요.`,
-          );
-        }
-        const posted = await this.ledger.post(
-          collaborationId,
-          postingsForSettlement({
-            payout: settlement.payoutAmount,
-            refund: settlement.refundAmount,
-          }),
-          key,
-          tx,
-        );
-        if (posted === 'duplicate') {
-          // 확인 전인 협업에 정산 장부가 이미 있다면 상태가 어긋난 것이다. 조용히 넘기지 않고 되돌려 드러낸다.
-          throw new Error('확인 전인 정산에 정산 장부 줄이 이미 있어요.');
-        }
-        await this.payouts.request(
-          collaborationId,
-          settlement.payoutAmount,
-          settlePayoutKey(collaborationId),
-          now,
-          tx,
-        );
-        await this.refunds.request(
-          collaborationId,
-          settlement.refundAmount,
-          settleRefundKey(collaborationId),
-          tx,
-        );
-        return 'confirmed';
+        return 'disputed';
       },
     );
+    if (outcome === 'lost') throw this.cannotDispute();
+    await this.afterDispute(collaboration, userId);
+    return this.get(userId, collaborationId);
+  }
+
+  private async afterDispute(
+    collaboration: Collaboration,
+    raisedById: string,
+  ): Promise<void> {
+    const steps: [string, () => Promise<void>][] = [
+      [
+        '자동 확인 작업 취소',
+        () => this.jobs.cancel(autoConfirmJobKey(collaboration.id)),
+      ],
+      [
+        '운영자 알림',
+        () =>
+          this.operatorAlert.alert({
+            subject: '조회 자료에 이의가 제기됐어요. 확인해 주세요.',
+            body: `협업 ID: ${collaboration.id}`,
+          }),
+      ],
+      [
+        '상대에게 알림',
+        async () => {
+          const toCommissioner = raisedById !== collaboration.commissionerId;
+          await this.notifications.notify({
+            userId: toCommissioner
+              ? collaboration.commissionerId
+              : collaboration.creatorId,
+            role: toCommissioner
+              ? await this.commissionerRole(collaboration)
+              : 'CREATOR',
+            kind: 'VIEW_REPORT_DISPUTED',
+            target: { kind: 'VIEW_REPORT', id: collaboration.id },
+            dedupeKey: disputeDedupeKey(collaboration.id),
+          });
+        },
+      ],
+    ];
+    for (const [label, run] of steps) {
+      try {
+        await run();
+      } catch (error) {
+        this.logger.error(
+          `이의 제기 뒤 ${label}에 실패했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        );
+      }
+    }
   }
 
   private async requireParty(
@@ -443,6 +625,21 @@ export class ViewReportService {
   private cannotConfirm(): AppError {
     return new AppError('CONFLICT', '지금은 자료를 확인할 수 없어요.');
   }
+
+  private cannotDispute(): AppError {
+    return new AppError('CONFLICT', '지금은 이의를 제기할 수 없어요.');
+  }
+}
+
+// 이의를 낼 수 있을 때: 계산이 확인 전(UNCONFIRMED)이고 협업이 집계 중(COUNTING)일 때다(당사자 누구나, 캡처 자료도 포함).
+// 한 사람이 한 번이라는 규칙은 이의가 정산 행을 DISPUTED로 바꾸는 것으로 이미 지켜진다(DISPUTED가 되면 다시 낼 수 없다).
+function canDispute(
+  collaboration: Collaboration,
+  settlement: { status: string } | null,
+): boolean {
+  return (
+    collaboration.stage === 'COUNTING' && settlement?.status === 'UNCONFIRMED'
+  );
 }
 
 // 확인할 수 있는 사람: 맡기는 쪽이고, 계산이 확인 전이며, 자료가 연결 계정에서 읽은 것일 때만이다(캡처 자료는 운영 명령만 확정한다).

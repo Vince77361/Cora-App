@@ -38,6 +38,8 @@ model User {
   cancelRequests             CancelRequest[]
   notifications              Notification[]
   notificationSetting        NotificationSetting?
+  viewEvidences              ViewEvidence[]
+  settlementDisputes         SettlementDispute[]
 
   @@map("users")
 }
@@ -500,6 +502,8 @@ model Collaboration {
   refunds        Refund[]
   cancelRequests CancelRequest[]
   opsAuditLogs   OpsAuditLog[]
+  viewEvidences  ViewEvidence[]
+  disputes       SettlementDispute[]
 
   @@index([storeId, stage])
   @@index([creatorId, stage])
@@ -627,6 +631,50 @@ model Settlement {
   collaboration Collaboration @relation(fields: [collaborationId], references: [id])
 
   @@map("settlements")
+}
+
+// 조회수를 읽지 못했을 때 크리에이터가 올리는 인사이트 캡처. 파일은 비공개 버킷(evidence)에 있고, 읽는 주소는 서버가 당사자에게만 준다.
+model ViewEvidence {
+  id              String    @id @default(uuid()) @db.Uuid
+  collaborationId String    @map("collaboration_id") @db.Uuid
+  // 비공개 버킷 안의 경로(evidence/{크리에이터 id}/{uuid}.{확장자}).
+  filePath        String    @map("file_path")
+  // 크리에이터가 캡처를 보고 적은 조회수. 운영자가 확인하기 전에는 돈의 근거가 아니다.
+  statedViews     Int       @map("stated_views")
+  submittedById   String    @map("submitted_by_id") @db.Uuid
+  confirmedAt     DateTime? @map("confirmed_at") @db.Timestamptz(3)
+  // 확인한 운영자 이름(--operator 값).
+  confirmedBy     String?   @map("confirmed_by")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+  submittedBy   User          @relation(fields: [submittedById], references: [id])
+
+  @@index([collaborationId])
+  @@map("view_evidences")
+}
+
+// 조회 자료(계산)에 대한 이의 제기. 협업 하나에서 한 사람이 한 번만 낼 수 있다. 운영자가 처리하면 결과를 채운다.
+model SettlementDispute {
+  id              String    @id @default(uuid()) @db.Uuid
+  collaborationId String    @map("collaboration_id") @db.Uuid
+  raisedById      String    @map("raised_by_id") @db.Uuid
+  reason          String
+  resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz(3)
+  // UPHELD_AS_IS(계산 그대로 확정) 또는 VIEWS_CORRECTED(조회수를 고쳐 다시 계산).
+  resolution      String?
+  resolvedViews   Int?      @map("resolved_views")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+  raisedBy      User          @relation(fields: [raisedById], references: [id])
+
+  @@unique([collaborationId, raisedById])
+  @@map("settlement_disputes")
 }
 
 model Payout {
@@ -786,6 +834,8 @@ enum NotificationKind {
   OFFER_ENDED
   VIEW_REPORT_REQUESTED
   VIEW_REPORT_READY
+  VIEW_EVIDENCE_REQUESTED
+  VIEW_REPORT_DISPUTED
 
   @@map("notification_kind")
 }

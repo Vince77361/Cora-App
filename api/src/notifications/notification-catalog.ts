@@ -243,6 +243,25 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     needsActor: false,
     render: () => '조회수 집계가 끝났어요. 계산을 확인해 보세요.',
   },
+  // 조회수를 연속 3일 읽지 못했다: 크리에이터가 인사이트 캡처를 올린다. 정산 / 끌 수 없음 / WON. 가는 곳은 조회 자료 확인(F4).
+  VIEW_EVIDENCE_REQUESTED: {
+    tab: 'SETTLEMENT',
+    switch: 'ESSENTIAL',
+    glyph: 'WON',
+    requiredParams: {},
+    needsActor: false,
+    render: () => '조회수를 읽지 못했어요. 인사이트 캡처를 올려 주세요.',
+  },
+  // 조회 자료에 이의가 제기됐다: 이의를 낸 사람의 상대가 받는다. 정산 / 끌 수 없음 / WON. 가는 곳은 조회 자료 확인(F4).
+  VIEW_REPORT_DISPUTED: {
+    tab: 'SETTLEMENT',
+    switch: 'ESSENTIAL',
+    glyph: 'WON',
+    requiredParams: {},
+    needsActor: false,
+    render: () =>
+      '조회 자료에 이의가 제기됐어요. 운영팀이 확인하고 연락드릴게요.',
+  },
   // 표 "역제안·다시 보냄·수락·종료": 매칭 / 새 오퍼와 제안 / 사진. 가는 곳은 모두 제안 상세다.
   // 크리에이터가 조건을 바꿔 제안: 사장님이 받는다.
   OFFER_COUNTERED: {

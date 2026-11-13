@@ -81,6 +81,78 @@ class ViewReportApi {
     return null;
   }
 
+  /// 조회 자료에 이의를 제기한다(당사자 누구나, 확인 전인 계산에 한 사람이 한 번). 돈은 그대로 보관되고 운영팀이 처리한다. 낼 수 없는 상태면 409.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [DisputeViewReportDto] disputeViewReportDto (required):
+  Future<Response> disputeViewReportWithHttpInfo(
+    String id,
+    DisputeViewReportDto disputeViewReportDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path =
+        r'/collaborations/{id}/view-report/dispute'.replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = disputeViewReportDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 조회 자료에 이의를 제기한다(당사자 누구나, 확인 전인 계산에 한 사람이 한 번). 돈은 그대로 보관되고 운영팀이 처리한다. 낼 수 없는 상태면 409.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [DisputeViewReportDto] disputeViewReportDto (required):
+  Future<ViewReportModel?> disputeViewReport(
+    String id,
+    DisputeViewReportDto disputeViewReportDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await disputeViewReportWithHttpInfo(
+      id,
+      disputeViewReportDto,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(
+        await _decodeBodyBytes(response),
+        'ViewReportModel',
+      ) as ViewReportModel;
+    }
+    return null;
+  }
+
   /// 조회 자료 확인(F4). 당사자만 읽는다. 조회수 수당이 없거나 링크 제출 전이면 404.
   ///
   /// Note: This method returns the HTTP [Response].
