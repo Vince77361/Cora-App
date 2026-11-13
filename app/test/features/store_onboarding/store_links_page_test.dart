@@ -4,7 +4,6 @@ import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/core/ui/cora_primary_button.dart';
 import 'package:cora/features/store_onboarding/domain/source_link.dart';
-import 'package:cora/features/store_onboarding/presentation/pages/store_edit_page.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/store_links_page.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/store_page_preview_page.dart';
 import 'package:flutter/material.dart';
@@ -200,29 +199,6 @@ void main() {
     stores.holdAnalyze!.complete();
     await tester.pumpAndSettle();
     expect(find.byType(StorePagePreviewPage), findsOneWidget);
-  });
-
-  testWidgets('sends a failed analysis on to manual input', (tester) async {
-    final stores = FakeStoreRepository()..analysisFails = true;
-    await pumpStoreApp(tester, stores: stores);
-
-    await _type(tester, SourceLinkKind.naverMap, 'naver.me/fail');
-    await tester.tap(find.text('가게 페이지 만들기'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(StoreEditPage), findsOneWidget);
-    // 옛 안내와 버튼은 없다.
-    expect(find.text('정보를 가져오지 못했어요. 직접 입력할 수 있어요.'), findsNothing);
-    expect(find.text('직접 입력하기'), findsNothing);
-  });
-
-  testWidgets('opens manual input from the bottom link', (tester) async {
-    await pumpStoreApp(tester);
-
-    await tester.tapOnText(find.textRange.ofSubstring('링크가 없거나 안 열리면 직접 입력'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(StoreEditPage), findsOneWidget);
   });
 
   testWidgets('keeps the input and says so when the server is unreachable', (

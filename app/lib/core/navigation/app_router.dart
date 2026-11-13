@@ -39,6 +39,7 @@ import '../../features/store_home/presentation/viewmodels/store_home_view_model.
 import '../../features/store_onboarding/presentation/pages/content_drafts_page.dart';
 import '../../features/store_onboarding/presentation/pages/recruit_terms_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_edit_page.dart';
+import '../../features/store_onboarding/presentation/pages/store_manual_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_links_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_page_preview_page.dart';
 import '../config/app_config.dart';
@@ -141,6 +142,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             args: state.extra is StoreEditArgs
                 ? state.extra! as StoreEditArgs
                 : const StoreEditArgs(),
+          ),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.storeOnboardingManual,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          StoreManualPage(
+            args: state.extra is StoreManualArgs
+                ? state.extra! as StoreManualArgs
+                : const StoreManualArgs(),
           ),
           key: state.pageKey,
         ),

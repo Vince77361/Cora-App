@@ -38,6 +38,10 @@ class MyStoreViewModel extends AsyncNotifier<MyStore?> {
     return result.analysisFailed;
   }
 
+  /// 링크 없이 직접 입력한 값으로 등록 중인 가게를 만든다.
+  Future<void> createManually(ManualStore store) =>
+      _apply(_repo.createManually(store));
+
   Future<void> saveEdit(StoreEdit edit) => _apply(_repo.update(edit));
 
   Future<void> advance(StoreOnboardingStep step) => _apply(_repo.advance(step));

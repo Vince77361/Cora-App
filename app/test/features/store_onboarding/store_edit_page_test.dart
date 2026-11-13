@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:cora/core/media/photo_picker.dart';
-import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/core/ui/cora_primary_button.dart';
 import 'package:cora/core/ui/cora_state_view.dart';
@@ -175,33 +174,6 @@ void main() {
     await tester.drag(list, const Offset(0, -2000));
     await tester.pumpAndSettle();
     expect(find.text('제주특별자치도'), findsOneWidget);
-  });
-
-  testWidgets('goes to the preview after saving a manual entry', (
-    tester,
-  ) async {
-    final stores = FakeStoreRepository()..analysisFails = true;
-    await pumpStoreApp(tester, stores: stores);
-    await tester.enterText(
-      find.byKey(const ValueKey('storeLinks.naverMap')),
-      'naver.me/fail',
-    );
-    await tester.pump();
-    await tester.tap(find.text('가게 페이지 만들기'));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(_input('name'), '직접 쓴 가게');
-    await tester.pump();
-    await tester.tap(_text('저장'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(StoreEditPage), findsNothing);
-    expect(find.byType(StorePagePreviewPage), findsOneWidget);
-    expect(topPath(tester), AppRoutes.storeOnboardingPage);
-    // 링크 입력 화면이 아래에 쌓여 있어 뒤로 가면 돌아간다.
-    await tester.tap(find.bySemanticsLabel('뒤로'));
-    await tester.pumpAndSettle();
-    expect(topPath(tester), AppRoutes.storeOnboardingLinks);
   });
 
   testWidgets('uploads the picked photo and sends its path on save', (

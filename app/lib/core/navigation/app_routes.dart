@@ -25,6 +25,9 @@ abstract final class AppRoutes {
   static const storeOnboardingLinks = '/store/onboarding/links';
   static const storeOnboardingPage = '/store/onboarding/page';
   static const storeOnboardingEdit = '/store/onboarding/edit';
+
+  /// 직접 입력(F7). A2 위에 밀려 들어온다.
+  static const storeOnboardingManual = '/store/onboarding/manual';
   static const storeOnboardingDrafts = '/store/onboarding/drafts';
   static const storeOnboardingTerms = '/store/onboarding/terms';
   static const storePage = '/store/page';

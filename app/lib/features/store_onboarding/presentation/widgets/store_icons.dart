@@ -20,6 +20,12 @@ class StoreIconPainter extends CustomPainter {
   /// 고른 항목 표시(NStoreLink 체크와 같은 모양, 두께 2.4).
   const StoreIconPainter.selected(Color color) : this._(_check, color, 2.4);
 
+  /// 안내 줄 앞의 동그라미 느낌표(NStoreManual): 반지름 9의 원과 `M12 7v6M12 16.5v.5`, 두께 2.
+  const StoreIconPainter.info(Color color) : this._(_info, color, 2);
+
+  /// 사진 올리기 버튼의 더하기(NStoreManual): `M12 5v14M5 12h14`, 두께 2.
+  const StoreIconPainter.plus(Color color) : this._(_plus, color, 2);
+
   final void Function(Canvas canvas, double k, Paint paint) _draw;
   final Color color;
   final double width;
@@ -65,6 +71,17 @@ class StoreIconPainter extends CustomPainter {
       paint,
     );
     canvas.drawCircle(Offset(12 * k, 13 * k), 3.5 * k, paint);
+  }
+
+  static void _info(Canvas canvas, double k, Paint paint) {
+    canvas.drawCircle(Offset(12 * k, 12 * k), 9 * k, paint);
+    canvas.drawLine(Offset(12 * k, 7 * k), Offset(12 * k, 13 * k), paint);
+    canvas.drawLine(Offset(12 * k, 16.5 * k), Offset(12 * k, 17 * k), paint);
+  }
+
+  static void _plus(Canvas canvas, double k, Paint paint) {
+    canvas.drawLine(Offset(12 * k, 5 * k), Offset(12 * k, 19 * k), paint);
+    canvas.drawLine(Offset(5 * k, 12 * k), Offset(19 * k, 12 * k), paint);
   }
 
   static void _chevronDown(Canvas canvas, double k, Paint paint) {

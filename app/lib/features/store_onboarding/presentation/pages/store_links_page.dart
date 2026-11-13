@@ -15,7 +15,7 @@ import '../viewmodels/store_links_view_model.dart';
 import '../widgets/inline_action_text.dart';
 import '../widgets/store_icons.dart';
 import '../widgets/store_text_box.dart';
-import 'store_edit_page.dart';
+import 'store_manual_page.dart';
 
 /// A2 가게 링크 입력(NStoreLink / DarkNStoreLink), 등록 1/3.
 ///
@@ -113,16 +113,17 @@ class _LinksFormState extends ConsumerState<_LinksForm> {
       case StoreLinksOutcome.analyzed:
         context.push(AppRoutes.storeOnboardingPage, extra: AppRoutes.stacked);
       case StoreLinksOutcome.analysisFailed:
-        _enterManually();
+        _enterManually(afterFailure: true);
       case StoreLinksOutcome.failed:
         break;
     }
   }
 
-  void _enterManually() {
+  /// 직접 입력(F7)으로 간다. 링크 분석이 실패해서 가는 때만 그 안내를 함께 보인다.
+  void _enterManually({bool afterFailure = false}) {
     context.push(
-      AppRoutes.storeOnboardingEdit,
-      extra: const StoreEditArgs(thenOpenPreview: true),
+      AppRoutes.storeOnboardingManual,
+      extra: StoreManualArgs(afterFailure: afterFailure),
     );
   }
 
@@ -220,7 +221,7 @@ class _LinksFormState extends ConsumerState<_LinksForm> {
                           color: c.text,
                           fontWeight: FontWeight.w500,
                         ),
-                        onTap: state.analyzing ? null : _enterManually,
+                        onTap: state.analyzing ? null : () => _enterManually(),
                       ),
                     ),
                   ),
