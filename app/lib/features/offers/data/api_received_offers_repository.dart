@@ -43,7 +43,12 @@ class ApiReceivedOffersRepository implements ReceivedOffersRepository {
     } on ReceivedOffersFailure {
       rethrow;
     } catch (error) {
-      throw ReceivedOffersFailure(conflict: ApiError.from(error).isConflict);
+      final e = ApiError.from(error);
+      // 최신 번호를 모르는 STALE_VERSION은 이미 처리된 오퍼와 같게 다룬다(목록을 새로 읽는다).
+      throw ReceivedOffersFailure(
+        conflict: e.isConflict || (e.isStaleVersion && e.latestVersion == null),
+        staleVersion: e.isStaleVersion ? e.latestVersion : null,
+      );
     }
   }
 
@@ -64,5 +69,6 @@ class ApiReceivedOffersRepository implements ReceivedOffersRepository {
     version: m.version,
     canUndoDecline: m.canUndoDecline,
     needsInstagram: m.needsInstagram,
+    myTurn: m.myTurn,
   );
 }

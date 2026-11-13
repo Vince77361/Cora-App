@@ -1,6 +1,5 @@
 import '../../offer_terms/domain/offer_terms.dart';
 import '../../offer_terms/presentation/offer_terms_text.dart';
-import '../../store_browse/presentation/store_browse_text.dart';
 import '../domain/received_offer.dart';
 
 /// 오퍼가 도착한 때. `오늘 도착`, `어제 도착`, `3일 전 도착`. 날짜는 휴대폰의 달력 날짜로 센다.
@@ -17,11 +16,27 @@ String arrivedAgo(DateTime receivedAt, DateTime now) {
   return '$days일 전 도착';
 }
 
-/// 카드의 `{보상 요약}. {가게 소개}`. 조회수당이 들어간 조건은 조회수당 줄을, 식사권만이면
-/// 식사권 요약을 쓴다(식사권 이름은 바로 위 한 줄에 이미 보인다). 소개가 없으면 요약만.
+/// 카드 제목 아래 보상 한 줄. 있는 요소를 ` + `로 잇는다: `식사권 2인 + 조회수 수당`,
+/// `식사권 2인 + 고정 현금 30,000원 + 조회수 수당`. 요소가 하나도 없으면 `없음`.
+String offerRewardHeadline(Reward reward) {
+  final parts = [
+    if (reward.voucher != null) benefitShort(reward.voucher!),
+    if (reward.fixedCash > 0) '고정 현금 ${wonExact(reward.fixedCash)}',
+    if (reward.viewPay != null) '조회수 수당',
+  ];
+  return parts.isEmpty ? '없음' : parts.join(' + ');
+}
+
+/// 카드의 `{보상 요약}. {가게 소개}`. 조회수 수당이 있으면 그 줄(`1,000회당 2,000원, 최대 60,000원`)을,
+/// 없으면 식사권 한 줄을 쓴다(제목에는 식사권 이름과 인원만 있다). 요약할 것이 없으면(고정 현금만이면
+/// 제목이 이미 금액을 말한다) 소개만 쓴다.
 String offerDescription(OfferTerms terms, String? storeIntro) {
-  final summary = perViewLine(terms) ?? rewardSummary(terms);
+  final reward = terms.reward;
+  final summary = reward.viewPay != null
+      ? viewPayLineComma(reward.viewPay!)
+      : (reward.voucher == null ? null : benefitLine(reward.voucher!));
   final intro = (storeIntro ?? '').trim();
+  if (summary == null) return intro;
   return intro.isEmpty ? summary : '$summary. $intro';
 }
 

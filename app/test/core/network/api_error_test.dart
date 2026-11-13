@@ -26,6 +26,32 @@ void main() {
       expect(error.isNetwork, isFalse);
     });
 
+    test('reads the latest version of a STALE_VERSION body', () {
+      final error = ApiError.from(
+        ApiException(
+          409,
+          _body('STALE_VERSION', '이전 판본이에요.', details: '{"latestVersion":3}'),
+        ),
+      );
+
+      expect(error.isStaleVersion, isTrue);
+      expect(error.isConflict, isFalse);
+      expect(error.latestVersion, 3);
+    });
+
+    test('has no latest version for other errors or a missing number', () {
+      expect(
+        ApiError.from(ApiException(409, _body('CONFLICT', 'x'))).latestVersion,
+        isNull,
+      );
+      expect(
+        ApiError.from(
+          ApiException(409, _body('STALE_VERSION', 'x', details: '{}')),
+        ).latestVersion,
+        isNull,
+      );
+    });
+
     test('reads RATE_LIMITED from a 429 body', () {
       final error = ApiError.from(
         ApiException(429, _body('RATE_LIMITED', '잠시 뒤에 다시 시도해 주세요.')),

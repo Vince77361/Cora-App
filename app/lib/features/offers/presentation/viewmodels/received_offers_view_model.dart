@@ -36,6 +36,7 @@ class ReceivedOffersState {
     this.busy = false,
     this.accepted = false,
     this.notice,
+    this.staleVersion,
   });
 
   /// 새 오퍼. 도착한 순서이고 맨 앞이 지금 보이는 카드다. 방금 거절한 오퍼는 되돌릴 수 있는 동안
@@ -50,6 +51,10 @@ class ReceivedOffersState {
   final bool accepted;
   final ReceivedOffersNotice? notice;
 
+  /// 수락하려던 판본이 최신이 아니었다: 카드 자리에 `이전 판본이라 수락할 수 없어요`를 보이는 중이다.
+  /// 값은 상대가 보낸 최신 판본 번호다.
+  final int? staleVersion;
+
   ReceivedOffer? get current => newOffers.isEmpty ? null : newOffers.first;
 
   /// 탭에 보이는 새 오퍼 수. 방금 거절한 오퍼는 세지 않는다.
@@ -63,12 +68,17 @@ class ReceivedOffersState {
     bool? accepted,
     ReceivedOffersNotice? notice,
     bool clearNotice = false,
+    int? staleVersion,
+    bool clearStaleVersion = false,
   }) => ReceivedOffersState(
     newOffers: newOffers ?? this.newOffers,
     tab: tab ?? this.tab,
     busy: busy ?? this.busy,
     accepted: accepted ?? this.accepted,
     notice: clearNotice ? null : (notice ?? this.notice),
+    staleVersion: clearStaleVersion
+        ? null
+        : (staleVersion ?? this.staleVersion),
   );
 }
 
@@ -85,8 +95,14 @@ class ReceivedOffersViewModel extends AsyncNotifier<ReceivedOffersState> {
 
   Future<ReceivedOffersState> _load() async {
     final repo = ref.read(receivedOffersRepositoryProvider);
-    return ReceivedOffersState(newOffers: await repo.fetchNew());
+    return ReceivedOffersState(newOffers: _mine(await repo.fetchNew()));
   }
+
+  /// 내가 답할 차례인 오퍼만. 사장님이 판본을 보내 상대 차례가 된 오퍼는 새 오퍼 카드로 나오지 않는다.
+  static List<ReceivedOffer> _mine(List<ReceivedOffer> offers) => [
+    for (final offer in offers)
+      if (offer.myTurn) offer,
+  ];
 
   /// 맨 앞 카드가 방금 거절한 오퍼이면 되돌리기 시간을 센다.
   void _armIfDeclined(ReceivedOffersState s) {
@@ -180,7 +196,14 @@ class ReceivedOffersViewModel extends AsyncNotifier<ReceivedOffersState> {
       }
     } on ReceivedOffersFailure catch (error) {
       if (!ref.mounted) return;
-      if (error.conflict) {
+      final stale = error.staleVersion;
+      if (stale != null) {
+        // 그사이 상대가 새 판본을 보냈다. 카드를 지우지 않고 그 자리에서 알린다.
+        final latest = state.value ?? current;
+        state = AsyncData(
+          latest.copyWith(busy: false, clearNotice: true, staleVersion: stale),
+        );
+      } else if (error.conflict) {
         await _refreshWith(ReceivedOffersNotice.alreadyHandled);
       } else {
         final latest = state.value ?? current;
@@ -214,12 +237,31 @@ class ReceivedOffersViewModel extends AsyncNotifier<ReceivedOffersState> {
     }
   }
 
+  /// `판본 {n} 보기`: 목록을 새로 읽어 그 오퍼의 새 카드를 보인다(Task 12 뒤에는 제안 상세를 연다).
+  /// 못 읽으면 안내를 그대로 두고 실패를 알린다.
+  Future<void> viewLatestVersion() async {
+    final current = state.value;
+    if (current == null || current.busy) return;
+    try {
+      final loaded = await _load();
+      if (!ref.mounted) return;
+      final next = loaded.copyWith(tab: current.tab);
+      state = AsyncData(next);
+      _armIfDeclined(next);
+    } catch (_) {
+      if (!ref.mounted) return;
+      state = AsyncData(current.copyWith(notice: ReceivedOffersNotice.failed));
+    }
+  }
+
   /// 연동하고 돌아온 뒤처럼 서버의 지금 상태로 새 오퍼 목록을 다시 맞춘다. 실패하면 보던 내용을 둔다.
   Future<void> refresh() async {
     final current = state.value;
     if (current == null) return;
     try {
-      final fresh = await ref.read(receivedOffersRepositoryProvider).fetchNew();
+      final fresh = _mine(
+        await ref.read(receivedOffersRepositoryProvider).fetchNew(),
+      );
       if (!ref.mounted) return;
       final latest = state.value ?? current;
       // 거절을 되돌릴 수 있는 동안의 맨 앞 카드는 서버 목록과 다르게 로컬에서만 들고 있다.

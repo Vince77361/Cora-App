@@ -17,13 +17,17 @@ abstract class ReceivedOffersRepository {
 
 /// 서버에 닿지 못했거나 서버가 거절했다. 서버 응답의 문구는 담지 않는다.
 class ReceivedOffersFailure implements Exception {
-  const ReceivedOffersFailure({this.conflict = false});
+  const ReceivedOffersFailure({this.conflict = false, this.staleVersion});
 
   /// 서버가 409로 답했다(이미 처리된 오퍼).
   final bool conflict;
 
+  /// 수락하려던 판본이 최신이 아니다(409 `STALE_VERSION`). 서버가 알려 준 최신 판본 번호다.
+  final int? staleVersion;
+
   @override
-  String toString() => 'ReceivedOffersFailure(conflict: $conflict)';
+  String toString() =>
+      'ReceivedOffersFailure(conflict: $conflict, staleVersion: $staleVersion)';
 }
 
 /// 기본값은 일부러 던진다. main.dart가 API 구현으로, 테스트가 가짜로 바꿔 끼운다.

@@ -60,9 +60,9 @@ void main() {
       expect(find.text('소상공인 · 오늘 도착'), findsOneWidget);
       expect(find.text('한그릇 라멘, 성수동'), findsOneWidget);
       expect(find.text('릴스 1편을\n부탁했어요'), findsOneWidget);
-      expect(find.text('2인 식사권 40,000원 + 조회수 수당'), findsOneWidget);
+      expect(find.text('식사권 2인 + 조회수 수당'), findsOneWidget);
       expect(
-        find.text('1,000회당 2,000원, 최대 100,000원. 김이 오르는 첫 숟가락 장면을 원해요.'),
+        find.text('1,000회당 2,000원, 최대 60,000원. 김이 오르는 첫 숟가락 장면을 원해요.'),
         findsOneWidget,
       );
       expect(find.text('#팔로워무관'), findsOneWidget);
@@ -115,8 +115,8 @@ void main() {
       expect(find.text('소상공인 · 어제 도착'), findsOneWidget);
       expect(find.text('달빛 베이커리, 성수동'), findsOneWidget);
       expect(find.text('쇼츠 1편을\n부탁했어요'), findsOneWidget);
-      // 식사권만이면 보상 줄과 설명이 모두 혜택 한 줄로 시작한다.
-      expect(find.text('빵 세트 30,000원'), findsOneWidget);
+      // 식사권만이면 제목 아래에는 식사권 이름만, 설명은 혜택 한 줄로 시작한다.
+      expect(find.text('빵 세트'), findsOneWidget);
       expect(find.text('빵 세트 30,000원. 갓 구운 빵 향이 나는 동네 빵집이에요.'), findsOneWidget);
       expect(find.text('#팔로워무관'), findsOneWidget);
       expect(find.textContaining('#오후'), findsNothing);
@@ -137,6 +137,85 @@ void main() {
       // 시간이 지나도 이미 걷어 낸 카드가 또 걷히지는 않는다.
       await tester.pump(_undoWindow * 2);
       expect(find.text('달빛 베이커리, 성수동'), findsOneWidget);
+    });
+
+    testWidgets('sends the version number of the card it shows', (
+      tester,
+    ) async {
+      final offers = FakeReceivedOffersRepository(
+        newOffers: [receivedOffer(id: 'o1', version: 3)],
+      );
+      await _openInbox(tester, offers: offers);
+
+      await tester.tap(find.text('수락하기'));
+      await tester.pumpAndSettle();
+
+      expect(offers.acceptedVersions, [3]);
+    });
+
+    testWidgets('shows the stale version state and reloads on its button', (
+      tester,
+    ) async {
+      final offers =
+          FakeReceivedOffersRepository(
+              newOffers: [receivedOffer(id: 'o1', version: 2)],
+            )
+            ..staleOnAccept = 3
+            ..afterStale = [
+              receivedOffer(
+                id: 'o1',
+                version: 3,
+                terms: const OfferTerms(
+                  format: ContentFormat.shorts,
+                  reward: Reward(fixedCash: 30000),
+                ),
+              ),
+            ];
+      await _openInbox(tester, offers: offers);
+
+      await tester.tap(find.text('수락하기'));
+      await tester.pumpAndSettle();
+
+      // 카드 자리에 F8 문구가 나오고 수락은 되지 않았다.
+      expect(offers.accepted, isEmpty);
+      expect(find.text('이전 판본이라 수락할 수 없어요'), findsOneWidget);
+      expect(
+        find.text('상대가 판본 3을 보냈어요. 바뀐 조건을 확인한 뒤 수락해 주세요.'),
+        findsOneWidget,
+      );
+      expect(find.text('릴스 1편을\n부탁했어요'), findsNothing);
+
+      final before = offers.fetchNewCalls;
+      await tester.tap(find.text('판본 3 보기'));
+      await tester.pumpAndSettle();
+
+      // 목록을 새로 읽어 그 오퍼의 새 카드를 보인다.
+      expect(offers.fetchNewCalls, before + 1);
+      expect(find.text('이전 판본이라 수락할 수 없어요'), findsNothing);
+      expect(find.text('쇼츠 1편을\n부탁했어요'), findsOneWidget);
+      expect(find.text('고정 현금 30,000원'), findsOneWidget);
+
+      // 새 판본은 판본 번호 3으로 수락된다.
+      offers.staleOnAccept = null;
+      await tester.tap(find.text('수락하기'));
+      await tester.pumpAndSettle();
+      expect(offers.acceptedVersions, [3]);
+    });
+
+    testWidgets('does not show offers that wait for the store as cards', (
+      tester,
+    ) async {
+      final offers = FakeReceivedOffersRepository(
+        newOffers: [
+          receivedOffer(id: 'o1', storeName: '달빛 베이커리', myTurn: false),
+          receivedOffer(id: 'o2', storeName: '한그릇 라멘'),
+        ],
+      );
+      await _openInbox(tester, offers: offers);
+
+      expect(find.text('새 오퍼 1'), findsOneWidget);
+      expect(find.text('한그릇 라멘, 성수동'), findsOneWidget);
+      expect(find.textContaining('달빛 베이커리'), findsNothing);
     });
 
     testWidgets('accepting moves the offer to the active tab', (tester) async {

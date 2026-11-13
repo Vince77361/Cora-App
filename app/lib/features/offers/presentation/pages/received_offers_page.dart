@@ -243,6 +243,16 @@ class _NewTab extends StatelessWidget {
           ),
         ],
       );
+    } else if (state.staleVersion != null) {
+      // 수락이 막혔다. 카드 자리에 이전 판본 안내(F8)를 보이고, 누르면 새 판본을 읽어 온다.
+      bare = true;
+      body = Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: CoraStateView.staleVersion(
+          version: state.staleVersion!,
+          onOpen: vm.viewLatestVersion,
+        ),
+      );
     } else if (current == null) {
       bare = true;
       body = const Padding(
@@ -403,7 +413,7 @@ class _OfferCard extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    rewardHeadline(offer.terms.reward),
+                    offerRewardHeadline(offer.terms.reward),
                     style: CoraTextStyles.bodyLarge.copyWith(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,

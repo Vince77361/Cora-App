@@ -15,6 +15,7 @@ class ReceivedOffer {
     this.bestShootingTime,
     this.canUndoDecline = false,
     this.needsInstagram = false,
+    this.myTurn = true,
   });
 
   final String id;
@@ -35,6 +36,9 @@ class ReceivedOffer {
   /// 서버는 답을 기다리는 오퍼에서만 true로 보낸다.
   final bool needsInstagram;
 
+  /// 크리에이터가 답할 차례다. 사장님이 판본을 보내 상대 차례인 오퍼는 false라서 `새 오퍼` 카드로 나오지 않는다.
+  final bool myTurn;
+
   ReceivedOffer copyWith({OfferView? view, bool? canUndoDecline}) =>
       ReceivedOffer(
         id: id,
@@ -47,5 +51,6 @@ class ReceivedOffer {
         version: version,
         canUndoDecline: canUndoDecline ?? this.canUndoDecline,
         needsInstagram: needsInstagram,
+        myTurn: myTurn,
       );
 }

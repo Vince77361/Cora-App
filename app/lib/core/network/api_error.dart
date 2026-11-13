@@ -40,7 +40,12 @@ abstract final class ApiErrorCode {
 /// 서버는 모든 오류를 `{"error": {"code", "message", "details"}}`로 보낸다. 생성된 클라이언트는
 /// 실패하면 `ApiException`을 던지고 `message`에 응답 본문 문자열을 넣는다.
 class ApiError {
-  const ApiError({this.status, required this.code, this.message});
+  const ApiError({
+    this.status,
+    required this.code,
+    this.message,
+    this.latestVersion,
+  });
 
   /// 오류를 해석한다. 던져진 값이 무엇이든 던지지 않고 [ApiError]를 돌려준다.
   factory ApiError.from(Object error) {
@@ -60,9 +65,13 @@ class ApiError {
   /// 서버가 화면에 보여 주라고 보낸 문구. 본문이 서버 형식이 아니면 null.
   final String? message;
 
+  /// 수락하려던 판본이 최신이 아닐 때(`STALE_VERSION`) 서버가 `details.latestVersion`에 담아 보낸 최신
+  /// 판본 번호. 그 밖의 오류에는 null이다.
+  final int? latestVersion;
+
   bool get isConflict => code == ApiErrorCode.conflict;
 
-  /// 수락하려는 판본이 최신이 아니다(409). 서버가 최신 번호를 details에 담지만 화면은 다시 불러오기만 한다.
+  /// 수락하려는 판본이 최신이 아니다(409). 최신 번호는 [latestVersion]에 있다.
   bool get isStaleVersion => code == ApiErrorCode.staleVersion;
   bool get isRateLimited => code == ApiErrorCode.rateLimited;
   bool get isNotFound => code == ApiErrorCode.notFound;
@@ -93,6 +102,7 @@ ApiError _fromApiException(ApiException exception) {
     status: status,
     code: body?.code ?? _codeForStatus(status),
     message: body?.message,
+    latestVersion: body?.latestVersion,
   );
 }
 
@@ -103,7 +113,7 @@ bool _isNetworkFailure(Object error) =>
     // TlsException 등 입출력 계열 실패.
     error is IOException;
 
-({String code, String? message})? _serverBody(String? raw) {
+({String code, String? message, int? latestVersion})? _serverBody(String? raw) {
   if (raw == null || raw.isEmpty) return null;
   try {
     final decoded = jsonDecode(raw);
@@ -114,7 +124,15 @@ bool _isNetworkFailure(Object error) =>
     // 모르는 코드는 믿지 않고 상태 코드로 판단한다(서버가 코드를 늘렸는데 앱이 아직 모를 때).
     if (code is! String || !ApiErrorCode._server.contains(code)) return null;
     final message = error['message'];
-    return (code: code, message: message is String ? message : null);
+    final details = error['details'];
+    final latest = details is Map ? details['latestVersion'] : null;
+    return (
+      code: code,
+      message: message is String ? message : null,
+      latestVersion: code == ApiErrorCode.staleVersion && latest is int
+          ? latest
+          : null,
+    );
   } on FormatException {
     return null;
   }
