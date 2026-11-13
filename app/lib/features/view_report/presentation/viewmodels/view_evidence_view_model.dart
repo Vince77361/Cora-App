@@ -8,7 +8,7 @@ import 'view_report_view_model.dart';
 /// 서버가 받는 조회수의 상한(`api`의 캡처 제출 검증). 이보다 큰 수는 앱이 먼저 막는다.
 const maxEvidenceViews = 1000000000;
 
-enum ViewEvidenceError { photoTooLarge, rateLimited, failed }
+enum ViewEvidenceError { photoTooLarge, rateLimited, viewsTooLarge, failed }
 
 class ViewEvidenceState {
   const ViewEvidenceState({
@@ -77,8 +77,9 @@ class ViewEvidenceViewModel extends Notifier<ViewEvidenceState> {
   Future<bool> submit(int views) async {
     final photo = state.photo;
     if (photo == null || state.busy) return false;
+    // 다시 해도 같은 결과라 `다시 시도`가 아니라 이유를 보인다.
     if (views < 0 || views > maxEvidenceViews) {
-      state = state.copyWith(error: ViewEvidenceError.failed);
+      state = state.copyWith(error: ViewEvidenceError.viewsTooLarge);
       return false;
     }
     state = state.copyWith(busy: true, clearError: true);

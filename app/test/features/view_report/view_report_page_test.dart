@@ -417,6 +417,29 @@ void main() {
     expect(links.opened, [Uri.parse('https://www.instagram.com/p/DAbC123/')]);
   });
 
+  testWidgets(
+    'F4 does not let an old link failure hide a later server message',
+    (tester) async {
+      final links = FakeLinkLauncher()..opens = false;
+      final reports = FakeViewReportRepository()
+        ..failAction = const ViewReportFailure(
+          conflict: true,
+          message: '이미 자동으로 확인됐어요.',
+        );
+      await pumpOwnerReport(tester, reports: reports, links: links);
+
+      await tester.tap(find.text('instagram.com/p/DAbC123'));
+      await tester.pumpAndSettle();
+      expect(find.text('링크를 열지 못했어요.'), findsOneWidget);
+
+      await tester.tap(find.text('자료 확인했어요'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('이미 자동으로 확인됐어요.'), findsOneWidget);
+      expect(find.text('링크를 열지 못했어요.'), findsNothing);
+    },
+  );
+
   testWidgets('F4 shows the capture and its source when the creator sent one', (
     tester,
   ) async {

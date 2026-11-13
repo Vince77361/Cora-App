@@ -93,8 +93,20 @@ class _ViewReportPageState extends ConsumerState<ViewReportPage> {
     setState(() => _linkNotice = reportLinkFailedMessage);
   }
 
-  Future<void> _openDispute() =>
-      showDisputeSheet(context, onSubmit: _vm.dispute);
+  /// 다른 일을 시작하면 지난 링크 열기 실패 안내는 지운다(서버 안내를 가리지 않게).
+  void _clearLinkNotice() {
+    if (_linkNotice != null) setState(() => _linkNotice = null);
+  }
+
+  Future<void> _openDispute() {
+    _clearLinkNotice();
+    return showDisputeSheet(context, onSubmit: _vm.dispute);
+  }
+
+  Future<void> _confirm() {
+    _clearLinkNotice();
+    return _vm.confirm();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,11 +152,11 @@ class _ViewReportPageState extends ConsumerState<ViewReportPage> {
             if (value != null)
               _BottomBar(
                 state: value,
-                notice: _linkNotice ?? value.notice,
+                notice: value.notice ?? _linkNotice,
                 bottom: bottom,
                 viewer: widget.viewer,
                 onDispute: _openDispute,
-                onConfirm: _vm.confirm,
+                onConfirm: _confirm,
                 onUploadEvidence: () => context.push(
                   AppRoutes.creatorViewEvidence(widget.collaborationId),
                 ),

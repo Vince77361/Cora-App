@@ -62,6 +62,11 @@ void main() {
     expect(find.text('사장님께 환불'), findsOneWidget);
     expect(find.text('35,000원'), findsOneWidget);
     expect(find.text('집계 출처와 계산 보기'), findsOneWidget);
+    // 캔버스 `<a>`의 기본 밑줄.
+    expect(
+      tester.widget<Text>(find.text('집계 출처와 계산 보기')).style!.decoration,
+      TextDecoration.underline,
+    );
     for (final label in ['새 오퍼', '영상 받기', '하루 한 컵과 다시 만나기']) {
       expect(find.text(label), findsOneWidget);
     }

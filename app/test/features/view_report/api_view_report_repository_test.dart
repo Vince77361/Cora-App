@@ -128,6 +128,19 @@ void main() {
     );
   });
 
+  test(
+    'fails on a status it does not know instead of showing a wrong one',
+    () async {
+      final fake = FakeHttpClient()
+        ..body = jsonEncode(_json(status: 'SOMETHING_NEW'));
+
+      await expectLater(
+        _repo(fake).fetch('col-1'),
+        throwsA(isA<ViewReportFailure>()),
+      );
+    },
+  );
+
   test('marks a 404 as not found', () async {
     final fake = FakeHttpClient()
       ..statusCode = 404

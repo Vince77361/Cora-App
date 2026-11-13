@@ -222,8 +222,10 @@ class _Content extends StatelessWidget {
                     onTap: onOpenReport,
                     child: Text(
                       StoreResultPage.sourceLink,
+                      // 캔버스 `<a>`는 `text-decoration`이 없어 브라우저 기본 밑줄이 보인다.
                       style: CoraTextStyles.fieldLabel.copyWith(
                         color: context.colors.textSecondary,
+                        decoration: TextDecoration.underline,
                       ),
                     ),
                   ),

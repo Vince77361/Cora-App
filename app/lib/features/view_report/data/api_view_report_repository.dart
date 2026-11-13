@@ -65,11 +65,13 @@ class ApiViewReportRepository implements ViewReportRepository {
   }
 
   static ViewReport _fromModel(api.ViewReportModel m) => ViewReport(
+    // 모든 값을 이름으로 풀었다: 모르는 값은 "이의 제기됨" 같은 엉뚱한 상태가 아니라, 생성된 클라이언트가
+    // 읽지 못해 실패로 이어진다.
     status: switch (m.status) {
       api.ViewReportStatus.COUNTING => ViewReportStatus.counting,
       api.ViewReportStatus.UNCONFIRMED => ViewReportStatus.unconfirmed,
       api.ViewReportStatus.CONFIRMED => ViewReportStatus.confirmed,
-      _ => ViewReportStatus.disputed,
+      api.ViewReportStatus.DISPUTED => ViewReportStatus.disputed,
     },
     views: m.views,
     postUrl: m.postUrl,
@@ -79,7 +81,8 @@ class ApiViewReportRepository implements ViewReportRepository {
       api.ViewReportSource.CAPTURE_PENDING => ViewReportSource.capturePending,
       api.ViewReportSource.CAPTURE_CONFIRMED =>
         ViewReportSource.captureConfirmed,
-      _ => ViewReportSource.connectedAccount,
+      api.ViewReportSource.CONNECTED_ACCOUNT =>
+        ViewReportSource.connectedAccount,
     },
     calc: m.calc == null
         ? null

@@ -29,10 +29,11 @@ class ViewEvidencePage extends ConsumerStatefulWidget {
   static const submit = '올리기';
   static const photoTooLarge = '사진이 너무 커요. 5MB 이하로 골라 주세요.';
   static const rateLimited = '사진을 너무 많이 올렸어요. 잠시 뒤에 다시 시도해 주세요.';
+  static const viewsTooLarge = '조회수가 너무 커요. 10억 미만으로 적어 주세요.';
   static const failed = '올리지 못했어요. 다시 시도해 주세요.';
 
-  /// 사진 칸의 높이(캔버스에 없다).
-  static const photoHeight = 220.0;
+  /// 사진 칸의 높이(NUpload 미리보기와 같다).
+  static const photoHeight = 300.0;
 
   @override
   ConsumerState<ViewEvidencePage> createState() => _ViewEvidencePageState();
@@ -80,6 +81,7 @@ class _ViewEvidencePageState extends ConsumerState<ViewEvidencePage> {
         switch (state.error) {
           ViewEvidenceError.photoTooLarge => ViewEvidencePage.photoTooLarge,
           ViewEvidenceError.rateLimited => ViewEvidencePage.rateLimited,
+          ViewEvidenceError.viewsTooLarge => ViewEvidencePage.viewsTooLarge,
           ViewEvidenceError.failed => ViewEvidencePage.failed,
           null => null,
         };
@@ -92,33 +94,45 @@ class _ViewEvidencePageState extends ConsumerState<ViewEvidencePage> {
             CoraPageHeader(onBack: _leave),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                padding: const EdgeInsets.only(bottom: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Semantics(
-                      header: true,
-                      child: Text(
-                        ViewEvidencePage.heading,
-                        style: CoraTextStyles.headline.copyWith(color: c.text),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                      child: Semantics(
+                        header: true,
+                        child: Text(
+                          ViewEvidencePage.heading,
+                          style: CoraTextStyles.headline.copyWith(
+                            color: c.text,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 28),
-                    _PhotoBox(
-                      photo: state.photo?.bytes,
-                      enabled: !state.busy,
-                      onTap: _vm.pickPhoto,
+                    // 사진 칸과 입력 칸은 NUpload처럼 좌우 16, 사진 칸은 위 28(제목 아래).
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
+                      child: _PhotoBox(
+                        photo: state.photo?.bytes,
+                        enabled: !state.busy,
+                        onTap: _vm.pickPhoto,
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    CoraFieldBox(
-                      label: ViewEvidencePage.field,
-                      controller: _views,
-                      enabled: !state.busy,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      maxLength: 10,
-                      onChanged: (_) => setState(() {}),
-                      onSubmitted: (_) => canSubmit ? _submit() : null,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                      child: CoraFieldBox(
+                        label: ViewEvidencePage.field,
+                        controller: _views,
+                        enabled: !state.busy,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        maxLength: 10,
+                        onChanged: (_) => setState(() {}),
+                        onSubmitted: (_) => canSubmit ? _submit() : null,
+                      ),
                     ),
                   ],
                 ),
@@ -156,8 +170,9 @@ class _ViewEvidencePageState extends ConsumerState<ViewEvidencePage> {
   }
 }
 
-/// 사진 칸: 모서리 20, `surface`. 고르기 전에는 `사진 고르기`가 가운데에, 고른 뒤에는 사진이 채우고 오른쪽
-/// 아래에 `사진 바꾸기` 알약이 있다.
+/// 사진 칸(NUpload 미리보기): 높이 300, 모서리 24, `line` 바탕. 고르기 전에는 `사진 고르기`가 가운데에, 고른
+/// 뒤에는 사진이 채우고 왼쪽 위(12, 12)에 `사진 바꾸기` 알약(NUpload `kind`: 5/10, 12/500, 반투명 잉크 바탕,
+/// 흰 글자)이 있다.
 class _PhotoBox extends StatelessWidget {
   const _PhotoBox({
     required this.photo,
@@ -186,11 +201,11 @@ class _PhotoBox extends StatelessWidget {
         child: CoraPressable(
           onTap: enabled ? onTap : null,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(CoraRadius.field),
+            borderRadius: BorderRadius.circular(CoraRadius.xl),
             child: SizedBox(
               height: ViewEvidencePage.photoHeight,
               child: ColoredBox(
-                color: c.surface,
+                color: c.line,
                 child: picked == null
                     ? Center(
                         child: Text(
@@ -213,24 +228,24 @@ class _PhotoBox extends StatelessWidget {
                                 const SizedBox.expand(),
                           ),
                           Positioned(
-                            right: 12,
-                            bottom: 12,
+                            left: 12,
+                            top: 12,
                             child: DecoratedBox(
                               decoration: BoxDecoration(
-                                color: c.photoChip,
+                                color: c.photoScrim,
                                 borderRadius: BorderRadius.circular(
                                   CoraRadius.pill,
                                 ),
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 7,
+                                  horizontal: 10,
+                                  vertical: 5,
                                 ),
                                 child: Text(
                                   label,
                                   style: CoraTextStyles.caption.copyWith(
-                                    color: c.onPhotoChip,
+                                    color: c.onPhoto,
                                   ),
                                 ),
                               ),

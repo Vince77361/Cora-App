@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:cora/core/media/photo_picker.dart';
 import 'package:cora/core/network/photo_uploader.dart';
+import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/core/ui/cora_primary_button.dart';
 import 'package:cora/features/view_report/domain/view_report.dart';
 import 'package:cora/features/view_report/domain/view_report_repository.dart';
@@ -199,6 +200,39 @@ void main() {
     hold.complete();
     await tester.pumpAndSettle();
     expect(reports.evidence.length, 1);
+  });
+
+  testWidgets('says why when the view count is too large instead of retrying', (
+    tester,
+  ) async {
+    final reports = _requested();
+    await _openUpload(tester, reports: reports);
+
+    await tester.tap(find.text('사진 고르기'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '1000000001');
+    await tester.pump();
+    await tester.tap(find.text('올리기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('조회수가 너무 커요. 10억 미만으로 적어 주세요.'), findsOneWidget);
+    expect(find.text('올리지 못했어요. 다시 시도해 주세요.'), findsNothing);
+    expect(reports.evidence, isEmpty);
+  });
+
+  testWidgets('draws the photo box like the NUpload preview', (tester) async {
+    await _openUpload(tester, reports: _requested());
+
+    final box = find.ancestor(
+      of: find.text('사진 고르기'),
+      matching: find.byType(ColoredBox),
+    );
+    final size = tester.getSize(box.first);
+    final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    // 캔버스: 좌우 16, 높이 300, `line` 바탕.
+    expect(size.height, 300);
+    expect(size.width, width - 32);
+    expect(tester.widget<ColoredBox>(box.first).color, CoraColors.light.line);
   });
 
   testWidgets('does not overflow at 1.3x text scale', (tester) async {
