@@ -465,12 +465,13 @@ void main() {
   testWidgets(
     'F4 shows a capture as pending before the server made a calculation',
     (tester) async {
-      // 서버는 계산이 생긴 뒤에야 출처와 조회수를 캡처 값으로 바꾼다. 올린 직후에도 올린 값을 보인다.
+      // 서버는 계산 전에 캡처가 있으면 출처를 CAPTURE_PENDING으로 준다. 올린 직후에도 올린 값을 보인다.
       await pumpCreatorReport(
         tester,
         reports: FakeViewReportRepository(
           report: sampleReport(
             status: ViewReportStatus.counting,
+            source: ViewReportSource.capturePending,
             views: null,
             withCalc: false,
             canConfirm: false,
@@ -488,6 +489,52 @@ void main() {
       expect(find.text('9,000회'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'F4 keeps the connected account source when it was calculated after a '
+    'capture was sent',
+    (tester) async {
+      // 캡처를 올린 뒤 연결 계정이 다시 읽혀 그 값으로 계산이 만들어진 협업: 서버 출처가 연결 계정이다.
+      await pumpOwnerReport(
+        tester,
+        reports: FakeViewReportRepository(
+          report: sampleReport(
+            evidence: const ViewReportEvidence(
+              imageUrl: 'https://example.test/evidence.jpg',
+              statedViews: 9000,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('연결 계정'), findsOneWidget);
+      expect(find.text('캡처 제출 · 확인 중'), findsNothing);
+      expect(find.text('자료 확인했어요'), findsOneWidget);
+      expect(find.text('12,500회'), findsOneWidget);
+    },
+  );
+
+  testWidgets('F4 keeps the connected account source after the owner confirmed '
+      'a calculation made with a capture on file', (tester) async {
+    await pumpOwnerReport(
+      tester,
+      reports: FakeViewReportRepository(
+        report: sampleReport(
+          status: ViewReportStatus.confirmed,
+          canConfirm: false,
+          canDispute: false,
+          evidence: const ViewReportEvidence(
+            imageUrl: 'https://example.test/evidence.jpg',
+            statedViews: 9000,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('확인 완료'), findsOneWidget);
+    expect(find.text('연결 계정'), findsOneWidget);
+    expect(find.text('캡처 제출 · 확인 중'), findsNothing);
+  });
 
   testWidgets('F4 leaves the capture out when the server could not sign it', (
     tester,

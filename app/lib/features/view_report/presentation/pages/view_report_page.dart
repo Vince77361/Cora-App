@@ -270,7 +270,7 @@ class _DataBox extends StatelessWidget {
             ),
             _KeyValueRow(
               term: ViewReportPage.source,
-              value: sourceLabel(report.shownSource),
+              value: sourceLabel(report.source),
             ),
             // 서명 주소를 못 만들었으면(null) 사진 자리를 비운다.
             if (evidence?.imageUrl != null)

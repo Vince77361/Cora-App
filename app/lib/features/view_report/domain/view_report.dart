@@ -89,13 +89,13 @@ class ViewReport {
   final bool canDispute;
   final bool canUploadEvidence;
 
-  /// 화면에 보일 자료 출처. 캡처를 올렸지만 서버가 아직 계산(과 출처 값)을 만들지 않았어도 올린 뒤에는
-  /// `캡처 제출 · 확인 중`으로 보인다(서버는 계산이 생긴 뒤에야 출처를 바꾼다).
-  ViewReportSource get shownSource =>
-      evidence != null && source == ViewReportSource.connectedAccount
-      ? ViewReportSource.capturePending
-      : source;
-
-  /// 화면에 보일 조회수. 아직 읽은 값이 없으면 크리에이터가 캡처에 적어 낸 값을 보인다.
-  int? get shownViews => views ?? evidence?.statedViews;
+  /// 화면에 보일 조회수. 자료 출처(`source`)는 서버가 한 곳에서 정해 주므로 앱은 고치지 않는다.
+  /// 다만 캡처만 제출했고 계산이 아직 없는 동안(`CAPTURE_PENDING`)은 서버 `views`가 캡처 전에 연결 계정에서
+  /// 읽은 값일 수 있어 출처 줄(`캡처 제출 · 확인 중`)과 다른 자료를 말하게 되므로, 크리에이터가 적어 낸 값을 보인다.
+  int? get shownViews =>
+      source == ViewReportSource.capturePending &&
+          calc == null &&
+          evidence != null
+      ? evidence!.statedViews
+      : views;
 }

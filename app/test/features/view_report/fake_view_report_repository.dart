@@ -109,9 +109,11 @@ class FakeViewReportRepository implements ViewReportRepository {
     final error = failAction;
     if (error != null) throw error;
     evidence.add((id: collaborationId, path: path, views: views));
+    // 서버(view-report.service.ts의 get)와 같은 모양: 계산 전에 캡처가 있으면 출처는 CAPTURE_PENDING이고,
+    // 조회수는 연결 계정에서 읽은 마지막 값(없으면 null)이다. 올린 값(views)이 아니다.
     return report = sampleReport(
       status: ViewReportStatus.counting,
-      views: views,
+      views: report.views,
       source: ViewReportSource.capturePending,
       withCalc: false,
       canConfirm: false,
