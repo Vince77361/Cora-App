@@ -136,9 +136,25 @@ void demoReset(BuildContext context, String canvasFile) {
   context.go(path);
 }
 
-/// 뒤로 가기(artifact의 `aria-label="뒤로"`/`닫기`): 쌓인 화면이 있으면 닫는다. 없으면 아무 일도 없다.
-void demoBack(BuildContext context) {
-  if (context.canPop()) context.pop();
+/// 뒤로 가기(artifact의 `aria-label="뒤로"`/`닫기`): 쌓인 화면이 있으면 닫는다.
+/// 쌓인 화면이 없으면(홈 진입·하단 탭 이동·로그아웃이 `go`로 쌓인 화면을 비운 뒤 연 화면) 캔버스의 뒤로 링크가
+/// 가리키는 화면([fallback], 예: `NSettings.dc.html`)으로 새로 시작한다. 그 화면이 지금 역할 밖이면
+/// [demoResolvePath]가 같은 역할의 화면으로 바꾸고, 그래도 갈 곳이 지금 화면이면 역할 홈으로 간다.
+void demoBack(BuildContext context, {required String fallback}) {
+  if (context.canPop()) {
+    context.pop();
+    return;
+  }
+  final stack = _stackPaths(context);
+  final current = stack.isEmpty ? '' : stack.last;
+  var path = demoResolvePath(current, DemoPaths.forCanvas(fallback));
+  if (path == current) {
+    final role = demoRole.value;
+    if (role == null) return;
+    path = demoHomePath(role);
+    if (path == current) return;
+  }
+  context.go(path);
 }
 
 /// 하단 메뉴 한 칸.

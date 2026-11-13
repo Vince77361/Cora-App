@@ -41,7 +41,7 @@ class _OutreachPageState extends State<OutreachPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const G6Header(title: '연락하기'),
+                const G6Header(title: '연락하기', fallback: 'NDirectory.dc.html'),
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   padding: const EdgeInsets.all(18),

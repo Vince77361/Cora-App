@@ -161,7 +161,8 @@ class AgreementPage extends StatelessWidget {
                       children: [
                         GestureDetector(
                           behavior: HitTestBehavior.opaque,
-                          onTap: () => demoBack(context),
+                          onTap: () =>
+                              demoBack(context, fallback: 'Chat.dc.html'),
                           child: SizedBox(
                             width: 44,
                             height: 44,

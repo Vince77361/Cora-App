@@ -44,7 +44,8 @@ class ComparePage extends StatelessWidget {
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: G1Tap(
-                              onTap: () => demoBack(context),
+                              onTap: () =>
+                                  demoBack(context, fallback: 'Likes.dc.html'),
                               child: SizedBox(
                                 width: 44,
                                 height: 44,

@@ -50,6 +50,7 @@ class _CreatorViewPageState extends State<CreatorViewPage> {
                         svg: G4Icons.back,
                         label: '뒤로',
                         size: 24,
+                        fallback: 'NReels.dc.html',
                       ),
                     ),
                   ),

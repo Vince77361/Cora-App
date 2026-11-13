@@ -49,6 +49,7 @@ class _RetroPageState extends State<RetroPage> {
                             svg: g3CloseSvg,
                             color: p.text,
                             label: '닫기',
+                            fallback: 'Review.dc.html',
                           ),
                           Text(
                             '상대에게 보이지 않는 회고',

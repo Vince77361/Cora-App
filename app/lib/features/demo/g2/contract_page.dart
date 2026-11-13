@@ -69,7 +69,10 @@ class _ContractPageState extends State<ContractPage> {
                             alignment: Alignment.centerLeft,
                             child: GestureDetector(
                               behavior: HitTestBehavior.opaque,
-                              onTap: () => demoBack(context),
+                              onTap: () => demoBack(
+                                context,
+                                fallback: 'Agreement.dc.html',
+                              ),
                               child: SizedBox(
                                 width: 44,
                                 height: 44,

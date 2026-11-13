@@ -101,6 +101,7 @@ class _KeepListPageState extends State<KeepListPage> {
                                 svg: g3BackSvg,
                                 color: p.text,
                                 label: '뒤로',
+                                fallback: 'Retro.dc.html',
                               ),
                             ),
                           ),

@@ -46,7 +46,7 @@ class ReviewSendPage extends StatelessWidget {
               children: [
                 G8Header(
                   pal: pal,
-                  onBack: () => demoBack(context),
+                  onBack: () => demoBack(context, fallback: 'NBudget.dc.html'),
                   center: const G8Pill('제안 만들기'),
                   right: '3 / 3',
                 ),

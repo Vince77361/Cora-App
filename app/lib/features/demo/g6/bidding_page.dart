@@ -105,7 +105,8 @@ class _BiddingPageState extends State<BiddingPage> {
                               svg: g6CloseSvg,
                               color: p.text,
                               size: 20,
-                              onTap: () => demoBack(context),
+                              onTap: () =>
+                                  demoBack(context, fallback: 'Main.dc.html'),
                             ),
                           ),
                         ),

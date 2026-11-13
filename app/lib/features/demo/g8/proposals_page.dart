@@ -189,7 +189,8 @@ class _ProposalsPageState extends State<ProposalsPage> {
               children: [
                 G8Header(
                   pal: pal,
-                  onBack: () => demoBack(context),
+                  onBack: () =>
+                      demoBack(context, fallback: 'NStoreHome.dc.html'),
                   center: Text(
                     '제안함',
                     style: g8Text(16, pal.text, weight: FontWeight.w500),

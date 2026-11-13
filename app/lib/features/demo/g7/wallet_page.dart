@@ -52,7 +52,7 @@ class WalletPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const G7Header(title: '정산'),
+                const G7Header(title: '정산', fallback: 'NSettings.dc.html'),
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                   padding: const EdgeInsets.all(20),

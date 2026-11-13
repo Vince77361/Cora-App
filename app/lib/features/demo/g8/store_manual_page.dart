@@ -49,7 +49,8 @@ class _StoreManualPageState extends State<StoreManualPage> {
               children: [
                 G8Header(
                   pal: pal,
-                  onBack: () => demoBack(context),
+                  onBack: () =>
+                      demoBack(context, fallback: 'NStoreLink.dc.html'),
                   center: const G8Pill('가게 등록'),
                   right: '1 / 3',
                 ),

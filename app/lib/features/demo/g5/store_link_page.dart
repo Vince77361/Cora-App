@@ -43,7 +43,7 @@ class _StoreLinkPageState extends State<StoreLinkPage> {
               children: [
                 G5Header(
                   pal: pal,
-                  onBack: () => demoBack(context),
+                  onBack: () => demoBack(context, fallback: 'NRole.dc.html'),
                   center: const SizedBox.shrink(),
                   right: '1 / 3',
                 ),

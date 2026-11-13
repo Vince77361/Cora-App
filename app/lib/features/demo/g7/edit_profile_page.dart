@@ -88,7 +88,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const G7Header(title: '프로필 수정'),
+                const G7Header(title: '프로필 수정', fallback: 'NSettings.dc.html'),
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Center(

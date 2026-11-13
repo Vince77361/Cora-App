@@ -126,11 +126,15 @@ class G4HeaderButton extends StatelessWidget {
     required this.svg,
     required this.label,
     required this.size,
+    required this.fallback,
   });
 
   final String svg;
   final String label;
   final double size;
+
+  /// 쌓인 화면이 없을 때 가는 캔버스 화면(`NProfile.dc.html`).
+  final String fallback;
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +143,7 @@ class G4HeaderButton extends StatelessWidget {
       label: label,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => demoBack(context),
+        onTap: () => demoBack(context, fallback: fallback),
         child: SizedBox(
           width: 44,
           height: 44,

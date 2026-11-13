@@ -197,7 +197,7 @@ class MatchPage extends StatelessWidget {
             left: 14,
             top: 14,
             child: G1Tap(
-              onTap: () => demoBack(context),
+              onTap: () => demoBack(context, fallback: 'Main.dc.html'),
               child: SizedBox(
                 width: 44,
                 height: 44,

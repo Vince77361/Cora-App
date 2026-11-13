@@ -40,7 +40,7 @@ class _HelpPageState extends State<HelpPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const G7Header(title: '고객센터'),
+                const G7Header(title: '고객센터', fallback: 'NSettings.dc.html'),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                   child: Column(

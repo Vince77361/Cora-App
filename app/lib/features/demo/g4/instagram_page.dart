@@ -58,6 +58,7 @@ class _InstagramPageState extends State<InstagramPage> {
                     svg: G4Icons.close,
                     label: '닫기',
                     size: 20,
+                    fallback: 'NProfile.dc.html',
                   ),
                 ),
                 Padding(

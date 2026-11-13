@@ -62,7 +62,11 @@ class _VerifyPageState extends State<VerifyPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const G6Header(title: '휴대폰 인증', height: 64),
+                const G6Header(
+                  title: '휴대폰 인증',
+                  fallback: 'NLogin.dc.html',
+                  height: 64,
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                   child: Column(

@@ -30,7 +30,7 @@ class _PayPageState extends State<PayPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const G6Header(title: '결제'),
+                const G6Header(title: '결제', fallback: 'NStoreHome.dc.html'),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
                   child: Row(

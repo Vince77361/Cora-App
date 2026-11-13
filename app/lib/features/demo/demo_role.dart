@@ -156,6 +156,13 @@ final Map<DemoRole, Map<String, String>> _redirects = {
     '${DemoPaths.states}>${DemoPaths.brandDiscover}': DemoPaths.storeHome,
     '${DemoPaths.states}>${DemoPaths.likes}': DemoPaths.storeHome,
     '${DemoPaths.states}>${DemoPaths.upload}': DemoPaths.storeHome,
+    // 뒤로·닫기 링크(캔버스)가 다른 역할의 화면을 가리킬 때: 입찰 닫기·알림은 사장님 홈으로.
+    '${DemoPaths.bidding}>${DemoPaths.brandDiscover}': DemoPaths.storeHome,
+    '${DemoPaths.notify}>${DemoPaths.brandDiscover}': DemoPaths.storeHome,
+    // F4 조회 자료의 뒤로는 크리에이터의 에스크로. 사장님은 7일 결과(F5)에서 온다.
+    '${DemoPaths.metrics}>${DemoPaths.escrow}': DemoPaths.result,
+    // 설정의 뒤로는 크리에이터의 프로필. 사장님은 홈으로.
+    '${DemoPaths.settings}>${DemoPaths.profile}': DemoPaths.storeHome,
   },
   DemoRole.brand: {
     '*>${DemoPaths.retro}': DemoPaths.progress,
@@ -164,6 +171,13 @@ final Map<DemoRole, Map<String, String>> _redirects = {
     '*>${DemoPaths.offer}': DemoPaths.terms,
     // F8 빈 상태 화면의 "콘텐츠 올리기"는 크리에이터의 B6. 브랜드는 발견에 머문다.
     '${DemoPaths.states}>${DemoPaths.upload}': DemoPaths.brandDiscover,
+    // 뒤로 링크(캔버스)가 사장님·크리에이터 화면을 가리킬 때: F1의 뒤로는 사장님의 가게 페이지, 브랜드는 후보 비교로.
+    '${DemoPaths.budget}>${DemoPaths.storePage}': DemoPaths.compare,
+    '${DemoPaths.metrics}>${DemoPaths.escrow}': DemoPaths.brandDiscover,
+    '${DemoPaths.proposals}>${DemoPaths.storeHome}': DemoPaths.brandDiscover,
+    '${DemoPaths.settings}>${DemoPaths.profile}': DemoPaths.brandDiscover,
+    // 초안 검토의 뒤로는 크리에이터의 기획 가이드. 브랜드는 진행 단계(07)로.
+    '${DemoPaths.review}>${DemoPaths.guide}': DemoPaths.progress,
   },
   DemoRole.creator: {
     // 넘기기 이유(02)는 브랜드 화면. 크리에이터는 발견으로 돌아간다.
@@ -181,6 +195,9 @@ final Map<DemoRole, Map<String, String>> _redirects = {
     // F8 빈 상태 화면의 예시 버튼: 브랜드 화면 대신 크리에이터의 발견·보관함으로.
     '${DemoPaths.states}>${DemoPaths.brandDiscover}': DemoPaths.creatorDiscover,
     '${DemoPaths.states}>${DemoPaths.likes}': DemoPaths.keepList,
+    // 알림·제안함의 뒤로(캔버스)는 사장님 홈·브랜드 발견. 크리에이터는 발견으로.
+    '${DemoPaths.notify}>${DemoPaths.brandDiscover}': DemoPaths.creatorDiscover,
+    '${DemoPaths.proposals}>${DemoPaths.storeHome}': DemoPaths.creatorDiscover,
   },
 };
 

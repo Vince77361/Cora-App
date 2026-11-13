@@ -30,9 +30,17 @@ const g7ChevronSvg =
 
 /// artifact의 `header`: 60px | 1fr | 60px, 높이 64, 좌우 8.
 class G7Header extends StatelessWidget {
-  const G7Header({super.key, required this.title, this.trailing});
+  const G7Header({
+    super.key,
+    required this.title,
+    required this.fallback,
+    this.trailing,
+  });
 
   final String title;
+
+  /// 쌓인 화면이 없을 때 뒤로 가는 캔버스 화면(`NSettings.dc.html`).
+  final String fallback;
   final Widget? trailing;
 
   @override
@@ -50,7 +58,7 @@ class G7Header extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => demoBack(context),
+                  onTap: () => demoBack(context, fallback: fallback),
                   child: SizedBox(
                     width: 44,
                     height: 44,

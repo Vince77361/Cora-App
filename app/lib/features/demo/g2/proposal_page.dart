@@ -36,7 +36,10 @@ class ProposalPage extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => demoBack(context),
+                      onTap: () => demoBack(
+                        context,
+                        fallback: 'CreatorDiscover.dc.html',
+                      ),
                       child: SizedBox(
                         width: 44,
                         height: 44,

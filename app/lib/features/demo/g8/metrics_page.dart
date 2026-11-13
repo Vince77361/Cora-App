@@ -45,7 +45,7 @@ class _MetricsPageState extends State<MetricsPage> {
                 // 캔버스 머리의 "안" 표시는 확정 화면이라 넣지 않는다.
                 G8Header(
                   pal: pal,
-                  onBack: () => demoBack(context),
+                  onBack: () => demoBack(context, fallback: 'NEscrow.dc.html'),
                   center: Text(
                     '성과 확인',
                     style: g8Text(16, pal.text, weight: FontWeight.w500),

@@ -230,7 +230,8 @@ class _StoreViewPageState extends State<StoreViewPage> {
               label: '뒤로',
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: () => demoBack(context),
+                onTap: () =>
+                    demoBack(context, fallback: 'CreatorDiscover.dc.html'),
                 child: Container(
                   width: 44,
                   height: 44,

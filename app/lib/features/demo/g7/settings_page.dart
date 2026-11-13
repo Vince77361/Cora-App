@@ -23,7 +23,7 @@ class SettingsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const G7Header(title: '설정'),
+                const G7Header(title: '설정', fallback: 'NProfile.dc.html'),
                 _profileCard(context, c, role),
                 _section(context, c, '계정', [
                   _Row('역할 전환', 'NRole.dc.html', value: role.label),

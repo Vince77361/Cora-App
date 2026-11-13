@@ -67,7 +67,8 @@ class ChatPage extends StatelessWidget {
                           top: 12,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: () => demoBack(context),
+                            onTap: () =>
+                                demoBack(context, fallback: 'Proposal.dc.html'),
                             child: const SizedBox(
                               width: 44,
                               height: 44,

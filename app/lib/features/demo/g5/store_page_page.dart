@@ -23,7 +23,8 @@ class StorePagePage extends StatelessWidget {
               children: [
                 G5Header(
                   pal: pal,
-                  onBack: () => demoBack(context),
+                  onBack: () =>
+                      demoBack(context, fallback: 'NStoreLink.dc.html'),
                   center: const SizedBox.shrink(),
                   right: '2 / 3',
                 ),

@@ -36,7 +36,8 @@ class _BudgetPageState extends State<BudgetPage> {
               children: [
                 G8Header(
                   pal: pal,
-                  onBack: () => demoBack(context),
+                  onBack: () =>
+                      demoBack(context, fallback: 'NStorePage.dc.html'),
                   center: const G8Pill('제안 만들기'),
                   right: '2 / 3',
                 ),

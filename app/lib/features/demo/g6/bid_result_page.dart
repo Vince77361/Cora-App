@@ -25,7 +25,7 @@ class BidResultPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const G6Header(title: '입찰 결과'),
+                const G6Header(title: '입찰 결과', fallback: 'NBidding.dc.html'),
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   padding: const EdgeInsets.all(20),

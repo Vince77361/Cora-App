@@ -182,7 +182,9 @@ void main() {
     expect(demoRouter.canPop(), isFalse);
   });
 
-  testWidgets('back does nothing when nothing is stacked', (tester) async {
+  testWidgets('back follows the canvas link when nothing is stacked', (
+    tester,
+  ) async {
     await start(tester, DemoPaths.settings);
     expect(demoRouter.canPop(), isFalse);
     await tester.tap(
@@ -194,7 +196,8 @@ void main() {
           .first,
     );
     await settle(tester);
-    expect(path(), DemoPaths.settings);
+    // 쌓인 화면이 없으면 캔버스의 뒤로 링크(설정 → 프로필)가 가리키는 화면으로 간다.
+    expect(path(), DemoPaths.profile);
   });
 
   for (final target in [

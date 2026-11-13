@@ -189,6 +189,7 @@ class _ReviewPageState extends State<ReviewPage> {
                   svg: g3BackSvg,
                   color: p.text,
                   label: '뒤로',
+                  fallback: 'Guide.dc.html',
                 ),
               ),
             ),

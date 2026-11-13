@@ -151,7 +151,7 @@ class _TermsPageState extends State<TermsPage> {
           left: 10,
           top: 10,
           child: G1Tap(
-            onTap: () => demoBack(context),
+            onTap: () => demoBack(context, fallback: 'Main.dc.html'),
             child: Container(
               width: 44,
               height: 44,

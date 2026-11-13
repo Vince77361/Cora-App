@@ -166,7 +166,12 @@ class GuidePage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
           children: [
-            G3HeaderButton(svg: g3BackSvg, color: p.text, label: '뒤로'),
+            G3HeaderButton(
+              svg: g3BackSvg,
+              color: p.text,
+              label: '뒤로',
+              fallback: 'Agreement.dc.html',
+            ),
             const SizedBox(width: 4),
             Text(
               '기획 가이드',

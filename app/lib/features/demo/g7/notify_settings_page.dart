@@ -36,7 +36,7 @@ class _NotifySettingsPageState extends State<NotifySettingsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const G7Header(title: '알림'),
+                const G7Header(title: '알림', fallback: 'NSettings.dc.html'),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
                   child: Text(

@@ -58,6 +58,7 @@ class _UploadPageState extends State<UploadPage> {
                     svg: G4Icons.close,
                     label: '닫기',
                     size: 20,
+                    fallback: 'NProfile.dc.html',
                   ),
                 ),
                 Container(

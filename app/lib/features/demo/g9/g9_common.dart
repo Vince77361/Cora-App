@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../shared/demo_ui.dart';
 
@@ -102,14 +101,9 @@ TextStyle g9Text(
 const String g9BackSvg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>';
 
-/// 캔버스의 뒤로 링크(`aria-label="뒤로"`). 쌓인 화면이 있으면 닫고, 직접 연 화면이면 캔버스 링크([canvasFile])를 따른다.
-void g9Back(BuildContext context, String canvasFile) {
-  if (context.canPop()) {
-    demoBack(context);
-  } else {
-    demoGo(context, canvasFile);
-  }
-}
+/// 캔버스의 뒤로 링크(`aria-label="뒤로"`). 쌓인 화면이 있으면 닫고, 없으면 캔버스 링크([canvasFile])의 화면으로 새로 시작한다.
+void g9Back(BuildContext context, String canvasFile) =>
+    demoBack(context, fallback: canvasFile);
 
 /// 위쪽 줄: `grid-template-columns: 60px 1fr 60px`, 높이 64, 좌우 8.
 class G9Header extends StatelessWidget {

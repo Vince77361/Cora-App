@@ -86,9 +86,17 @@ class G6IconButton extends StatelessWidget {
 
 /// 가운데 제목이 있는 머리글: grid 60px 1fr 60px, padding 0 8.
 class G6Header extends StatelessWidget {
-  const G6Header({super.key, required this.title, this.height = 56});
+  const G6Header({
+    super.key,
+    required this.title,
+    required this.fallback,
+    this.height = 56,
+  });
 
   final String title;
+
+  /// 쌓인 화면이 없을 때 뒤로 가는 캔버스 화면(`NStoreHome.dc.html`).
+  final String fallback;
   final double height;
 
   @override
@@ -108,7 +116,7 @@ class G6Header extends StatelessWidget {
                   svg: g6BackSvg,
                   color: p.text,
                   size: 24,
-                  onTap: () => demoBack(context),
+                  onTap: () => demoBack(context, fallback: fallback),
                 ),
               ),
             ),

@@ -37,6 +37,7 @@ class EscrowPage extends StatelessWidget {
                     svg: G4Icons.back,
                     label: '뒤로',
                     size: 24,
+                    fallback: 'NOfferInbox.dc.html',
                   ),
                 ),
                 _Summary(c: c),

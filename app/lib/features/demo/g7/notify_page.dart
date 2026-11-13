@@ -126,6 +126,7 @@ class _NotifyPageState extends State<NotifyPage> {
               children: [
                 G7Header(
                   title: '알림',
+                  fallback: 'Main.dc.html',
                   trailing: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => demoGo(context, 'NNotifySettings.dc.html'),

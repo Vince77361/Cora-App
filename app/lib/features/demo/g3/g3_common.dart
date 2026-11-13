@@ -56,13 +56,15 @@ class G3HeaderButton extends StatelessWidget {
     required this.svg,
     required this.color,
     required this.label,
-    this.onTap,
+    required this.fallback,
   });
 
   final String svg;
   final Color color;
   final String label;
-  final VoidCallback? onTap;
+
+  /// 쌓인 화면이 없을 때 가는 캔버스 화면(`Retro.dc.html`).
+  final String fallback;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +73,7 @@ class G3HeaderButton extends StatelessWidget {
       label: label,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: onTap ?? () => demoBack(context),
+        onTap: () => demoBack(context, fallback: fallback),
         child: SizedBox(
           width: 44,
           height: 44,
