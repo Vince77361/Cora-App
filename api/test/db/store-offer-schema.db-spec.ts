@@ -264,4 +264,15 @@ describe('store page fields', () => {
     await repo.assignSlug(storeId, 'ramen');
     expect((await repo.assignSlug(storeId, 'other')).slug).toBe('ramen');
   });
+
+  it('keeps a numbered slug within 40 characters and unique when a 40-character name collides', async () => {
+    const repo = new StoresRepository(prisma as never);
+    const other = await prisma.store.create({ data: { ownerId: OWNER_2 } });
+    const base = 'a'.repeat(40);
+    const first = await repo.assignSlug(storeId, base);
+    const second = await repo.assignSlug(other.id, base);
+    expect(first.slug).toBe(base);
+    expect(second.slug).toHaveLength(40);
+    expect(second.slug).not.toBe(first.slug);
+  });
 });

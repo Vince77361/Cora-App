@@ -429,6 +429,35 @@ describe('stores', () => {
       expect(await mine()).toEqual(res.body);
     });
 
+    it('accepts explicit nulls for empty items like the generated client sends', async () => {
+      const res = await manual({
+        name: '널 가게',
+        branch: null,
+        signatureMenu: null,
+        coverPhotoPath: null,
+      }).expect(200);
+      expect(res.body).toMatchObject({
+        name: '널 가게',
+        regionSido: null,
+        signatureMenu: null,
+        coverPhotoUrl: null,
+      });
+      const withBranch = await manual({
+        name: '널 지점 가게',
+        branch: {
+          label: '성수점',
+          neighborhood: null,
+          regionSido: null,
+          regionSigungu: null,
+        },
+      }).expect(200);
+      expect(withBranch.body).toMatchObject({
+        name: '널 지점 가게',
+        neighborhood: null,
+        regionSido: null,
+      });
+    });
+
     it('creates a store with only a name', async () => {
       const res = await manual({ name: '이름만' }).expect(200);
       expect(res.body).toMatchObject({

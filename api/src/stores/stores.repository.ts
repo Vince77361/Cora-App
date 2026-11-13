@@ -14,6 +14,7 @@ import {
 } from '@prisma/client';
 import { PROPOSAL_POLICY } from '../common/collaboration-policy';
 import { PrismaService } from '../prisma/prisma.service';
+import { numberedSlug, SLUG_MAX_LENGTH } from './slugify';
 
 export type StoreWithLinks = Store & { sourceLinks: StoreSourceLink[] };
 
@@ -277,13 +278,16 @@ export class StoresRepository {
       const taken = new Set(
         (
           await this.prisma.store.findMany({
-            where: { slug: { startsWith: base } },
+            // 번호를 붙이려고 잘린 이름도 찾도록 번호 자리(최대 5자)를 비운 앞부분으로 찾는다.
+            where: {
+              slug: { startsWith: base.slice(0, SLUG_MAX_LENGTH - 6) },
+            },
             select: { slug: true },
           })
         ).map((row) => row.slug),
       );
       let slug = base;
-      for (let n = 2; taken.has(slug); n += 1) slug = `${base}-${n}`;
+      for (let n = 2; taken.has(slug); n += 1) slug = numberedSlug(base, n);
       try {
         await this.prisma.store.updateMany({
           where: { id: storeId, slug: null },

@@ -20,6 +20,7 @@ import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
 import { FakeClock } from '../../test/support/fake-clock';
 import { FakeStoragePort } from '../../test/support/fake-storage.port';
+import { numberedSlug } from './slugify';
 import { StoresRepository } from './stores.repository';
 import type {
   PublishedStoreDetail,
@@ -212,7 +213,7 @@ class FakeStoresRepository extends StoresRepository {
     if (store.slug !== null) return Promise.resolve(store);
     const taken = new Set(this.stores.map((s) => s.slug));
     let slug = base;
-    for (let n = 2; taken.has(slug); n += 1) slug = `${base}-${n}`;
+    for (let n = 2; taken.has(slug); n += 1) slug = numberedSlug(base, n);
     store.slug = slug;
     return Promise.resolve(store);
   }
@@ -442,6 +443,34 @@ describe('StoresService', () => {
       const { store } = await service.analyze(OWNER, LINKS);
       expect(store.slug).toBe('hangeureut-ramen-2');
       expect(store.publicUrl).toBe('cora.page/l/hangeureut-ramen-2');
+    });
+
+    it('cuts analyzed tags and customer phrases to the page limits', async () => {
+      link.result.store.tags = [
+        '하나',
+        '둘',
+        '셋',
+        '넷',
+        '다섯',
+        '여섯',
+        '열글자를넘는아주긴꼬리표입니다',
+      ];
+      link.result.store.customerPhrases = [
+        '하나',
+        '스무 글자를 넘는 아주아주 긴 손님 문구입니다',
+        '셋',
+        '넷',
+      ];
+      const { store } = await service.analyze(OWNER, LINKS);
+      expect(store.tags).toEqual(['하나', '둘', '셋', '넷', '다섯']);
+      expect(store.customerPhrases).toEqual([
+        '하나',
+        '스무 글자를 넘는 아주아주 긴 손님',
+        '셋',
+      ]);
+      link.result.store.tags = ['열글자를넘는아주긴꼬리표입니다'];
+      const next = await service.analyze(OWNER, LINKS);
+      expect(next.store.tags).toEqual(['열글자를넘는아주긴꼬']);
     });
 
     it('drops a region that is not in the sido list', async () => {

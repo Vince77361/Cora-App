@@ -1,6 +1,7 @@
 // 가게 이름으로 공개 주소 이름(cora.page/l/{slug})을 만든다. 순수 함수다.
 // 한글은 음절을 초성·중성·종성으로 나눠 글자마다 로마자로 옮긴다(발음 변화는 반영하지 않는다).
-const MAX_LENGTH = 40;
+export const SLUG_MAX_LENGTH = 40;
+const MAX_LENGTH = SLUG_MAX_LENGTH;
 const FALLBACK = 'store';
 
 const HANGUL_START = 0xac00;
@@ -108,4 +109,11 @@ export function slugify(name: string): string {
     .slice(0, MAX_LENGTH)
     .replace(/-+$/g, '');
   return slug || FALLBACK;
+}
+
+// 겹친 이름에 번호를 붙이되 전체가 40자를 넘지 않게, 번호가 들어갈 만큼 앞부분을 자른다.
+export function numberedSlug(base: string, n: number): string {
+  const suffix = `-${n}`;
+  const head = base.slice(0, MAX_LENGTH - suffix.length).replace(/-+$/g, '');
+  return `${head}${suffix}`;
 }

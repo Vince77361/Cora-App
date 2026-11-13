@@ -1,4 +1,4 @@
-import { slugify } from './slugify';
+import { numberedSlug, slugify } from './slugify';
 
 describe('slugify', () => {
   it('romanizes a korean store name into a slug', () => {
@@ -27,5 +27,17 @@ describe('slugify', () => {
     expect(slug.length).toBeLessThanOrEqual(40);
     expect(slug.endsWith('-')).toBe(false);
     expect(slugify('a'.repeat(80))).toBe('a'.repeat(40));
+  });
+
+  it('keeps a numbered slug within 40 characters by cutting the base', () => {
+    expect(numberedSlug('ramen', 2)).toBe('ramen-2');
+    const long = 'a'.repeat(40);
+    const numbered = numberedSlug(long, 12);
+    expect(numbered).toBe('a'.repeat(37) + '-12');
+    expect(numbered).toHaveLength(40);
+    // 잘린 자리가 구분선이면 끝 -를 지우고 번호를 붙인다.
+    expect(numberedSlug('a'.repeat(37) + '-bcd', 2)).toBe(
+      'a'.repeat(37) + '-2',
+    );
   });
 });

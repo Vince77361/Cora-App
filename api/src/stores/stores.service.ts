@@ -55,6 +55,18 @@ function blankToNull(value: string | null | undefined): string | null {
   return text ? text : null;
 }
 
+// 앞에서부터 count개, 항목마다 length자까지만 남긴다. 공백뿐인 항목은 버린다.
+function limitList(
+  items: string[] | null | undefined,
+  count: number,
+  length: number,
+): string[] {
+  return (items ?? [])
+    .map((item) => item.trim().slice(0, length).trim())
+    .filter((item) => item.length > 0)
+    .slice(0, count);
+}
+
 // 지역 정렬 묶음: 구·군이 같으면 0, 시·도만 같으면 1, 그 밖은 2.
 function regionTier(
   store: Store,
@@ -468,8 +480,17 @@ export class StoresService {
       seats: blankToNull(found?.seats),
       bestShootingTime: blankToNull(found?.bestShootingTime),
       intro: blankToNull(found?.intro),
-      tags: found?.tags ?? [],
-      customerPhrases: found?.customerPhrases ?? [],
+      // 분석이 한도를 넘겨 줘도 PATCH로 넣을 수 있는 값만 저장한다(앱이 받은 목록을 그대로 다시 보내도 400이 나지 않게).
+      tags: limitList(
+        found?.tags,
+        STORE_PAGE_POLICY.tagsMax,
+        STORE_PAGE_POLICY.tagLength,
+      ),
+      customerPhrases: limitList(
+        found?.customerPhrases,
+        STORE_PAGE_POLICY.phrasesMax,
+        STORE_PAGE_POLICY.phraseLength,
+      ),
     };
   }
 

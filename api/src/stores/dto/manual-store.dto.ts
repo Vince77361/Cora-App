@@ -2,10 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsIn,
+  IsOptional,
   IsString,
   MaxLength,
   MinLength,
-  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { SIDO_LIST } from '../../common/regions';
@@ -14,8 +14,8 @@ import type { Sido } from '../../common/regions';
 const trim = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim() : value;
 
-// 빠진(undefined) 항목만 건너뛴다. IsOptional은 null도 건너뛰므로 쓰지 않는다.
-const Optional = () => ValidateIf((_object, value) => value !== undefined);
+// 만들기 전용이라 null과 없음을 구분하지 않는다. 생성된 Dart 클라이언트가 빈 항목을 명시적 null로 보내도 받는다.
+const Optional = IsOptional;
 
 // 골라 둔 지점. 동네와 시·도, 구·군은 findMyStoreBranches가 준 값을 그대로 보낸다.
 export class ManualBranchDto {
