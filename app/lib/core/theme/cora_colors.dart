@@ -127,7 +127,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
   final Color progressFill;
 
   /// 하단 메뉴(`CoraBottomNav`)의 바탕, 선택된 항목, 꺼진 항목, 그림자 색(NStoreHome).
-  /// 다크는 선택 항목이 라임이고 그림자가 더 진하다(rgba(23,24,28,0.28)).
+  /// 다크는 바탕이 #26282D, 선택 항목이 #F2F3F5(라임 아님)이고 꺼짐·그림자는 라이트와 같다.
   final Color navSurface;
   final Color navActive;
   final Color navInactive;
@@ -310,11 +310,12 @@ class CoraColors extends ThemeExtension<CoraColors> {
     stepPillShadow: Color(0x0017181C),
     progressTrack: Color(0xFF2A2D33),
     progressFill: Color(0xFFF2F3F5),
-    // DarkNStoreHome 하단 메뉴 #26282D, 선택 #C6FF3D, 꺼짐 #A0A4AD, 그림자 rgba(23,24,28,0.28)
+    // DarkNStoreHome·DarkNOfferInbox(2026-11-12) 하단 메뉴 #26282D, 선택 #F2F3F5, 꺼짐 #8B9099,
+    // 그림자 rgba(23,24,28,0.12). 옛 캔버스(DarkMain 등)는 선택 라임·꺼짐 #A0A4AD·그림자 0.28이었다.
     navSurface: Color(0xFF26282D),
-    navActive: Color(0xFFC6FF3D),
-    navInactive: Color(0xFFA0A4AD),
-    navShadow: Color(0x4717181C),
+    navActive: Color(0xFFF2F3F5),
+    navInactive: Color(0xFF8B9099),
+    navShadow: Color(0x1F17181C),
     // DarkNStoreHome(2026-11-12) `오퍼 보내기` #C6FF3D/#1F2A00. 옛 캔버스는 #F2F3F5/#0F1012였다.
     highlightAction: Color(0xFFC6FF3D),
     onHighlightAction: Color(0xFF1F2A00),

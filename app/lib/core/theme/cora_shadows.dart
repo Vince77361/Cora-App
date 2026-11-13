@@ -62,7 +62,7 @@ abstract final class CoraShadows {
     ),
   ];
 
-  /// 하단 메뉴: 0 12px 32px. 색은 테마의 `navShadow`(라이트 알파 0.12, 다크 0.28).
+  /// 하단 메뉴: 0 12px 32px. 색은 테마의 `navShadow`(라이트·다크 알파 0.12).
   static List<BoxShadow> bottomNav(Color color) => [
     BoxShadow(
       color: color,

@@ -1,4 +1,3 @@
-import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/core/ui/cora_bottom_nav.dart';
 import 'package:flutter/material.dart';
@@ -71,7 +70,7 @@ void main() {
     expect(find.text('AI 글'), findsOneWidget);
   });
 
-  testWidgets('dark: #26282D bar, selected lime, others #A0A4AD', (
+  testWidgets('dark: #26282D bar, selected #F2F3F5, others #8B9099', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -79,8 +78,9 @@ void main() {
     );
 
     expect(_bar(tester).color, const Color(0xFF26282D));
-    expect(_labelColor(tester, '홈'), CoraColors.dark.accent);
-    expect(_labelColor(tester, '찾기'), const Color(0xFFA0A4AD));
+    expect(_labelColor(tester, '홈'), const Color(0xFFF2F3F5));
+    expect(_labelColor(tester, '찾기'), const Color(0xFF8B9099));
+    expect(_bar(tester).boxShadow!.single.color, const Color(0x1F17181C));
   });
 
   testWidgets('tapping an item reports its index', (tester) async {

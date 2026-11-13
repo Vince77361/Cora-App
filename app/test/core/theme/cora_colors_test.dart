@@ -235,11 +235,11 @@ void main() {
     expect(c.stepPillShadow, const Color(0x0017181C));
     expect(c.progressTrack, const Color(0xFF2A2D33));
     expect(c.progressFill, const Color(0xFFF2F3F5));
-    // DarkNStoreHome 하단 메뉴 #26282D, 선택 #C6FF3D, 꺼짐 #A0A4AD, 그림자 rgba(23,24,28,0.28)
+    // DarkNStoreHome(2026-11-12) 하단 메뉴 #26282D, 선택 #F2F3F5, 꺼짐 #8B9099, 그림자 rgba(23,24,28,0.12)
     expect(c.navSurface, const Color(0xFF26282D));
-    expect(c.navActive, const Color(0xFFC6FF3D));
-    expect(c.navInactive, const Color(0xFFA0A4AD));
-    expect(c.navShadow, const Color(0x4717181C));
+    expect(c.navActive, const Color(0xFFF2F3F5));
+    expect(c.navInactive, const Color(0xFF8B9099));
+    expect(c.navShadow, const Color(0x1F17181C));
     // DarkNStoreHome `오퍼 보내기` #F2F3F5/#0F1012
     // DarkNStoreHome(2026-11-12)는 라이트처럼 라임이다.
     expect(c.highlightAction, const Color(0xFFC6FF3D));
