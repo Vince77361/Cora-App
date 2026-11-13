@@ -2,13 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/text/utf16_length_limiting_formatter.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_field_box.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 
-/// 이의 사유의 최대 글자 수(서버 검증과 같다, `VIEW_REPORT_POLICY`).
+/// 이의 사유의 최대 글자 수(서버 검증과 같다, `VIEW_REPORT_POLICY`). 서버가 UTF-16 단위로 세므로 앱도 그렇게 센다.
 const disputeReasonMaxLength = 200;
 
 /// F4의 `이의 제기`를 누르면 아래에서 올라오는 시트(캔버스에 없는 화면): 사유 입력, 안내, `제기하기`.
@@ -107,7 +108,9 @@ class _DisputeSheetState extends State<DisputeSheet> {
               label: DisputeSheet.field,
               controller: _controller,
               enabled: !_busy,
-              maxLength: disputeReasonMaxLength,
+              inputFormatters: const [
+                Utf16LengthLimitingFormatter(disputeReasonMaxLength),
+              ],
               minLines: 3,
               maxLines: 5,
               keyboardType: TextInputType.multiline,
@@ -130,7 +133,7 @@ class _DisputeSheetState extends State<DisputeSheet> {
                     ),
                   ),
                   Text(
-                    '${_controller.text.characters.length}/$disputeReasonMaxLength',
+                    '${_controller.text.length}/$disputeReasonMaxLength',
                     style: CoraTextStyles.meta.copyWith(color: c.textSecondary),
                   ),
                 ],

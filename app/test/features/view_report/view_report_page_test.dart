@@ -340,6 +340,26 @@ void main() {
     expect(find.text('이의 제기'), findsNothing);
   });
 
+  testWidgets('F4 counts the dispute reason in UTF-16 units like the server', (
+    tester,
+  ) async {
+    final reports = FakeViewReportRepository();
+    await pumpCreatorReport(tester, reports: reports);
+
+    await tester.tap(find.text('이의 제기'));
+    await tester.pumpAndSettle();
+
+    // 이모지는 서버(`String.length`)가 2로 센다. 앱도 같게 세어 서버가 400을 내는 입력을 받지 않는다.
+    await tester.enterText(find.byType(TextField), '😀' * 150);
+    await tester.pump();
+    expect(find.text('200/200'), findsOneWidget);
+    await tester.tap(find.text('제기하기'));
+    await tester.pumpAndSettle();
+
+    expect(reports.disputed.single.reason, '😀' * 100);
+    expect(reports.disputed.single.reason.length, 200);
+  });
+
   testWidgets('F4 sends a dispute with a reason of at most 200 characters', (
     tester,
   ) async {
