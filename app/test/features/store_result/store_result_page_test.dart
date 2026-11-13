@@ -173,6 +173,19 @@ void main() {
     },
   );
 
+  testWidgets('G1 photo label uses the right josa for the creator name', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await pumpStoreResult(
+      tester,
+      results: FakeStoreResultRepository(result: sampleResult(name: '나비')),
+    );
+
+    expect(find.bySemanticsLabel('나비가 올린 콘텐츠'), findsOneWidget);
+    handle.dispose();
+  });
+
   testWidgets('G1 says so when the post link cannot be opened', (tester) async {
     final links = FakeLinkLauncher()..opens = false;
     await pumpStoreResult(tester, links: links);

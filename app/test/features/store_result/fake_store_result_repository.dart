@@ -14,10 +14,11 @@ StoreResult sampleResult({
   bool fixedCashOnly = false,
   String postUrl = 'https://www.instagram.com/reel/abc',
   String? photoUrl,
+  String name = '하루 한 컵',
 }) => StoreResult(
   creator: StoreResultCreator(
     userId: 'creator-1',
-    name: '하루 한 컵',
+    name: name,
     photoUrl: photoUrl,
   ),
   format: ContentFormat.reels,

@@ -227,7 +227,7 @@ class _Hero extends StatelessWidget {
           children: [
             Semantics(
               image: true,
-              label: '${result.creator.name}이 올린 콘텐츠',
+              label: '${josa(result.creator.name, JosaPair.iGa)} 올린 콘텐츠',
               child: ExcludeSemantics(
                 child: CoraNetworkPhoto(
                   url: result.creator.photoUrl,

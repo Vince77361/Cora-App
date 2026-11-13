@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/ui/cora_state_view.dart';
 import 'package:cora/features/store_home/presentation/viewmodels/store_home_view_model.dart';
@@ -155,6 +156,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(topPath(tester), AppRoutes.storeTrialInfo);
   });
+
+  testWidgets(
+    'G3 reads the comparison again after the contract info is saved',
+    (tester) async {
+      await pumpTrialCompare(
+        tester,
+        trial: FakeTrialCompareRepository()..notFound = true,
+      );
+      await tester.tap(find.text('계약 정보 넣기'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).at(0), '300000');
+      await tester.enterText(find.byType(TextField).at(1), '20261210');
+      await tester.enterText(find.byType(TextField).at(2), '9');
+      await tester.pump();
+      await tester.tap(find.text('저장'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('체험단 계약 정보가 없어요.'), findsNothing);
+      expect(find.text('들어간 돈'), findsOneWidget);
+    },
+  );
 
   testWidgets('G3 offers a retry when loading fails', (tester) async {
     final trial = FakeTrialCompareRepository()..failFetch = true;

@@ -248,12 +248,12 @@ class _ProposalDetailPageState extends ConsumerState<ProposalDetailPage> {
   }
 }
 
-/// 끝난 제안의 맨 위 한 줄(캔버스 밖). 합의했으면 누르면 계약 화면(결제나 협업)이 열리고 끝에 `›`가 붙는다.
 /// 합의한 제안의 계약이 취소나 환불로 닫혔다.
 bool _contractClosed(CollaborationStage? stage) =>
     stage == CollaborationStage.cancelled ||
     stage == CollaborationStage.refunded;
 
+/// 끝난 제안의 맨 위 한 줄(캔버스 밖). 합의했으면 누르면 계약 화면(결제나 협업)이 열리고 끝에 `›`가 붙는다.
 class _EndedLine extends StatelessWidget {
   const _EndedLine({required this.text, required this.onTap});
 

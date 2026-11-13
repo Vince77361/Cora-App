@@ -20,10 +20,13 @@ class ApiTrialCompareRepository implements TrialCompareRepository {
   Future<TrialComparison> fetchComparison() => _guard(() async {
     final m = await _insights.getMyStoreTrialComparison();
     if (m == null) throw const TrialCompareFailure();
+    // 종료일을 읽지 못하면 오늘 날짜로 때우지 않고 실패로 둔다.
+    final endsOn = parseTrialDate(m.trial.endsOn);
+    if (endsOn == null) throw const TrialCompareFailure();
     return TrialComparison(
       trial: TrialSide(
         monthlyFee: m.trial.monthlyFee,
-        endsOn: parseTrialDate(m.trial.endsOn) ?? DateTime.now(),
+        endsOn: endsOn,
         postCount: m.trial.postCount,
         spent: m.trial.spent,
       ),

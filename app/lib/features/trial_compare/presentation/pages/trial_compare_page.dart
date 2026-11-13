@@ -132,8 +132,13 @@ class _TrialComparePageState extends ConsumerState<TrialComparePage> {
                           title: TrialComparePage.noInfoTitle,
                           description: TrialComparePage.noInfoDescription,
                           actionLabel: TrialComparePage.noInfoAction,
-                          onAction: () =>
-                              context.push(AppRoutes.storeTrialInfo),
+                          // 정보를 저장하고 돌아오면 비교를 다시 읽는다.
+                          onAction: () async {
+                            await context.push(AppRoutes.storeTrialInfo);
+                            if (mounted) {
+                              ref.invalidate(trialCompareViewModelProvider);
+                            }
+                          },
                         )
                       : CoraStateView.loadFailed(
                           title: TrialComparePage.loadFailed,

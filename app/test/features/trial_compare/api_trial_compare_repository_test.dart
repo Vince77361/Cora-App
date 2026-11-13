@@ -76,6 +76,32 @@ void main() {
     expect(comparison.cora.contentByFormat.single.count, 4);
   });
 
+  test(
+    'fails instead of using today when the end date cannot be read',
+    () async {
+      final fake = FakeHttpClient()
+        ..body = jsonEncode({
+          'trial': {
+            'monthlyFee': 300000,
+            'endsOn': 'soon',
+            'postCount': 9,
+            'spent': 900000,
+          },
+          'cora': {
+            'offerCount': 0,
+            'spent': 0,
+            'averageMultiplierTenths': null,
+            'contentByFormat': [],
+          },
+        });
+
+      await expectLater(
+        _repo(fake).fetchComparison(),
+        throwsA(isA<TrialCompareFailure>()),
+      );
+    },
+  );
+
   test('maps a 404 to not found', () async {
     final fake = FakeHttpClient()
       ..statusCode = 404

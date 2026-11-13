@@ -57,6 +57,8 @@ class FakeTrialCompareRepository implements TrialCompareRepository {
   Future<void> saveInfo(TrialInfo info) async {
     if (failSave) throw const TrialCompareFailure();
     saved.add(info);
+    // 이제 계약 정보가 있어서 서버가 비교를 준다.
+    notFound = false;
     final s = stores?.store;
     if (s != null) stores!.store = withTrial(s, info: info);
   }
