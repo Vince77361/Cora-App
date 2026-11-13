@@ -22,6 +22,7 @@ import '../../features/onboarding/presentation/pages/role_home_placeholder_page.
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
 import '../../features/instagram_connect/presentation/pages/fake_instagram_connect_page.dart';
+import '../../features/proposals/presentation/pages/counter_proposal_page.dart';
 import '../../features/instagram_connect/presentation/pages/instagram_connect_page.dart';
 import '../../features/offers/presentation/pages/received_offers_page.dart';
 import '../../features/payout_account/presentation/pages/payout_account_page.dart';
@@ -231,6 +232,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/creator/stores/:id',
         pageBuilder: (context, state) => CoraTransitions.push(
           StoreDetailPage(storeId: state.pathParameters['id']!),
+          key: state.pageKey,
+        ),
+      ),
+      // F6 내 방식으로 제안. D2가 쓴 한 줄을 `extra`로 넘긴다.
+      GoRoute(
+        path: AppRoutes.creatorStoreProposalPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          CounterProposalPage(
+            storeId: state.pathParameters['id']!,
+            pitch: state.extra is String ? state.extra! as String : '',
+          ),
           key: state.pageKey,
         ),
       ),

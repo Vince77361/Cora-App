@@ -49,7 +49,11 @@ class ProposalDraftViewModel extends AsyncNotifier<OfferTerms> {
     _defaults = config.defaultTerms.reward;
     _lastVoucher = _defaults.voucher;
     _lastViewPay = _defaults.viewPay;
-    final start = store?.defaultTerms ?? config.defaultTerms;
+    // 크리에이터의 역제안은 가게의 모집 조건에서 시작해, 바꾼 만큼이 가게의 추가 부담이 된다.
+    final target = _target;
+    final start = target is CounterTarget && target.start != null
+        ? target.start!
+        : store?.defaultTerms ?? config.defaultTerms;
     _remember(start.reward);
     return start;
   }

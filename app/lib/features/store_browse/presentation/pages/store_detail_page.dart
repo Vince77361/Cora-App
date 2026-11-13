@@ -64,6 +64,17 @@ class _StoreDetailPageState extends ConsumerState<StoreDetailPage> {
   Timer? _noticeTimer;
 
   @override
+  void initState() {
+    super.initState();
+    // 안내는 이 화면이 만들어지기 전에 이미 떠 있을 수 있다(F6에서 보내고 돌아온 경우).
+    ref.listenManual(
+      storeDetailNoticeProvider,
+      (_, next) => _onNotice(next),
+      fireImmediately: true,
+    );
+  }
+
+  @override
   void dispose() {
     _noticeTimer?.cancel();
     _pitch.dispose();
@@ -89,7 +100,6 @@ class _StoreDetailPageState extends ConsumerState<StoreDetailPage> {
   @override
   Widget build(BuildContext context) {
     final provider = storeDetailViewModelProvider(widget.storeId);
-    ref.listen(storeDetailNoticeProvider, (_, next) => _onNotice(next));
     final async = ref.watch(provider);
     final notice = ref.watch(storeDetailNoticeProvider);
     return Scaffold(

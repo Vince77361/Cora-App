@@ -128,53 +128,6 @@ class _Body extends ConsumerWidget {
   final String? recipientPhotoUrl;
   final String failureMessage;
 
-  ProposalDraftViewModel _vm(WidgetRef ref) =>
-      ref.read(proposalDraftViewModelProvider(target).notifier);
-
-  Future<void> _editBenefit(BuildContext context, WidgetRef ref) async {
-    final edit = await showBenefitEditSheet(
-      context,
-      initial: terms.reward.voucher,
-      defaults: config.reward.voucher,
-    );
-    if (edit == null) return;
-    _vm(ref).setVoucher(edit.voucher);
-  }
-
-  Future<void> _customCash(BuildContext context, WidgetRef ref) async {
-    final limits = config.reward.fixedCash;
-    final amount = await showFixedCashSheet(
-      context,
-      initial: terms.reward.fixedCash,
-      max: limits.storeMax,
-      step: limits.step,
-    );
-    if (amount == null) return;
-    _vm(ref).setFixedCash(amount);
-  }
-
-  Future<void> _pickRate(BuildContext context, WidgetRef ref) async {
-    final current = terms.reward.viewPay;
-    if (current == null) return;
-    final picked = await showRateSheet(
-      context,
-      range: config.reward.viewRate,
-      selected: current.ratePerThousand,
-    );
-    if (picked != null) _vm(ref).setRate(picked);
-  }
-
-  Future<void> _pickCap(BuildContext context, WidgetRef ref) async {
-    final current = terms.reward.viewPay;
-    if (current == null) return;
-    final picked = await showCapSheet(
-      context,
-      range: config.reward.perViewCap,
-      selected: current.cap,
-    );
-    if (picked != null) _vm(ref).setCap(picked);
-  }
-
   void _review(BuildContext context) {
     Navigator.of(context, rootNavigator: true).push(
       CoraTransitions.push(
@@ -193,9 +146,6 @@ class _Body extends ConsumerWidget {
     final c = context.colors;
     final reward = terms.reward;
     final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
-    final presets = config.reward.fixedCash.presets;
-    final customCash =
-        reward.fixedCash != 0 && !presets.contains(reward.fixedCash);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -229,31 +179,7 @@ class _Body extends ConsumerWidget {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: 8,
-                    children: [
-                      _BenefitCard(
-                        voucher: reward.voucher,
-                        onTap: () => _editBenefit(context, ref),
-                      ),
-                      _FixedCashCard(
-                        selected: reward.fixedCash,
-                        presets: presets,
-                        custom: customCash,
-                        onPick: _vm(ref).setFixedCash,
-                        onCustom: () => _customCash(context, ref),
-                      ),
-                      _ViewPayCard(
-                        viewPay: reward.viewPay,
-                        allowed: terms.viewPayAllowed,
-                        countingDays: config.reward.countingDays,
-                        onToggle: _vm(ref).setViewPayEnabled,
-                        onRate: () => _pickRate(context, ref),
-                        onCap: () => _pickCap(context, ref),
-                      ),
-                    ],
-                  ),
+                  child: RewardEditor(target: target),
                 ),
               ],
             ),
@@ -277,7 +203,7 @@ class _Body extends ConsumerWidget {
                     ),
                   ),
                 ),
-              _BurdenBox(amount: reward.maxCashBurden),
+              RewardBurdenBox(amount: reward.maxCashBurden),
               const SizedBox(height: 12),
               CoraPrimaryButton(
                 label: RewardBudgetPage.reviewLabel,
@@ -286,6 +212,117 @@ class _Body extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 보상 세 요소(제공 혜택, 고정 현금, 조회수 수당)를 고치는 카드 셋. F1과 크리에이터 역제안(F6)의
+/// `희망 보상` 시트가 함께 쓴다. 고르는 값은 [target]의 [proposalDraftViewModelProvider]에 바로 반영된다.
+class RewardEditor extends ConsumerWidget {
+  const RewardEditor({super.key, required this.target});
+
+  final ProposalTarget target;
+
+  ProposalDraftViewModel _vm(WidgetRef ref) =>
+      ref.read(proposalDraftViewModelProvider(target).notifier);
+
+  Future<void> _editBenefit(
+    BuildContext context,
+    WidgetRef ref,
+    OfferTerms terms,
+    ServerConfig config,
+  ) async {
+    final edit = await showBenefitEditSheet(
+      context,
+      initial: terms.reward.voucher,
+      defaults: config.reward.voucher,
+    );
+    if (edit == null) return;
+    _vm(ref).setVoucher(edit.voucher);
+  }
+
+  Future<void> _customCash(
+    BuildContext context,
+    WidgetRef ref,
+    OfferTerms terms,
+    ServerConfig config,
+  ) async {
+    final limits = config.reward.fixedCash;
+    final amount = await showFixedCashSheet(
+      context,
+      initial: terms.reward.fixedCash,
+      max: limits.storeMax,
+      step: limits.step,
+    );
+    if (amount == null) return;
+    _vm(ref).setFixedCash(amount);
+  }
+
+  Future<void> _pickRate(
+    BuildContext context,
+    WidgetRef ref,
+    OfferTerms terms,
+    ServerConfig config,
+  ) async {
+    final current = terms.reward.viewPay;
+    if (current == null) return;
+    final picked = await showRateSheet(
+      context,
+      range: config.reward.viewRate,
+      selected: current.ratePerThousand,
+    );
+    if (picked != null) _vm(ref).setRate(picked);
+  }
+
+  Future<void> _pickCap(
+    BuildContext context,
+    WidgetRef ref,
+    OfferTerms terms,
+    ServerConfig config,
+  ) async {
+    final current = terms.reward.viewPay;
+    if (current == null) return;
+    final picked = await showCapSheet(
+      context,
+      range: config.reward.perViewCap,
+      selected: current.cap,
+    );
+    if (picked != null) _vm(ref).setCap(picked);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final config = ref.watch(serverConfigViewModelProvider).value;
+    final terms = ref.watch(proposalDraftViewModelProvider(target)).value;
+    if (config == null || terms == null) return const SizedBox.shrink();
+    final reward = terms.reward;
+    final presets = config.reward.fixedCash.presets;
+    final customCash =
+        reward.fixedCash != 0 && !presets.contains(reward.fixedCash);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 8,
+      children: [
+        _BenefitCard(
+          voucher: reward.voucher,
+          onTap: () => _editBenefit(context, ref, terms, config),
+        ),
+        _FixedCashCard(
+          selected: reward.fixedCash,
+          presets: presets,
+          custom: customCash,
+          onPick: _vm(ref).setFixedCash,
+          onCustom: () => _customCash(context, ref, terms, config),
+        ),
+        _ViewPayCard(
+          viewPay: reward.viewPay,
+          allowed: terms.viewPayAllowed,
+          countingDays: config.reward.countingDays,
+          onToggle: _vm(ref).setViewPayEnabled,
+          onRate: () => _pickRate(context, ref, terms, config),
+          onCap: () => _pickCap(context, ref, terms, config),
         ),
       ],
     );
@@ -683,9 +720,9 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-/// 아래 고정: `최대 현금 부담 · 남으면 환불`과 금액(22/900). 모서리 20, `surface` 바탕, 안쪽 14/18.
-class _BurdenBox extends StatelessWidget {
-  const _BurdenBox({required this.amount});
+/// 아래 고정: `최대 현금 부담 · 남으면 환불`과 금액(22/900). F6의 `희망 보상` 시트도 쓴다. 모서리 20, `surface` 바탕, 안쪽 14/18.
+class RewardBurdenBox extends StatelessWidget {
+  const RewardBurdenBox({super.key, required this.amount});
 
   final int amount;
 

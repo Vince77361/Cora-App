@@ -2,7 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
@@ -12,6 +14,7 @@ import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../../core/ui/cora_step_header.dart';
+import '../../../instagram_connect/presentation/viewmodels/instagram_connect_view_model.dart';
 import '../../../server_config/domain/server_config.dart';
 import '../../../server_config/presentation/viewmodels/server_config_view_model.dart';
 import '../../../store_onboarding/presentation/viewmodels/my_store_view_model.dart';
@@ -62,6 +65,8 @@ class ReviewSendPage extends ConsumerStatefulWidget {
   static const publishLabel = '이 조건으로 공개하기';
   static const defaultFailureMessage = '잠시 문제가 생겼어요. 다시 시도해 주세요.';
   static const loadFailed = '조건을 불러오지 못했어요.';
+  static const needsInstagram = '인스타그램을 연동하면 수락할 수 있어요';
+  static const connectInstagram = '연동하기';
   static const openCallNotice = '크리에이터가 가게 페이지에서 이 조건을 봐요. 오퍼를 보낼 때 바꿀 수 있어요.';
 
   /// 안내. 이용료는 최대 현금 부담이 있을 때만, 그리고 가게가 내는 제안에만 쓴다.
@@ -122,6 +127,22 @@ class _ReviewSendPageState extends ConsumerState<ReviewSendPage> {
         .setUsageRights(picked);
   }
 
+  /// 크리에이터가 조회수 수당이 켜진 제안을 보내려는데 인스타그램 연동이 없다. 연동을 읽는 중이거나
+  /// 읽지 못했으면 막지 않는다(서버가 보낼 때 다시 확인한다).
+  bool _needsInstagram(OfferTerms terms) {
+    if (widget.target is! CounterTarget || terms.reward.viewPay == null) {
+      return false;
+    }
+    final connection = ref.watch(instagramConnectViewModelProvider);
+    return connection.hasValue && connection.requireValue.connection == null;
+  }
+
+  Future<void> _connectInstagram() async {
+    await context.push(AppRoutes.creatorInstagram);
+    // 연동하고 돌아오면 연동 상태를 다시 읽어 `이 조건으로 보내기`가 돌아오게 한다.
+    ref.invalidate(instagramConnectViewModelProvider);
+  }
+
   String? _storeName() {
     final target = widget.target;
     if (target is CounterTarget) return target.storeName;
@@ -155,6 +176,8 @@ class _ReviewSendPageState extends ConsumerState<ReviewSendPage> {
         onSend: () => _send(draft.value!),
         onPickUsageRights: () => _pickUsageRights(draft.value!),
         onEdit: () => Navigator.of(context).maybePop(),
+        needsInstagram: _needsInstagram(draft.value!),
+        onConnect: _connectInstagram,
       );
     } else if (config.hasError || draft.hasError) {
       body = CoraStateView.loadFailed(
@@ -200,6 +223,8 @@ class _Body extends StatelessWidget {
     required this.onSend,
     required this.onPickUsageRights,
     required this.onEdit,
+    required this.needsInstagram,
+    required this.onConnect,
   });
 
   final ProposalTarget target;
@@ -213,6 +238,10 @@ class _Body extends StatelessWidget {
   final VoidCallback onSend;
   final VoidCallback onPickUsageRights;
   final VoidCallback onEdit;
+
+  /// 인스타그램 연동이 필요해 보내기 버튼 자리에 `연동하기`가 보인다.
+  final bool needsInstagram;
+  final VoidCallback onConnect;
 
   bool get _recruit => target is RecruitTarget;
 
@@ -327,6 +356,18 @@ class _Body extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (needsInstagram)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      ReviewSendPage.needsInstagram,
+                      textAlign: TextAlign.center,
+                      style: CoraTextStyles.meta.copyWith(color: c.text),
+                    ),
+                  ),
+                ),
               if (failedMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -353,10 +394,14 @@ class _Body extends StatelessWidget {
                   Expanded(
                     flex: 8,
                     child: CoraPrimaryButton(
-                      label: _recruit
-                          ? ReviewSendPage.publishLabel
-                          : ReviewSendPage.sendLabel,
-                      onPressed: sending ? null : onSend,
+                      label: needsInstagram
+                          ? ReviewSendPage.connectInstagram
+                          : (_recruit
+                                ? ReviewSendPage.publishLabel
+                                : ReviewSendPage.sendLabel),
+                      onPressed: sending
+                          ? null
+                          : (needsInstagram ? onConnect : onSend),
                       look: CoraPrimaryButtonLook.accent,
                       fitLabel: true,
                     ),

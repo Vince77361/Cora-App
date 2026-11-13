@@ -1,3 +1,5 @@
+import 'offer_terms.dart';
+
 /// 제안(조건)을 만드는 화면(F1 보상·예산 설정, F2 보내기 전 검토)이 누구에게 무엇을 만드는지.
 ///
 /// provider 인자로 쓰이므로 값이 같으면 같은 대상이다. 같은 대상의 F1과 F2는 고르는 중인
@@ -71,13 +73,15 @@ final class ReplyTarget extends ProposalTarget {
 }
 
 /// 크리에이터가 가게의 모집 조건이나 받은 오퍼에 내는 역제안(Task 10이 쓴다). 새 제안이면
-/// [storeId]를, 받은 오퍼에 답하는 판본이면 [offerId]를 준다.
+/// [storeId]를, 받은 오퍼에 답하는 판본이면 [offerId]를 준다. 고르는 조건은 [start](가게의 모집 조건)에서
+/// 시작한다. 주지 않으면 서버 설정의 기본값에서 시작한다.
 final class CounterTarget extends ProposalTarget {
   const CounterTarget({
     this.storeId,
     this.offerId,
     required this.storeName,
     required this.nextVersion,
+    this.start,
   }) : assert(
          (storeId == null) != (offerId == null),
          'storeId or offerId, not both',
@@ -88,6 +92,9 @@ final class CounterTarget extends ProposalTarget {
   final String storeName;
   final int nextVersion;
 
+  /// 고르는 조건의 처음 값(가게의 모집 조건).
+  final OfferTerms? start;
+
   @override
   int get versionNumber => nextVersion;
 
@@ -97,11 +104,18 @@ final class CounterTarget extends ProposalTarget {
       other.storeId == storeId &&
       other.offerId == offerId &&
       other.storeName == storeName &&
-      other.nextVersion == nextVersion;
+      other.nextVersion == nextVersion &&
+      other.start == start;
 
   @override
-  int get hashCode =>
-      Object.hash(CounterTarget, storeId, offerId, storeName, nextVersion);
+  int get hashCode => Object.hash(
+    CounterTarget,
+    storeId,
+    offerId,
+    storeName,
+    nextVersion,
+    start,
+  );
 }
 
 /// 보내는 쪽이 F2에 돌려주는 실패. F2는 [message]가 있으면 그것을, 없으면 자기 기본 문구를 보인다

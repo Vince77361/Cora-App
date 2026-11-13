@@ -9,6 +9,7 @@ import 'package:cora/features/creator_profile/domain/creator_profile_repository.
 import 'package:cora/features/offers/domain/received_offers_repository.dart';
 import 'package:cora/features/offers/presentation/viewmodels/received_offers_view_model.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
+import 'package:cora/features/proposals/domain/counter_proposal_repository.dart';
 import 'package:cora/features/store_browse/domain/store_browse_repository.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -21,6 +22,7 @@ import '../collaboration/fake_collaboration_repository.dart';
 import '../offers/fake_received_offers_repository.dart';
 import '../instagram_connect/fake_instagram_repository.dart';
 import '../payout_account/fake_payout_account_repository.dart';
+import '../proposals/fake_counter_proposal_repository.dart';
 import '../onboarding/fake_me_repository.dart';
 import 'fake_store_browse_repository.dart';
 
@@ -34,6 +36,7 @@ Future<void> pumpCreatorApp(
   MailLauncher? mail,
   FakePayoutAccountRepository? payoutAccounts,
   FakeInstagramRepository? instagram,
+  FakeCounterProposalRepository? counter,
   CoraEnv env = CoraEnv.dev,
   String mySido = '서울특별시',
   Duration undoWindow = const Duration(seconds: 30),
@@ -70,6 +73,9 @@ Future<void> pumpCreatorApp(
       if (mail != null) mailLauncherProvider.overrideWithValue(mail),
       instagramRepositoryProvider.overrideWithValue(
         instagram ?? FakeInstagramRepository(),
+      ),
+      counterProposalRepositoryProvider.overrideWithValue(
+        counter ?? FakeCounterProposalRepository(),
       ),
       payoutAccountRepositoryProvider.overrideWithValue(
         payoutAccounts ?? FakePayoutAccountRepository(),
