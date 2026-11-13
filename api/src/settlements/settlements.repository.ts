@@ -163,6 +163,27 @@ export class SettlementsRepository {
     });
   }
 
+  // 평소 조회수 읽기의 결과를 한 번만 저장한다(usual_read_at이 비어 있을 때만 바꾼다). 졌으면 false다.
+  // 읽지 못했거나 읽을 수 없는 협업은 usualViews와 multiplierTenths가 null이고 시각만 채운다.
+  async saveUsualViews(
+    settlementId: string,
+    values: {
+      usualViews: number | null;
+      multiplierTenths: number | null;
+      readAt: Date;
+    },
+  ): Promise<boolean> {
+    const { count } = await this.prisma.settlement.updateMany({
+      where: { id: settlementId, usualReadAt: null, deletedAt: null },
+      data: {
+        usualViews: values.usualViews,
+        multiplierTenths: values.multiplierTenths,
+        usualReadAt: values.readAt,
+      },
+    });
+    return count === 1;
+  }
+
   // 협업당 한 줄(유일 제약). 이미 있으면 예외 없이 false다(호출한 쪽 트랜잭션이 중단되지 않는다).
   async createSettlement(
     row: NewSettlement,

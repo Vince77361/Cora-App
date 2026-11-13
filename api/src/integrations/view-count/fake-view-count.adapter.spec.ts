@@ -60,4 +60,16 @@ describe('FakeViewCountAdapter', () => {
       }),
     ).resolves.toBe(true);
   });
+
+  it('reads 4000 as the usual views of a store account', async () => {
+    const adapter = new FakeViewCountAdapter(new FakeClock());
+    await expect(adapter.readAccountAverage('haru_cup')).resolves.toBe(4000);
+  });
+
+  it('throws ViewCountUnavailableError for an unavailable account', async () => {
+    const adapter = new FakeViewCountAdapter(new FakeClock());
+    await expect(
+      adapter.readAccountAverage('unavailable_store'),
+    ).rejects.toBeInstanceOf(ViewCountUnavailableError);
+  });
 });

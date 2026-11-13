@@ -1,4 +1,5 @@
 import {
+  instagramHandleOf,
   SOURCE_LINK_MESSAGES,
   isValidSourceLinkUrl,
 } from './source-link-rules';
@@ -82,5 +83,23 @@ describe('isValidSourceLinkUrl', () => {
     expect(SOURCE_LINK_MESSAGES.REVIEW_POST).toBe(
       '체험단 후기 글 링크가 맞는지 확인해 주세요.',
     );
+  });
+
+  it('takes the account id out of an instagram link', () => {
+    expect(instagramHandleOf('https://www.instagram.com/haru_cup/')).toBe(
+      'haru_cup',
+    );
+    expect(instagramHandleOf('https://instagram.com/haru.cup?hl=ko')).toBe(
+      'haru.cup',
+    );
+  });
+
+  it('gives no account id for a post link or a link that is not instagram', () => {
+    expect(
+      instagramHandleOf('https://www.instagram.com/reel/C8abc123/'),
+    ).toBeNull();
+    expect(instagramHandleOf('https://www.instagram.com/')).toBeNull();
+    expect(instagramHandleOf('https://evil.com/haru_cup')).toBeNull();
+    expect(instagramHandleOf('not a url')).toBeNull();
   });
 });

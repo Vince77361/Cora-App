@@ -41,3 +41,24 @@ export function isValidSourceLinkUrl(
       (SUBDOMAIN_OF[kind]?.test(url.hostname) ?? false))
   );
 }
+
+// 인스타그램 아이디가 아닌 주소 첫 마디(게시물, 탐색 같은 서비스 경로).
+const INSTAGRAM_RESERVED = new Set([
+  'p',
+  'reel',
+  'reels',
+  'tv',
+  'explore',
+  'stories',
+  'accounts',
+  'direct',
+]);
+
+// 가게 인스타그램 링크(instagram.com/{아이디})에서 아이디를 꺼낸다. 계정 주소가 아니면 null이다.
+// 평소 조회수를 읽을 계정을 정하는 데 쓰므로, 주소 검사를 통과한 링크만 받는다.
+export function instagramHandleOf(link: string): string | null {
+  if (!isValidSourceLinkUrl('INSTAGRAM', link)) return null;
+  const first = new URL(link).pathname.split('/').find((part) => part !== '');
+  if (!first || INSTAGRAM_RESERVED.has(first.toLowerCase())) return null;
+  return /^[A-Za-z0-9._]{1,30}$/.test(first) ? first : null;
+}

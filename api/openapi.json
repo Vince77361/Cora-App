@@ -2669,6 +2669,96 @@
         ],
         "type": "object"
       },
+      "StoreResultCreatorModel": {
+        "properties": {
+          "name": {
+            "description": "크리에이터의 활동 이름.",
+            "type": "string"
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "photoUrl"
+        ],
+        "type": "object"
+      },
+      "StoreResultModel": {
+        "properties": {
+          "creator": {
+            "$ref": "#/components/schemas/StoreResultCreatorModel"
+          },
+          "fixedCash": {
+            "description": "고정 현금(원). 없으면 0.",
+            "type": "integer"
+          },
+          "fixedCashOnly": {
+            "description": "고정 현금만 있던 협업이면 true. 조회수를 세지 않아 조회수와 비교 상자가 없다.",
+            "type": "boolean"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "multiplierTenths": {
+            "description": "평소 대비 배수를 10배 한 정수(31 = 3.1배, 소수 첫째 자리까지 내림). 평소 조회수가 없으면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "payout": {
+            "description": "크리에이터 지급액(원).",
+            "type": "integer"
+          },
+          "postUrl": {
+            "description": "크리에이터가 낸 게시 링크.",
+            "type": "string"
+          },
+          "postedAt": {
+            "description": "크리에이터가 게시 링크를 낸 시각(ISO 8601).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "refund": {
+            "description": "사장님께 환불한 금액(원).",
+            "type": "integer"
+          },
+          "usualViews": {
+            "description": "가게 인스타그램 계정의 평소 조회수. 링크가 없거나 읽지 못했으면 null이고, 그러면 비교 상자를 숨긴다.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "views": {
+            "description": "정산에 쓴 최종 조회수. 조회수를 세지 않은 협업은 null.",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "creator",
+          "format",
+          "postedAt",
+          "postUrl",
+          "views",
+          "usualViews",
+          "multiplierTenths",
+          "payout",
+          "refund",
+          "fixedCashOnly",
+          "fixedCash"
+        ],
+        "type": "object"
+      },
       "StoreSourceLinkModel": {
         "properties": {
           "kind": {
@@ -3582,6 +3672,42 @@
         "summary": "",
         "tags": [
           "Payments"
+        ]
+      }
+    },
+    "/collaborations/{id}/result": {
+      "get": {
+        "operationId": "getStoreResult",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreResultModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "사장님의 7일 결과(G1). 끝난 협업의 지급·환불과 평소 조회수 대비 배수를 돌려준다.",
+        "tags": [
+          "StoreResult"
         ]
       }
     },

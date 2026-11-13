@@ -105,6 +105,16 @@ export class StoresRepository {
     });
   }
 
+  // 가게가 넣은 인스타그램 링크 주소(없으면 null). 평소 조회수를 읽을 계정을 정하는 데 쓴다.
+  async findInstagramLinkUrl(storeId: string): Promise<string | null> {
+    const link = await this.prisma.storeSourceLink.findFirst({
+      where: { storeId, kind: 'INSTAGRAM', deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: { url: true },
+    });
+    return link?.url ?? null;
+  }
+
   findPublishedById(storeId: string): Promise<Store | null> {
     return this.prisma.store.findFirst({
       where: { id: storeId, ...PUBLISHED },

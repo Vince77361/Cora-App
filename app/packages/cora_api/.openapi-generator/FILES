@@ -113,6 +113,9 @@ doc/StoreHomeSummaryModel.md
 doc/StoreOnboardingStep.md
 doc/StoreProposalDto.md
 doc/StoreProposalResultModel.md
+doc/StoreResultApi.md
+doc/StoreResultCreatorModel.md
+doc/StoreResultModel.md
 doc/StoreSourceLinkModel.md
 doc/StoreStatus.md
 doc/StoreSummaryModel.md
@@ -154,6 +157,7 @@ lib/api/offers_api.dart
 lib/api/payments_api.dart
 lib/api/payout_accounts_api.dart
 lib/api/proposals_api.dart
+lib/api/store_result_api.dart
 lib/api/stores_api.dart
 lib/api/submissions_api.dart
 lib/api/uploads_api.dart
@@ -266,6 +270,8 @@ lib/model/store_home_summary_model.dart
 lib/model/store_onboarding_step.dart
 lib/model/store_proposal_dto.dart
 lib/model/store_proposal_result_model.dart
+lib/model/store_result_creator_model.dart
+lib/model/store_result_model.dart
 lib/model/store_source_link_model.dart
 lib/model/store_status.dart
 lib/model/store_summary_model.dart
@@ -401,6 +407,9 @@ test/store_home_summary_model_test.dart
 test/store_onboarding_step_test.dart
 test/store_proposal_dto_test.dart
 test/store_proposal_result_model_test.dart
+test/store_result_api_test.dart
+test/store_result_creator_model_test.dart
+test/store_result_model_test.dart
 test/store_source_link_model_test.dart
 test/store_status_test.dart
 test/store_summary_model_test.dart

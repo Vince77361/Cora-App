@@ -30,6 +30,17 @@ export function settleReward(p: {
   };
 }
 
+// 평소 조회수 대비 이번 조회수의 배수. 소수 첫째 자리까지 내림해 정수(31 = 3.1배)로 둔다.
+// 평소 조회수가 0 이하면 나눌 수 없어 null이다(비교 상자를 숨긴다).
+export function multiplierTenthsOf(
+  views: number,
+  usualViews: number,
+): number | null {
+  assertWholeWon(views, '조회수');
+  if (!Number.isInteger(usualViews) || usualViews <= 0) return null;
+  return Math.floor((views * 10) / usualViews);
+}
+
 function assertWholeWon(value: number, label: string): void {
   if (!Number.isInteger(value) || value < 0) {
     throw new Error(`${label}은(는) 0 이상의 정수여야 해요: ${value}`);

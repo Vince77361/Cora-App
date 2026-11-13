@@ -103,6 +103,7 @@ Class | Method | HTTP request | Description
 *PayoutAccountsApi* | [**upsertPayoutAccount**](doc//PayoutAccountsApi.md#upsertpayoutaccount) | **PUT** /payout-account | 
 *ProposalsApi* | [**getProposal**](doc//ProposalsApi.md#getproposal) | **GET** /offers/{id} | 
 *ProposalsApi* | [**listProposals**](doc//ProposalsApi.md#listproposals) | **GET** /offers/proposals | 
+*StoreResultApi* | [**getStoreResult**](doc//StoreResultApi.md#getstoreresult) | **GET** /collaborations/{id}/result | 사장님의 7일 결과(G1). 끝난 협업의 지급·환불과 평소 조회수 대비 배수를 돌려준다.
 *StoresApi* | [**advanceMyStoreOnboarding**](doc//StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
 *StoresApi* | [**analyzeMyStoreLinks**](doc//StoresApi.md#analyzemystorelinks) | **POST** /stores/me/analyze | 
 *StoresApi* | [**createMyStoreManually**](doc//StoresApi.md#createmystoremanually) | **POST** /stores/me/manual | 
@@ -225,6 +226,8 @@ Class | Method | HTTP request | Description
  - [StoreOnboardingStep](doc//StoreOnboardingStep.md)
  - [StoreProposalDto](doc//StoreProposalDto.md)
  - [StoreProposalResultModel](doc//StoreProposalResultModel.md)
+ - [StoreResultCreatorModel](doc//StoreResultCreatorModel.md)
+ - [StoreResultModel](doc//StoreResultModel.md)
  - [StoreSourceLinkModel](doc//StoreSourceLinkModel.md)
  - [StoreStatus](doc//StoreStatus.md)
  - [StoreSummaryModel](doc//StoreSummaryModel.md)

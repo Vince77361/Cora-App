@@ -1,4 +1,4 @@
-import { feeFor, settleReward } from './settlement-math';
+import { feeFor, multiplierTenthsOf, settleReward } from './settlement-math';
 
 describe('feeFor', () => {
   it('charges a 10 percent fee rounded down', () => {
@@ -133,5 +133,18 @@ describe('settleReward', () => {
     expect(() => settleReward({ ...ok, ratePerThousand: 1.5 })).toThrow();
     expect(() => settleReward({ ...ok, cap: -1 })).toThrow();
     expect(() => settleReward({ ...ok, fixedCash: 0.5 })).toThrow();
+  });
+});
+
+describe('multiplierTenthsOf', () => {
+  it('rounds the multiplier down to one decimal place', () => {
+    expect(multiplierTenthsOf(12500, 4000)).toBe(31);
+    expect(multiplierTenthsOf(7999, 4000)).toBe(19);
+    expect(multiplierTenthsOf(0, 4000)).toBe(0);
+  });
+
+  it('gives no multiplier when the usual views are zero or less', () => {
+    expect(multiplierTenthsOf(12500, 0)).toBeNull();
+    expect(multiplierTenthsOf(12500, -1)).toBeNull();
   });
 });

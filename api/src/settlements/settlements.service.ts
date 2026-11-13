@@ -27,6 +27,7 @@ import {
 } from '../integrations/view-count/view-count.port';
 import { JobRunContext, JobScheduler } from '../jobs/job-scheduler';
 import { NotificationsService } from '../notifications/notifications.service';
+import { StoresService } from '../stores/stores.service';
 import {
   forcePayoutKey,
   forcePayoutRefundKey,
@@ -40,7 +41,7 @@ import {
 } from './job-keys';
 import { PayoutsService } from './payouts.service';
 import { RefundsService } from './refunds.service';
-import { settleReward } from './settlement-math';
+import { multiplierTenthsOf, settleReward } from './settlement-math';
 import { SettlementsRepository } from './settlements.repository';
 
 @Injectable()
@@ -58,6 +59,7 @@ export class SettlementsService {
     private readonly ledger: LedgerService,
     private readonly payouts: PayoutsService,
     private readonly refunds: RefundsService,
+    private readonly stores: StoresService,
     private readonly clock: Clock,
   ) {}
 
@@ -342,15 +344,81 @@ export class SettlementsService {
     }
     const refund = await this.refunds.findByKey(keys.refund);
     if (refund) await this.refunds.execute(refund.id, context);
-    if (settlement.refundAmount > 0) {
-      await this.notifications.notify({
-        userId: collaboration.commissionerId,
-        role: 'STORE',
-        kind: 'SETTLEMENT_REFUNDED',
-        params: { amount: settlement.refundAmount },
-        target,
-        dedupeKey: `settle-refund:${collaboration.id}`,
+    // 평소 조회수는 사장님이 알림으로 7일 결과(G1)를 열기 전에 채운다.
+    await this.recordUsualViews(collaboration, settlement);
+    await this.notifyStoreOfResult(collaboration, settlement);
+  }
+
+  // 사장님에게 정산이 끝났다고 알리고, 누르면 7일 결과(G1)가 열리게 한다. 이 알림이 G1로 가는 유일한 길이라
+  // 돌려줄 돈이 0원이어도 보낸다(금액 문장은 카탈로그가 뺀다). 식사권만 있는 협업은 G1이 없어 보내지 않는다.
+  // 제출 링크가 없는 협업(운영 명령의 강제 지급)은 G1이 열리지 않아 가는 곳을 지갑으로 둔다.
+  private async notifyStoreOfResult(
+    collaboration: Collaboration,
+    settlement: Settlement,
+  ): Promise<void> {
+    if (
+      settlement.refundAmount === 0 &&
+      collaboration.settlementMethod === 'NONE'
+    ) {
+      return;
+    }
+    const fixedOnly = !hasViewPay(readTerms(collaboration.terms));
+    await this.notifications.notify({
+      userId: collaboration.commissionerId,
+      role: 'STORE',
+      kind: 'SETTLEMENT_REFUNDED',
+      params: fixedOnly
+        ? { amount: settlement.refundAmount, fixedOnly: 1 }
+        : { amount: settlement.refundAmount },
+      target: collaboration.submittedUrl
+        ? { kind: 'STORE_RESULT', id: collaboration.id }
+        : { kind: 'WALLET', id: null },
+      dedupeKey: `settle-refund:${collaboration.id}`,
+    });
+  }
+
+  // 가게 인스타그램 계정의 평소 조회수를 한 번 읽어 배수와 함께 정산 줄에 저장한다.
+  // 읽은 적이 있으면(읽지 못한 것도 읽은 것이다) 다시 읽지 않는다: 같은 협업의 결과가 읽을 때마다 달라지지 않게.
+  // 조회수를 세지 않은 협업(고정 현금만)과 최종 조회수가 없는 정산(강제 지급)은 비교할 값이 없어 건너뛴다.
+  // 비교는 덤이라 여기서 실패해도 정산의 나머지 단계를 막지 않는다(다음에 다시 이 단계가 돌 때 이어서 읽는다).
+  private async recordUsualViews(
+    collaboration: Collaboration,
+    settlement: Settlement,
+  ): Promise<void> {
+    if (settlement.usualReadAt) return;
+    if (
+      !hasViewPay(readTerms(collaboration.terms)) ||
+      settlement.finalViews === null
+    ) {
+      return;
+    }
+    try {
+      const handle = collaboration.storeId
+        ? await this.stores.getInstagramHandle(collaboration.storeId)
+        : null;
+      let usualViews: number | null = null;
+      if (handle) {
+        try {
+          const average = await this.viewCount.readAccountAverage(handle);
+          // 음수나 소수는 잘못 읽은 값이다. 0은 나눌 수 없어 쓰지 않는다.
+          usualViews =
+            Number.isInteger(average) && average > 0 ? average : null;
+        } catch (error) {
+          if (!(error instanceof ViewCountUnavailableError)) throw error;
+        }
+      }
+      await this.repository.saveUsualViews(settlement.id, {
+        usualViews,
+        multiplierTenths:
+          usualViews === null
+            ? null
+            : multiplierTenthsOf(settlement.finalViews, usualViews),
+        readAt: this.clock.now(),
       });
+    } catch (error) {
+      this.logger.warn(
+        `평소 조회수를 저장하지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
     }
   }
 

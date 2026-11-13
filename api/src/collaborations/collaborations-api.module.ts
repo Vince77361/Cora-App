@@ -15,6 +15,8 @@ import { CollaborationsModule } from './collaborations.module';
 import { CollaborationsService } from './collaborations.service';
 import { CancelRefundHandler } from './jobs/cancel-refund.handler';
 import { CancelRequestExpiryHandler } from './jobs/cancel-request-expiry.handler';
+import { StoreResultController } from './store-result.controller';
+import { StoreResultService } from './store-result.service';
 import { SubmissionsController } from './submissions.controller';
 
 // 협업을 읽고 결제 뒤에 그만두는 API. 결제·정산·장부·계좌·알림 모듈을 모두 쓰므로 그 모듈들이 import하는
@@ -32,9 +34,14 @@ import { SubmissionsController } from './submissions.controller';
     StoresModule,
     CreatorsModule,
   ],
-  controllers: [CollaborationsController, SubmissionsController],
+  controllers: [
+    CollaborationsController,
+    SubmissionsController,
+    StoreResultController,
+  ],
   providers: [
     CollaborationsService,
+    StoreResultService,
     CancelRequestsRepository,
     CancelRequestExpiryHandler,
     CancelRefundHandler,

@@ -573,15 +573,20 @@ model ViewSnapshot {
 }
 
 model Settlement {
-  id              String    @id @default(uuid()) @db.Uuid
-  collaborationId String    @unique @map("collaboration_id") @db.Uuid
-  finalViews      Int?      @map("final_views")
-  payoutAmount    Int       @map("payout_amount")
-  refundAmount    Int       @map("refund_amount")
-  settledAt       DateTime  @map("settled_at") @db.Timestamptz(3)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+  id               String    @id @default(uuid()) @db.Uuid
+  collaborationId  String    @unique @map("collaboration_id") @db.Uuid
+  finalViews       Int?      @map("final_views")
+  payoutAmount     Int       @map("payout_amount")
+  refundAmount     Int       @map("refund_amount")
+  settledAt        DateTime  @map("settled_at") @db.Timestamptz(3)
+  // 사장님 가게 계정의 평소 조회수와 이번 조회수의 배수(소수 첫째 자리까지 내림, 31 = 3.1배).
+  // 정산이 끝날 때 한 번 읽어 채운다. usualReadAt이 있으면 읽었거나 읽지 못한 것이라 다시 읽지 않는다.
+  usualViews       Int?      @map("usual_views")
+  multiplierTenths Int?      @map("multiplier_tenths")
+  usualReadAt      DateTime? @map("usual_read_at") @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(3)
 
   collaboration Collaboration @relation(fields: [collaborationId], references: [id])
 

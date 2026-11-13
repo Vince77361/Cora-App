@@ -16,7 +16,9 @@ export type NotificationTarget = {
     | 'COLLABORATION'
     | 'WALLET'
     // 제안 상세(id = 오퍼 id). 판본을 주고받는 알림이 간다.
-    | 'PROPOSAL';
+    | 'PROPOSAL'
+    // 7일 결과(G1, id = 협업 id). 사장님의 정산 완료 알림이 간다.
+    | 'STORE_RESULT';
   id: string | null;
 };
 
@@ -205,15 +207,21 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     needsActor: false,
     render: ({ params }) => `${josa(won(params.amount), '이/가')} 지급됐어요.`,
   },
-  // 표 "정산 뒤 환급": 정산 / 정산 / ₩.
+  // 표 "정산 뒤 환급": 정산 / 정산 / ₩. 누르면 7일 결과(G1)가 열린다.
+  // 돌려줄 돈이 0원이어도 G1로 가는 길이 이 알림뿐이라 보낸다: 금액 문장은 빼고 집계가 끝났다는 소식만 낸다(판단 R41과 같은 분기).
+  // 조회수를 세지 않은 협업(고정 현금만)은 fixedOnly로 알려 "조회수 집계"라는 거짓 문장을 피한다(문구는 캔버스 밖).
   SETTLEMENT_REFUNDED: {
     tab: 'SETTLEMENT',
     switch: 'SETTLEMENT',
     glyph: 'WON',
     requiredParams: { amount: 'number' },
     needsActor: false,
-    render: ({ params }) =>
-      `조회수 집계가 끝났어요. ${josa(won(params.amount), '을/를')} 돌려드려요.`,
+    render: ({ params }) => {
+      if (Number(params.fixedOnly ?? 0) === 1) return '정산이 끝났어요.';
+      return Number(params.amount ?? 0) > 0
+        ? `조회수 집계가 끝났어요. ${josa(won(params.amount), '을/를')} 돌려드려요.`
+        : '조회수 집계가 끝났어요.';
+    },
   },
   // 표 "역제안·다시 보냄·수락·종료": 매칭 / 새 오퍼와 제안 / 사진. 가는 곳은 모두 제안 상세다.
   // 크리에이터가 조건을 바꿔 제안: 사장님이 받는다.

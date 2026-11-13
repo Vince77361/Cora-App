@@ -61,6 +61,7 @@ class FakeSettlements extends SettlementsService {
       null as never,
       null as never,
       null as never,
+      null as never,
     );
   }
   payoutsOfCreator(creatorId: string) {
@@ -196,6 +197,9 @@ function settlement(
     payoutAmount: 43200,
     refundAmount: 56800,
     settledAt,
+    usualViews: null,
+    multiplierTenths: null,
+    usualReadAt: null,
     createdAt: settledAt,
     updatedAt: settledAt,
     deletedAt: null,

@@ -9,6 +9,7 @@ import { LedgerModule } from '../ledger/ledger.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { PayoutAccountsModule } from '../payout-accounts/payout-accounts.module';
+import { StoresModule } from '../stores/stores.module';
 import { UsersModule } from '../users/users.module';
 import { PayoutSendHandler } from './jobs/payout-send.handler';
 import { RefundUnsubmittedHandler } from './jobs/refund-unsubmitted.handler';
@@ -36,6 +37,7 @@ import { SubmissionsService } from './submissions.service';
     LedgerModule,
     PaymentsModule,
     PayoutAccountsModule,
+    StoresModule,
   ],
   providers: [
     SettlementsRepository,

@@ -402,6 +402,10 @@ class ApiClient {
           return StoreProposalDto.fromJson(value);
         case 'StoreProposalResultModel':
           return StoreProposalResultModel.fromJson(value);
+        case 'StoreResultCreatorModel':
+          return StoreResultCreatorModel.fromJson(value);
+        case 'StoreResultModel':
+          return StoreResultModel.fromJson(value);
         case 'StoreSourceLinkModel':
           return StoreSourceLinkModel.fromJson(value);
         case 'StoreStatus':

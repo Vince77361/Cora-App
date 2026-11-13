@@ -143,6 +143,8 @@ describe('settlements', () => {
       legacyCopy?: boolean;
       // 결제로 보관한 금액. 기본은 조건의 상한이다(어긋난 보관액을 만들 때만 준다).
       paidEscrow?: number;
+      // 가게가 넣은 인스타그램 링크. 평소 조회수를 읽을 계정이다(기본은 링크 없음).
+      instagram?: string;
     } = {},
   ): Promise<Seeded> {
     const rewardType = over.rewardType ?? 'BOTH';
@@ -172,6 +174,13 @@ describe('settlements', () => {
         ...REGION,
         defaultFormat: 'REELS',
         publishedAt: T0,
+        ...(over.instagram
+          ? {
+              sourceLinks: {
+                create: { kind: 'INSTAGRAM', url: over.instagram },
+              },
+            }
+          : {}),
       },
     });
     await prisma.user.upsert({
@@ -867,6 +876,126 @@ describe('settlements', () => {
       ]);
     });
 
+    it('sends the owner to the result screen from the settlement notice', async () => {
+      const s = await seed();
+      await submitAndSettle(s, 4320);
+      expect(
+        await prisma.notification.findMany({
+          where: { kind: 'SETTLEMENT_REFUNDED' },
+        }),
+      ).toMatchObject([
+        { targetKind: 'STORE_RESULT', targetId: s.collaborationId },
+      ]);
+    });
+
+    it('says only that the settlement is over for a fixed cash only collaboration', async () => {
+      const s = await seed({ rewardType: 'FIXED_ONLY', fixedCash: 30000 });
+      await submitAndSettle(s, 'ignored');
+      expect(
+        pushTo(s.ownerId)
+          .map((p) => p.body)
+          .filter((b) => !b.includes('올렸어요')),
+      ).toEqual(['정산이 끝났어요.']);
+      expect(
+        await prisma.notification.findMany({
+          where: { kind: 'SETTLEMENT_REFUNDED' },
+        }),
+      ).toMatchObject([
+        { targetKind: 'STORE_RESULT', targetId: s.collaborationId },
+      ]);
+    });
+
+    it('sends no settlement notice to the owner of a voucher only collaboration', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      await submit(s.collaborationId, REELS_URL).expect(200);
+      clock.set(new Date(T0.getTime() + 7 * DAY));
+      await scheduler.runDue(clock.now());
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('SETTLED');
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'SETTLEMENT_REFUNDED' },
+        }),
+      ).toBe(0);
+    });
+
+    describe('usual views of the store account', () => {
+      const settlementOf = (id: string) =>
+        prisma.settlement.findUniqueOrThrow({ where: { collaborationId: id } });
+
+      it('saves the usual views and a 3.1 multiplier once when the collaboration settles', async () => {
+        const s = await seed({
+          ratePerThousand: 2000,
+          perViewCap: 60000,
+          instagram: 'https://www.instagram.com/haru_cup/',
+        });
+        const read = jest.spyOn(app.get(ViewCountPort), 'readAccountAverage');
+        await submitAndSettle(s, 12500);
+        // 12500 / 4000 = 3.125 → 31
+        expect(await settlementOf(s.collaborationId)).toMatchObject({
+          finalViews: 12500,
+          usualViews: 4000,
+          multiplierTenths: 31,
+          usualReadAt: new Date(T0.getTime() + 7 * DAY),
+        });
+        expect(read).toHaveBeenCalledTimes(1);
+        expect(read).toHaveBeenCalledWith('haru_cup');
+        // 같은 작업이 다시 돌아도 다시 읽지 않는다.
+        const job = settleJob(s.collaborationId);
+        await scheduler.registry.run(job.name, job.payload);
+        expect(read).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not read the usual views again when the first read failed', async () => {
+        const s = await seed({
+          instagram: 'https://www.instagram.com/unavailable_store/',
+        });
+        const read = jest.spyOn(app.get(ViewCountPort), 'readAccountAverage');
+        await submitAndSettle(s, 4320);
+        const row = await settlementOf(s.collaborationId);
+        expect(row).toMatchObject({ usualViews: null, multiplierTenths: null });
+        expect(row.usualReadAt).not.toBeNull();
+        const job = settleJob(s.collaborationId);
+        await scheduler.registry.run(job.name, job.payload);
+        expect(read).toHaveBeenCalledTimes(1);
+      });
+
+      it('leaves the comparison empty for a store without an instagram link', async () => {
+        const s = await seed();
+        const read = jest.spyOn(app.get(ViewCountPort), 'readAccountAverage');
+        await submitAndSettle(s, 4320);
+        const row = await settlementOf(s.collaborationId);
+        expect(row).toMatchObject({ usualViews: null, multiplierTenths: null });
+        expect(row.usualReadAt).not.toBeNull();
+        expect(read).not.toHaveBeenCalled();
+      });
+
+      it('leaves the multiplier empty when the usual views are zero', async () => {
+        const s = await seed({
+          instagram: 'https://www.instagram.com/haru_cup/',
+        });
+        jest
+          .spyOn(app.get(ViewCountPort), 'readAccountAverage')
+          .mockResolvedValue(0);
+        await submitAndSettle(s, 4320);
+        expect(await settlementOf(s.collaborationId)).toMatchObject({
+          usualViews: null,
+          multiplierTenths: null,
+        });
+      });
+
+      it('does not read the usual views for a fixed cash only collaboration', async () => {
+        const s = await seed({
+          rewardType: 'FIXED_ONLY',
+          fixedCash: 30000,
+          instagram: 'https://www.instagram.com/haru_cup/',
+        });
+        const read = jest.spyOn(app.get(ViewCountPort), 'readAccountAverage');
+        await submitAndSettle(s, 'ignored');
+        expect(read).not.toHaveBeenCalled();
+        expect((await settlementOf(s.collaborationId)).usualReadAt).toBeNull();
+      });
+    });
+
     it('pays nothing and refunds the full cap for zero views', async () => {
       const s = await seed();
       await submitAndSettle(s, 0);
@@ -903,11 +1032,23 @@ describe('settlements', () => {
       expect(await prisma.payout.findMany()).toMatchObject([
         { amount: 100000, status: 'PENDING' },
       ]);
+      // 돌려줄 돈이 0원이어도 G1로 가는 길이 이 알림뿐이라 금액 문장 없는 알림이 나간다.
       expect(
-        await prisma.notification.count({
+        await prisma.notification.findMany({
           where: { kind: 'SETTLEMENT_REFUNDED' },
         }),
-      ).toBe(0);
+      ).toMatchObject([
+        {
+          targetKind: 'STORE_RESULT',
+          targetId: s.collaborationId,
+          dedupeKey: `settle-refund:${s.collaborationId}`,
+        },
+      ]);
+      expect(
+        pushTo(s.ownerId)
+          .map((p) => p.body)
+          .filter((b) => b.startsWith('조회수 집계')),
+      ).toEqual(['조회수 집계가 끝났어요.']);
       expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(0);
     });
 

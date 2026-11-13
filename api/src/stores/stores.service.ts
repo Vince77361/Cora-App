@@ -28,6 +28,7 @@ import { StoreDetailModel, StoreSummaryModel } from './dto/store-public.model';
 import { TrialInfoDto } from './dto/trial-info.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { buildTerms, hasAnyRewardElement, termsModelOf } from './reward-terms';
+import { instagramHandleOf } from './source-link-rules';
 import { slugify } from './slugify';
 import { trialBannerOf } from './trial-banner';
 import {
@@ -431,6 +432,13 @@ export class StoresService {
       coverPhotoUrl: this.coverUrl(store.coverPhotoPath),
       recruitLine: store.recruitLine,
     };
+  }
+
+  // 가게의 인스타그램 링크에서 아이디를 꺼낸다. 링크를 넣지 않았거나 계정 주소가 아니면 null이다.
+  async getInstagramHandle(storeId: string): Promise<string | null> {
+    if (!UUID.test(storeId)) return null;
+    const url = await this.stores.findInstagramLinkUrl(storeId);
+    return url ? instagramHandleOf(url) : null;
   }
 
   private async requireMine(userId: string): Promise<StoreWithLinks> {

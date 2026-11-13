@@ -84,6 +84,18 @@ describe('NOTIFICATION_CATALOG', () => {
     );
   });
 
+  it('leaves the amount sentence out of the settlement notice when nothing is refunded', () => {
+    expect(render('SETTLEMENT_REFUNDED', null, { amount: 0 })).toBe(
+      '조회수 집계가 끝났어요.',
+    );
+  });
+
+  it('says the settlement is over for a collaboration that did not count views', () => {
+    expect(
+      render('SETTLEMENT_REFUNDED', null, { amount: 0, fixedOnly: 1 }),
+    ).toBe('정산이 끝났어요.');
+  });
+
   it('renders the proposal wordings', () => {
     expect(render('OFFER_COUNTERED', '하루 한 컵')).toBe(
       '하루 한 컵님이 조건을 바꿔 제안했어요.',
