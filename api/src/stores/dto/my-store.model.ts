@@ -65,6 +65,29 @@ export class MyStoreModel {
   @ApiProperty({ type: String, nullable: true })
   intro!: string | null;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: '공개 주소 이름. 이름이 처음 생길 때 만들고 바꾸지 않는다.',
+  })
+  slug!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: '공개 주소(cora.page/l/{slug}). 주소 이름이 없으면 null.',
+  })
+  publicUrl!: string | null;
+
+  @ApiProperty({ type: [String], description: '꼬리표(# 없이).' })
+  tags!: string[];
+
+  @ApiProperty({ type: [String], description: '손님들이 자주 한 말.' })
+  customerPhrases!: string[];
+
+  @ApiProperty({ type: String, nullable: true })
+  recruitLine!: string | null;
+
   @ApiProperty({ type: OfferTermsModel, nullable: true })
   defaultTerms!: OfferTermsModel | null;
 

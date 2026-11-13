@@ -1,4 +1,7 @@
-import { isValidSourceLinkUrl } from './source-link-rules';
+import {
+  SOURCE_LINK_MESSAGES,
+  isValidSourceLinkUrl,
+} from './source-link-rules';
 
 describe('isValidSourceLinkUrl', () => {
   it('accepts the allowed https hosts per kind', () => {
@@ -46,5 +49,38 @@ describe('isValidSourceLinkUrl', () => {
     ).toBe(false);
     expect(isValidSourceLinkUrl('NAVER_MAP', 'not a url')).toBe(false);
     expect(isValidSourceLinkUrl('NAVER_MAP', '')).toBe(false);
+  });
+
+  it('accepts naver blog and tistory urls for a review post and rejects others', () => {
+    for (const url of [
+      'https://blog.naver.com/hangeureut/223000000',
+      'https://m.blog.naver.com/hangeureut/223000000',
+      'https://hangeureut.tistory.com/12',
+      'https://a-b1.tistory.com/entry/review',
+    ]) {
+      expect(isValidSourceLinkUrl('REVIEW_POST', url)).toBe(true);
+    }
+    for (const url of [
+      'https://www.naver.com/',
+      'https://tistory.com/12',
+      'https://evil-tistory.com/12',
+      'https://hangeureut.tistory.com.evil.com/12',
+      'https://blog.naver.com.evil.com/a',
+      'http://blog.naver.com/a',
+      'https://instagram.com/a',
+      'https://.tistory.com/a',
+    ]) {
+      expect(isValidSourceLinkUrl('REVIEW_POST', url)).toBe(false);
+    }
+    // 다른 종류에는 후기 글 주소를 받지 않는다.
+    expect(
+      isValidSourceLinkUrl('NAVER_MAP', 'https://blog.naver.com/hangeureut/1'),
+    ).toBe(false);
+  });
+
+  it('explains a review post failure in the owner words', () => {
+    expect(SOURCE_LINK_MESSAGES.REVIEW_POST).toBe(
+      '체험단 후기 글 링크가 맞는지 확인해 주세요.',
+    );
   });
 });

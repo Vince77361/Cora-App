@@ -1,3 +1,4 @@
+import { StoresRepository } from '../../src/stores/stores.repository';
 import { createOffer as createOfferWithVersion } from '../helpers/create-offer';
 import { prisma } from './setup-db';
 
@@ -209,5 +210,43 @@ describe('creator profiles', () => {
     };
     await prisma.creatorProfile.create({ data });
     await expect(prisma.creatorProfile.create({ data })).rejects.toThrow();
+  });
+});
+
+describe('store page fields', () => {
+  it('starts with empty tags and phrases and no slug', async () => {
+    const store = await prisma.store.findUniqueOrThrow({
+      where: { id: storeId },
+    });
+    expect(store).toMatchObject({
+      slug: null,
+      tags: [],
+      customerPhrases: [],
+      recruitLine: null,
+    });
+  });
+
+  it('rejects the same slug on two stores', async () => {
+    const other = await prisma.store.create({ data: { ownerId: OWNER_2 } });
+    await prisma.store.update({ where: { id: storeId }, data: { slug: 'a' } });
+    await expect(
+      prisma.store.update({ where: { id: other.id }, data: { slug: 'a' } }),
+    ).rejects.toThrow();
+  });
+
+  it('gives two stores with the same name different slugs even when they race', async () => {
+    const repo = new StoresRepository(prisma as never);
+    const other = await prisma.store.create({ data: { ownerId: OWNER_2 } });
+    const [a, b] = await Promise.all([
+      repo.assignSlug(storeId, 'ramen'),
+      repo.assignSlug(other.id, 'ramen'),
+    ]);
+    expect(new Set([a.slug, b.slug])).toEqual(new Set(['ramen', 'ramen-2']));
+  });
+
+  it('does not change a slug that already exists', async () => {
+    const repo = new StoresRepository(prisma as never);
+    await repo.assignSlug(storeId, 'ramen');
+    expect((await repo.assignSlug(storeId, 'other')).slug).toBe('ramen');
   });
 });

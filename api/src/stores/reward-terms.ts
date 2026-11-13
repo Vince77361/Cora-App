@@ -145,6 +145,13 @@ export function maxCashBurden(
   return r.fixedCash + (r.perViewCap ?? 0);
 }
 
+// 보상 요소(식사권, 고정 현금, 조회수 수당)가 하나라도 있는가. 공개 조건이 쓴다.
+export function hasAnyRewardElement(
+  r: Pick<RewardTerms, 'voucherName' | 'fixedCash' | 'perViewCap'>,
+): boolean {
+  return r.voucherName !== null || r.fixedCash > 0 || r.perViewCap !== null;
+}
+
 export function hasViewPay(r: Pick<RewardTerms, 'perViewCap'>): boolean {
   return r.perViewCap !== null;
 }

@@ -39,11 +39,11 @@
       "AnalyzeLinksDto": {
         "properties": {
           "links": {
-            "description": "링크 1~3개. 같은 종류는 한 번만.",
+            "description": "링크 1~4개. 같은 종류는 한 번만.",
             "items": {
               "$ref": "#/components/schemas/SourceLinkInputDto"
             },
-            "maxItems": 3,
+            "maxItems": 4,
             "minItems": 1,
             "type": "array"
           }
@@ -1019,6 +1019,13 @@
             "nullable": true,
             "type": "string"
           },
+          "customerPhrases": {
+            "description": "손님들이 자주 한 말.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "defaultTerms": {
             "allOf": [
               {
@@ -1062,6 +1069,15 @@
               }
             ]
           },
+          "publicUrl": {
+            "description": "공개 주소(cora.page/l/{slug}). 주소 이름이 없으면 null.",
+            "nullable": true,
+            "type": "string"
+          },
+          "recruitLine": {
+            "nullable": true,
+            "type": "string"
+          },
           "regionSido": {
             "nullable": true,
             "type": "string"
@@ -1078,6 +1094,11 @@
             "nullable": true,
             "type": "string"
           },
+          "slug": {
+            "description": "공개 주소 이름. 이름이 처음 생길 때 만들고 바꾸지 않는다.",
+            "nullable": true,
+            "type": "string"
+          },
           "sourceLinks": {
             "items": {
               "$ref": "#/components/schemas/StoreSourceLinkModel"
@@ -1090,6 +1111,13 @@
                 "$ref": "#/components/schemas/StoreStatus"
               }
             ]
+          },
+          "tags": {
+            "description": "꼬리표(# 없이).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "required": [
@@ -1108,6 +1136,11 @@
           "seats",
           "bestShootingTime",
           "intro",
+          "slug",
+          "publicUrl",
+          "tags",
+          "customerPhrases",
+          "recruitLine",
           "defaultTerms",
           "sourceLinks"
         ],
@@ -2327,7 +2360,7 @@
             ]
           },
           "url": {
-            "description": "종류에 맞는 https 주소. 네이버 지도: naver.me, map.naver.com. 캐치테이블: app.catchtable.co.kr. 인스타그램: instagram.com, www.instagram.com.",
+            "description": "종류에 맞는 https 주소. 네이버 지도: naver.me, map.naver.com. 캐치테이블: app.catchtable.co.kr. 인스타그램: instagram.com, www.instagram.com. 체험단 후기 글: blog.naver.com, m.blog.naver.com, *.tistory.com.",
             "maxLength": 500,
             "type": "string"
           }
@@ -2342,7 +2375,8 @@
         "enum": [
           "NAVER_MAP",
           "CATCHTABLE",
-          "INSTAGRAM"
+          "INSTAGRAM",
+          "REVIEW_POST"
         ],
         "type": "string"
       },
@@ -2709,6 +2743,14 @@
           "coverPhotoPath": {
             "type": "string"
           },
+          "customerPhrases": {
+            "description": "손님들이 자주 한 말. 최대 3개, 각 20자.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "type": "array"
+          },
           "hours": {
             "maxLength": 50,
             "type": "string"
@@ -2735,6 +2777,11 @@
             "maxLength": 50,
             "type": "string"
           },
+          "recruitLine": {
+            "description": "크리에이터에게 보이는 모집 한 줄. 빈 문자열이면 지운다.",
+            "maxLength": 40,
+            "type": "string"
+          },
           "regionSido": {
             "description": "시·도 고정 목록(SIDO_LIST) 중 하나.",
             "type": "string"
@@ -2750,6 +2797,14 @@
           "signatureMenu": {
             "maxLength": 50,
             "type": "string"
+          },
+          "tags": {
+            "description": "꼬리표(# 없이). 최대 5개, 각 10자.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "type": "array"
           }
         },
         "type": "object"

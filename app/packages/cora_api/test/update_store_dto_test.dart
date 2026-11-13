@@ -32,6 +32,12 @@ void main() {
       // TODO
     });
 
+    // 손님들이 자주 한 말. 최대 3개, 각 20자.
+    // List<String> customerPhrases (default value: const [])
+    test('to test the property `customerPhrases`', () async {
+      // TODO
+    });
+
     // String hours
     test('to test the property `hours`', () async {
       // TODO
@@ -59,6 +65,12 @@ void main() {
       // TODO
     });
 
+    // 크리에이터에게 보이는 모집 한 줄. 빈 문자열이면 지운다.
+    // String recruitLine
+    test('to test the property `recruitLine`', () async {
+      // TODO
+    });
+
     // 시·도 고정 목록(SIDO_LIST) 중 하나.
     // String regionSido
     test('to test the property `regionSido`', () async {
@@ -77,6 +89,12 @@ void main() {
 
     // String signatureMenu
     test('to test the property `signatureMenu`', () async {
+      // TODO
+    });
+
+    // 꼬리표(# 없이). 최대 5개, 각 10자.
+    // List<String> tags (default value: const [])
+    test('to test the property `tags`', () async {
       // TODO
     });
   });

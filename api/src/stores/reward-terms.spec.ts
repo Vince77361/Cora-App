@@ -4,6 +4,7 @@ import {
   buildTerms,
   copyOfTerms,
   defaultsOfStore,
+  hasAnyRewardElement,
   fromLegacyTerms,
   hasViewPay,
   maxCashBurden,
@@ -427,5 +428,15 @@ describe('readTerms', () => {
   it('throws when the format is missing so a broken copy never moves money', () => {
     expect(() => readTerms({ ...newCopy, format: undefined })).toThrow();
     expect(() => readTerms(null)).toThrow();
+  });
+});
+
+describe('hasAnyRewardElement', () => {
+  const none = { voucherName: null, fixedCash: 0, perViewCap: null };
+  it('is false with no reward element and true with any one of the three', () => {
+    expect(hasAnyRewardElement(none)).toBe(false);
+    expect(hasAnyRewardElement({ ...none, voucherName: '식사권' })).toBe(true);
+    expect(hasAnyRewardElement({ ...none, fixedCash: 30000 })).toBe(true);
+    expect(hasAnyRewardElement({ ...none, perViewCap: 60000 })).toBe(true);
   });
 });

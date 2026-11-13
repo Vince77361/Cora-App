@@ -16,15 +16,18 @@ class UpdateStoreDto {
     this.bestShootingTime,
     this.category,
     this.coverPhotoPath,
+    this.customerPhrases = const [],
     this.hours,
     this.industry,
     this.intro,
     this.name,
     this.neighborhood,
+    this.recruitLine,
     this.regionSido,
     this.regionSigungu,
     this.seats,
     this.signatureMenu,
+    this.tags = const [],
   });
 
   ///
@@ -51,6 +54,9 @@ class UpdateStoreDto {
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
   String? coverPhotoPath;
+
+  /// 손님들이 자주 한 말. 최대 3개, 각 20자.
+  List<String> customerPhrases;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -94,6 +100,15 @@ class UpdateStoreDto {
   ///
   String? neighborhood;
 
+  /// 크리에이터에게 보이는 모집 한 줄. 빈 문자열이면 지운다.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? recruitLine;
+
   /// 시·도 고정 목록(SIDO_LIST) 중 하나.
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -127,6 +142,9 @@ class UpdateStoreDto {
   ///
   String? signatureMenu;
 
+  /// 꼬리표(# 없이). 최대 5개, 각 10자.
+  List<String> tags;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -134,15 +152,18 @@ class UpdateStoreDto {
           other.bestShootingTime == bestShootingTime &&
           other.category == category &&
           other.coverPhotoPath == coverPhotoPath &&
+          _deepEquality.equals(other.customerPhrases, customerPhrases) &&
           other.hours == hours &&
           other.industry == industry &&
           other.intro == intro &&
           other.name == name &&
           other.neighborhood == neighborhood &&
+          other.recruitLine == recruitLine &&
           other.regionSido == regionSido &&
           other.regionSigungu == regionSigungu &&
           other.seats == seats &&
-          other.signatureMenu == signatureMenu;
+          other.signatureMenu == signatureMenu &&
+          _deepEquality.equals(other.tags, tags);
 
   @override
   int get hashCode =>
@@ -150,19 +171,22 @@ class UpdateStoreDto {
       (bestShootingTime == null ? 0 : bestShootingTime!.hashCode) +
       (category == null ? 0 : category!.hashCode) +
       (coverPhotoPath == null ? 0 : coverPhotoPath!.hashCode) +
+      (customerPhrases.hashCode) +
       (hours == null ? 0 : hours!.hashCode) +
       (industry == null ? 0 : industry!.hashCode) +
       (intro == null ? 0 : intro!.hashCode) +
       (name == null ? 0 : name!.hashCode) +
       (neighborhood == null ? 0 : neighborhood!.hashCode) +
+      (recruitLine == null ? 0 : recruitLine!.hashCode) +
       (regionSido == null ? 0 : regionSido!.hashCode) +
       (regionSigungu == null ? 0 : regionSigungu!.hashCode) +
       (seats == null ? 0 : seats!.hashCode) +
-      (signatureMenu == null ? 0 : signatureMenu!.hashCode);
+      (signatureMenu == null ? 0 : signatureMenu!.hashCode) +
+      (tags.hashCode);
 
   @override
   String toString() =>
-      'UpdateStoreDto[bestShootingTime=$bestShootingTime, category=$category, coverPhotoPath=$coverPhotoPath, hours=$hours, industry=$industry, intro=$intro, name=$name, neighborhood=$neighborhood, regionSido=$regionSido, regionSigungu=$regionSigungu, seats=$seats, signatureMenu=$signatureMenu]';
+      'UpdateStoreDto[bestShootingTime=$bestShootingTime, category=$category, coverPhotoPath=$coverPhotoPath, customerPhrases=$customerPhrases, hours=$hours, industry=$industry, intro=$intro, name=$name, neighborhood=$neighborhood, recruitLine=$recruitLine, regionSido=$regionSido, regionSigungu=$regionSigungu, seats=$seats, signatureMenu=$signatureMenu, tags=$tags]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -181,6 +205,7 @@ class UpdateStoreDto {
     } else {
       json[r'coverPhotoPath'] = null;
     }
+    json[r'customerPhrases'] = this.customerPhrases;
     if (this.hours != null) {
       json[r'hours'] = this.hours;
     } else {
@@ -206,6 +231,11 @@ class UpdateStoreDto {
     } else {
       json[r'neighborhood'] = null;
     }
+    if (this.recruitLine != null) {
+      json[r'recruitLine'] = this.recruitLine;
+    } else {
+      json[r'recruitLine'] = null;
+    }
     if (this.regionSido != null) {
       json[r'regionSido'] = this.regionSido;
     } else {
@@ -226,6 +256,7 @@ class UpdateStoreDto {
     } else {
       json[r'signatureMenu'] = null;
     }
+    json[r'tags'] = this.tags;
     return json;
   }
 
@@ -247,15 +278,24 @@ class UpdateStoreDto {
         bestShootingTime: mapValueOfType<String>(json, r'bestShootingTime'),
         category: mapValueOfType<String>(json, r'category'),
         coverPhotoPath: mapValueOfType<String>(json, r'coverPhotoPath'),
+        customerPhrases: json[r'customerPhrases'] is Iterable
+            ? (json[r'customerPhrases'] as Iterable)
+                .cast<String>()
+                .toList(growable: false)
+            : const [],
         hours: mapValueOfType<String>(json, r'hours'),
         industry: IndustryCategory.fromJson(json[r'industry']),
         intro: mapValueOfType<String>(json, r'intro'),
         name: mapValueOfType<String>(json, r'name'),
         neighborhood: mapValueOfType<String>(json, r'neighborhood'),
+        recruitLine: mapValueOfType<String>(json, r'recruitLine'),
         regionSido: mapValueOfType<String>(json, r'regionSido'),
         regionSigungu: mapValueOfType<String>(json, r'regionSigungu'),
         seats: mapValueOfType<String>(json, r'seats'),
         signatureMenu: mapValueOfType<String>(json, r'signatureMenu'),
+        tags: json[r'tags'] is Iterable
+            ? (json[r'tags'] as Iterable).cast<String>().toList(growable: false)
+            : const [],
       );
     }
     return null;

@@ -29,7 +29,7 @@ export class SourceLinkInputDto {
   @ApiProperty({
     maxLength: 500,
     description:
-      '종류에 맞는 https 주소. 네이버 지도: naver.me, map.naver.com. 캐치테이블: app.catchtable.co.kr. 인스타그램: instagram.com, www.instagram.com.',
+      '종류에 맞는 https 주소. 네이버 지도: naver.me, map.naver.com. 캐치테이블: app.catchtable.co.kr. 인스타그램: instagram.com, www.instagram.com. 체험단 후기 글: blog.naver.com, m.blog.naver.com, *.tistory.com.',
   })
   @Transform(trim)
   @IsString()
@@ -62,12 +62,12 @@ export class AnalyzeLinksDto {
   @ApiProperty({
     type: [SourceLinkInputDto],
     minItems: 1,
-    maxItems: 3,
-    description: '링크 1~3개. 같은 종류는 한 번만.',
+    maxItems: 4,
+    description: '링크 1~4개. 같은 종류는 한 번만.',
   })
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(3)
+  @ArrayMaxSize(4)
   @ArrayUnique((link: SourceLinkInputDto) => link.kind, {
     message: '같은 종류의 링크는 하나만 넣을 수 있어요.',
   })

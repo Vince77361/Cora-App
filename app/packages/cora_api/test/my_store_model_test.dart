@@ -31,6 +31,12 @@ void main() {
       // TODO
     });
 
+    // 손님들이 자주 한 말.
+    // List<String> customerPhrases (default value: const [])
+    test('to test the property `customerPhrases`', () async {
+      // TODO
+    });
+
     // OfferTermsModel defaultTerms
     test('to test the property `defaultTerms`', () async {
       // TODO
@@ -71,6 +77,17 @@ void main() {
       // TODO
     });
 
+    // 공개 주소(cora.page/l/{slug}). 주소 이름이 없으면 null.
+    // String publicUrl
+    test('to test the property `publicUrl`', () async {
+      // TODO
+    });
+
+    // String recruitLine
+    test('to test the property `recruitLine`', () async {
+      // TODO
+    });
+
     // String regionSido
     test('to test the property `regionSido`', () async {
       // TODO
@@ -91,6 +108,12 @@ void main() {
       // TODO
     });
 
+    // 공개 주소 이름. 이름이 처음 생길 때 만들고 바꾸지 않는다.
+    // String slug
+    test('to test the property `slug`', () async {
+      // TODO
+    });
+
     // List<StoreSourceLinkModel> sourceLinks (default value: const [])
     test('to test the property `sourceLinks`', () async {
       // TODO
@@ -98,6 +121,12 @@ void main() {
 
     // StoreStatus status
     test('to test the property `status`', () async {
+      // TODO
+    });
+
+    // 꼬리표(# 없이).
+    // List<String> tags (default value: const [])
+    test('to test the property `tags`', () async {
       // TODO
     });
   });

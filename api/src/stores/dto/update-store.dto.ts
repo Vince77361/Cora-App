@@ -2,6 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IndustryCategory } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsEnum,
   IsIn,
   IsString,
@@ -9,11 +11,33 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+import { STORE_PAGE_POLICY } from '../../common/collaboration-policy';
 import { SIDO_LIST } from '../../common/regions';
 import type { Sido } from '../../common/regions';
 
 const trim = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim() : value;
+
+// 꼬리표는 # 없이 저장한다. 앞뒤 공백과 앞의 #을 떼고 같은 것은 하나로 합친다.
+const cleanTags = ({ value }: { value: unknown }): unknown =>
+  Array.isArray(value)
+    ? [
+        ...new Set(
+          value.map((tag: unknown) =>
+            typeof tag === 'string'
+              ? tag.trim().replace(/^#+/, '').trim()
+              : tag,
+          ),
+        ),
+      ]
+    : value;
+
+const trimEach = ({ value }: { value: unknown }): unknown =>
+  Array.isArray(value)
+    ? value.map((item: unknown) =>
+        typeof item === 'string' ? item.trim() : item,
+      )
+    : value;
 
 // 빠진(undefined) 항목만 건너뛴다. IsOptional은 null도 건너뛰어 서비스까지 null이 가므로 쓰지 않는다.
 const Optional = () => ValidateIf((_object, value) => value !== undefined);
@@ -116,4 +140,45 @@ export class UpdateStoreDto {
   @Optional()
   @IsString()
   coverPhotoPath?: string;
+
+  @ApiProperty({
+    required: false,
+    type: [String],
+    maxItems: STORE_PAGE_POLICY.tagsMax,
+    description: '꼬리표(# 없이). 최대 5개, 각 10자.',
+  })
+  @Optional()
+  @Transform(cleanTags)
+  @IsArray()
+  @ArrayMaxSize(STORE_PAGE_POLICY.tagsMax)
+  @IsString({ each: true })
+  @MinLength(1, { each: true })
+  @MaxLength(STORE_PAGE_POLICY.tagLength, { each: true })
+  tags?: string[];
+
+  @ApiProperty({
+    required: false,
+    type: [String],
+    maxItems: STORE_PAGE_POLICY.phrasesMax,
+    description: '손님들이 자주 한 말. 최대 3개, 각 20자.',
+  })
+  @Optional()
+  @Transform(trimEach)
+  @IsArray()
+  @ArrayMaxSize(STORE_PAGE_POLICY.phrasesMax)
+  @IsString({ each: true })
+  @MinLength(1, { each: true })
+  @MaxLength(STORE_PAGE_POLICY.phraseLength, { each: true })
+  customerPhrases?: string[];
+
+  @ApiProperty({
+    required: false,
+    maxLength: STORE_PAGE_POLICY.recruitLineMax,
+    description: '크리에이터에게 보이는 모집 한 줄. 빈 문자열이면 지운다.',
+  })
+  @Optional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(STORE_PAGE_POLICY.recruitLineMax)
+  recruitLine?: string;
 }

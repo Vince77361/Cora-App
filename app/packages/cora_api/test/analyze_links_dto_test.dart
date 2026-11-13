@@ -16,7 +16,7 @@ void main() {
   // final instance = AnalyzeLinksDto();
 
   group('test AnalyzeLinksDto', () {
-    // 링크 1~3개. 같은 종류는 한 번만.
+    // 링크 1~4개. 같은 종류는 한 번만.
     // List<SourceLinkInputDto> links (default value: const [])
     test('to test the property `links`', () async {
       // TODO

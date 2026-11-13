@@ -11,6 +11,7 @@ import { CreatorsService } from '../creators/creators.service';
 import type { CreatorSummaryModel } from '../creators/dto/creator-profile.model';
 import {
   SourceLinkInput,
+  StoreBranch,
   StoreLinkAnalysisError,
   StoreLinkPort,
   StoreLinkResult,
@@ -23,6 +24,7 @@ import { StoresRepository } from './stores.repository';
 import type {
   PublishedStoreDetail,
   StoreFields,
+  StoreUpdateData,
   StoreWithLinks,
   DefaultTermsData,
 } from './stores.repository';
@@ -148,8 +150,19 @@ class FakeStoresRepository extends StoresRepository {
     return Promise.resolve(store);
   }
 
-  update(storeId: string, data: Partial<StoreFields>): Promise<StoreWithLinks> {
+  update(storeId: string, data: StoreUpdateData): Promise<StoreWithLinks> {
     return Promise.resolve(Object.assign(this.byId(storeId), data));
+  }
+
+  // 유일 제약 재시도는 DB 테스트가 확인한다. 여기서는 겹치면 번호를 붙이는 규칙만 흉내 낸다.
+  assignSlug(storeId: string, base: string): Promise<StoreWithLinks> {
+    const store = this.byId(storeId);
+    if (store.slug !== null) return Promise.resolve(store);
+    const taken = new Set(this.stores.map((s) => s.slug));
+    let slug = base;
+    for (let n = 2; taken.has(slug); n += 1) slug = `${base}-${n}`;
+    store.slug = slug;
+    return Promise.resolve(store);
   }
 
   setOnboardingStep(
@@ -239,6 +252,9 @@ class FakeStoreLinkPort extends StoreLinkPort {
       industry: null,
       regionSido: '서울특별시',
       regionSigungu: '성동구',
+      reviewCount: 58,
+      tags: ['진한국물', '바좌석'],
+      customerPhrases: ['국물이 진해요'],
     },
     coverPhoto: {
       bytes: Buffer.from([0xff, 0xd8, 0xff]),
@@ -249,6 +265,10 @@ class FakeStoreLinkPort extends StoreLinkPort {
       { kind: 'INSTAGRAM', summary: '게시물 9개 찾음' },
     ],
   };
+
+  findBranches(): Promise<StoreBranch[]> {
+    return Promise.resolve([]);
+  }
 
   analyze(): Promise<StoreLinkResult> {
     this.calls += 1;
@@ -277,6 +297,10 @@ function makeStore(over: Partial<StoreWithLinks> = {}): StoreWithLinks {
     seats: null,
     bestShootingTime: null,
     intro: null,
+    slug: null,
+    tags: [],
+    customerPhrases: [],
+    recruitLine: null,
     defaultFormat: null,
     defaultVoucherName: null,
     defaultVoucherValue: null,
@@ -346,6 +370,19 @@ describe('StoresService', () => {
     it('defaults the industry to FOOD_CAFE when the analysis gives none', async () => {
       const { store } = await service.analyze(OWNER, LINKS);
       expect(store.industry).toBe('FOOD_CAFE');
+    });
+
+    it('saves tags and customer phrases from the analysis', async () => {
+      const { store } = await service.analyze(OWNER, LINKS);
+      expect(store.tags).toEqual(['진한국물', '바좌석']);
+      expect(store.customerPhrases).toEqual(['국물이 진해요']);
+    });
+
+    it('gives a new store a slug and adds a number when it is taken', async () => {
+      repo.stores.push(makeStore({ ownerId: OTHER, slug: 'hangeureut-ramen' }));
+      const { store } = await service.analyze(OWNER, LINKS);
+      expect(store.slug).toBe('hangeureut-ramen-2');
+      expect(store.publicUrl).toBe('cora.page/l/hangeureut-ramen-2');
     });
 
     it('drops a region that is not in the sido list', async () => {
@@ -421,6 +458,12 @@ describe('StoresService', () => {
   });
 
   describe('getMine and requireMyStore', () => {
+    it('fills the slug of an older store on read', async () => {
+      repo.stores.push(makeStore({ name: '한그릇 라멘', slug: null }));
+      const store = await service.getMine(OWNER);
+      expect(store.slug).toBe('hangeureut-ramen');
+    });
+
     it('returns 404 when there is no store', async () => {
       expect(await codeOf(service.getMine(OWNER))).toBe('NOT_FOUND');
       expect(await codeOf(service.requireMyStore(OWNER))).toBe('NOT_FOUND');
@@ -450,6 +493,26 @@ describe('StoresService', () => {
         seats: null,
         intro: '소개',
         signatureMenu: '돈코츠 라멘 11,000원',
+      });
+    });
+
+    it('keeps the slug when the name changes', async () => {
+      const before = (await service.getMine(OWNER)).slug;
+      const saved = await service.update(OWNER, { name: '다른 이름' });
+      expect(saved.name).toBe('다른 이름');
+      expect(saved.slug).toBe(before);
+    });
+
+    it('saves tags, customer phrases and the recruit line', async () => {
+      const saved = await service.update(OWNER, {
+        tags: ['국물'],
+        customerPhrases: ['맛있어요'],
+        recruitLine: ' 사진 잘 찍어 주세요 ',
+      });
+      expect(saved).toMatchObject({
+        tags: ['국물'],
+        customerPhrases: ['맛있어요'],
+        recruitLine: '사진 잘 찍어 주세요',
       });
     });
 

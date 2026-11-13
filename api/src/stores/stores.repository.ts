@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  Prisma,
   ApplicationStatus,
   ContentFormat,
   OfferParty,
@@ -41,7 +42,17 @@ export interface StoreFields {
   seats: string | null;
   bestShootingTime: string | null;
   intro: string | null;
+  tags: string[];
+  customerPhrases: string[];
 }
+
+// 고칠 때 쓰는 항목: 모양 항목 일부와 모집 한 줄. 분석이 덮어쓰는 StoreFields에는 모집 한 줄이 없다.
+export type StoreUpdateData = Partial<StoreFields> & {
+  recruitLine?: string | null;
+};
+
+// 주소 이름이 겹쳐 다시 시도하는 최대 횟수. 같은 이름의 가게가 동시에 만들어질 때만 반복된다.
+const SLUG_ATTEMPTS = 5;
 
 export interface DefaultTermsData {
   format: ContentFormat;
@@ -182,7 +193,40 @@ export class StoresRepository {
     });
   }
 
-  update(storeId: string, data: Partial<StoreFields>): Promise<StoreWithLinks> {
+  // 주소 이름이 아직 없는 가게에만 만든다(WHERE slug IS NULL). 이미 있으면 바꾸지 않는다.
+  // base가 쓰였으면 -2, -3…을 붙이고, 확인과 저장 사이에 다른 가게가 가져가 유일 제약에 걸리면 다시 고른다.
+  async assignSlug(storeId: string, base: string): Promise<StoreWithLinks> {
+    for (let attempt = 1; attempt <= SLUG_ATTEMPTS; attempt += 1) {
+      const taken = new Set(
+        (
+          await this.prisma.store.findMany({
+            where: { slug: { startsWith: base } },
+            select: { slug: true },
+          })
+        ).map((row) => row.slug),
+      );
+      let slug = base;
+      for (let n = 2; taken.has(slug); n += 1) slug = `${base}-${n}`;
+      try {
+        await this.prisma.store.updateMany({
+          where: { id: storeId, slug: null },
+          data: { slug },
+        });
+        break;
+      } catch (error) {
+        const clash =
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002';
+        if (!clash || attempt === SLUG_ATTEMPTS) throw error;
+      }
+    }
+    return this.prisma.store.findUniqueOrThrow({
+      where: { id: storeId },
+      include: WITH_LINKS,
+    });
+  }
+
+  update(storeId: string, data: StoreUpdateData): Promise<StoreWithLinks> {
     return this.prisma.store.update({
       where: { id: storeId },
       data,

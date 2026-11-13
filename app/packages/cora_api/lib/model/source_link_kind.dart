@@ -14,6 +14,7 @@ enum SourceLinkKind {
   NAVER_MAP._(r'NAVER_MAP'),
   CATCHTABLE._(r'CATCHTABLE'),
   INSTAGRAM._(r'INSTAGRAM'),
+  REVIEW_POST._(r'REVIEW_POST'),
   ;
 
   /// Instantiate a new enum with the provided value.
@@ -84,6 +85,8 @@ class SourceLinkKindTypeTransformer {
           return SourceLinkKind.CATCHTABLE;
         case r'INSTAGRAM':
           return SourceLinkKind.INSTAGRAM;
+        case r'REVIEW_POST':
+          return SourceLinkKind.REVIEW_POST;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');

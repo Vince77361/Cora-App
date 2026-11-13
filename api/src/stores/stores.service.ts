@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Store, StoreOnboardingStep } from '@prisma/client';
 import { Clock } from '../common/clock';
+import { STORE_PAGE_POLICY } from '../common/collaboration-policy';
 import { AppError } from '../common/errors/app-error';
 import { SIDO_LIST } from '../common/regions';
 import { CreatorsService } from '../creators/creators.service';
@@ -23,10 +24,12 @@ import { OfferTermsModel } from './dto/offer-terms.model';
 import { SetDefaultTermsDto } from './dto/set-default-terms.dto';
 import { StoreDetailModel, StoreSummaryModel } from './dto/store-public.model';
 import { UpdateStoreDto } from './dto/update-store.dto';
-import { buildTerms, termsModelOf } from './reward-terms';
+import { buildTerms, hasAnyRewardElement, termsModelOf } from './reward-terms';
+import { slugify } from './slugify';
 import {
   StoreFields,
   StoresRepository,
+  StoreUpdateData,
   StoreWithLinks,
 } from './stores.repository';
 
@@ -106,18 +109,24 @@ export class StoresService {
       this.clock.now(),
     );
     if (!saved) throw this.alreadyPublished();
-    return { store: this.toMyStore(saved), analysisFailed: result === null };
+    return {
+      store: this.toMyStore(await this.ensureSlug(saved)),
+      analysisFailed: result === null,
+    };
   }
 
   // 읽기는 주인 여부만 본다. 역할을 바꿔도 내 가게는 그대로 읽힌다.
+  // 개정 전에 만들어진 가게는 주소 이름이 없어서 읽을 때 채운다.
   async getMine(userId: string): Promise<MyStoreModel> {
-    return this.toMyStore(await this.requireMine(userId));
+    return this.toMyStore(
+      await this.ensureSlug(await this.requireMine(userId)),
+    );
   }
 
   async update(userId: string, input: UpdateStoreDto): Promise<MyStoreModel> {
     await this.assertStoreRole(userId);
     const store = await this.requireMine(userId);
-    const data: Partial<StoreFields> = {};
+    const data: StoreUpdateData = {};
     if (input.name !== undefined) {
       const name = blankToNull(input.name);
       if (!name) {
@@ -137,6 +146,13 @@ export class StoresService {
     ] as const) {
       if (input[key] !== undefined) data[key] = blankToNull(input[key]);
     }
+    if (input.recruitLine !== undefined) {
+      data.recruitLine = blankToNull(input.recruitLine);
+    }
+    if (input.tags !== undefined) data.tags = input.tags;
+    if (input.customerPhrases !== undefined) {
+      data.customerPhrases = input.customerPhrases;
+    }
     if (input.industry !== undefined) data.industry = input.industry;
     if (input.regionSido !== undefined) {
       if (!(SIDO_LIST as readonly string[]).includes(input.regionSido)) {
@@ -150,7 +166,10 @@ export class StoresService {
       if (path) this.uploads.assertOwnedPath(userId, path, 'STORE_COVER');
       data.coverPhotoPath = path;
     }
-    return this.toMyStore(await this.stores.update(store.id, data));
+    // 이름이 처음 생기는 수정이면 여기서 주소 이름이 만들어진다.
+    return this.toMyStore(
+      await this.ensureSlug(await this.stores.update(store.id, data)),
+    );
   }
 
   // 앞 단계로만 간다. 같거나 뒤 단계 요청은 바꾸지 않고 지금 상태를 돌려준다.
@@ -197,6 +216,10 @@ export class StoresService {
     }
     if (!store.defaultFormat) {
       throw new AppError('CONFLICT', '기본 오퍼 조건을 정해 주세요.');
+    }
+    const terms = this.termsOf(store);
+    if (!terms || !hasAnyRewardElement(terms)) {
+      throw new AppError('CONFLICT', '보상을 하나 이상 정해 주세요.');
     }
     if (!store.regionSido) {
       throw new AppError('CONFLICT', '가게가 있는 시·도를 골라 주세요.');
@@ -300,6 +323,12 @@ export class StoresService {
     }
   }
 
+  // 이름이 있는데 주소 이름이 없는 가게에만 만든다. 한 번 생기면 이름을 고쳐도 바꾸지 않는다.
+  private async ensureSlug(store: StoreWithLinks): Promise<StoreWithLinks> {
+    if (store.slug !== null || !store.name) return store;
+    return this.stores.assignSlug(store.id, slugify(store.name));
+  }
+
   private alreadyPublished(): AppError {
     return new AppError('CONFLICT', '이미 공개한 가게는 다시 만들 수 없어요.');
   }
@@ -329,6 +358,8 @@ export class StoresService {
       seats: blankToNull(found?.seats),
       bestShootingTime: blankToNull(found?.bestShootingTime),
       intro: blankToNull(found?.intro),
+      tags: found?.tags ?? [],
+      customerPhrases: found?.customerPhrases ?? [],
     };
   }
 
@@ -383,6 +414,13 @@ export class StoresService {
       seats: store.seats,
       bestShootingTime: store.bestShootingTime,
       intro: store.intro,
+      slug: store.slug,
+      publicUrl: store.slug
+        ? `${STORE_PAGE_POLICY.publicPageHost}/l/${store.slug}`
+        : null,
+      tags: store.tags,
+      customerPhrases: store.customerPhrases,
+      recruitLine: store.recruitLine,
       defaultTerms: this.termsOf(store),
       sourceLinks: store.sourceLinks.map((link) => ({
         kind: link.kind,

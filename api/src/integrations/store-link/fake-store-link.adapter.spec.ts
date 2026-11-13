@@ -24,6 +24,9 @@ describe('FakeStoreLinkAdapter', () => {
       industry: 'FOOD_CAFE',
       regionSido: '서울특별시',
       regionSigungu: '성동구',
+      reviewCount: 58,
+      tags: ['진한국물', '바좌석', '조용한오후'],
+      customerPhrases: ['국물이 진해요', '혼밥하기 좋아요'],
     });
   });
 
@@ -44,9 +47,38 @@ describe('FakeStoreLinkAdapter', () => {
     ]);
     expect(result.linkSummaries).toEqual([
       { kind: 'INSTAGRAM', summary: '게시물 9개 찾음' },
-      { kind: 'NAVER_MAP', summary: '사진 12장, 메뉴 8개 찾음' },
+      { kind: 'NAVER_MAP', summary: '메뉴 12개, 사진 34장, 후기 58개 찾음' },
       { kind: 'CATCHTABLE', summary: '영업시간 찾음' },
     ]);
+  });
+
+  it('summarizes a review post link', async () => {
+    const result = await adapter.analyze([
+      { kind: 'REVIEW_POST', url: 'https://blog.naver.com/a/1' },
+    ]);
+    expect(result.linkSummaries).toEqual([
+      { kind: 'REVIEW_POST', summary: '후기 글 찾음' },
+    ]);
+  });
+
+  it('returns two branches for the sample store and none for another name', async () => {
+    expect(await adapter.findBranches('한그릇 라멘')).toEqual([
+      {
+        label: '성수점',
+        address: '서울 성동구 성수이로 100',
+        neighborhood: '성수동2가',
+        regionSido: '서울특별시',
+        regionSigungu: '성동구',
+      },
+      {
+        label: '합정점',
+        address: '서울 마포구 양화로 45',
+        neighborhood: '합정동',
+        regionSido: '서울특별시',
+        regionSigungu: '마포구',
+      },
+    ]);
+    expect(await adapter.findBranches('다른 가게')).toEqual([]);
   });
 
   it('throws StoreLinkAnalysisError when the url contains "fail"', async () => {

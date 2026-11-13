@@ -62,6 +62,8 @@ enum SourceLinkKind {
   NAVER_MAP
   CATCHTABLE
   INSTAGRAM
+  // 체험단 후기 글(네이버 블로그, 티스토리). 글을 인스타 게시물 초안으로 바꾸는 것은 AI 제작 계획의 몫이다.
+  REVIEW_POST
 
   @@map("source_link_kind")
 }
@@ -150,6 +152,13 @@ model Store {
   seats                      String?
   bestShootingTime           String?             @map("best_shooting_time")
   intro                      String?
+  // 공개 주소 이름(cora.page/l/{slug}). 이름이 처음 생길 때 만들고 이름을 고쳐도 바꾸지 않는다.
+  slug                       String?             @unique
+  // 꼬리표(# 없이), 손님들이 자주 한 말. 링크 분석이 채우고 사장님이 고친다.
+  tags                       String[]            @default([])
+  customerPhrases            String[]            @default([]) @map("customer_phrases")
+  // 크리에이터에게 보이는 모집 한 줄.
+  recruitLine                String?             @map("recruit_line")
   defaultFormat              ContentFormat?      @map("default_format")
   defaultVoucherName         String?             @map("default_voucher_name")
   defaultVoucherValue        Int?                @map("default_voucher_value")

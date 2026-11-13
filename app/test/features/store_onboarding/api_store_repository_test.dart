@@ -31,6 +31,11 @@ String _storeJson({String status = 'DRAFT', String step = 'PAGE'}) =>
       'seats': null,
       'bestShootingTime': null,
       'intro': '소개',
+      'slug': 'hangeureut-ramen',
+      'publicUrl': 'cora.page/l/hangeureut-ramen',
+      'tags': ['진한국물'],
+      'customerPhrases': ['국물이 진해요'],
+      'recruitLine': null,
       'defaultTerms': {
         'format': 'CARD_NEWS',
         'pieces': 1,

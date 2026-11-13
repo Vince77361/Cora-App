@@ -16,7 +16,7 @@ class AnalyzeLinksDto {
     this.links = const [],
   });
 
-  /// 링크 1~3개. 같은 종류는 한 번만.
+  /// 링크 1~4개. 같은 종류는 한 번만.
   List<SourceLinkInputDto> links;
 
   @override

@@ -34,6 +34,11 @@ interface StoreBody {
   seats: string | null;
   bestShootingTime: string | null;
   intro: string | null;
+  slug: string | null;
+  publicUrl: string | null;
+  tags: string[];
+  customerPhrases: string[];
+  recruitLine: string | null;
   defaultTerms: Record<string, unknown> | null;
   sourceLinks: { kind: string; url: string; summary: string | null }[];
 }
@@ -54,6 +59,9 @@ describe('stores', () => {
       .put('/stores/me/default-terms')
       .set(auth)
       .send({ format: 'REELS', reward: { voucher: {} }, ...over });
+  const mine = async (): Promise<StoreBody> =>
+    (await request(server).get('/stores/me').set(auth).expect(200))
+      .body as StoreBody;
   const publish = () =>
     request(server).post('/stores/me/publish').set(auth).send();
   const codeOf = (res: request.Response) =>
@@ -147,7 +155,7 @@ describe('stores', () => {
         {
           kind: 'NAVER_MAP',
           url: LINKS[0].url,
-          summary: '사진 12장, 메뉴 8개 찾음',
+          summary: '메뉴 12개, 사진 34장, 후기 58개 찾음',
         },
         {
           kind: 'INSTAGRAM',
@@ -243,11 +251,12 @@ describe('stores', () => {
     ]).expect(400);
   });
 
-  it('rejects an empty list, more than three links and unknown fields', async () => {
+  it('rejects an empty list, more than four links and unknown fields', async () => {
     await analyze([]).expect(400);
     await analyze([
       ...LINKS,
       { kind: 'CATCHTABLE', url: 'https://app.catchtable.co.kr/1' },
+      { kind: 'REVIEW_POST', url: 'https://blog.naver.com/a/1' },
       { kind: 'NAVER_MAP', url: 'https://naver.me/1' },
     ]).expect(400);
     await analyze([{ ...LINKS[0], extra: 1 }]).expect(400);
@@ -255,6 +264,92 @@ describe('stores', () => {
     await analyze([{ kind: 'FACEBOOK', url: 'https://facebook.com/a' }]).expect(
       400,
     );
+  });
+
+  it('saves a review post link and a summary for it', async () => {
+    const res = await analyze([
+      ...LINKS,
+      { kind: 'REVIEW_POST', url: 'https://hangeureut.tistory.com/12' },
+    ]).expect(200);
+    expect(storeOf(res).sourceLinks).toContainEqual({
+      kind: 'REVIEW_POST',
+      url: 'https://hangeureut.tistory.com/12',
+      summary: '후기 글 찾음',
+    });
+    const wrong = await analyze([
+      { kind: 'REVIEW_POST', url: 'https://www.instagram.com/p/1' },
+    ]).expect(400);
+    expect(JSON.stringify(wrong.body)).toContain(
+      '체험단 후기 글 링크가 맞는지 확인해 주세요.',
+    );
+  });
+
+  it('saves tags and customer phrases from the analysis', async () => {
+    const store = storeOf(await analyze().expect(200));
+    expect(store.tags).toEqual(['진한국물', '바좌석', '조용한오후']);
+    expect(store.customerPhrases).toEqual(['국물이 진해요', '혼밥하기 좋아요']);
+  });
+
+  describe('slug', () => {
+    const authB = { Authorization: 'Bearer user-b' };
+
+    it('gives a new store a slug and adds a number when it is taken', async () => {
+      const first = storeOf(await analyze().expect(200));
+      expect(first.slug).toBe('hangeureut-ramen');
+      expect(first.publicUrl).toBe('cora.page/l/hangeureut-ramen');
+
+      await request(server)
+        .patch('/me/role')
+        .set(authB)
+        .send({ role: 'STORE' })
+        .expect(200);
+      const second = await request(server)
+        .post('/stores/me/analyze')
+        .set(authB)
+        .send({ links: LINKS })
+        .expect(200);
+      expect(storeOf(second).slug).toBe('hangeureut-ramen-2');
+    });
+
+    it('keeps the slug when the name changes', async () => {
+      await analyze().expect(200);
+      const res = await request(server)
+        .patch('/stores/me')
+        .set(auth)
+        .send({ name: '완전히 다른 이름' })
+        .expect(200);
+      expect((res.body as StoreBody).slug).toBe('hangeureut-ramen');
+    });
+
+    it('creates the slug when the name first appears', async () => {
+      await analyze([
+        { kind: 'INSTAGRAM', url: 'https://instagram.com/fail' },
+      ]).expect(200);
+      expect((await mine()).slug).toBeNull();
+      const res = await request(server)
+        .patch('/stores/me')
+        .set(auth)
+        .send({ name: '새 가게' })
+        .expect(200);
+      expect((res.body as StoreBody).slug).toBe('sae-gage');
+    });
+
+    it('fills the slug of an older store on read', async () => {
+      await prisma.store.create({
+        data: { ownerId: USER_A, name: 'Old Cafe 1' },
+      });
+      const store = await mine();
+      expect(store.slug).toBe('old-cafe-1');
+      expect(
+        (await prisma.store.findFirstOrThrow({ where: { ownerId: USER_A } }))
+          .slug,
+      ).toBe('old-cafe-1');
+    });
+
+    it('leaves a store with no name without a slug', async () => {
+      await prisma.store.create({ data: { ownerId: USER_A } });
+      expect((await mine()).slug).toBeNull();
+    });
   });
 
   it('rejects analyze after publishing', async () => {
@@ -328,6 +423,32 @@ describe('stores', () => {
       await patch({ industry: 'CASINO' }).expect(400);
       await patch({ status: 'PUBLISHED' }).expect(400);
       await patch({ ownerId: OTHER }).expect(400);
+    });
+
+    it('saves tags without # and rejects a sixth tag or one over 10 characters', async () => {
+      const ok = await patch({
+        tags: ['#진한국물', ' 바좌석 ', '진한국물'],
+        customerPhrases: ['국물이 진해요'],
+        recruitLine: '사진 잘 찍어 주세요',
+      }).expect(200);
+      expect(ok.body).toMatchObject({
+        tags: ['진한국물', '바좌석'],
+        customerPhrases: ['국물이 진해요'],
+        recruitLine: '사진 잘 찍어 주세요',
+      });
+      await patch({ tags: ['a', 'b', 'c', 'd', 'e', 'f'] }).expect(400);
+      await patch({ tags: ['a', 'b', 'c', 'd', 'e'] }).expect(200);
+      await patch({ tags: ['가'.repeat(11)] }).expect(400);
+      await patch({ tags: ['가'.repeat(10)] }).expect(200);
+      await patch({ tags: ['#'] }).expect(400);
+      await patch({ tags: 'a' }).expect(400);
+      await patch({ customerPhrases: ['a', 'b', 'c', 'd'] }).expect(400);
+      await patch({ customerPhrases: ['가'.repeat(21)] }).expect(400);
+      await patch({ recruitLine: 'a'.repeat(41) }).expect(400);
+      await patch({ recruitLine: 'a'.repeat(40) }).expect(200);
+      // 빈 문자열은 모집 한 줄을 지운다.
+      const cleared = await patch({ recruitLine: '', tags: [] }).expect(200);
+      expect(cleared.body).toMatchObject({ recruitLine: null, tags: [] });
     });
 
     it('rejects a cover photo path under another user', async () => {
@@ -491,6 +612,25 @@ describe('stores', () => {
       await analyze().expect(200);
       const res = await publish().expect(409);
       expect(codeOf(res)).toBe('CONFLICT');
+    });
+
+    it('refuses to publish without any reward element', async () => {
+      // 기본 조건 API는 보상 없는 조건을 받지 않으므로, 옛 데이터처럼 DB에 직접 만든다.
+      await prisma.store.create({
+        data: {
+          ownerId: USER_A,
+          name: '보상 없는 가게',
+          regionSido: '서울특별시',
+          defaultFormat: 'REELS',
+        },
+      });
+      const res = await publish().expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect((res.body as { error: { message: string } }).error.message).toBe(
+        '보상을 하나 이상 정해 주세요.',
+      );
+      await putTerms().expect(200);
+      await publish().expect(200);
     });
 
     it('rejects publishing without a name', async () => {

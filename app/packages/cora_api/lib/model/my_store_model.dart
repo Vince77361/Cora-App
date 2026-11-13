@@ -16,6 +16,7 @@ class MyStoreModel {
     required this.bestShootingTime,
     required this.category,
     required this.coverPhotoUrl,
+    this.customerPhrases = const [],
     required this.defaultTerms,
     required this.hours,
     required this.id,
@@ -24,12 +25,16 @@ class MyStoreModel {
     required this.name,
     required this.neighborhood,
     required this.onboardingStep,
+    required this.publicUrl,
+    required this.recruitLine,
     required this.regionSido,
     required this.regionSigungu,
     required this.seats,
     required this.signatureMenu,
+    required this.slug,
     this.sourceLinks = const [],
     required this.status,
+    this.tags = const [],
   });
 
   String? bestShootingTime;
@@ -37,6 +42,9 @@ class MyStoreModel {
   String? category;
 
   String? coverPhotoUrl;
+
+  /// 손님들이 자주 한 말.
+  List<String> customerPhrases;
 
   OfferTermsModel? defaultTerms;
 
@@ -54,6 +62,11 @@ class MyStoreModel {
 
   StoreOnboardingStep onboardingStep;
 
+  /// 공개 주소(cora.page/l/{slug}). 주소 이름이 없으면 null.
+  String? publicUrl;
+
+  String? recruitLine;
+
   String? regionSido;
 
   String? regionSigungu;
@@ -62,9 +75,15 @@ class MyStoreModel {
 
   String? signatureMenu;
 
+  /// 공개 주소 이름. 이름이 처음 생길 때 만들고 바꾸지 않는다.
+  String? slug;
+
   List<StoreSourceLinkModel> sourceLinks;
 
   StoreStatus status;
+
+  /// 꼬리표(# 없이).
+  List<String> tags;
 
   @override
   bool operator ==(Object other) =>
@@ -73,6 +92,7 @@ class MyStoreModel {
           other.bestShootingTime == bestShootingTime &&
           other.category == category &&
           other.coverPhotoUrl == coverPhotoUrl &&
+          _deepEquality.equals(other.customerPhrases, customerPhrases) &&
           other.defaultTerms == defaultTerms &&
           other.hours == hours &&
           other.id == id &&
@@ -81,12 +101,16 @@ class MyStoreModel {
           other.name == name &&
           other.neighborhood == neighborhood &&
           other.onboardingStep == onboardingStep &&
+          other.publicUrl == publicUrl &&
+          other.recruitLine == recruitLine &&
           other.regionSido == regionSido &&
           other.regionSigungu == regionSigungu &&
           other.seats == seats &&
           other.signatureMenu == signatureMenu &&
+          other.slug == slug &&
           _deepEquality.equals(other.sourceLinks, sourceLinks) &&
-          other.status == status;
+          other.status == status &&
+          _deepEquality.equals(other.tags, tags);
 
   @override
   int get hashCode =>
@@ -94,6 +118,7 @@ class MyStoreModel {
       (bestShootingTime == null ? 0 : bestShootingTime!.hashCode) +
       (category == null ? 0 : category!.hashCode) +
       (coverPhotoUrl == null ? 0 : coverPhotoUrl!.hashCode) +
+      (customerPhrases.hashCode) +
       (defaultTerms == null ? 0 : defaultTerms!.hashCode) +
       (hours == null ? 0 : hours!.hashCode) +
       (id.hashCode) +
@@ -102,16 +127,20 @@ class MyStoreModel {
       (name == null ? 0 : name!.hashCode) +
       (neighborhood == null ? 0 : neighborhood!.hashCode) +
       (onboardingStep.hashCode) +
+      (publicUrl == null ? 0 : publicUrl!.hashCode) +
+      (recruitLine == null ? 0 : recruitLine!.hashCode) +
       (regionSido == null ? 0 : regionSido!.hashCode) +
       (regionSigungu == null ? 0 : regionSigungu!.hashCode) +
       (seats == null ? 0 : seats!.hashCode) +
       (signatureMenu == null ? 0 : signatureMenu!.hashCode) +
+      (slug == null ? 0 : slug!.hashCode) +
       (sourceLinks.hashCode) +
-      (status.hashCode);
+      (status.hashCode) +
+      (tags.hashCode);
 
   @override
   String toString() =>
-      'MyStoreModel[bestShootingTime=$bestShootingTime, category=$category, coverPhotoUrl=$coverPhotoUrl, defaultTerms=$defaultTerms, hours=$hours, id=$id, industry=$industry, intro=$intro, name=$name, neighborhood=$neighborhood, onboardingStep=$onboardingStep, regionSido=$regionSido, regionSigungu=$regionSigungu, seats=$seats, signatureMenu=$signatureMenu, sourceLinks=$sourceLinks, status=$status]';
+      'MyStoreModel[bestShootingTime=$bestShootingTime, category=$category, coverPhotoUrl=$coverPhotoUrl, customerPhrases=$customerPhrases, defaultTerms=$defaultTerms, hours=$hours, id=$id, industry=$industry, intro=$intro, name=$name, neighborhood=$neighborhood, onboardingStep=$onboardingStep, publicUrl=$publicUrl, recruitLine=$recruitLine, regionSido=$regionSido, regionSigungu=$regionSigungu, seats=$seats, signatureMenu=$signatureMenu, slug=$slug, sourceLinks=$sourceLinks, status=$status, tags=$tags]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -130,6 +159,7 @@ class MyStoreModel {
     } else {
       json[r'coverPhotoUrl'] = null;
     }
+    json[r'customerPhrases'] = this.customerPhrases;
     if (this.defaultTerms != null) {
       json[r'defaultTerms'] = this.defaultTerms;
     } else {
@@ -158,6 +188,16 @@ class MyStoreModel {
       json[r'neighborhood'] = null;
     }
     json[r'onboardingStep'] = this.onboardingStep;
+    if (this.publicUrl != null) {
+      json[r'publicUrl'] = this.publicUrl;
+    } else {
+      json[r'publicUrl'] = null;
+    }
+    if (this.recruitLine != null) {
+      json[r'recruitLine'] = this.recruitLine;
+    } else {
+      json[r'recruitLine'] = null;
+    }
     if (this.regionSido != null) {
       json[r'regionSido'] = this.regionSido;
     } else {
@@ -178,8 +218,14 @@ class MyStoreModel {
     } else {
       json[r'signatureMenu'] = null;
     }
+    if (this.slug != null) {
+      json[r'slug'] = this.slug;
+    } else {
+      json[r'slug'] = null;
+    }
     json[r'sourceLinks'] = this.sourceLinks;
     json[r'status'] = this.status;
+    json[r'tags'] = this.tags;
     return json;
   }
 
@@ -200,6 +246,10 @@ class MyStoreModel {
             'Required key "MyStoreModel[category]" is missing from JSON.');
         assert(json.containsKey(r'coverPhotoUrl'),
             'Required key "MyStoreModel[coverPhotoUrl]" is missing from JSON.');
+        assert(json.containsKey(r'customerPhrases'),
+            'Required key "MyStoreModel[customerPhrases]" is missing from JSON.');
+        assert(json[r'customerPhrases'] != null,
+            'Required key "MyStoreModel[customerPhrases]" has a null value in JSON.');
         assert(json.containsKey(r'defaultTerms'),
             'Required key "MyStoreModel[defaultTerms]" is missing from JSON.');
         assert(json.containsKey(r'hours'),
@@ -222,6 +272,10 @@ class MyStoreModel {
             'Required key "MyStoreModel[onboardingStep]" is missing from JSON.');
         assert(json[r'onboardingStep'] != null,
             'Required key "MyStoreModel[onboardingStep]" has a null value in JSON.');
+        assert(json.containsKey(r'publicUrl'),
+            'Required key "MyStoreModel[publicUrl]" is missing from JSON.');
+        assert(json.containsKey(r'recruitLine'),
+            'Required key "MyStoreModel[recruitLine]" is missing from JSON.');
         assert(json.containsKey(r'regionSido'),
             'Required key "MyStoreModel[regionSido]" is missing from JSON.');
         assert(json.containsKey(r'regionSigungu'),
@@ -230,6 +284,8 @@ class MyStoreModel {
             'Required key "MyStoreModel[seats]" is missing from JSON.');
         assert(json.containsKey(r'signatureMenu'),
             'Required key "MyStoreModel[signatureMenu]" is missing from JSON.');
+        assert(json.containsKey(r'slug'),
+            'Required key "MyStoreModel[slug]" is missing from JSON.');
         assert(json.containsKey(r'sourceLinks'),
             'Required key "MyStoreModel[sourceLinks]" is missing from JSON.');
         assert(json[r'sourceLinks'] != null,
@@ -238,6 +294,10 @@ class MyStoreModel {
             'Required key "MyStoreModel[status]" is missing from JSON.');
         assert(json[r'status'] != null,
             'Required key "MyStoreModel[status]" has a null value in JSON.');
+        assert(json.containsKey(r'tags'),
+            'Required key "MyStoreModel[tags]" is missing from JSON.');
+        assert(json[r'tags'] != null,
+            'Required key "MyStoreModel[tags]" has a null value in JSON.');
         return true;
       }());
 
@@ -245,6 +305,11 @@ class MyStoreModel {
         bestShootingTime: mapValueOfType<String>(json, r'bestShootingTime'),
         category: mapValueOfType<String>(json, r'category'),
         coverPhotoUrl: mapValueOfType<String>(json, r'coverPhotoUrl'),
+        customerPhrases: json[r'customerPhrases'] is Iterable
+            ? (json[r'customerPhrases'] as Iterable)
+                .cast<String>()
+                .toList(growable: false)
+            : const [],
         defaultTerms: OfferTermsModel.fromJson(json[r'defaultTerms']),
         hours: mapValueOfType<String>(json, r'hours'),
         id: mapValueOfType<String>(json, r'id')!,
@@ -253,12 +318,18 @@ class MyStoreModel {
         name: mapValueOfType<String>(json, r'name'),
         neighborhood: mapValueOfType<String>(json, r'neighborhood'),
         onboardingStep: StoreOnboardingStep.fromJson(json[r'onboardingStep'])!,
+        publicUrl: mapValueOfType<String>(json, r'publicUrl'),
+        recruitLine: mapValueOfType<String>(json, r'recruitLine'),
         regionSido: mapValueOfType<String>(json, r'regionSido'),
         regionSigungu: mapValueOfType<String>(json, r'regionSigungu'),
         seats: mapValueOfType<String>(json, r'seats'),
         signatureMenu: mapValueOfType<String>(json, r'signatureMenu'),
+        slug: mapValueOfType<String>(json, r'slug'),
         sourceLinks: StoreSourceLinkModel.listFromJson(json[r'sourceLinks']),
         status: StoreStatus.fromJson(json[r'status'])!,
+        tags: json[r'tags'] is Iterable
+            ? (json[r'tags'] as Iterable).cast<String>().toList(growable: false)
+            : const [],
       );
     }
     return null;
@@ -318,6 +389,7 @@ class MyStoreModel {
     'bestShootingTime',
     'category',
     'coverPhotoUrl',
+    'customerPhrases',
     'defaultTerms',
     'hours',
     'id',
@@ -326,11 +398,15 @@ class MyStoreModel {
     'name',
     'neighborhood',
     'onboardingStep',
+    'publicUrl',
+    'recruitLine',
     'regionSido',
     'regionSigungu',
     'seats',
     'signatureMenu',
+    'slug',
     'sourceLinks',
     'status',
+    'tags',
   };
 }

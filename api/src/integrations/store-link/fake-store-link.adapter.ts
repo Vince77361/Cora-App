@@ -3,15 +3,38 @@ import { join } from 'node:path';
 import type { SourceLinkKind } from '@prisma/client';
 import {
   SourceLinkInput,
+  StoreBranch,
   StoreLinkAnalysisError,
   StoreLinkPort,
   StoreLinkResult,
 } from './store-link.port';
 
 const SUMMARIES: Record<SourceLinkKind, string> = {
-  NAVER_MAP: '사진 12장, 메뉴 8개 찾음',
+  NAVER_MAP: '메뉴 12개, 사진 34장, 후기 58개 찾음',
   CATCHTABLE: '영업시간 찾음',
   INSTAGRAM: '게시물 9개 찾음',
+  // 캔버스에 없는 문구다(소유자 확인 목록).
+  REVIEW_POST: '후기 글 찾음',
+};
+
+// 캔버스 F7의 "같은 이름의 가게가 2곳 있어요" 견본.
+const SAMPLE_BRANCHES: Record<string, StoreBranch[]> = {
+  '한그릇 라멘': [
+    {
+      label: '성수점',
+      address: '서울 성동구 성수이로 100',
+      neighborhood: '성수동2가',
+      regionSido: '서울특별시',
+      regionSigungu: '성동구',
+    },
+    {
+      label: '합정점',
+      address: '서울 마포구 양화로 45',
+      neighborhood: '합정동',
+      regionSido: '서울특별시',
+      regionSigungu: '마포구',
+    },
+  ],
 };
 
 // 서버는 api/에서 실행하고 빌드 산출물(dist)은 구조가 달라 __dirname 기준 경로가 어긋나므로 cwd 기준으로 찾는다.
@@ -40,6 +63,9 @@ export class FakeStoreLinkAdapter extends StoreLinkPort {
         industry: 'FOOD_CAFE',
         regionSido: '서울특별시',
         regionSigungu: '성동구',
+        reviewCount: 58,
+        tags: ['진한국물', '바좌석', '조용한오후'],
+        customerPhrases: ['국물이 진해요', '혼밥하기 좋아요'],
       },
       coverPhoto: {
         bytes: await this.loadCover(),
@@ -50,6 +76,10 @@ export class FakeStoreLinkAdapter extends StoreLinkPort {
         summary: SUMMARIES[link.kind],
       })),
     };
+  }
+
+  findBranches(name: string): Promise<StoreBranch[]> {
+    return Promise.resolve(SAMPLE_BRANCHES[name.trim()] ?? []);
   }
 
   // 앱 시작 때가 아니라 처음 쓸 때 읽는다.
