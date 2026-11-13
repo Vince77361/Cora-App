@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart' show CupertinoPage;
+import 'package:flutter/cupertino.dart' show CupertinoRouteTransitionMixin;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -31,13 +31,14 @@ final GoRouter demoRouter = GoRouter(
 );
 
 /// go_router의 기본 페이지는 자기 전환을 써서 iOS 가장자리 밀기가 붙지 않는다.
-/// 화면은 모두 CupertinoPage로 감싸 어느 화면에서든 밀어서 뒤로 가게 한다.
+/// 화면은 모두 [_InstantPage]로 감싸 어느 화면에서든 밀어서 뒤로 가게 한다.
+/// 소유자 요청으로 화면 이동 애니메이션은 없앤다(밀어서 뒤로 갈 때만 손가락을 따라 움직인다).
 List<RouteBase> _swipeBack(List<RouteBase> routes) => [
   for (final r in routes)
     if (r is GoRoute && r.builder != null)
       GoRoute(
         path: r.path,
-        pageBuilder: (context, state) => CupertinoPage(
+        pageBuilder: (context, state) => _InstantPage(
           key: state.pageKey,
           child: r.builder!(context, state),
         ),
@@ -45,3 +46,41 @@ List<RouteBase> _swipeBack(List<RouteBase> routes) => [
     else
       r,
 ];
+
+/// 전환 시간이 0인 쿠퍼티노 페이지. 가장자리 밀기 뒤로 가기는 그대로 쓴다.
+class _InstantPage extends Page<void> {
+  const _InstantPage({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Route<void> createRoute(BuildContext context) => _InstantRoute(this);
+}
+
+class _InstantRoute extends PageRoute<void>
+    with CupertinoRouteTransitionMixin<void> {
+  _InstantRoute(_InstantPage page) : super(settings: page);
+
+  _InstantPage get _page => settings as _InstantPage;
+
+  @override
+  Widget buildContent(BuildContext context) => _page.child;
+
+  @override
+  String? get title => null;
+
+  @override
+  bool get maintainState => true;
+
+  @override
+  bool get fullscreenDialog => false;
+
+  @override
+  Duration get transitionDuration => Duration.zero;
+
+  @override
+  Duration get reverseTransitionDuration => Duration.zero;
+
+  @override
+  String get debugLabel => '${super.debugLabel}(${_page.name})';
+}
