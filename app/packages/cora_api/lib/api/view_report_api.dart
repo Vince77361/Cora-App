@@ -216,4 +216,75 @@ class ViewReportApi {
     }
     return null;
   }
+
+  /// 조회수를 읽지 못했을 때 크리에이터가 인사이트 캡처와 조회수를 낸다. 크리에이터만, 캡처가 요청된 때 한 번. 받을 수 없는 상태면 409, 내 파일이 아니면 403.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [SubmitViewEvidenceDto] submitViewEvidenceDto (required):
+  Future<Response> submitViewEvidenceWithHttpInfo(
+    String id,
+    SubmitViewEvidenceDto submitViewEvidenceDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/collaborations/{id}/view-evidence'.replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = submitViewEvidenceDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 조회수를 읽지 못했을 때 크리에이터가 인사이트 캡처와 조회수를 낸다. 크리에이터만, 캡처가 요청된 때 한 번. 받을 수 없는 상태면 409, 내 파일이 아니면 403.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [SubmitViewEvidenceDto] submitViewEvidenceDto (required):
+  Future<ViewReportModel?> submitViewEvidence(
+    String id,
+    SubmitViewEvidenceDto submitViewEvidenceDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await submitViewEvidenceWithHttpInfo(
+      id,
+      submitViewEvidenceDto,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(
+        await _decodeBodyBytes(response),
+        'ViewReportModel',
+      ) as ViewReportModel;
+    }
+    return null;
+  }
 }

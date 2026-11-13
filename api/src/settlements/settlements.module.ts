@@ -10,7 +10,9 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { PayoutAccountsModule } from '../payout-accounts/payout-accounts.module';
 import { StoresModule } from '../stores/stores.module';
+import { UploadsModule } from '../uploads/uploads.module';
 import { UsersModule } from '../users/users.module';
+import { EvidenceMissingHaltHandler } from './jobs/evidence-missing-halt.handler';
 import { PayoutSendHandler } from './jobs/payout-send.handler';
 import { RefundUnsubmittedHandler } from './jobs/refund-unsubmitted.handler';
 import { SettleHandler } from './jobs/settle.handler';
@@ -41,6 +43,7 @@ import { ViewReportService } from './view-report.service';
     PaymentsModule,
     PayoutAccountsModule,
     StoresModule,
+    UploadsModule,
   ],
   providers: [
     SettlementsRepository,
@@ -54,6 +57,7 @@ import { ViewReportService } from './view-report.service';
     ViewSnapshotHandler,
     SettleHandler,
     SettlementAutoConfirmHandler,
+    EvidenceMissingHaltHandler,
     PayoutSendHandler,
     RefundUnsubmittedHandler,
     SubmitReminderHandler,
@@ -75,6 +79,7 @@ export class SettlementsModule implements OnModuleInit {
     private readonly viewSnapshot: ViewSnapshotHandler,
     private readonly settle: SettleHandler,
     private readonly autoConfirm: SettlementAutoConfirmHandler,
+    private readonly evidenceHalt: EvidenceMissingHaltHandler,
     private readonly payoutSend: PayoutSendHandler,
     private readonly refundUnsubmitted: RefundUnsubmittedHandler,
     private readonly submitReminder: SubmitReminderHandler,
@@ -89,6 +94,9 @@ export class SettlementsModule implements OnModuleInit {
     );
     this.registry.register('settlement-auto-confirm', (p, context) =>
       this.autoConfirm.run(p, context),
+    );
+    this.registry.register('evidence-missing-halt', (p) =>
+      this.evidenceHalt.run(p),
     );
     this.registry.register('payout-send', (p) => this.payoutSend.run(p));
     this.registry.register('refund-unsubmitted', (p, context) =>

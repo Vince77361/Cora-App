@@ -7,6 +7,7 @@ import { Clock } from '../src/common/clock';
 import { FakePaymentAdapter } from '../src/integrations/payment/fake-payment.adapter';
 import { PaymentPort } from '../src/integrations/payment/payment.port';
 import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
+import { StoragePort } from '../src/integrations/storage/storage.port';
 import { FakePayoutAdapter } from '../src/integrations/payout/fake-payout.adapter';
 import { PayoutPort } from '../src/integrations/payout/payout.port';
 import { PushPort } from '../src/integrations/push/push.port';
@@ -19,6 +20,7 @@ import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
 import { FakeJobScheduler } from './support/fake-job-scheduler';
+import { FakeStoragePort } from './support/fake-storage.port';
 import { FakePushPort } from './support/fake-push.port';
 import { OTHER, USER_A } from './support/fake-token-verifier';
 
@@ -52,6 +54,7 @@ describe('view report', () => {
   let pg: FakePaymentAdapter;
   let payoutPort: FakePayoutAdapter;
   let runner: OpsRunner;
+  let storage: FakeStoragePort;
   let alert: jest.SpyInstance;
 
   const submit = (id: string, views: number | string = 12500) =>
@@ -89,6 +92,28 @@ describe('view report', () => {
       .post(`/collaborations/${id}/view-report/dispute`)
       .set(as)
       .send({ reason });
+  const evidenceUpload = async (): Promise<string> => {
+    const res = await request(server)
+      .post('/uploads/photos')
+      .set(creator)
+      .send({
+        purpose: 'VIEW_EVIDENCE',
+        contentType: 'image/jpeg',
+        sizeBytes: 2048,
+      })
+      .expect(201);
+    return (res.body as { path: string }).path;
+  };
+  const sendEvidence = (
+    id: string,
+    path: string,
+    views: number = 10000,
+    as = creator,
+  ) =>
+    request(server)
+      .post(`/collaborations/${id}/view-evidence`)
+      .set(as)
+      .send({ path, views });
   const reportBody = async (id: string, as = owner) =>
     (await report(id, as).expect(200)).body as {
       status: string;
@@ -101,6 +126,17 @@ describe('view report', () => {
       evidence: { imageUrl: string; statedViews: number } | null;
       calc: { payout: number; refund: number; viewPay: number } | null;
     };
+  // 제출하고 조회수를 읽지 못하는 채로 지정한 날까지 매일 작업을 돌린다(0일부터 lastDay까지).
+  async function submitUnreadableUntil(
+    s: Seeded,
+    lastDay: number,
+  ): Promise<void> {
+    await submit(s.collaborationId, 'unavailable').expect(200);
+    for (let day = 0; day <= lastDay; day += 1) {
+      clock.set(afterDays(day));
+      await scheduler.runDue(clock.now());
+    }
+  }
   const afterDays = (days: number, hours = 0) =>
     new Date(T0.getTime() + days * DAY + hours * HOUR);
 
@@ -264,6 +300,7 @@ describe('view report', () => {
     pg = app.get<FakePaymentAdapter>(PaymentPort);
     payoutPort = app.get<FakePayoutAdapter>(PayoutPort);
     runner = app.get(OpsRunner);
+    storage = app.get<FakeStoragePort>(StoragePort);
     alert = jest.spyOn(app.get(OperatorAlertPort), 'alert');
   });
   beforeEach(async () => {
@@ -272,6 +309,9 @@ describe('view report', () => {
     push.sent.length = 0;
     pg.refunds.length = 0;
     payoutPort.sent.length = 0;
+    storage.signedReads.length = 0;
+    storage.uploadUrlBuckets.length = 0;
+    storage.uploadUrlPaths.length = 0;
     alert.mockClear();
     clock.set(T0);
   });
@@ -927,6 +967,286 @@ describe('view report', () => {
       expect((await settlementOf(s.collaborationId)).status).toBe(
         'UNCONFIRMED',
       );
+    });
+  });
+
+  describe('capture', () => {
+    it('asks the creator for a capture after three unreadable days instead of halting', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 2);
+      expect((await collaborationRow(s.collaborationId)).stage).toBe(
+        'COUNTING',
+      );
+      expect(await notificationCount('VIEW_EVIDENCE_REQUESTED')).toBe(1);
+      expect(
+        await prisma.notification.findMany({
+          where: { kind: 'VIEW_EVIDENCE_REQUESTED' },
+        }),
+      ).toMatchObject([
+        {
+          userId: s.creatorId,
+          role: 'CREATOR',
+          targetKind: 'VIEW_REPORT',
+          targetId: s.collaborationId,
+        },
+      ]);
+      expect(alert).not.toHaveBeenCalled();
+      // 더 읽지 못해도 알림은 한 건이다.
+      clock.set(afterDays(3));
+      await scheduler.runDue(clock.now());
+      expect(await notificationCount('VIEW_EVIDENCE_REQUESTED')).toBe(1);
+      expect(
+        (await reportBody(s.collaborationId, creator)).canUploadEvidence,
+      ).toBe(true);
+      expect(
+        (await reportBody(s.collaborationId, owner)).canUploadEvidence,
+      ).toBe(false);
+    });
+
+    it('calculates from the capture when the period ends and waits for the operator', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 4);
+      const path = await evidenceUpload();
+      const sent = await sendEvidence(s.collaborationId, path, 10000).expect(
+        200,
+      );
+      // 기간이 아직 남았으니 캡처만 받고 계산은 없다.
+      expect(sent.body).toMatchObject({
+        status: 'COUNTING',
+        canUploadEvidence: false,
+        evidence: { statedViews: 10000 },
+      });
+      expect(await prisma.settlement.count()).toBe(0);
+
+      clock.set(afterDays(7));
+      alert.mockClear();
+      await scheduler.runDue(clock.now());
+      expect(await settlementOf(s.collaborationId)).toMatchObject({
+        status: 'UNCONFIRMED',
+        evidenceSource: 'CAPTURE',
+        confirmDueAt: null,
+        finalViews: 10000,
+        viewPayAmount: 20000,
+        payoutAmount: 20000,
+        refundAmount: 40000,
+      });
+      expect(jobKeys()).not.toContain(`auto-confirm:${s.collaborationId}`);
+      expect(jobKeys()).not.toContain(`evidence-halt:${s.collaborationId}`);
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect((alert.mock.calls as [{ subject: string }][])[0][0].subject).toBe(
+        '조회수 캡처가 제출됐어요. 확인해 주세요.',
+      );
+      expect(await settleLines(s.collaborationId)).toHaveLength(0);
+      expect((await collaborationRow(s.collaborationId)).stage).toBe(
+        'COUNTING',
+      );
+      const view = await reportBody(s.collaborationId);
+      expect(view).toMatchObject({
+        status: 'UNCONFIRMED',
+        source: 'CAPTURE_PENDING',
+        canConfirm: false,
+        canDispute: true,
+        confirmDueAt: null,
+        evidence: { statedViews: 10000 },
+      });
+      expect(view.evidence?.imageUrl).toContain(path);
+    });
+
+    it('calculates right away when the capture arrives after the period ended', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 7);
+      expect(await prisma.settlement.count()).toBe(0);
+      expect(jobKeys()).toContain(`evidence-halt:${s.collaborationId}`);
+      clock.set(afterDays(8));
+      alert.mockClear();
+      const res = await sendEvidence(
+        s.collaborationId,
+        await evidenceUpload(),
+        10000,
+      ).expect(200);
+      expect(res.body).toMatchObject({
+        status: 'UNCONFIRMED',
+        source: 'CAPTURE_PENDING',
+      });
+      expect(await settlementOf(s.collaborationId)).toMatchObject({
+        evidenceSource: 'CAPTURE',
+        finalViews: 10000,
+      });
+      expect(jobKeys()).not.toContain(`evidence-halt:${s.collaborationId}`);
+      expect(alert).toHaveBeenCalledTimes(1);
+      // 기한(10일째)이 지나도 멈추지 않는다.
+      clock.set(afterDays(11));
+      await scheduler.runDue(clock.now());
+      expect((await collaborationRow(s.collaborationId)).stage).toBe(
+        'COUNTING',
+      );
+    });
+
+    it('does not confirm a capture based calculation by the owner or by time', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 7);
+      await sendEvidence(s.collaborationId, await evidenceUpload()).expect(200);
+      await confirm(s.collaborationId).expect(409);
+      clock.set(afterDays(7, 49));
+      await scheduler.runDue(clock.now());
+      clock.set(afterDays(30));
+      await scheduler.runDue(clock.now());
+      expect((await settlementOf(s.collaborationId)).status).toBe(
+        'UNCONFIRMED',
+      );
+      expect((await collaborationRow(s.collaborationId)).stage).toBe(
+        'COUNTING',
+      );
+      expect(await settleLines(s.collaborationId)).toHaveLength(0);
+      expect(await prisma.payout.count()).toBe(0);
+    });
+
+    it('halts three days after the period ends when no capture arrived', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 7);
+      expect((await collaborationRow(s.collaborationId)).stage).toBe(
+        'COUNTING',
+      );
+      expect(await prisma.settlement.count()).toBe(0);
+      const job = scheduler
+        .pending()
+        .find((j) => j.jobKey === `evidence-halt:${s.collaborationId}`);
+      expect(job?.name).toBe('evidence-missing-halt');
+      expect(job?.runAt).toEqual(afterDays(10));
+      clock.set(new Date(afterDays(10).getTime() - 1));
+      await scheduler.runDue(clock.now());
+      expect((await collaborationRow(s.collaborationId)).stage).toBe(
+        'COUNTING',
+      );
+      clock.set(afterDays(10));
+      alert.mockClear();
+      await scheduler.runDue(clock.now());
+      expect(await collaborationRow(s.collaborationId)).toMatchObject({
+        stage: 'HALTED',
+        stageBeforeHalt: 'COUNTING',
+        haltedReason: 'VIEW_COUNT_UNAVAILABLE',
+      });
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(await prisma.settlement.count()).toBe(0);
+      expect(await balanceOf(s.collaborationId, 'ESCROW')).toBe(60000);
+      expect(await notificationCount('COLLABORATION_HALTED')).toBe(2);
+    });
+
+    it('uses the connected account value when day seven can be read after all', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 3);
+      expect(await notificationCount('VIEW_EVIDENCE_REQUESTED')).toBe(1);
+      // 연결이 되살아나 4일째부터 읽힌다.
+      await prisma.collaboration.update({
+        where: { id: s.collaborationId },
+        data: { submittedUrl: `${REELS_URL}?views=9000` },
+      });
+      for (let day = 4; day <= 7; day += 1) {
+        clock.set(afterDays(day));
+        await scheduler.runDue(clock.now());
+      }
+      expect(await settlementOf(s.collaborationId)).toMatchObject({
+        status: 'UNCONFIRMED',
+        evidenceSource: 'CONNECTED_ACCOUNT',
+        finalViews: 9000,
+      });
+      expect(jobKeys()).toContain(`auto-confirm:${s.collaborationId}`);
+      expect(jobKeys()).not.toContain(`evidence-halt:${s.collaborationId}`);
+      expect((await reportBody(s.collaborationId)).canConfirm).toBe(true);
+    });
+
+    it('refuses a capture from the owner and a capture path that is not mine', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 3);
+      const mine = await evidenceUpload();
+      await sendEvidence(s.collaborationId, mine, 100, owner).expect(403);
+      const uuid = '55555555-5555-4555-8555-555555555555';
+      for (const path of [
+        `evidence/${s.ownerId}/${uuid}.jpg`,
+        `creators/${s.creatorId}/${uuid}.jpg`,
+        `evidence/${s.creatorId}/../${s.ownerId}/${uuid}.jpg`,
+        `evidence/${s.creatorId}/${uuid}.gif`,
+      ]) {
+        const res = await sendEvidence(s.collaborationId, path, 100);
+        expect([400, 403]).toContain(res.status);
+      }
+      expect(await prisma.viewEvidence.count()).toBe(0);
+      await sendEvidence(s.collaborationId, mine, 100).expect(200);
+    });
+
+    it('refuses a capture when none was requested, a second one, and one after a calculation exists', async () => {
+      const s = await seed();
+      await submit(s.collaborationId, 5000).expect(200);
+      const path = await evidenceUpload();
+      // 읽을 수 있는 협업에는 캡처를 받지 않는다.
+      await sendEvidence(s.collaborationId, path).expect(409);
+      expect(await prisma.viewEvidence.count()).toBe(0);
+
+      await truncateTestDb(prisma);
+      scheduler.jobs.length = 0;
+      clock.set(T0);
+      const unreadable = await seed();
+      await submitUnreadableUntil(unreadable, 3);
+      await sendEvidence(unreadable.collaborationId, path).expect(200);
+      await sendEvidence(unreadable.collaborationId, path).expect(409);
+      expect(await prisma.viewEvidence.count()).toBe(1);
+
+      await truncateTestDb(prisma);
+      scheduler.jobs.length = 0;
+      clock.set(T0);
+      const settled = await seed();
+      await submitAndCalculate(settled, 5000);
+      await sendEvidence(settled.collaborationId, path).expect(409);
+    });
+
+    it('refuses views that are not a whole number of zero or more', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 3);
+      const path = await evidenceUpload();
+      await sendEvidence(s.collaborationId, path, -1).expect(400);
+      await sendEvidence(s.collaborationId, path, 1.5).expect(400);
+      await request(server)
+        .post(`/collaborations/${s.collaborationId}/view-evidence`)
+        .set(creator)
+        .send({ path })
+        .expect(400);
+      expect(await prisma.viewEvidence.count()).toBe(0);
+    });
+
+    it('puts the capture in the private bucket and signs the read url only for the parties', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 3);
+      const path = await evidenceUpload();
+      expect(storage.uploadUrlBuckets).toEqual(['evidence']);
+      expect(path.startsWith(`evidence/${s.creatorId}/`)).toBe(true);
+      await sendEvidence(s.collaborationId, path).expect(200);
+      for (const as of [creator, owner]) {
+        const view = await reportBody(s.collaborationId, as);
+        expect(view.evidence?.imageUrl).toContain('/signed/');
+        expect(view.evidence?.imageUrl).toContain(path);
+      }
+      // 기한이 있는 주소(10분)이고, 공개 주소는 만들지 않는다.
+      expect(storage.signedReads.every((r) => r.ttlSeconds === 600)).toBe(true);
+      expect(storage.signedReads).toHaveLength(3);
+      const stranger = await seed({
+        ownerId: '33333333-3333-4333-8333-333333333333',
+        creatorId: '44444444-4444-4444-8444-444444444444',
+      });
+      storage.signedReads.length = 0;
+      await report(stranger.collaborationId).expect(404);
+      await report(stranger.collaborationId, creator).expect(404);
+      expect(storage.signedReads).toHaveLength(0);
+    });
+
+    it('does not show the capture to anyone outside the collaboration', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 3);
+      await sendEvidence(s.collaborationId, await evidenceUpload()).expect(200);
+      const text = JSON.stringify(
+        (await report(s.collaborationId).expect(200)).body,
+      );
+      expect(text).not.toContain('submittedById');
+      expect(text).not.toContain('filePath');
     });
   });
 

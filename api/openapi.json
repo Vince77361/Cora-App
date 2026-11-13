@@ -685,7 +685,8 @@
           "purpose": {
             "enum": [
               "STORE_COVER",
-              "CREATOR_PHOTO"
+              "CREATOR_PHOTO",
+              "VIEW_EVIDENCE"
             ],
             "type": "string"
           },
@@ -2990,6 +2991,26 @@
         ],
         "type": "object"
       },
+      "SubmitViewEvidenceDto": {
+        "properties": {
+          "path": {
+            "description": "올린 캡처의 경로. POST /uploads/photos(purpose VIEW_EVIDENCE)가 내준 내 경로만 받는다.",
+            "maxLength": 300,
+            "type": "string"
+          },
+          "views": {
+            "description": "캡처에서 읽은 조회수.",
+            "maximum": 1000000000,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "views"
+        ],
+        "type": "object"
+      },
       "TrialBanner": {
         "description": "COMPARE: 종료일이 30일 안이라 비교를 보여 준다. HINT: 계약 정보를 넣으면 비교해 준다는 안내를 한 번 보여 준다.",
         "enum": [
@@ -4101,6 +4122,52 @@
         "summary": "",
         "tags": [
           "Submissions"
+        ]
+      }
+    },
+    "/collaborations/{id}/view-evidence": {
+      "post": {
+        "operationId": "submitViewEvidence",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitViewEvidenceDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewReportModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "조회수를 읽지 못했을 때 크리에이터가 인사이트 캡처와 조회수를 낸다. 크리에이터만, 캡처가 요청된 때 한 번. 받을 수 없는 상태면 409, 내 파일이 아니면 403.",
+        "tags": [
+          "ViewReport"
         ]
       }
     },

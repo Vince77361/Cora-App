@@ -11,5 +11,10 @@ export const PHOTO_CONTENT_TYPES = Object.keys(
   EXTENSION_BY_CONTENT_TYPE,
 ) as (keyof typeof EXTENSION_BY_CONTENT_TYPE)[];
 
-export const PHOTO_PURPOSES = ['STORE_COVER', 'CREATOR_PHOTO'] as const;
+// VIEW_EVIDENCE(조회수 캡처)만 비공개 버킷에 올린다. 나머지는 공개 버킷의 사진이다.
+export const PHOTO_PURPOSES = [
+  'STORE_COVER',
+  'CREATOR_PHOTO',
+  'VIEW_EVIDENCE',
+] as const;
 export type PhotoPurpose = (typeof PHOTO_PURPOSES)[number];

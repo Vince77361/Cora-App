@@ -1,4 +1,4 @@
-import { Collaboration, Settlement } from '@prisma/client';
+import { Collaboration, Settlement, ViewEvidence } from '@prisma/client';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
@@ -6,7 +6,9 @@ import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert
 import { JobScheduler } from '../jobs/job-scheduler';
 import { LedgerService } from '../ledger/ledger.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
+import { FakeStoragePort } from '../../test/support/fake-storage.port';
 import { PayoutsService } from './payouts.service';
 import { RefundsService } from './refunds.service';
 import { SettlementFinishService } from './settlement-finish.service';
@@ -36,6 +38,7 @@ class Abort<R> extends Error {
 
 class FakeRepository extends SettlementsRepository {
   settlement: Settlement | null = null;
+  evidence: ViewEvidence | null = null;
   created: NewSettlement[] = [];
   latest = new Map<string, number>();
   snapshots: { dayIndex: number; views: number | null }[] = [
@@ -61,6 +64,9 @@ class FakeRepository extends SettlementsRepository {
   }
   findSettlement() {
     return Promise.resolve(this.settlement);
+  }
+  findEvidence() {
+    return Promise.resolve(this.evidence);
   }
   listSnapshots() {
     return Promise.resolve(this.snapshots as never);
@@ -155,11 +161,13 @@ function settlement(over: Partial<Settlement> = {}): Settlement {
 describe('ViewReportService', () => {
   let repository: FakeRepository;
   let collaborations: FakeCollaborations;
+  let storage: FakeStoragePort;
   let service: ViewReportService;
 
   beforeEach(() => {
     repository = new FakeRepository();
     collaborations = new FakeCollaborations();
+    storage = new FakeStoragePort();
     service = new ViewReportService(
       repository,
       collaborations,
@@ -172,6 +180,9 @@ describe('ViewReportService', () => {
       null as unknown as JobScheduler,
       new FixedClock(),
       null as unknown as OperatorAlertPort,
+      storage,
+      // 경로 검사(assertOwnedPath)는 진짜 규칙을 쓰고, 나머지 의존성은 쓰지 않는다.
+      new UploadsService(null as never, storage, null as never),
     );
   });
 
@@ -195,6 +206,22 @@ describe('ViewReportService', () => {
           evidenceSource: 'CONNECTED_ACCOUNT',
         },
       ]);
+    });
+
+    it('calculates from the stated capture views without an auto confirm time', async () => {
+      repository.snapshots = [{ dayIndex: 7, views: null }];
+      await expect(
+        service.createCalculation(COLLAB, { statedViews: 10000 }),
+      ).resolves.toBe('created');
+      expect(repository.created[0]).toMatchObject({
+        finalViews: 10000,
+        viewPayAmount: 20000,
+        payoutAmount: 50000,
+        refundAmount: 40000,
+        status: 'UNCONFIRMED',
+        evidenceSource: 'CAPTURE',
+        confirmDueAt: null,
+      });
     });
 
     it('does nothing when the collaboration is no longer counting', async () => {
@@ -372,7 +399,7 @@ describe('ViewReportService', () => {
     });
   });
 
-  describe('get with dispute', () => {
+  describe('get with dispute and capture', () => {
     it('lets either party dispute an unconfirmed calculation while counting', async () => {
       repository.settlement = settlement();
       expect((await service.get(STORE, COLLAB)).canDispute).toBe(true);
@@ -392,6 +419,50 @@ describe('ViewReportService', () => {
       repository.settlement = settlement({ status: 'CONFIRMED' });
       collaborations.row = collaboration({ stage: 'SETTLED' });
       expect((await service.get(STORE, COLLAB)).canDispute).toBe(false);
+    });
+
+    it('signs the capture url for ten minutes and shows what the creator stated', async () => {
+      repository.settlement = settlement({ evidenceSource: 'CAPTURE' });
+      repository.evidence = {
+        id: 'e-1',
+        collaborationId: COLLAB,
+        filePath: `evidence/${CREATOR}/55555555-5555-4555-8555-555555555555.jpg`,
+        statedViews: 9800,
+        submittedById: CREATOR,
+        confirmedAt: null,
+        confirmedBy: null,
+        createdAt: NOW,
+        updatedAt: NOW,
+        deletedAt: null,
+      };
+      const view = await service.get(STORE, COLLAB);
+      expect(view.evidence?.statedViews).toBe(9800);
+      expect(view.evidence?.imageUrl).toContain('signed');
+      expect(storage.signedReads).toEqual([
+        { path: repository.evidence.filePath, ttlSeconds: 600 },
+      ]);
+    });
+
+    it('lets only the creator upload a capture, and only when the last three days could not be read', async () => {
+      repository.snapshots = [
+        { dayIndex: 1, views: null },
+        { dayIndex: 2, views: null },
+        { dayIndex: 3, views: null },
+      ];
+      expect((await service.get(CREATOR, COLLAB)).canUploadEvidence).toBe(true);
+      expect((await service.get(STORE, COLLAB)).canUploadEvidence).toBe(false);
+      // 측정 기간이 아직 남았다면 읽은 날이 끼어 있을 때 요청되지 않는다(기간이 끝나면 5~7일을 따로 본다).
+      collaborations.row = collaboration({
+        countingEndsAt: new Date(NOW.getTime() + 3 * 24 * HOUR),
+      });
+      repository.snapshots = [
+        { dayIndex: 1, views: null },
+        { dayIndex: 2, views: 100 },
+        { dayIndex: 3, views: null },
+      ];
+      expect((await service.get(CREATOR, COLLAB)).canUploadEvidence).toBe(
+        false,
+      );
     });
   });
 
@@ -421,6 +492,40 @@ describe('ViewReportService', () => {
       await expect(
         service.dispute(STORE, COLLAB, '조회수가 달라요'),
       ).rejects.toMatchObject({ code: 'CONFLICT' });
+    });
+  });
+
+  describe('submitEvidence', () => {
+    const own = `evidence/${CREATOR}/55555555-5555-4555-8555-555555555555.jpg`;
+
+    it('refuses the owner with 403', async () => {
+      await expect(
+        service.submitEvidence(STORE, COLLAB, { path: own, views: 100 }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
+    it('refuses a path under another user with 403', async () => {
+      await expect(
+        service.submitEvidence(CREATOR, COLLAB, {
+          path: `evidence/${OTHER}/55555555-5555-4555-8555-555555555555.jpg`,
+          views: 100,
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await expect(
+        service.submitEvidence(CREATOR, COLLAB, {
+          path: `stores/${CREATOR}/55555555-5555-4555-8555-555555555555.jpg`,
+          views: 100,
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
+    it('refuses views that are not whole numbers', async () => {
+      await expect(
+        service.submitEvidence(CREATOR, COLLAB, { path: own, views: -1 }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+      await expect(
+        service.submitEvidence(CREATOR, COLLAB, { path: own, views: 1.5 }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
     });
   });
 });

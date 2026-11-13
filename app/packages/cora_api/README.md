@@ -128,6 +128,7 @@ Class | Method | HTTP request | Description
 *ViewReportApi* | [**confirmViewReport**](doc//ViewReportApi.md#confirmviewreport) | **POST** /collaborations/{id}/view-report/confirm | 맡긴 쪽이 \"자료 확인했어요\"를 누른다. 확인되면 정산이 이어진다. 확인할 수 없는 상태면 409, 크리에이터는 403.
 *ViewReportApi* | [**disputeViewReport**](doc//ViewReportApi.md#disputeviewreport) | **POST** /collaborations/{id}/view-report/dispute | 조회 자료에 이의를 제기한다(당사자 누구나, 확인 전인 계산에 한 사람이 한 번). 돈은 그대로 보관되고 운영팀이 처리한다. 낼 수 없는 상태면 409.
 *ViewReportApi* | [**getViewReport**](doc//ViewReportApi.md#getviewreport) | **GET** /collaborations/{id}/view-report | 조회 자료 확인(F4). 당사자만 읽는다. 조회수 수당이 없거나 링크 제출 전이면 404.
+*ViewReportApi* | [**submitViewEvidence**](doc//ViewReportApi.md#submitviewevidence) | **POST** /collaborations/{id}/view-evidence | 조회수를 읽지 못했을 때 크리에이터가 인사이트 캡처와 조회수를 낸다. 크리에이터만, 캡처가 요청된 때 한 번. 받을 수 없는 상태면 409, 내 파일이 아니면 403.
 *WalletApi* | [**getWallet**](doc//WalletApi.md#getwallet) | **GET** /wallet | 
 
 
@@ -244,6 +245,7 @@ Class | Method | HTTP request | Description
  - [StoreStatus](doc//StoreStatus.md)
  - [StoreSummaryModel](doc//StoreSummaryModel.md)
  - [SubmitContentDto](doc//SubmitContentDto.md)
+ - [SubmitViewEvidenceDto](doc//SubmitViewEvidenceDto.md)
  - [TrialBanner](doc//TrialBanner.md)
  - [TrialComparisonModel](doc//TrialComparisonModel.md)
  - [TrialInfoDto](doc//TrialInfoDto.md)

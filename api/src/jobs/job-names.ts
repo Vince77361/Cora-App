@@ -13,6 +13,7 @@ export const JOB_NAMES = [
   'brand-halt-check',
   'payout-send',
   'settlement-auto-confirm',
+  'evidence-missing-halt',
 ] as const;
 
 export type JobName = (typeof JOB_NAMES)[number];

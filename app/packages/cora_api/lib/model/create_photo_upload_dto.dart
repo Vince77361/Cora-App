@@ -234,6 +234,7 @@ class CreatePhotoUploadDtoContentTypeEnumTypeTransformer {
 enum CreatePhotoUploadDtoPurposeEnum {
   STORE_COVER._(r'STORE_COVER'),
   CREATOR_PHOTO._(r'CREATOR_PHOTO'),
+  VIEW_EVIDENCE._(r'VIEW_EVIDENCE'),
   ;
 
   /// Instantiate a new enum with the provided value.
@@ -302,6 +303,8 @@ class CreatePhotoUploadDtoPurposeEnumTypeTransformer {
           return CreatePhotoUploadDtoPurposeEnum.STORE_COVER;
         case r'CREATOR_PHOTO':
           return CreatePhotoUploadDtoPurposeEnum.CREATOR_PHOTO;
+        case r'VIEW_EVIDENCE':
+          return CreatePhotoUploadDtoPurposeEnum.VIEW_EVIDENCE;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');

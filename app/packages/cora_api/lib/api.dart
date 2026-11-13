@@ -161,6 +161,7 @@ part 'model/store_source_link_model.dart';
 part 'model/store_status.dart';
 part 'model/store_summary_model.dart';
 part 'model/submit_content_dto.dart';
+part 'model/submit_view_evidence_dto.dart';
 part 'model/trial_banner.dart';
 part 'model/trial_comparison_model.dart';
 part 'model/trial_info_dto.dart';

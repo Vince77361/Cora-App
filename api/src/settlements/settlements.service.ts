@@ -29,9 +29,9 @@ import {
 import { JobRunContext, JobScheduler } from '../jobs/job-scheduler';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
+  evidenceHaltJobKey,
   forcePayoutKey,
   forcePayoutRefundKey,
-  HALT_AFTER_UNREADABLE_DAYS,
   settleJobKey,
   settlePayoutKey,
   settleRefundKey,
@@ -39,13 +39,17 @@ import {
   snapshotJobKey,
   VIEW_COUNT_HALT_REASON,
 } from './job-keys';
+import { VIEW_REPORT_POLICY } from '../common/collaboration-policy';
 import { assertEscrowMatches } from './escrow-check';
 import { PayoutsService } from './payouts.service';
 import { RefundsService } from './refunds.service';
 import { SettlementFinishService } from './settlement-finish.service';
 import { pickFinalViews, settleReward } from './settlement-math';
 import { SettlementsRepository } from './settlements.repository';
+import { isViewCountUnreadable } from './unreadable-rule';
 import { ViewReportService } from './view-report.service';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class SettlementsService {
@@ -77,7 +81,8 @@ export class SettlementsService {
   }
 
   // view-snapshot 작업: 그날의 조회수를 읽어 저장한다. 같은 날 작업이 다시 돌아도 한 번만 읽고 한 줄만 남는다.
-  // 가장 최근 세 줄이 모두 null이면(읽지 못한 날이 연속 3일) 정산하지 않고 멈춘다.
+  // 가장 최근 세 줄이 모두 null이면(읽지 못한 날이 연속 3일) 멈추지 않고 크리에이터에게 인사이트 캡처를 요청한다
+  // (캡처가 기한까지 오지 않으면 evidence-missing-halt 작업이 멈춘다).
   // 마지막 시도에서 읽기가 예상 밖의 오류로 실패하면 던지지 않고 null로 저장한다: 날이 줄 없이 빠지지 않게(3일 규칙은 날을 센다).
   async takeSnapshot(
     collaborationId: string,
@@ -98,7 +103,9 @@ export class SettlementsService {
     if (await this.repository.findSettlement(collaboration.id)) return;
 
     await this.ensureSnapshot(collaboration, dayIndex, context);
-    await this.haltIfUnreadable(collaboration);
+    if (await this.isUnreadable(collaboration, false)) {
+      await this.viewReport.requestEvidence(collaboration);
+    }
   }
 
   // settle 작업: 7일 집계가 끝난 협업의 정산을 "계산 만들기"와 "확인 완료"로 나눈다.
@@ -131,6 +138,7 @@ export class SettlementsService {
         await this.viewReport.announceCalculation(collaborationId);
         return;
       }
+      // 'waiting'(캡처를 기다림)과 'halted', 'gone'은 여기서 할 일이 없다.
       if (outcome !== 'settled') return;
     } else if (collaboration.stage !== 'SETTLED') {
       return;
@@ -145,7 +153,7 @@ export class SettlementsService {
     collaboration: Collaboration,
     key: string,
     context?: JobRunContext,
-  ): Promise<'settled' | 'calculated' | 'halted' | 'gone'> {
+  ): Promise<'settled' | 'calculated' | 'waiting' | 'halted' | 'gone'> {
     // 조회수 수당이 없는 협업(고정 현금만)은 조회수를 읽지 않고 측정 기간이 끝나는 날 고정 현금으로 정산한다.
     // 스냅샷이 없어 아래의 3일 실패 규칙을 보면 안 된다(거짓으로 멈춘다).
     if (!hasViewPay(readTerms(collaboration.terms))) {
@@ -169,8 +177,20 @@ export class SettlementsService {
     await this.ensureSnapshot(collaboration, SNAPSHOT_DAYS, context);
     // 7일째 작업이 먼저 돌았다면 그 작업이 했을 판정을 여기서도 한다: 5~7일을 읽지 못했는데 4일째 값으로 정산하면 안 된다.
     // 정산 시점에는 5~7일의 작업이 이미 끝났어야 하므로, 줄이 없는 날도 읽지 못한 날로 센다.
-    if (await this.haltIfUnreadable(collaboration, { atSettlement: true })) {
-      return 'halted';
+    if (await this.isUnreadable(collaboration, true)) {
+      // 연결 계정의 조회수를 믿을 수 없다. 캡처를 요청하고(이미 보냈다면 같은 키라 그대로다),
+      // 캡처가 와 있으면 그 조회수로 계산을 만든다. 없으면 기간이 끝난 뒤 3일까지 기다리고, 그때까지 없으면 멈춘다.
+      await this.viewReport.requestEvidence(collaboration);
+      const evidence = await this.repository.findEvidence(collaboration.id);
+      if (!evidence) {
+        await this.scheduleEvidenceHalt(collaboration);
+        return 'waiting';
+      }
+      const fromCapture = await this.viewReport.createCalculation(
+        collaboration.id,
+        { statedViews: evidence.statedViews },
+      );
+      return fromCapture === 'gone' ? 'gone' : 'calculated';
     }
     const snapshots = await this.repository.listSnapshots(collaboration.id);
     const finalViews = pickFinalViews(snapshots, SNAPSHOT_DAYS);
@@ -356,37 +376,44 @@ export class SettlementsService {
     });
   }
 
-  // 가장 최근 세 줄이 모두 null이면(읽지 못한 날이 연속 3일) 멈춘다. 멈췄으면 true다.
-  // 날마다의 스냅샷 작업과 7일째의 정산 작업이 같은 판정을 쓴다: 어느 쪽이 먼저 돌아도 결과가 같다.
-  // atSettlement이면 줄을 세는 것에 더해 마지막 3일(5~7일)을 날로 센다: 줄이 없는 날(작업이 시도를 다 쓰고 죽었거나
-  // 작업자를 다시 켜느라 건너뛴 날)도 읽지 못한 날이라, 5일째 null·6일째 줄 없음·7일째 null이면 4일째 값으로 정산하지 않는다.
-  private async haltIfUnreadable(
+  // 조회수를 연속 3일 읽지 못했는가. 날마다의 스냅샷 작업과 7일째의 정산 작업이 같은 규칙(unreadable-rule)을 쓴다:
+  // 어느 쪽이 먼저 돌아도 결과가 같다. atSettlement이면 줄이 없는 마지막 3일도 읽지 못한 날로 센다.
+  private async isUnreadable(
     collaboration: Collaboration,
-    options: { atSettlement?: boolean } = {},
+    atSettlement: boolean,
   ): Promise<boolean> {
-    const latest = await this.repository.latestSnapshots(
-      collaboration.id,
-      HALT_AFTER_UNREADABLE_DAYS,
+    return isViewCountUnreadable(
+      await this.repository.listSnapshots(collaboration.id),
+      { atSettlement },
     );
-    const rowsAllNull =
-      latest.length === HALT_AFTER_UNREADABLE_DAYS &&
-      latest.every((s) => s.views === null);
-    let daysAllUnreadable = false;
-    if (options.atSettlement) {
-      const byDay = new Map(
-        (await this.repository.listSnapshots(collaboration.id)).map((s) => [
-          s.dayIndex,
-          s.views,
-        ]),
-      );
-      daysAllUnreadable = Array.from(
-        { length: HALT_AFTER_UNREADABLE_DAYS },
-        (_, i) => SNAPSHOT_DAYS - i,
-      ).every((day) => (byDay.get(day) ?? null) === null);
+  }
+
+  // 캡처 기한(측정 기간이 끝난 뒤 3일)에 협업을 멈추는 작업을 올린다. 같은 키라 다시 불러도 한 번만 올라간다.
+  private async scheduleEvidenceHalt(
+    collaboration: Collaboration,
+  ): Promise<void> {
+    const endsAt = collaboration.countingEndsAt ?? this.clock.now();
+    await this.jobs.schedule(
+      'evidence-missing-halt',
+      { collaborationId: collaboration.id },
+      new Date(endsAt.getTime() + VIEW_REPORT_POLICY.evidenceWaitDays * DAY_MS),
+      evidenceHaltJobKey(collaboration.id),
+    );
+  }
+
+  // evidence-missing-halt 작업의 몸: 기한까지 캡처가 없으면 조회수를 읽지 못해 멈추는 길(halt)로 간다. 캡처가 있거나 계산이 있으면 아무 일도 없다.
+  // 멈추는 도중에 죽어 다시 돌 때는 남은 정리를 마친다.
+  async haltIfEvidenceMissing(collaborationId: string): Promise<void> {
+    const collaboration = await this.collaborations.findById(collaborationId);
+    if (!collaboration) return;
+    if (isViewCountHalt(collaboration)) {
+      await this.finishHalt(collaboration);
+      return;
     }
-    if (!rowsAllNull && !daysAllUnreadable) return false;
+    if (collaboration.stage !== 'COUNTING') return;
+    if (await this.repository.findSettlement(collaborationId)) return;
+    if (await this.repository.findEvidence(collaborationId)) return;
     await this.halt(collaboration);
-    return true;
   }
 
   // 조회수 집계를 읽지 못해 협업을 멈춘다. 돈은 에스크로에 그대로 있다.
@@ -428,6 +455,7 @@ export class SettlementsService {
       dedupeKey,
     });
     await this.jobs.cancel(settleJobKey(collaboration.id));
+    await this.jobs.cancel(evidenceHaltJobKey(collaboration.id));
     for (let day = 0; day <= SNAPSHOT_DAYS; day += 1) {
       await this.jobs.cancel(snapshotJobKey(collaboration.id, day));
     }

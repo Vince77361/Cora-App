@@ -40,6 +40,7 @@ describe('uploads', () => {
   });
   beforeEach(() => {
     storage.uploadUrlPaths.length = 0;
+    storage.uploadUrlBuckets.length = 0;
   });
 
   it('rejects a request with no token', async () => {
@@ -140,6 +141,42 @@ describe('uploads', () => {
     const path = (ok.body as { path: string }).path;
     expect(path.startsWith(`creators/${USER_A}/`)).toBe(true);
     expect(path.endsWith('.heic')).toBe(true);
+  });
+
+  it('issues a private bucket upload url under the creator id for a view evidence capture', async () => {
+    await setRole('CREATOR');
+    const res = await request(server)
+      .post('/uploads/photos')
+      .set(auth)
+      .send(body({ purpose: 'VIEW_EVIDENCE' }))
+      .expect(201);
+    const { uploadUrl, path } = res.body as { uploadUrl: string; path: string };
+    expect(path.startsWith(`evidence/${USER_A}/`)).toBe(true);
+    expect(path.endsWith('.jpg')).toBe(true);
+    // 캡처는 공개 버킷(photos)이 아니라 비공개 버킷(evidence)에 올라간다.
+    expect(storage.uploadUrlBuckets).toEqual(['evidence']);
+    expect(uploadUrl).toContain('/evidence/');
+  });
+
+  it('keeps store covers and creator photos in the public bucket', async () => {
+    await setRole('STORE');
+    await request(server)
+      .post('/uploads/photos')
+      .set(auth)
+      .send(body())
+      .expect(201);
+    expect(storage.uploadUrlBuckets).toEqual(['photos']);
+  });
+
+  it('requires the CREATOR role for a view evidence capture', async () => {
+    await setRole('STORE');
+    const res = await request(server)
+      .post('/uploads/photos')
+      .set(auth)
+      .send(body({ purpose: 'VIEW_EVIDENCE' }))
+      .expect(403);
+    expect(codeOf(res)).toBe('FORBIDDEN');
+    expect(storage.uploadUrlPaths).toHaveLength(0);
   });
 });
 

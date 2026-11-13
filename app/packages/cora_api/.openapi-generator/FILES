@@ -129,6 +129,7 @@ doc/StoreSummaryModel.md
 doc/StoresApi.md
 doc/SubmissionsApi.md
 doc/SubmitContentDto.md
+doc/SubmitViewEvidenceDto.md
 doc/TrialBanner.md
 doc/TrialComparisonModel.md
 doc/TrialInfoDto.md
@@ -299,6 +300,7 @@ lib/model/store_source_link_model.dart
 lib/model/store_status.dart
 lib/model/store_summary_model.dart
 lib/model/submit_content_dto.dart
+lib/model/submit_view_evidence_dto.dart
 lib/model/trial_banner.dart
 lib/model/trial_comparison_model.dart
 lib/model/trial_info_dto.dart
@@ -453,6 +455,7 @@ test/store_summary_model_test.dart
 test/stores_api_test.dart
 test/submissions_api_test.dart
 test/submit_content_dto_test.dart
+test/submit_view_evidence_dto_test.dart
 test/trial_banner_test.dart
 test/trial_comparison_model_test.dart
 test/trial_info_dto_test.dart

@@ -13,16 +13,20 @@ import { VIEW_REPORT_POLICY } from '../common/collaboration-policy';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
+import { StoragePort } from '../integrations/storage/storage.port';
 import { JobRunContext, JobScheduler } from '../jobs/job-scheduler';
 import { postingsForSettlement } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { hasViewPay, readTerms } from '../stores/reward-terms';
+import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
 import { assertEscrowMatches } from './escrow-check';
 import {
   autoConfirmJobKey,
   disputeDedupeKey,
+  evidenceHaltJobKey,
+  evidenceRequestDedupeKey,
   SETTLEMENT_DISPUTED_HALT_REASON,
   settleJobKey,
   settlePayoutKey,
@@ -39,10 +43,13 @@ import {
   NewSettlement,
   SettlementsRepository,
 } from './settlements.repository';
+import { isViewCountUnreadable } from './unreadable-rule';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
+// 캡처 이미지를 읽는 서명 주소의 기한(초). 화면을 열 때마다 새로 만들어 준다.
+const EVIDENCE_URL_TTL_SECONDS = 10 * 60;
 
 export type ViewReportStatus =
   'COUNTING' | 'UNCONFIRMED' | 'CONFIRMED' | 'DISPUTED';
@@ -93,22 +100,32 @@ export class ViewReportService {
     private readonly jobs: JobScheduler,
     private readonly clock: Clock,
     private readonly operatorAlert: OperatorAlertPort,
+    private readonly storage: StoragePort,
+    private readonly uploads: UploadsService,
   ) {}
 
   // 측정 기간이 끝났을 때 계산을 만든다: 정산 행을 UNCONFIRMED로 만들기만 한다. 장부, 단계, 지급·환급 행은 건드리지 않는다.
+  // capture를 주면 연결 계정이 아니라 크리에이터의 캡처 조회수로 계산한다(자료 출처 CAPTURE, 자동 확인 없음).
   // 이미 계산이 있으면 'exists', 협업이 없거나 COUNTING이 아니면(그사이 멈춤·취소) 'gone'이다.
   async createCalculation(
     collaborationId: string,
+    capture?: { statedViews: number },
   ): Promise<'created' | 'exists' | 'gone'> {
     const collaboration = await this.collaborations.findById(collaborationId);
     if (!collaboration) return 'gone';
-    const views = pickFinalViews(
-      await this.repository.listSnapshots(collaborationId),
-      lastDayOf(collaboration),
-    );
+    const views = capture
+      ? capture.statedViews
+      : pickFinalViews(
+          await this.repository.listSnapshots(collaborationId),
+          lastDayOf(collaboration),
+        );
     // 읽은 값이 하나도 없으면 0으로 계산하지 않는다(호출한 쪽이 먼저 멈춘다).
     if (views === null) throw new Error('읽은 조회수가 없어 계산할 수 없어요.');
-    const row = this.calculationRow(collaboration, views, 'CONNECTED_ACCOUNT');
+    const row = this.calculationRow(
+      collaboration,
+      views,
+      capture ? 'CAPTURE' : 'CONNECTED_ACCOUNT',
+    );
     return this.repository.transaction<'created', 'exists' | 'gone'>(
       async (tx, rollback) => {
         if (!(await this.repository.lockCollaboration(collaborationId, tx))) {
@@ -163,7 +180,8 @@ export class ViewReportService {
     };
   }
 
-  // 계산이 만들어진 뒤의 단계: 자동 확인 작업을 확인 기한에 올리고, 사장님에게 확인을, 크리에이터에게 계산을 알린다.
+  // 계산이 만들어진 뒤의 단계: 사장님에게 확인을, 크리에이터에게 계산을 알리고, 연결 계정 자료는 자동 확인 작업을 확인 기한에 올린다.
+  // 캡처 자료는 운영자만 확정하므로 자동 확인 작업을 올리지 않고 운영자에게 알린다.
   // 모두 같은 키라 다시 불러도 한 번만 일어난다(작업이 커밋 뒤에 죽어도 다시 돌 때 이어서 한다).
   // 그사이 협업이 멈췄다면(운영자의 멈춤, 이의) 알리지 않는다.
   async announceCalculation(collaborationId: string): Promise<void> {
@@ -175,17 +193,20 @@ export class ViewReportService {
       !collaboration ||
       !settlement ||
       settlement.status !== 'UNCONFIRMED' ||
-      !settlement.confirmDueAt ||
       collaboration.stage !== 'COUNTING'
     ) {
       return;
     }
-    await this.jobs.schedule(
-      'settlement-auto-confirm',
-      { collaborationId },
-      settlement.confirmDueAt,
-      autoConfirmJobKey(collaborationId),
-    );
+    const fromCapture = settlement.evidenceSource === 'CAPTURE';
+    if (!fromCapture) {
+      if (!settlement.confirmDueAt) return;
+      await this.jobs.schedule(
+        'settlement-auto-confirm',
+        { collaborationId },
+        settlement.confirmDueAt,
+        autoConfirmJobKey(collaborationId),
+      );
+    }
     const target = { kind: 'VIEW_REPORT', id: collaborationId } as const;
     const dedupeKey = viewReportDedupeKey(collaborationId);
     await this.notifications.notify({
@@ -201,6 +222,23 @@ export class ViewReportService {
       kind: 'VIEW_REPORT_READY',
       target,
       dedupeKey,
+    });
+    if (fromCapture) {
+      await this.operatorAlert.alert({
+        subject: '조회수 캡처가 제출됐어요. 확인해 주세요.',
+        body: `협업 ID: ${collaborationId}`,
+      });
+    }
+  }
+
+  // 크리에이터에게 인사이트 캡처를 올려 달라고 알린다(같은 키라 한 번만). 조회수를 연속 3일 읽지 못했을 때 부른다.
+  async requestEvidence(collaboration: Collaboration): Promise<void> {
+    await this.notifications.notify({
+      userId: collaboration.creatorId,
+      role: 'CREATOR',
+      kind: 'VIEW_EVIDENCE_REQUESTED',
+      target: { kind: 'VIEW_REPORT', id: collaboration.id },
+      dedupeKey: evidenceRequestDedupeKey(collaboration.id),
     });
   }
 
@@ -321,6 +359,11 @@ export class ViewReportService {
           collaborationId,
         ) ?? null);
     const periodEnd = collaboration.countingEndsAt;
+    const evidence = await this.repository.findEvidence(collaborationId);
+    const canUploadEvidence =
+      !evidence &&
+      collaboration.creatorId === userId &&
+      (await this.isEvidenceOpen(collaboration, settlement));
     return {
       status: settlement ? settlement.status : 'COUNTING',
       views,
@@ -364,9 +407,17 @@ export class ViewReportService {
           : null,
       canConfirm: canConfirm(collaboration, settlement, userId),
       canDispute: canDispute(collaboration, settlement),
-      // 캡처 올리기와 캡처 자료는 다음 커밋이 연다.
-      canUploadEvidence: false,
-      evidence: null,
+      canUploadEvidence,
+      evidence: evidence
+        ? {
+            // 비공개 버킷의 파일이라 화면을 열 때마다 당사자에게만 기한이 있는 주소를 새로 서명해 준다.
+            imageUrl: await this.storage.signedReadUrl(
+              evidence.filePath,
+              EVIDENCE_URL_TTL_SECONDS,
+            ),
+            statedViews: evidence.statedViews,
+          }
+        : null,
     };
   }
 
@@ -605,6 +656,103 @@ export class ViewReportService {
     }
   }
 
+  // 크리에이터가 조회수 인사이트 캡처와 그 조회수를 낸다. 협업당 한 번, 캡처가 요청된 때(조회수를 연속 3일 읽지 못했고 정산 행이 아직 없을 때)만 받는다.
+  // 측정 기간이 이미 끝났다면 같은 트랜잭션에서 캡처의 조회수로 계산을 만든다(자료 출처 CAPTURE, 자동 확인 없음 — 운영 명령만 확정한다).
+  // 기간이 아직 남았다면 캡처만 저장하고, 기간이 끝나는 날의 정산 작업이 그 값을 쓴다.
+  async submitEvidence(
+    userId: string,
+    collaborationId: string,
+    input: { path: string; views: number },
+  ): Promise<ViewReportView> {
+    const collaboration = await this.requireParty(userId, collaborationId);
+    if (collaboration.creatorId !== userId) {
+      throw new AppError('FORBIDDEN', '크리에이터만 캡처를 올릴 수 있어요.');
+    }
+    // 남의 경로나 임의 경로를 끼워 넣지 못하게 한다(서버가 발급한 내 폴더의 파일 이름만 받는다).
+    this.uploads.assertOwnedPath(userId, input.path, 'VIEW_EVIDENCE');
+    if (!Number.isInteger(input.views) || input.views < 0) {
+      throw new AppError(
+        'VALIDATION_FAILED',
+        '조회수는 0 이상의 정수여야 해요.',
+      );
+    }
+    const terms = readTerms(collaboration.terms);
+    if (!hasViewPay(terms) || !collaboration.submittedAt) {
+      throw this.notFound();
+    }
+    const now = this.clock.now();
+    const calculated = await this.repository.transaction<boolean, 'closed'>(
+      async (tx, rollback) => {
+        if (!(await this.repository.lockCollaboration(collaborationId, tx))) {
+          return rollback('closed');
+        }
+        const fresh = await this.collaborations.findById(collaborationId, tx);
+        const settlement = await this.repository.findSettlement(
+          collaborationId,
+          tx,
+        );
+        const evidence = await this.repository.findEvidence(
+          collaborationId,
+          tx,
+        );
+        if (
+          !fresh ||
+          evidence ||
+          !(await this.isEvidenceOpen(fresh, settlement, tx))
+        ) {
+          return rollback('closed');
+        }
+        await this.repository.createEvidence(
+          {
+            collaborationId,
+            filePath: input.path,
+            statedViews: input.views,
+            submittedById: userId,
+          },
+          tx,
+        );
+        const periodOver =
+          fresh.countingEndsAt !== null &&
+          fresh.countingEndsAt.getTime() <= now.getTime();
+        if (!periodOver) return false;
+        return this.repository.createSettlement(
+          this.calculationRow(fresh, input.views, 'CAPTURE'),
+          tx,
+        );
+      },
+    );
+    if (calculated === 'closed') throw this.cannotUploadEvidence();
+    if (calculated) {
+      try {
+        await this.jobs.cancel(evidenceHaltJobKey(collaborationId));
+        await this.announceCalculation(collaborationId);
+      } catch (error) {
+        // 계산과 캡처는 이미 커밋됐다. 알림만 놓친 것이라 로그를 남기고 운영자가 show로 확인한다.
+        this.logger.error(
+          `캡처 계산 뒤 알림에 실패했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        );
+      }
+    }
+    return this.get(userId, collaborationId);
+  }
+
+  // 캡처를 받을 수 있는 때: 협업이 집계 중(COUNTING)이고 정산 행이 아직 없으며 조회수를 연속 3일 읽지 못했을 때다.
+  // 측정 기간이 끝났다면 5~7일을 날로 세는 판정까지 쓴다(정산 작업과 같은 규칙).
+  private async isEvidenceOpen(
+    collaboration: Collaboration,
+    settlement: { id: string } | null,
+    tx?: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    if (settlement || collaboration.stage !== 'COUNTING') return false;
+    const periodOver =
+      collaboration.countingEndsAt !== null &&
+      collaboration.countingEndsAt.getTime() <= this.clock.now().getTime();
+    return isViewCountUnreadable(
+      await this.repository.listSnapshots(collaboration.id, tx),
+      { atSettlement: periodOver },
+    );
+  }
+
   private async requireParty(
     userId: string,
     collaborationId: string,
@@ -628,6 +776,10 @@ export class ViewReportService {
 
   private cannotDispute(): AppError {
     return new AppError('CONFLICT', '지금은 이의를 제기할 수 없어요.');
+  }
+
+  private cannotUploadEvidence(): AppError {
+    return new AppError('CONFLICT', '지금은 캡처를 올릴 수 없어요.');
   }
 }
 

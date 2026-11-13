@@ -2,7 +2,10 @@ import { config } from 'dotenv';
 import { assertDevTarget, readDevProjectRef } from '../seed/lib/dev-target';
 import { SeedError } from '../seed/lib/supabase-admin';
 import { SupabaseStorageAdapter } from '../src/integrations/storage/supabase-storage.adapter';
-import { PHOTOS_BUCKET } from '../src/integrations/storage/storage.port';
+import {
+  PHOTOS_BUCKET,
+  PRIVATE_BUCKET,
+} from '../src/integrations/storage/storage.port';
 import {
   MAX_PHOTO_BYTES,
   PHOTO_CONTENT_TYPES,
@@ -29,14 +32,28 @@ async function main(): Promise<void> {
   );
   // 서명된 업로드 주소는 크기를 강제하지 않으므로, 저장소 쪽에서도 크기와 형식을 막는다.
   // 이미 있는 버킷은 설정만 맞추고, 안의 파일은 건드리지 않는다.
-  const result = await storage.ensurePhotosBucket({
+  const limits = {
     fileSizeLimit: MAX_PHOTO_BYTES,
     allowedMimeTypes: [...PHOTO_CONTENT_TYPES],
+  };
+  const photos = await storage.ensureBucket(PHOTOS_BUCKET, {
+    public: true,
+    ...limits,
   });
   console.log(
-    result === 'created'
+    photos === 'created'
       ? `Storage 버킷 "${PHOTOS_BUCKET}"를 공개로 만들었어요.`
       : `Storage 버킷 "${PHOTOS_BUCKET}"는 이미 있어서 설정만 맞췄어요.`,
+  );
+  // 조회수 캡처는 비공개 버킷에 둔다. 읽는 주소는 서버가 당사자에게만 기한을 두고 서명해 준다.
+  const evidence = await storage.ensureBucket(PRIVATE_BUCKET, {
+    public: false,
+    ...limits,
+  });
+  console.log(
+    evidence === 'created'
+      ? `Storage 버킷 "${PRIVATE_BUCKET}"를 비공개로 만들었어요.`
+      : `Storage 버킷 "${PRIVATE_BUCKET}"는 이미 있어서 설정만 맞췄어요.`,
   );
 }
 

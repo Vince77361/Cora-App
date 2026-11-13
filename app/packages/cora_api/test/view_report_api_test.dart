@@ -36,5 +36,12 @@ void main() {
     test('test getViewReport', () async {
       // TODO
     });
+
+    // 조회수를 읽지 못했을 때 크리에이터가 인사이트 캡처와 조회수를 낸다. 크리에이터만, 캡처가 요청된 때 한 번. 받을 수 없는 상태면 409, 내 파일이 아니면 403.
+    //
+    //Future<ViewReportModel> submitViewEvidence(String id, SubmitViewEvidenceDto submitViewEvidenceDto) async
+    test('test submitViewEvidence', () async {
+      // TODO
+    });
   });
 }

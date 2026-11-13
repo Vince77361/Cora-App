@@ -426,6 +426,8 @@ class ApiClient {
           return StoreSummaryModel.fromJson(value);
         case 'SubmitContentDto':
           return SubmitContentDto.fromJson(value);
+        case 'SubmitViewEvidenceDto':
+          return SubmitViewEvidenceDto.fromJson(value);
         case 'TrialBanner':
           return TrialBannerTypeTransformer().decode(value);
         case 'TrialComparisonModel':

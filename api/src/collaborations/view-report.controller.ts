@@ -4,6 +4,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { ViewReportService } from '../settlements/view-report.service';
 import { DisputeViewReportDto } from './dto/dispute-view-report.dto';
+import { SubmitViewEvidenceDto } from './dto/submit-view-evidence.dto';
 import { ViewReportModel } from './dto/view-report.model';
 
 @ApiBearerAuth()
@@ -54,5 +55,21 @@ export class ViewReportController {
     @Body() dto: DisputeViewReportDto,
   ): Promise<ViewReportModel> {
     return this.viewReports.dispute(user.userId, id, dto.reason);
+  }
+
+  @Post(':id/view-evidence')
+  @HttpCode(200)
+  @ApiOperation({
+    operationId: 'submitViewEvidence',
+    summary:
+      '조회수를 읽지 못했을 때 크리에이터가 인사이트 캡처와 조회수를 낸다. 크리에이터만, 캡처가 요청된 때 한 번. 받을 수 없는 상태면 409, 내 파일이 아니면 403.',
+  })
+  @ApiOkResponse({ type: ViewReportModel })
+  submitEvidence(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SubmitViewEvidenceDto,
+  ): Promise<ViewReportModel> {
+    return this.viewReports.submitEvidence(user.userId, id, dto);
   }
 }

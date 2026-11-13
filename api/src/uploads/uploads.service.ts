@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { AppError } from '../common/errors/app-error';
-import { StoragePort } from '../integrations/storage/storage.port';
+import {
+  PRIVATE_BUCKET,
+  StoragePort,
+} from '../integrations/storage/storage.port';
 import { UsersService } from '../users/users.service';
 import { UploadRateLimiter } from './upload-rate-limiter';
 import { CreatePhotoUploadDto } from './dto/create-photo-upload.dto';
@@ -14,9 +17,14 @@ import {
 } from './photo-rules';
 
 // 목적마다 올릴 수 있는 역할과 저장 폴더가 정해져 있다.
-const RULES: Record<PhotoPurpose, { role: UserRole; dir: string }> = {
+// bucket을 적지 않으면 공개 버킷이다. 조회수 캡처는 비공개 버킷에 두고 읽는 주소를 서버가 서명해서만 준다.
+const RULES: Record<
+  PhotoPurpose,
+  { role: UserRole; dir: string; bucket?: string }
+> = {
   STORE_COVER: { role: 'STORE', dir: 'stores' },
   CREATOR_PHOTO: { role: 'CREATOR', dir: 'creators' },
+  VIEW_EVIDENCE: { role: 'CREATOR', dir: 'evidence', bucket: PRIVATE_BUCKET },
 };
 
 const EXTENSIONS = Object.values(EXTENSION_BY_CONTENT_TYPE).join('|');
@@ -68,7 +76,10 @@ export class UploadsService {
       throw new AppError('RATE_LIMITED', '잠시 후 다시 시도해 주세요.');
     }
     try {
-      return { uploadUrl: await this.storage.createUploadUrl(path), path };
+      return {
+        uploadUrl: await this.storage.createUploadUrl(path, rule.bucket),
+        path,
+      };
     } catch (error) {
       this.limiter.release(userId);
       throw error;

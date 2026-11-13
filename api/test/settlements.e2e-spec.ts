@@ -611,7 +611,7 @@ describe('settlements', () => {
       expect(read).toHaveBeenCalledTimes(1);
     });
 
-    it('halts and alerts the operator after three unreadable days in a row', async () => {
+    it('asks for a capture after three unreadable days in a row instead of halting', async () => {
       const s = await seed();
       await submit(s.collaborationId, `${REELS_URL}?views=unavailable`).expect(
         200,
@@ -619,11 +619,46 @@ describe('settlements', () => {
       await scheduler.runDue(T0);
       clock.set(new Date(T0.getTime() + DAY));
       await scheduler.runDue(clock.now());
-      // 이틀 읽지 못했다: 아직 멈추지 않는다.
-      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
-      expect(alert).not.toHaveBeenCalled();
+      // 이틀 읽지 못했다: 아직 요청하지 않는다.
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'VIEW_EVIDENCE_REQUESTED' },
+        }),
+      ).toBe(0);
 
       clock.set(new Date(T0.getTime() + 2 * DAY));
+      await scheduler.runDue(clock.now());
+      // 멈추지 않고 크리에이터에게 캡처를 요청한다.
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
+      expect(
+        await prisma.notification.findMany({
+          where: { kind: 'VIEW_EVIDENCE_REQUESTED' },
+        }),
+      ).toMatchObject([
+        {
+          userId: s.creatorId,
+          dedupeKey: `evidence-request:${s.collaborationId}`,
+        },
+      ]);
+      expect(alert).not.toHaveBeenCalled();
+      expect(jobKeys()).toContain(`settle:${s.collaborationId}`);
+      expect(await prisma.settlement.count()).toBe(0);
+    });
+
+    it('halts and alerts the operator three days after the period ends when no capture came', async () => {
+      const s = await seed();
+      await submit(s.collaborationId, `${REELS_URL}?views=unavailable`).expect(
+        200,
+      );
+      clock.set(new Date(T0.getTime() + 7 * DAY));
+      await scheduler.runDue(clock.now());
+      // 0원으로 정산하지도 멈추지도 않고 캡처를 기다린다.
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
+      expect(await prisma.settlement.count()).toBe(0);
+      expect(jobKeys()).toContain(`evidence-halt:${s.collaborationId}`);
+      expect(alert).not.toHaveBeenCalled();
+
+      clock.set(new Date(T0.getTime() + 10 * DAY));
       await scheduler.runDue(clock.now());
       const row = await collaborationOf(s.collaborationId);
       expect(row).toMatchObject({
@@ -633,6 +668,7 @@ describe('settlements', () => {
       });
       // 0원으로 정산하지 않는다: 정산 작업은 취소되고 정산도 없다.
       expect(jobKeys()).not.toContain(`settle:${s.collaborationId}`);
+      expect(jobKeys()).not.toContain(`evidence-halt:${s.collaborationId}`);
       expect(await prisma.settlement.count()).toBe(0);
       expect(
         await prisma.ledgerEntry.count({
@@ -1220,22 +1256,30 @@ describe('settlements', () => {
       ]);
     });
 
-    it('halts instead of settling when no snapshot is readable at settlement time', async () => {
+    it('waits for a capture instead of settling when no snapshot is readable at settlement time', async () => {
       const s = await seed();
       await submit(s.collaborationId, `${REELS_URL}?views=unavailable`).expect(
         200,
       );
       const job = settleJob(s.collaborationId);
       await scheduler.registry.run(job.name, job.payload);
-      const row = await collaborationOf(s.collaborationId);
-      expect(row).toMatchObject({
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
+      expect(await prisma.settlement.count()).toBe(0);
+      expect(await prisma.payout.count()).toBe(0);
+      expect(await prisma.refund.count()).toBe(0);
+      expect(alert).not.toHaveBeenCalled();
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(100000);
+
+      // 캡처가 오지 않으면 기한에 멈춘다.
+      await scheduler.registry.run('evidence-missing-halt', {
+        collaborationId: s.collaborationId,
+      });
+      expect(await collaborationOf(s.collaborationId)).toMatchObject({
         stage: 'HALTED',
         stageBeforeHalt: 'COUNTING',
         haltedReason: 'VIEW_COUNT_UNAVAILABLE',
       });
       expect(await prisma.settlement.count()).toBe(0);
-      expect(await prisma.payout.count()).toBe(0);
-      expect(await prisma.refund.count()).toBe(0);
       expect(alert).toHaveBeenCalledTimes(1);
       expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(100000);
     });
@@ -1662,7 +1706,7 @@ describe('settlements', () => {
   describe('fix round 1', () => {
     const settlePayload = (id: string) => ({ collaborationId: id });
 
-    it('halts instead of settling on day 4 when days 5 to 7 are unreadable and settle runs before the day 7 snapshot', async () => {
+    it('waits for a capture instead of settling on day 4 when days 5 to 7 are unreadable and settle runs before the day 7 snapshot', async () => {
       const s = await seed();
       jest
         .spyOn(app.get(ViewCountPort), 'read')
@@ -1679,20 +1723,30 @@ describe('settlements', () => {
       expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
       expect(alert).not.toHaveBeenCalled();
 
-      // 7일째: 정산 작업이 7일째 스냅샷 작업보다 먼저 돈다.
+      // 7일째: 정산 작업이 7일째 스냅샷 작업보다 먼저 돈다. 4일째 값으로 정산하지 않고 캡처를 기다린다.
       clock.set(new Date(T0.getTime() + 7 * DAY));
       await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
+      expect(await prisma.settlement.count()).toBe(0);
+      expect(await prisma.payout.count()).toBe(0);
+      expect(await prisma.refund.count()).toBe(0);
+      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(100000);
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'VIEW_EVIDENCE_REQUESTED' },
+        }),
+      ).toBe(1);
+      expect(alert).not.toHaveBeenCalled();
+
+      // 기한(기간이 끝난 뒤 3일)에 멈춘다. 뒤늦게 도는 7일째 작업과 남은 작업은 취소돼 경보가 더 나가지 않는다.
+      clock.set(new Date(T0.getTime() + 10 * DAY));
+      await scheduler.runDue(clock.now());
       expect(await collaborationOf(s.collaborationId)).toMatchObject({
         stage: 'HALTED',
         stageBeforeHalt: 'COUNTING',
         haltedReason: 'VIEW_COUNT_UNAVAILABLE',
       });
-      expect(await prisma.settlement.count()).toBe(0);
-      expect(await prisma.payout.count()).toBe(0);
-      expect(await prisma.refund.count()).toBe(0);
-      expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(100000);
       expect(alert).toHaveBeenCalledTimes(1);
-      // 뒤늦게 도는 7일째 작업과 남은 작업은 취소돼 경보가 더 나가지 않는다.
       await scheduler.runDue(clock.now());
       expect(alert).toHaveBeenCalledTimes(1);
       expect(
@@ -1702,16 +1756,18 @@ describe('settlements', () => {
       ).toBe(2);
     });
 
-    it('finishes the halt on a retried settle when the halt notice failed', async () => {
+    it('finishes the halt on a retried evidence deadline job when the halt notice failed', async () => {
       const s = await seed();
       await submit(s.collaborationId, `${REELS_URL}?views=unavailable`).expect(
         200,
       );
+      await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+      const payload = { collaborationId: s.collaborationId };
       jest
         .spyOn(app.get(NotificationsService), 'notify')
         .mockRejectedValueOnce(new Error('inbox down'));
       await expect(
-        scheduler.registry.run('settle', settlePayload(s.collaborationId)),
+        scheduler.registry.run('evidence-missing-halt', payload),
       ).rejects.toThrow('inbox down');
       expect((await collaborationOf(s.collaborationId)).stage).toBe('HALTED');
       expect(
@@ -1720,7 +1776,7 @@ describe('settlements', () => {
         }),
       ).toBe(0);
 
-      await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+      await scheduler.registry.run('evidence-missing-halt', payload);
       expect(
         await prisma.notification.count({
           where: { kind: 'COLLABORATION_HALTED' },
@@ -1886,20 +1942,23 @@ describe('settlements', () => {
       await submit(s.collaborationId, `${REELS_URL}?views=unavailable`).expect(
         200,
       );
+      await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+      const payload = { collaborationId: s.collaborationId };
       alert.mockRejectedValueOnce(new Error('mail down'));
       await expect(
-        scheduler.registry.run('settle', settlePayload(s.collaborationId)),
+        scheduler.registry.run('evidence-missing-halt', payload),
       ).rejects.toThrow('mail down');
       // 알림이 실패했으므로 협업은 멈췄지만 다시 돌 작업은 그대로 남아 있다.
       expect((await collaborationOf(s.collaborationId)).stage).toBe('HALTED');
       expect(jobKeys()).toContain(`settle:${s.collaborationId}`);
+      expect(jobKeys()).toContain(`evidence-halt:${s.collaborationId}`);
       expect(
         await prisma.notification.count({
           where: { kind: 'COLLABORATION_HALTED' },
         }),
       ).toBe(0);
 
-      await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+      await scheduler.registry.run('evidence-missing-halt', payload);
       expect(alert).toHaveBeenCalledTimes(2);
       expect(
         await prisma.notification.count({
@@ -1910,6 +1969,7 @@ describe('settlements', () => {
         [],
       );
       expect(jobKeys()).not.toContain(`settle:${s.collaborationId}`);
+      expect(jobKeys()).not.toContain(`evidence-halt:${s.collaborationId}`);
     });
 
     it('keeps the remaining jobs when the inbox is down so a rerun can still notify', async () => {
@@ -1917,14 +1977,16 @@ describe('settlements', () => {
       await submit(s.collaborationId, `${REELS_URL}?views=unavailable`).expect(
         200,
       );
+      await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+      const payload = { collaborationId: s.collaborationId };
       jest
         .spyOn(app.get(NotificationsService), 'notify')
         .mockRejectedValueOnce(new Error('inbox down'));
       await expect(
-        scheduler.registry.run('settle', settlePayload(s.collaborationId)),
+        scheduler.registry.run('evidence-missing-halt', payload),
       ).rejects.toThrow('inbox down');
       expect(jobKeys()).toContain(`settle:${s.collaborationId}`);
-      await scheduler.registry.run('settle', settlePayload(s.collaborationId));
+      await scheduler.registry.run('evidence-missing-halt', payload);
       expect(
         await prisma.notification.count({
           where: { kind: 'COLLABORATION_HALTED' },
@@ -1933,7 +1995,7 @@ describe('settlements', () => {
       expect(jobKeys()).not.toContain(`settle:${s.collaborationId}`);
     });
 
-    it('halts instead of settling on day 4 when day 5 is unreadable, day 6 has no row and day 7 is unreadable', async () => {
+    it('waits for a capture instead of settling on day 4 when day 5 is unreadable, day 6 has no row and day 7 is unreadable', async () => {
       const s = await seed();
       jest
         .spyOn(app.get(ViewCountPort), 'read')
@@ -1964,14 +2026,12 @@ describe('settlements', () => {
         [5, null],
         [7, null],
       ]);
-      expect(await collaborationOf(s.collaborationId)).toMatchObject({
-        stage: 'HALTED',
-        haltedReason: 'VIEW_COUNT_UNAVAILABLE',
-      });
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
+      expect(jobKeys()).toContain(`evidence-halt:${s.collaborationId}`);
       expect(await prisma.settlement.count()).toBe(0);
       expect(await prisma.payout.count()).toBe(0);
       expect(await prisma.refund.count()).toBe(0);
-      expect(alert).toHaveBeenCalledTimes(1);
+      expect(alert).not.toHaveBeenCalled();
     });
 
     it('still settles on the day 7 count when days 5 and 6 have no row but day 7 is readable', async () => {

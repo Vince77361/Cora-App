@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AppError } from '../../common/errors/app-error';
-import { PHOTOS_BUCKET, StoragePort } from './storage.port';
+import { PHOTOS_BUCKET, PRIVATE_BUCKET, StoragePort } from './storage.port';
 
 export interface BucketOptions {
   fileSizeLimit: number;
@@ -36,9 +36,12 @@ export class SupabaseStorageAdapter extends StoragePort {
     return this.client.storage;
   }
 
-  async createUploadUrl(path: string): Promise<string> {
+  async createUploadUrl(
+    path: string,
+    bucket: string = PHOTOS_BUCKET,
+  ): Promise<string> {
     const { data, error } = await this.storage()
-      .from(PHOTOS_BUCKET)
+      .from(bucket)
       .createSignedUploadUrl(path);
     // 원본 오류에는 내부 정보가 있을 수 있어 메시지를 사용자에게 그대로 넘기지 않는다.
     if (error || !data) {
@@ -64,21 +67,31 @@ export class SupabaseStorageAdapter extends StoragePort {
     return this.storage().from(PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
   }
 
-  // yarn setup:supabase가 쓴다(포트에는 없다). 버킷이 없으면 공개로 만들고, 있으면 설정만 맞춘다.
-  // 서명된 업로드 주소는 크기를 강제하지 않아서, 크기·형식 제한을 저장소 쪽에도 둔다.
-  async ensurePhotosBucket(
-    options: BucketOptions,
+  async signedReadUrl(path: string, ttlSeconds: number): Promise<string> {
+    const { data, error } = await this.storage()
+      .from(PRIVATE_BUCKET)
+      .createSignedUrl(path, ttlSeconds);
+    if (error || !data) {
+      throw new AppError('INTERNAL', '파일을 읽을 주소를 만들지 못했어요.');
+    }
+    return data.signedUrl;
+  }
+
+  // yarn setup:supabase가 쓴다(포트에는 없다). 버킷이 없으면 만들고, 있으면 설정만 맞춘다.
+  // 사진 버킷은 공개, 캡처 버킷은 비공개다. 서명된 업로드 주소는 크기를 강제하지 않아서, 크기·형식 제한을 저장소 쪽에도 둔다.
+  async ensureBucket(
+    name: string,
+    options: BucketOptions & { public: boolean },
   ): Promise<'created' | 'updated'> {
     const storage = this.storage();
     const listed = await storage.listBuckets();
     if (listed.error) {
       throw new AppError('INTERNAL', 'Storage 버킷 목록을 읽지 못했어요.');
     }
-    const exists = listed.data.some((b) => b.name === PHOTOS_BUCKET);
-    const settings = { public: true, ...options };
+    const exists = listed.data.some((b) => b.name === name);
     const { error } = exists
-      ? await storage.updateBucket(PHOTOS_BUCKET, settings)
-      : await storage.createBucket(PHOTOS_BUCKET, settings);
+      ? await storage.updateBucket(name, options)
+      : await storage.createBucket(name, options);
     if (error) {
       throw new AppError('INTERNAL', 'Storage 버킷을 설정하지 못했어요.');
     }
