@@ -5,6 +5,8 @@ doc/AdvanceOnboardingDto.md
 doc/AdvanceOnboardingStep.md
 doc/AnalyzeLinksDto.md
 doc/AnalyzeStoreLinksResultModel.md
+doc/AppConfigApi.md
+doc/AppConfigModel.md
 doc/ApplicantModel.md
 doc/ApplicationModel.md
 doc/ApplicationStatus.md
@@ -33,6 +35,9 @@ doc/CreatorProfileModel.md
 doc/CreatorSummaryModel.md
 doc/CreatorsApi.md
 doc/DraftSceneModel.md
+doc/FeeRatesModel.md
+doc/FixedCashMaxModel.md
+doc/FixedCashRangeModel.md
 doc/HealthApi.md
 doc/HealthModel.md
 doc/IndustryCategory.md
@@ -69,7 +74,9 @@ doc/PhotoUploadModel.md
 doc/QuietHours.md
 doc/ReceivedOfferModel.md
 doc/ReceivedOfferTab.md
+doc/RewardConfigModel.md
 doc/RewardInputDto.md
+doc/RewardRangeModel.md
 doc/SendOfferDto.md
 doc/SentOfferModel.md
 doc/SetDefaultTermsDto.md
@@ -95,6 +102,7 @@ doc/UpsertPayoutAccountDto.md
 doc/UsageRights.md
 doc/UserRole.md
 doc/UsersApi.md
+doc/VoucherDefaultsModel.md
 doc/VoucherInputDto.md
 doc/WalletAccountModel.md
 doc/WalletApi.md
@@ -103,6 +111,7 @@ doc/WalletEntryModel.md
 doc/WalletModel.md
 doc/WalletNextPayoutModel.md
 lib/api.dart
+lib/api/app_config_api.dart
 lib/api/applications_api.dart
 lib/api/collaborations_api.dart
 lib/api/content_drafts_api.dart
@@ -131,6 +140,7 @@ lib/model/advance_onboarding_dto.dart
 lib/model/advance_onboarding_step.dart
 lib/model/analyze_links_dto.dart
 lib/model/analyze_store_links_result_model.dart
+lib/model/app_config_model.dart
 lib/model/applicant_model.dart
 lib/model/application_model.dart
 lib/model/application_status.dart
@@ -155,6 +165,9 @@ lib/model/create_photo_upload_dto.dart
 lib/model/creator_profile_model.dart
 lib/model/creator_summary_model.dart
 lib/model/draft_scene_model.dart
+lib/model/fee_rates_model.dart
+lib/model/fixed_cash_max_model.dart
+lib/model/fixed_cash_range_model.dart
 lib/model/health_model.dart
 lib/model/industry_category.dart
 lib/model/instagram_connect_url_model.dart
@@ -184,7 +197,9 @@ lib/model/photo_upload_model.dart
 lib/model/quiet_hours.dart
 lib/model/received_offer_model.dart
 lib/model/received_offer_tab.dart
+lib/model/reward_config_model.dart
 lib/model/reward_input_dto.dart
+lib/model/reward_range_model.dart
 lib/model/send_offer_dto.dart
 lib/model/sent_offer_model.dart
 lib/model/set_default_terms_dto.dart
@@ -206,6 +221,7 @@ lib/model/upsert_creator_profile_dto.dart
 lib/model/upsert_payout_account_dto.dart
 lib/model/usage_rights.dart
 lib/model/user_role.dart
+lib/model/voucher_defaults_model.dart
 lib/model/voucher_input_dto.dart
 lib/model/wallet_account_model.dart
 lib/model/wallet_entry_kind.dart
@@ -217,6 +233,8 @@ test/advance_onboarding_dto_test.dart
 test/advance_onboarding_step_test.dart
 test/analyze_links_dto_test.dart
 test/analyze_store_links_result_model_test.dart
+test/app_config_api_test.dart
+test/app_config_model_test.dart
 test/applicant_model_test.dart
 test/application_model_test.dart
 test/application_status_test.dart
@@ -245,6 +263,9 @@ test/creator_profile_model_test.dart
 test/creator_summary_model_test.dart
 test/creators_api_test.dart
 test/draft_scene_model_test.dart
+test/fee_rates_model_test.dart
+test/fixed_cash_max_model_test.dart
+test/fixed_cash_range_model_test.dart
 test/health_api_test.dart
 test/health_model_test.dart
 test/industry_category_test.dart
@@ -281,7 +302,9 @@ test/photo_upload_model_test.dart
 test/quiet_hours_test.dart
 test/received_offer_model_test.dart
 test/received_offer_tab_test.dart
+test/reward_config_model_test.dart
 test/reward_input_dto_test.dart
+test/reward_range_model_test.dart
 test/send_offer_dto_test.dart
 test/sent_offer_model_test.dart
 test/set_default_terms_dto_test.dart
@@ -307,6 +330,7 @@ test/upsert_payout_account_dto_test.dart
 test/usage_rights_test.dart
 test/user_role_test.dart
 test/users_api_test.dart
+test/voucher_defaults_model_test.dart
 test/voucher_input_dto_test.dart
 test/wallet_account_model_test.dart
 test/wallet_api_test.dart

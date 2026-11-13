@@ -55,6 +55,21 @@
         ],
         "type": "object"
       },
+      "AppConfigModel": {
+        "properties": {
+          "feeRates": {
+            "$ref": "#/components/schemas/FeeRatesModel"
+          },
+          "reward": {
+            "$ref": "#/components/schemas/RewardConfigModel"
+          }
+        },
+        "required": [
+          "reward",
+          "feeRates"
+        ],
+        "type": "object"
+      },
       "ApplicantModel": {
         "properties": {
           "applicationId": {
@@ -675,6 +690,67 @@
           "label",
           "text",
           "usesPhoto"
+        ],
+        "type": "object"
+      },
+      "FeeRatesModel": {
+        "properties": {
+          "bid": {
+            "description": "입찰 수수료율(%).",
+            "type": "integer"
+          },
+          "brandContract": {
+            "description": "브랜드 계약 수수료율(%).",
+            "type": "integer"
+          },
+          "storeOffer": {
+            "description": "가게 오퍼 수수료율(%).",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "storeOffer",
+          "bid",
+          "brandContract"
+        ],
+        "type": "object"
+      },
+      "FixedCashMaxModel": {
+        "properties": {
+          "brand": {
+            "description": "브랜드가 맡길 때의 최대(원).",
+            "type": "integer"
+          },
+          "store": {
+            "description": "가게가 맡길 때의 최대(원).",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "store",
+          "brand"
+        ],
+        "type": "object"
+      },
+      "FixedCashRangeModel": {
+        "properties": {
+          "maxByCommissioner": {
+            "$ref": "#/components/schemas/FixedCashMaxModel"
+          },
+          "presets": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "step": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "maxByCommissioner",
+          "step",
+          "presets"
         ],
         "type": "object"
       },
@@ -1425,6 +1501,52 @@
         ],
         "type": "string"
       },
+      "RewardConfigModel": {
+        "properties": {
+          "countingDays": {
+            "description": "게시 뒤 조회수를 재는 기간(일).",
+            "type": "integer"
+          },
+          "fixedCash": {
+            "$ref": "#/components/schemas/FixedCashRangeModel"
+          },
+          "perViewCap": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RewardRangeModel"
+              }
+            ],
+            "description": "조회수 수당 상한(원)."
+          },
+          "usageRightsDefault": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsageRights"
+              }
+            ]
+          },
+          "viewRate": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RewardRangeModel"
+              }
+            ],
+            "description": "1,000회당 원."
+          },
+          "voucher": {
+            "$ref": "#/components/schemas/VoucherDefaultsModel"
+          }
+        },
+        "required": [
+          "viewRate",
+          "perViewCap",
+          "fixedCash",
+          "voucher",
+          "usageRightsDefault",
+          "countingDays"
+        ],
+        "type": "object"
+      },
       "RewardInputDto": {
         "properties": {
           "fixedCash": {
@@ -1450,6 +1572,29 @@
             "type": "object"
           }
         },
+        "type": "object"
+      },
+      "RewardRangeModel": {
+        "properties": {
+          "default": {
+            "type": "integer"
+          },
+          "max": {
+            "type": "integer"
+          },
+          "min": {
+            "type": "integer"
+          },
+          "step": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "min",
+          "max",
+          "step",
+          "default"
+        ],
         "type": "object"
       },
       "SendOfferDto": {
@@ -2031,6 +2176,29 @@
         ],
         "type": "string"
       },
+      "VoucherDefaultsModel": {
+        "properties": {
+          "defaultName": {
+            "type": "string"
+          },
+          "defaultPeople": {
+            "type": "integer"
+          },
+          "defaultValue": {
+            "type": "integer"
+          },
+          "maxPeople": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "defaultName",
+          "defaultValue",
+          "defaultPeople",
+          "maxPeople"
+        ],
+        "type": "object"
+      },
       "VoucherInputDto": {
         "properties": {
           "name": {
@@ -2563,6 +2731,28 @@
         "summary": "",
         "tags": [
           "Submissions"
+        ]
+      }
+    },
+    "/config": {
+      "get": {
+        "operationId": "getAppConfig",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "",
+        "tags": [
+          "AppConfig"
         ]
       }
     },

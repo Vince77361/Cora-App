@@ -40,21 +40,14 @@ Please follow the [installation procedure](#installation--usage) and then run th
 ```dart
 import 'package:cora_api/api.dart';
 
-// TODO Configure HTTP Bearer authorization: bearer
-// Case 1. Use String Token
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
-// Case 2. Use Function which generate token.
-// String yourTokenGeneratorFunction() { ... }
-//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = ApplicationsApi();
-final id = id_example; // String | 
+final api_instance = AppConfigApi();
 
 try {
-    final result = api_instance.applyToStore(id);
+    final result = api_instance.getAppConfig();
     print(result);
 } catch (e) {
-    print('Exception when calling ApplicationsApi->applyToStore: $e\n');
+    print('Exception when calling AppConfigApi->getAppConfig: $e\n');
 }
 
 ```
@@ -65,6 +58,7 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*AppConfigApi* | [**getAppConfig**](doc//AppConfigApi.md#getappconfig) | **GET** /config | 
 *ApplicationsApi* | [**applyToStore**](doc//ApplicationsApi.md#applytostore) | **POST** /stores/{id}/applications | 
 *ApplicationsApi* | [**cancelMyApplication**](doc//ApplicationsApi.md#cancelmyapplication) | **DELETE** /stores/{id}/applications/mine | 
 *ApplicationsApi* | [**listMyStoreApplicants**](doc//ApplicationsApi.md#listmystoreapplicants) | **GET** /stores/me/applications | 
@@ -123,6 +117,7 @@ Class | Method | HTTP request | Description
  - [AdvanceOnboardingStep](doc//AdvanceOnboardingStep.md)
  - [AnalyzeLinksDto](doc//AnalyzeLinksDto.md)
  - [AnalyzeStoreLinksResultModel](doc//AnalyzeStoreLinksResultModel.md)
+ - [AppConfigModel](doc//AppConfigModel.md)
  - [ApplicantModel](doc//ApplicantModel.md)
  - [ApplicationModel](doc//ApplicationModel.md)
  - [ApplicationStatus](doc//ApplicationStatus.md)
@@ -147,6 +142,9 @@ Class | Method | HTTP request | Description
  - [CreatorProfileModel](doc//CreatorProfileModel.md)
  - [CreatorSummaryModel](doc//CreatorSummaryModel.md)
  - [DraftSceneModel](doc//DraftSceneModel.md)
+ - [FeeRatesModel](doc//FeeRatesModel.md)
+ - [FixedCashMaxModel](doc//FixedCashMaxModel.md)
+ - [FixedCashRangeModel](doc//FixedCashRangeModel.md)
  - [HealthModel](doc//HealthModel.md)
  - [IndustryCategory](doc//IndustryCategory.md)
  - [InstagramConnectUrlModel](doc//InstagramConnectUrlModel.md)
@@ -176,7 +174,9 @@ Class | Method | HTTP request | Description
  - [QuietHours](doc//QuietHours.md)
  - [ReceivedOfferModel](doc//ReceivedOfferModel.md)
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)
+ - [RewardConfigModel](doc//RewardConfigModel.md)
  - [RewardInputDto](doc//RewardInputDto.md)
+ - [RewardRangeModel](doc//RewardRangeModel.md)
  - [SendOfferDto](doc//SendOfferDto.md)
  - [SentOfferModel](doc//SentOfferModel.md)
  - [SetDefaultTermsDto](doc//SetDefaultTermsDto.md)
@@ -198,6 +198,7 @@ Class | Method | HTTP request | Description
  - [UpsertPayoutAccountDto](doc//UpsertPayoutAccountDto.md)
  - [UsageRights](doc//UsageRights.md)
  - [UserRole](doc//UserRole.md)
+ - [VoucherDefaultsModel](doc//VoucherDefaultsModel.md)
  - [VoucherInputDto](doc//VoucherInputDto.md)
  - [WalletAccountModel](doc//WalletAccountModel.md)
  - [WalletEntryKind](doc//WalletEntryKind.md)

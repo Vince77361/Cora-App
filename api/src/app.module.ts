@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { AppConfigModule } from './app-config/app-config.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { AuthModule } from './auth/auth.module';
 import { CollaborationsApiModule } from './collaborations/collaborations-api.module';
@@ -31,6 +32,7 @@ import { WalletModule } from './wallet/wallet.module';
     PrismaModule,
     AuthModule,
     HealthModule,
+    AppConfigModule,
     IntegrationsModule,
     JobsModule,
     NotificationsModule,

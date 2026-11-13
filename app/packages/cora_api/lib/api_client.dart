@@ -212,6 +212,8 @@ class ApiClient {
           return AnalyzeLinksDto.fromJson(value);
         case 'AnalyzeStoreLinksResultModel':
           return AnalyzeStoreLinksResultModel.fromJson(value);
+        case 'AppConfigModel':
+          return AppConfigModel.fromJson(value);
         case 'ApplicantModel':
           return ApplicantModel.fromJson(value);
         case 'ApplicationModel':
@@ -260,6 +262,12 @@ class ApiClient {
           return CreatorSummaryModel.fromJson(value);
         case 'DraftSceneModel':
           return DraftSceneModel.fromJson(value);
+        case 'FeeRatesModel':
+          return FeeRatesModel.fromJson(value);
+        case 'FixedCashMaxModel':
+          return FixedCashMaxModel.fromJson(value);
+        case 'FixedCashRangeModel':
+          return FixedCashRangeModel.fromJson(value);
         case 'HealthModel':
           return HealthModel.fromJson(value);
         case 'IndustryCategory':
@@ -318,8 +326,12 @@ class ApiClient {
           return ReceivedOfferModel.fromJson(value);
         case 'ReceivedOfferTab':
           return ReceivedOfferTabTypeTransformer().decode(value);
+        case 'RewardConfigModel':
+          return RewardConfigModel.fromJson(value);
         case 'RewardInputDto':
           return RewardInputDto.fromJson(value);
+        case 'RewardRangeModel':
+          return RewardRangeModel.fromJson(value);
         case 'SendOfferDto':
           return SendOfferDto.fromJson(value);
         case 'SentOfferModel':
@@ -362,6 +374,8 @@ class ApiClient {
           return UsageRightsTypeTransformer().decode(value);
         case 'UserRole':
           return UserRoleTypeTransformer().decode(value);
+        case 'VoucherDefaultsModel':
+          return VoucherDefaultsModel.fromJson(value);
         case 'VoucherInputDto':
           return VoucherInputDto.fromJson(value);
         case 'WalletAccountModel':
