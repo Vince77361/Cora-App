@@ -1,8 +1,8 @@
 import { OfferStatus } from '@prisma/client';
+import { PROPOSAL_POLICY } from '../common/collaboration-policy';
 import {
   canUndoDecline,
   DECLINE_UNDO_SECONDS,
-  OFFER_RESPONSE_DAYS,
   needsInstagram,
   OfferTimes,
   paymentDaysLeft,
@@ -22,7 +22,7 @@ const at = (offsetMs: number): Date => new Date(T0.getTime() + offsetMs);
 function sent(over: Partial<OfferTimes> = {}): OfferTimes {
   return {
     status: 'SENT',
-    expiresAt: at(OFFER_RESPONSE_DAYS * DAY),
+    expiresAt: at(PROPOSAL_POLICY.responseDays * DAY),
     paymentDueAt: null,
     declinedAt: null,
     ...over,
@@ -41,7 +41,7 @@ function declined(declinedAt: Date): OfferTimes {
 
 describe('offer rules', () => {
   it('uses the agreed policy values', () => {
-    expect(OFFER_RESPONSE_DAYS).toBe(7);
+    expect(PROPOSAL_POLICY.responseDays).toBe(7);
     expect(PAYMENT_DUE_DAYS).toBe(3);
     expect(DECLINE_UNDO_SECONDS).toBe(30);
   });

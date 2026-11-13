@@ -1332,10 +1332,19 @@ describe('offers', () => {
         fixedCash: 30000,
       });
       expect(await offerRow(offerId)).toMatchObject({ status: 'ACCEPTED' });
-      // 결제 기한 작업이 올라가고, 크리에이터에게만 알림이 간다.
+      // 결제 기한 작업이 올라가고, 수락 알림은 크리에이터에게만 간다(사장님은 응답의 협업 id로 결제 화면에 간다).
+      // 앞선 역제안의 알림(사장님에게 간 OFFER_COUNTERED)은 수락 알림이 아니다.
       expect(scheduler.pending().map((j) => j.name)).toContain(
         'payment-due-expiry',
       );
+      expect(
+        (
+          await prisma.notification.findMany({ orderBy: { createdAt: 'asc' } })
+        ).map((n) => [n.userId, n.kind]),
+      ).toEqual([
+        [USER_A, 'OFFER_COUNTERED'],
+        [OTHER, 'OFFER_ACCEPTED_BY_STORE'],
+      ]);
     });
 
     it('notifies the creator with the revised and accepted wordings', async () => {
@@ -1606,6 +1615,28 @@ describe('offers', () => {
       await propose(auth, offerId).expect(201);
       await post(auth, `/offers/${offerId}/cancel`).expect(200);
       expect((await offerRow(offerId)).status).toBe('CANCELLED');
+    });
+
+    it('refuses the store cancel when the creator sends a new version after the store read the offer', async () => {
+      const repo = app.get(OffersRepository);
+      const original = repo.cancel.bind(repo);
+      // 사장님이 판본 1을 읽은 뒤, 취소가 저장되기 전에 크리에이터가 판본 2를 낸다.
+      const spy = jest
+        .spyOn(repo, 'cancel')
+        .mockImplementationOnce(async (...args) => {
+          await propose(authB, offerId).expect(201);
+          return original(...args);
+        });
+      const res = await post(auth, `/offers/${offerId}/cancel`).expect(409);
+      spy.mockRestore();
+      expect(res.body).toMatchObject({
+        error: { code: 'CONFLICT', message: '받은 제안은 종료로 끝내 주세요.' },
+      });
+      expect(await offerRow(offerId)).toMatchObject({
+        status: 'SENT',
+        latestVersion: 2,
+        turn: 'STORE',
+      });
     });
 
     it('shows version 2 terms and number on the sent list', async () => {

@@ -329,6 +329,13 @@ describe('OffersRepository', () => {
       ).toBe(false);
     });
 
+    it('refuses to cancel a sent offer once the creator wrote the latest version', async () => {
+      const offer = (await repo.create(base()))!;
+      expect(await repo.propose(proposal(offer.id))).not.toBeNull();
+      expect(await repo.cancel(offer.id, storeId, 'SENT', at(DAY))).toBe(false);
+      expect(await statusOf(offer.id)).toBe('SENT');
+    });
+
     it('declines only on the creator turn and stores NO_REASON', async () => {
       const offer = (await repo.create(base()))!;
       await repo.propose(proposal(offer.id));

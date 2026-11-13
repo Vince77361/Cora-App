@@ -35,7 +35,6 @@ import {
   canUndoDecline,
   DECLINE_UNDO_SECONDS,
   needsInstagram,
-  OFFER_RESPONSE_DAYS,
   paymentDaysLeft,
   storedStatusAt,
   viewForCreator,
@@ -129,7 +128,9 @@ export class OffersService {
         terms,
         // 보낸 시각을 DB 기본값이 아니라 Clock으로 정해, 만료 기한과 같은 기준을 쓴다.
         createdAt: now,
-        expiresAt: new Date(now.getTime() + OFFER_RESPONSE_DAYS * DAY_MS),
+        expiresAt: new Date(
+          now.getTime() + PROPOSAL_POLICY.responseDays * DAY_MS,
+        ),
       });
     } catch (error) {
       await this.releaseApplication(applicationId);
@@ -229,6 +230,15 @@ export class OffersService {
       : undefined;
     if (!(await this.offers.cancel(row.id, store.id, stored, now, alongWith))) {
       await this.settleLatest(row.id, now);
+      // 읽은 뒤 크리에이터가 새 판본을 냈으면 여전히 SENT이고 차례가 가게로 넘어왔다: 받은 제안이라 종료로 끝내야 한다.
+      const fresh = await this.offers.findById(row.id);
+      if (
+        stored === 'SENT' &&
+        fresh?.status === 'SENT' &&
+        fresh.turn !== 'CREATOR'
+      ) {
+        throw new AppError('CONFLICT', '받은 제안은 종료로 끝내 주세요.');
+      }
       throw this.alreadyHandled();
     }
     await this.closeApplication({ ...row, status: 'CANCELLED' });

@@ -312,6 +312,7 @@ export class OffersRepository {
   }
 
   // 취소는 읽은 상태(SENT 또는 ACCEPTED)에서만, 그 상태의 기한 전일 때만.
+  // SENT는 가게가 쓴 판본이 최신(차례가 크리에이터)일 때만이다: 읽은 뒤 크리에이터가 새 판본을 내 차례가 가게로 넘어왔으면 0행이다.
   // 낼 돈이 없는 ACCEPTED(paymentDueAt null)는 서비스가 먼저 거르므로 여기까지 오지 않는다.
   cancel(
     id: string,
@@ -322,7 +323,7 @@ export class OffersRepository {
   ): Promise<boolean> {
     const alive =
       from === 'SENT'
-        ? { expiresAt: { gt: now } }
+        ? { expiresAt: { gt: now }, turn: 'CREATOR' as const }
         : { paymentDueAt: { gt: now } };
     return this.updateWith(
       (tx) =>

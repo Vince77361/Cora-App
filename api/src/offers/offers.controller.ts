@@ -77,7 +77,11 @@ export class OffersController {
   @Post('offers/:id/accept')
   @HttpCode(200)
   @ApiOperation({ operationId: 'acceptOffer' })
-  @ApiOkResponse({ type: ReceivedOfferModel })
+  @ApiOkResponse({
+    type: ReceivedOfferModel,
+    description:
+      '크리에이터도 사장님도 수락한다. 응답은 받은 오퍼 모양이고, 사장님은 collaborationId만 보면 된다.',
+  })
   accept(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
