@@ -183,7 +183,7 @@ void main() {
     await tapNav(tester, '발견');
     expect(path(), DemoPaths.brandDiscover);
     await tapNav(tester, '대화');
-    expect(path(), DemoPaths.chat);
+    expect(path(), DemoPaths.chatThread);
     expectInRole(DemoRole.brand);
     await back(tester);
     // 브랜드의 "프로필"은 설정이다. 크리에이터의 협업 원칙이 아니다.
@@ -226,9 +226,10 @@ void main() {
     await tapText(tester, '수락하기');
     expect(path(), DemoPaths.escrow);
     expectInRole(DemoRole.creator);
+    // 초안 검토(14)는 브랜드 계약의 화면이라 크리에이터의 가게 오퍼에서는 A7에 머물며 제출 완료가 된다.
     await tapText(tester, '콘텐츠 링크 제출');
-    expect(path(), DemoPaths.review);
-    await back(tester);
+    expect(path(), DemoPaths.escrow);
+    expect(find.text('링크를 제출했어요'), findsOneWidget);
     await back(tester);
     await tapNav(tester, '프로필');
     expect(path(), DemoPaths.profile);

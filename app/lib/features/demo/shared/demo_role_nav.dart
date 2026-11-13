@@ -38,7 +38,8 @@ List<DemoNavItem> demoRoleNavItems(DemoRole role, int current) {
     DemoRole.brand => [
       item(0, '발견', G4Icons.discover, 'Main.dc.html'),
       item(1, '관심', G4Icons.heart, 'Likes.dc.html'),
-      item(2, '대화', G4Icons.chat, 'Chat.dc.html', stack: true),
+      // 11 메시지 요청은 크리에이터가 받는 화면이다. 브랜드는 진행 중인 크리에이터와의 대화(D3)를 연다.
+      item(2, '대화', G4Icons.chat, 'NChatThread.dc.html', stack: true),
       item(3, '협업', G4Icons.work, 'Progress.dc.html'),
       item(4, '프로필', G4Icons.person, 'NSettings.dc.html', stack: true),
     ],

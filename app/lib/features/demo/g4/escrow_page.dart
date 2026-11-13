@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../demo_role.dart';
 import '../shared/demo_ui.dart';
 import 'g4_style.dart';
 
 /// A7 에스크로 결제·지급 (`NEscrow.dc.html`).
-class EscrowPage extends StatelessWidget {
+///
+/// 캔버스의 "콘텐츠 링크 제출"은 초안 검토(14)로 가지만, 14는 브랜드 계약의 화면이고 가게 오퍼에는 초안 검토가 없다.
+/// 크리에이터용 제출 화면은 캔버스에 없으므로, 이 화면에 머물며 제출을 마친 상태(집계 단계)로 바꾼다.
+class EscrowPage extends StatefulWidget {
   const EscrowPage({super.key});
 
   static const _shield =
@@ -19,9 +23,25 @@ class EscrowPage extends StatelessWidget {
     ['7일간 조회수 집계 후 지급', '최대 6만 원', 'todo'],
   ];
 
+  static const _submittedRows = [
+    ['오퍼 수락', '11월 10일', 'done'],
+    ['가게 결제 완료', 'Cora가 금액을 보관해요', 'done'],
+    ['방문하고 촬영하기', '식사권은 방문 때 보여주세요', 'done'],
+    ['콘텐츠 올리고 링크 제출', '11월 23일까지', 'done'],
+    ['7일간 조회수 집계 후 지급', '최대 6만 원', 'now'],
+  ];
+
+  @override
+  State<EscrowPage> createState() => _EscrowPageState();
+}
+
+class _EscrowPageState extends State<EscrowPage> {
+  bool _submitted = false;
+
   @override
   Widget build(BuildContext context) {
     final c = G4Colors.of(context);
+    final rows = _submitted ? EscrowPage._submittedRows : EscrowPage._rows;
     return DemoFrame(
       background: c.bg,
       children: [
@@ -70,8 +90,8 @@ class EscrowPage extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: Column(
                     children: [
-                      for (var i = 0; i < _rows.length; i++)
-                        _Step(c: c, index: i, row: _rows[i]),
+                      for (var i = 0; i < rows.length; i++)
+                        _Step(c: c, index: i, row: rows[i]),
                     ],
                   ),
                 ),
@@ -111,20 +131,27 @@ class EscrowPage extends StatelessWidget {
                   flex: 16,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => demoGo(context, 'Review.dc.html'),
+                    onTap: () {
+                      // 역할 없이 경로로 연 화면 확인에서는 캔버스 링크를 따른다.
+                      if (demoRole.value == null) {
+                        demoGo(context, 'Review.dc.html');
+                      } else {
+                        setState(() => _submitted = true);
+                      }
+                    },
                     child: Container(
                       height: 58,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: G4Colors.lime,
+                        color: _submitted ? c.fill : G4Colors.lime,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        '콘텐츠 링크 제출',
+                        _submitted ? '링크를 제출했어요' : '콘텐츠 링크 제출',
                         style: g4Style(
                           16,
                           weight: FontWeight.w700,
-                          color: G4Colors.onLime,
+                          color: _submitted ? c.sub : G4Colors.onLime,
                         ),
                       ),
                     ),

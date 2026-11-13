@@ -15,6 +15,8 @@ class AgreementPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = G2Palette.of(context);
     final store = demoRole.value == DemoRole.store;
+    // 브랜드로 열면 같은 판본 2를 브랜드 쪽에서 본다: 크리에이터가 고쳐 보냈고 브랜드가 응답할 차례다.
+    final brand = demoRole.value == DemoRole.brand;
     final chipBg = p.dark
         ? const Color.fromRGBO(255, 255, 255, 0.06)
         : const Color.fromRGBO(255, 255, 255, 0.7);
@@ -213,7 +215,7 @@ class AgreementPage extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            store ? '내가 응답할 차례' : '브랜드 확인 대기 중',
+                            store || brand ? '내가 응답할 차례' : '브랜드 확인 대기 중',
                             style: g2Text(
                               14,
                               color: p.sub,
@@ -226,7 +228,7 @@ class AgreementPage extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: store
+                            child: store || brand
                                 ? statusChip('나 · 대기', false)
                                 : statusChip('나 · 확인함', true),
                           ),
@@ -234,6 +236,8 @@ class AgreementPage extends StatelessWidget {
                           Expanded(
                             child: store
                                 ? statusChip('상대 · 확인함', true)
+                                : brand
+                                ? statusChip('크리에이터 · 확인함', true)
                                 : statusChip('브랜드 · 대기', false),
                           ),
                         ],
@@ -340,7 +344,11 @@ class AgreementPage extends StatelessWidget {
                           ),
                           const SizedBox(width: 10),
                           Text(
-                            store ? '가게의 기본 조건' : '브랜드의 최초 제안',
+                            store
+                                ? '가게의 기본 조건'
+                                : brand
+                                ? '내 최초 제안'
+                                : '브랜드의 최초 제안',
                             style: g2Text(14, color: p.sub),
                           ),
                         ],
@@ -361,7 +369,11 @@ class AgreementPage extends StatelessWidget {
                           ),
                           const SizedBox(width: 10),
                           Text(
-                            store ? '하루 한 컵의 역제안' : '내가 제작비·일정 수정 제안',
+                            store
+                                ? '하루 한 컵의 역제안'
+                                : brand
+                                ? '서윤의 작은 취향이 제작비·일정 수정 제안'
+                                : '내가 제작비·일정 수정 제안',
                             style: g2Text(14, color: p.text),
                           ),
                         ],

@@ -105,11 +105,20 @@ void main() {
     expect(path(), DemoPaths.budget);
   });
 
-  testWidgets('brand and no-role 12 keep the canvas brand content', (
+  testWidgets('brand D3 talks with the creator from the brand side', (
     tester,
   ) async {
+    await open(tester, DemoRole.brand, DemoPaths.chatThread);
+    expect(find.text('서윤의 작은 취향'), findsOneWidget);
+    expect(find.text('모아 스튜디오'), findsNothing);
+    expect(find.text('메시지 요청'), findsNothing);
+  });
+
+  testWidgets('brand 12 shows the brand side of version 2', (tester) async {
     await open(tester, DemoRole.brand, DemoPaths.agreement);
-    expect(find.text('브랜드 확인 대기 중'), findsOneWidget);
+    expect(find.text('내가 응답할 차례'), findsOneWidget);
+    expect(find.text('크리에이터 · 확인함'), findsOneWidget);
+    expect(find.text('브랜드 확인 대기 중'), findsNothing);
     expect(find.text('계약서 미리 보기'), findsOneWidget);
     expect(find.text('300,000원 → 350,000원'), findsOneWidget);
   });
