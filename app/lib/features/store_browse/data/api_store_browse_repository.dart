@@ -45,12 +45,21 @@ class ApiStoreBrowseRepository implements StoreBrowseRepository {
       },
       intro: m.intro,
       bestShootingTime: m.bestShootingTime,
+      myOpenOffer: switch (m.myOpenOffer) {
+        final open? => MyOpenOffer(
+          offerId: open.id,
+          latestVersion: open.latestVersion,
+          myTurn: open.myTurn,
+        ),
+        null => null,
+      },
     );
   });
 
   @override
-  Future<void> apply(String storeId) =>
-      _guard(() => _applications.applyToStore(storeId, api.ApplyDto()));
+  Future<void> apply(String storeId, {String? pitch}) => _guard(
+    () => _applications.applyToStore(storeId, api.ApplyDto(pitch: pitch)),
+  );
 
   @override
   Future<void> cancelApplication(String storeId) =>

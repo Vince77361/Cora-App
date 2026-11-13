@@ -47,10 +47,14 @@ class CoraPillButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(CoraRadius.pill),
             ),
             alignment: Alignment.center,
-            child: Text(
-              label,
-              maxLines: 1,
-              style: textStyle.copyWith(color: foreground),
+            // 글자를 키운 폰에서 버튼 둘이 나란히 있어도 한 줄에 맞게 줄인다. 평소 크기에서는 그대로다.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: textStyle.copyWith(color: foreground),
+              ),
             ),
           ),
         ),

@@ -8,8 +8,9 @@ abstract class StoreBrowseRepository {
   Future<List<StoreSummary>> fetchPublished();
   Future<StoreDetail> fetchDetail(String storeId);
 
-  /// 가게에 지원한다. 이미 지원했거나 오퍼를 받았으면 [StoreBrowseFailure.conflict].
-  Future<void> apply(String storeId);
+  /// 가게에 지원한다. [pitch]는 사장님이 지원자 목록에서 보는 한 줄(100자, 선택)이다. 이미 지원했거나
+  /// 오퍼를 받았으면 [StoreBrowseFailure.conflict].
+  Future<void> apply(String storeId, {String? pitch});
 
   /// 지원을 취소한다. 사장님이 오퍼를 보낸 뒤에는 [StoreBrowseFailure.conflict].
   Future<void> cancelApplication(String storeId);

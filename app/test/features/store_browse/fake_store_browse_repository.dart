@@ -24,8 +24,8 @@ StoreSummary ramenStore({
       const OfferTerms(
         format: ContentFormat.reels,
         reward: Reward(
-          voucher: Voucher(name: '2인 식사권', value: 40000),
-          viewPay: ViewPay(ratePerThousand: 2000, cap: 100000),
+          voucher: Voucher(name: '식사권', value: 40000, people: 2),
+          viewPay: ViewPay(ratePerThousand: 2000, cap: 60000),
         ),
       ),
 );
@@ -40,6 +40,9 @@ class FakeStoreBrowseRepository implements StoreBrowseRepository {
   /// 가게 id별 내 지원 상태. 없으면 [MyApplicationStatus.none].
   final Map<String, MyApplicationStatus> statuses = {};
 
+  /// 가게 id별 열린 제안. 없으면 열린 제안이 없다.
+  final Map<String, MyOpenOffer> openOffers = {};
+
   String? intro = '진한 국물을 12시간 끓이는 작은 라멘집이에요. 김이 오르는 첫 숟가락 장면을 담아주세요.';
   String? bestShootingTime = '오후 3시 – 5시';
 
@@ -52,6 +55,9 @@ class FakeStoreBrowseRepository implements StoreBrowseRepository {
 
   int fetchDetailCalls = 0;
   final List<String> applied = [];
+
+  /// 지원할 때 보낸 한 줄(없으면 null)을 지원 순서대로.
+  final List<String?> pitches = [];
   final List<String> cancelled = [];
 
   @override
@@ -67,19 +73,21 @@ class FakeStoreBrowseRepository implements StoreBrowseRepository {
     return StoreDetail(
       summary: stores.firstWhere((s) => s.id == storeId),
       myApplicationStatus: statuses[storeId] ?? MyApplicationStatus.none,
+      myOpenOffer: openOffers[storeId],
       intro: intro,
       bestShootingTime: bestShootingTime,
     );
   }
 
   @override
-  Future<void> apply(String storeId) async {
+  Future<void> apply(String storeId, {String? pitch}) async {
     if (conflictOnChange) {
       statuses[storeId] = conflictStatus;
       throw const StoreBrowseFailure(conflict: true);
     }
     if (failApply) throw const StoreBrowseFailure();
     applied.add(storeId);
+    pitches.add(pitch);
     statuses[storeId] = MyApplicationStatus.applied;
   }
 

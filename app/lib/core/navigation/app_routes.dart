@@ -62,6 +62,13 @@ abstract final class AppRoutes {
   static String creatorStore(String storeId) =>
       '/creator/stores/${Uri.encodeComponent(storeId)}';
 
+  /// 가게 [storeId]에 내 방식으로 하는 제안(F6). 가게 상세 위에 밀려 들어온다.
+  static String creatorStoreProposal(String storeId) =>
+      '${creatorStore(storeId)}/propose';
+
+  /// [creatorStoreProposal]의 라우트 패턴.
+  static const creatorStoreProposalPattern = '/creator/stores/:id/propose';
+
   /// 크리에이터의 협업 진행(A7)과 거기서 여는 링크 제출·식사권 화면.
   static String creatorCollaboration(String id) =>
       '/creator/collaborations/${Uri.encodeComponent(id)}';

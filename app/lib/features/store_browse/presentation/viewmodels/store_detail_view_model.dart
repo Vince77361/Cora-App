@@ -11,6 +11,21 @@ final storeDetailViewModelProvider = AsyncNotifierProvider.autoDispose
       retry: (_, _) => null,
     );
 
+/// D2 아래에 잠깐 떠 있는 안내(예: 역제안을 보낸 뒤 `제안을 보냈어요.`). 가게마다 따로 두지 않는다 — 안내를
+/// 띄운 직후 D2로 돌아오는 가게는 하나뿐이다. 사장님 홈의 안내(`storeHomeNoticeProvider`)와 같은 방식이다.
+final storeDetailNoticeProvider = NotifierProvider<StoreDetailNotice, String?>(
+  StoreDetailNotice.new,
+);
+
+class StoreDetailNotice extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void show(String message) => state = message;
+
+  void clear() => state = null;
+}
+
 class StoreDetailState {
   const StoreDetailState({
     required this.detail,
@@ -59,10 +74,19 @@ class StoreDetailViewModel extends AsyncNotifier<StoreDetailState> {
     );
   }
 
-  Future<void> apply() => _change(
-    () => ref.read(storeBrowseRepositoryProvider).apply(storeId),
-    MyApplicationStatus.applied,
-  );
+  /// [pitch]는 `이 가게라면 이렇게 찍겠다` 한 줄. 공백만이면 보내지 않는다.
+  Future<void> apply({String? pitch}) {
+    final trimmed = pitch?.trim();
+    return _change(
+      () => ref
+          .read(storeBrowseRepositoryProvider)
+          .apply(
+            storeId,
+            pitch: trimmed == null || trimmed.isEmpty ? null : trimmed,
+          ),
+      MyApplicationStatus.applied,
+    );
+  }
 
   Future<void> cancelApplication() => _change(
     () => ref.read(storeBrowseRepositoryProvider).cancelApplication(storeId),

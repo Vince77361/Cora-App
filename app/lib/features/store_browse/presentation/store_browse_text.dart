@@ -1,24 +1,12 @@
 import '../../offer_terms/domain/offer_terms.dart';
 import '../../offer_terms/presentation/offer_terms_text.dart';
 
-/// 조회수 수당이 들어간 조건의 한 줄. `1,000회당 2,000원, 최대 60,000원`. 조회수 수당이 없으면 null.
-/// 문구는 가게 둘러보기 화면 작업이 바꾼다.
-String? perViewLine(OfferTerms terms) {
-  final viewPay = terms.reward.viewPay;
-  return viewPay == null ? null : viewPayLineComma(viewPay);
-}
-
-/// D2 보상 칸의 두 줄. 둘째 줄이 없으면 null. 문구는 가게 둘러보기 화면 작업이 바꾼다.
+/// D2 보상 칸의 두 줄. 값은 `식사권 40,000원 · 2인 + 조회수 수당`, 둘째 줄은 조회수 수당이 있을 때만
+/// `1,000회당 2,000원 · 1인 최대 60,000원`이다.
 ({String title, String? note}) detailReward(OfferTerms terms) {
-  final reward = terms.reward;
-  final voucher = reward.voucher;
-  final viewPay = reward.viewPay;
-  final title = rewardHeadline(reward);
-  if (viewPay != null) {
-    return (title: title, note: '조회수 수당은 ${capLabel(viewPay.cap)}');
-  }
+  final viewPay = terms.reward.viewPay;
   return (
-    title: title,
-    note: voucher == null ? null : '약 ${won(voucher.value)} 상당',
+    title: rewardHeadline(terms.reward),
+    note: viewPay == null ? null : viewPayLine(viewPay),
   );
 }
