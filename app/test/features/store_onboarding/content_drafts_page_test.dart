@@ -341,11 +341,11 @@ void main() {
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
     await tester.pumpAndSettle();
 
-    expect(_tabColor(tester, '카드뉴스'), const Color(0xFFF2F3F5));
+    expect(_tabColor(tester, '카드뉴스'), const Color(0xFF33363D));
     expect(_tabColor(tester, '릴스 대본'), const Color(0xFF1C1E22));
     expect(
       tester.renderObject<RenderParagraph>(find.text('카드뉴스')).text.style?.color,
-      const Color(0xFF0F1012),
+      const Color(0xFFF2F3F5),
     );
     expect(_fill(tester, find.text(menu)), const Color(0xFFF2F3F5));
     expect(_fill(tester, find.text(quiet)), const Color(0xFFF3FFD6));

@@ -185,6 +185,8 @@ class _Content extends ConsumerWidget {
               CoraPrimaryButton(
                 label: current.button,
                 onPressed: state.saving ? null : () => _confirm(context, ref),
+                // 캔버스(NRole, DarkNRole)의 시작 버튼은 다크에서도 라임이다.
+                look: CoraPrimaryButtonLook.accent,
               ),
             ],
           ),

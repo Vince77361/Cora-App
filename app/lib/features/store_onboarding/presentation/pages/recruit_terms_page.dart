@@ -80,6 +80,8 @@ class RecruitTermsPage extends ConsumerWidget {
             child: CoraPrimaryButton(
               label: nextLabel,
               onPressed: () => _next(context, ref),
+              // 캔버스(NOffer, DarkNOffer)의 `다음`은 다크에서도 라임이다.
+              look: CoraPrimaryButtonLook.accent,
             ),
           ),
         ],

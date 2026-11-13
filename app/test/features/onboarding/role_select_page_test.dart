@@ -114,9 +114,9 @@ void main() {
     await _pumpA1(tester);
     final c = CoraColors.light;
 
-    expect(_cardColor(tester, _storeTitle), c.surfaceSelected);
-    expect(_cardColor(tester, _brandTitle), c.background);
-    expect(_dotColor(tester, _storeTitle), c.selectionDot);
+    expect(_cardColor(tester, _storeTitle), c.notifyTabSelected);
+    expect(_cardColor(tester, _brandTitle), c.roleCardIdle);
+    expect(_dotColor(tester, _storeTitle), c.accent);
     expect(_dotColor(tester, _creatorTitle), c.line);
     expect(find.text('가게 링크로 시작하기'), findsOneWidget);
   });
@@ -130,7 +130,7 @@ void main() {
 
     expect(find.byType(RoleSelectPage), findsOneWidget);
     expect(find.text('크리에이터 둘러보기'), findsOneWidget);
-    expect(_cardColor(tester, _brandTitle), CoraColors.light.surfaceSelected);
+    expect(_cardColor(tester, _brandTitle), CoraColors.light.notifyTabSelected);
   });
 
   testWidgets('button label follows the selected role', (tester) async {
@@ -141,7 +141,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('내 협업 원칙 정하기'), findsOneWidget);
     expect(find.text('가게 링크로 시작하기'), findsNothing);
-    expect(_cardColor(tester, _creatorTitle), CoraColors.light.surfaceSelected);
+    expect(
+      _cardColor(tester, _creatorTitle),
+      CoraColors.light.notifyTabSelected,
+    );
     expect(_cardColor(tester, _storeTitle), CoraColors.light.background);
 
     await tester.tap(find.text(_brandTitle));
@@ -263,7 +266,7 @@ void main() {
     expect(find.byType(RoleSelectPage), findsOneWidget);
     expect(find.text(_serverDown), findsOneWidget);
     expect(find.text('크리에이터 둘러보기'), findsOneWidget);
-    expect(_cardColor(tester, _brandTitle), CoraColors.light.surfaceSelected);
+    expect(_cardColor(tester, _brandTitle), CoraColors.light.notifyTabSelected);
 
     // 다시 누르면 저장된다. 고르기만 해도 안내는 사라진다.
     me.failSave = false;
@@ -462,25 +465,25 @@ void main() {
     final c = CoraColors.dark;
 
     expect(tester.takeException(), isNull);
-    // 선택한 카드: 밝은 바탕(#F2F3F5)에 어두운 글자(#0F1012), 원은 #0F1012에 #F2F3F5 체크.
-    expect(_cardColor(tester, _storeTitle), const Color(0xFFF2F3F5));
+    // 선택한 카드(DarkNRole 2026-11-12): #33363D 바탕에 밝은 글자(#F2F3F5), 원은 라임(#C6FF3D).
+    expect(_cardColor(tester, _storeTitle), const Color(0xFF33363D));
     expect(
       _styleOf(tester, find.text(_storeTitle)).color,
-      const Color(0xFF0F1012),
+      const Color(0xFFF2F3F5),
     );
-    expect(_dotColor(tester, _storeTitle), const Color(0xFF0F1012));
-    // 고르지 않은 카드: 바탕과 같은 #0F1012에 밝은 글자, 원은 #2A2D33.
-    expect(_cardColor(tester, _brandTitle), const Color(0xFF0F1012));
+    expect(_dotColor(tester, _storeTitle), const Color(0xFFC6FF3D));
+    // 고르지 않은 카드: #2A2D33 바탕에 밝은 글자, 원도 #2A2D33.
+    expect(_cardColor(tester, _brandTitle), const Color(0xFF2A2D33));
     expect(
       _styleOf(tester, find.text(_brandTitle)).color,
       const Color(0xFFF2F3F5),
     );
     expect(_dotColor(tester, _brandTitle), const Color(0xFF2A2D33));
-    // 아래 버튼: #F2F3F5에 #17181C 글자, 굵기 500(라이트는 라임에 700).
-    expect(_buttonColor(tester), const Color(0xFFF2F3F5));
+    // 아래 버튼: 다크에서도 라임(#C6FF3D)에 #1F2A00 글자, 굵기 700(DarkNRole).
+    expect(_buttonColor(tester), const Color(0xFFC6FF3D));
     final label = _styleOf(tester, find.text('가게 링크로 시작하기'));
-    expect(label.color, const Color(0xFF17181C));
-    expect(label.fontWeight, FontWeight.w500);
+    expect(label.color, const Color(0xFF1F2A00));
+    expect(label.fontWeight, FontWeight.w700);
     // 설명 #A0A4AD, 로고 글자 #F2F3F5.
     expect(
       _styleOf(tester, find.text('고른 역할에 맞는 첫 화면을 보여드려요. 나중에 바꿀 수 있어요.')).color,

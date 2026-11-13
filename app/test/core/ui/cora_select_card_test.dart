@@ -149,24 +149,28 @@ void main() {
     expect(title.text.style!.fontWeight, FontWeight.w700);
   });
 
-  testWidgets('selected card uses surfaceSelected without a shadow', (
+  testWidgets('light selected card is #E3E5E9 with a lime dot, no shadow', (
     tester,
   ) async {
     await tester.pumpWidget(coraTestApp(_card(selected: true)));
     final c = CoraColors.light;
     final decoration = _cardDecoration(tester);
-    expect(decoration.color, c.surfaceSelected);
+    expect(decoration.color, const Color(0xFFE3E5E9));
+    expect(decoration.color, c.notifyTabSelected);
     expect(decoration.boxShadow ?? const <BoxShadow>[], isEmpty);
-    expect(_dotDecoration(tester).color, c.selectionDot);
+    expect(_dotDecoration(tester).color, const Color(0xFFC6FF3D));
+    expect(_dotDecoration(tester).color, c.accent);
+    final title = tester.renderObject<RenderParagraph>(find.text(_title));
+    expect(title.text.style!.color, const Color(0xFF17181C));
   });
 
-  testWidgets('unselected card uses background with the card shadow', (
+  testWidgets('light unselected card is white with the card shadow', (
     tester,
   ) async {
     await tester.pumpWidget(coraTestApp(_card(selected: false)));
     final c = CoraColors.light;
     final decoration = _cardDecoration(tester);
-    expect(decoration.color, c.background);
+    expect(decoration.color, const Color(0xFFFFFFFF));
     expect(decoration.boxShadow, CoraShadows.card);
     expect(_dotDecoration(tester).color, c.line);
   });
@@ -178,11 +182,21 @@ void main() {
       coraTestApp(_card(selected: true), theme: coraDarkTheme),
     );
     await tester.pumpAndSettle();
-    final c = CoraColors.dark;
-    expect(_cardDecoration(tester).color, c.surfaceSelected);
-    expect(_dotDecoration(tester).color, c.selectionDot);
+    expect(_cardDecoration(tester).color, const Color(0xFF33363D));
+    expect(_dotDecoration(tester).color, const Color(0xFFC6FF3D));
     final title = tester.renderObject<RenderParagraph>(find.text(_title));
-    expect(title.text.style!.color, c.onSurfaceSelected);
+    expect(title.text.style!.color, const Color(0xFFF2F3F5));
+  });
+
+  testWidgets('dark unselected card is #2A2D33 with a #2A2D33 dot', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      coraTestApp(_card(selected: false), theme: coraDarkTheme),
+    );
+    await tester.pumpAndSettle();
+    expect(_cardDecoration(tester).color, const Color(0xFF2A2D33));
+    expect(_dotDecoration(tester).color, const Color(0xFF2A2D33));
   });
 
   testWidgets('select card animates its selection', (tester) async {
@@ -192,11 +206,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     final mid = _cardDecoration(tester).color!;
-    expect(mid, isNot(c.background));
-    expect(mid, isNot(c.surfaceSelected));
+    expect(mid, isNot(c.roleCardIdle));
+    expect(mid, isNot(c.notifyTabSelected));
 
     await tester.pump(CoraMotion.stateDuration);
-    expect(_cardDecoration(tester).color, c.surfaceSelected);
+    expect(_cardDecoration(tester).color, c.notifyTabSelected);
   });
 
   testWidgets('select card snaps to the new state when reducing motion', (
@@ -209,7 +223,7 @@ void main() {
       coraTestApp(_card(selected: true), disableAnimations: true),
     );
     await tester.pump();
-    expect(_cardDecoration(tester).color, CoraColors.light.surfaceSelected);
+    expect(_cardDecoration(tester).color, CoraColors.light.notifyTabSelected);
   });
 
   testWidgets('select card shrinks slightly while pressed', (tester) async {

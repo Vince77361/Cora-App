@@ -1,4 +1,5 @@
 import 'package:cora/core/navigation/app_routes.dart';
+import 'package:cora/core/ui/cora_primary_button.dart';
 import 'package:cora/core/ui/cora_step_header.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart';
 import 'package:cora/features/offer_terms/presentation/pages/reward_budget_page.dart';
@@ -6,6 +7,7 @@ import 'package:cora/features/offer_terms/presentation/pages/review_send_page.da
 import 'package:cora/features/store_onboarding/domain/my_store.dart';
 import 'package:cora/features/store_onboarding/domain/store_repository.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/recruit_terms_page.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
@@ -65,6 +67,33 @@ void main() {
     expect(find.text('어떤 콘텐츠를\n부탁할까요?'), findsOneWidget);
     expect(find.text('크리에이터가 올릴 형식을 하나 골라요.'), findsOneWidget);
     expect(find.text('다음'), findsOneWidget);
+  });
+
+  testWidgets('the next button is lime with #1F2A00 text in light and dark', (
+    tester,
+  ) async {
+    Color? buttonColor() =>
+        (tester
+                    .widget<DecoratedBox>(
+                      find.descendant(
+                        of: find.byType(CoraPrimaryButton),
+                        matching: find.byType(DecoratedBox),
+                      ),
+                    )
+                    .decoration
+                as BoxDecoration)
+            .color;
+    Color? labelColor() => tester.widget<Text>(find.text('다음')).style?.color;
+
+    await _openTerms(tester);
+    expect(buttonColor(), const Color(0xFFC6FF3D));
+    expect(labelColor(), const Color(0xFF1F2A00));
+
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await tester.pumpAndSettle();
+    expect(buttonColor(), const Color(0xFFC6FF3D));
+    expect(labelColor(), const Color(0xFF1F2A00));
   });
 
   testWidgets(

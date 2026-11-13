@@ -11,8 +11,9 @@ import 'cora_pressable.dart';
 
 /// 큰 선택 카드(캔버스 A1의 역할 카드). 왼쪽에 윗줄·제목·설명, 오른쪽에 원형 체크.
 ///
-/// 선택되면 `surfaceSelected` 바탕에 그림자가 없고, 아니면 `background` 바탕에
-/// `CoraShadows.card`. 상태가 바뀔 때 바탕, 그림자, 원, 체크가 함께 이어서 바뀐다.
+/// 선택되면 `notifyTabSelected` 바탕(라이트 #E3E5E9, 다크 #33363D)에 그림자가 없고, 아니면
+/// `roleCardIdle` 바탕(라이트 #FFFFFF, 다크 #2A2D33)에 `CoraShadows.card`. 글자는 둘 다 `text`,
+/// 고른 점은 `accent`/`onAccent`다(NRole, DarkNRole). 상태가 바뀔 때 바탕, 그림자, 원, 체크가 함께 이어서 바뀐다.
 class CoraSelectCard extends StatelessWidget {
   const CoraSelectCard({
     super.key,
@@ -51,12 +52,12 @@ class CoraSelectCard extends StatelessWidget {
           duration: CoraMotion.resolve(context, CoraMotion.stateDuration),
           curve: CoraMotion.standardCurve,
           builder: (context, t, _) {
-            final foreground = Color.lerp(c.text, c.onSurfaceSelected, t)!;
+            final foreground = c.text;
             return ConstrainedBox(
               constraints: const BoxConstraints(minHeight: minHeight),
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Color.lerp(c.background, c.surfaceSelected, t),
+                  color: Color.lerp(c.roleCardIdle, c.notifyTabSelected, t),
                   borderRadius: BorderRadius.circular(CoraRadius.xl),
                   boxShadow: _shadowAt(t),
                 ),
@@ -70,8 +71,8 @@ class CoraSelectCard extends StatelessWidget {
                       Expanded(child: _texts(foreground)),
                       const SizedBox(width: 16),
                       _CheckDot(
-                        fill: Color.lerp(c.line, c.selectionDot, t)!,
-                        check: c.onSelectionDot,
+                        fill: Color.lerp(c.line, c.accent, t)!,
+                        check: c.onAccent,
                         progress: t,
                       ),
                     ],

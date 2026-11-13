@@ -66,15 +66,15 @@ void main() {
     expect(_tabColor(tester, '지원한 크리에이터 5'), const Color(0xFFF8F9FA));
   });
 
-  testWidgets('dark: selected #F2F3F5 with #0F1012 text, other #1C1E22', (
+  testWidgets('dark: selected #33363D with #F2F3F5 text, other #1C1E22', (
     tester,
   ) async {
     await tester.pumpWidget(coraTestApp(_tabs(), theme: coraDarkTheme));
-    expect(_tabColor(tester, '지원한 크리에이터 5'), const Color(0xFFF2F3F5));
+    expect(_tabColor(tester, '지원한 크리에이터 5'), const Color(0xFF33363D));
     expect(_tabColor(tester, '보낸 오퍼 3'), const Color(0xFF1C1E22));
     expect(
       tester.widget<Text>(find.text('지원한 크리에이터 5')).style!.color,
-      CoraColors.dark.onSurfaceSelected,
+      const Color(0xFFF2F3F5),
     );
     expect(
       tester.widget<Text>(find.text('보낸 오퍼 3')).style!.color,
@@ -110,9 +110,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     final mid = _tabColor(tester, '보낸 오퍼 3');
     expect(mid, isNot(CoraColors.light.surface));
-    expect(mid, isNot(CoraColors.light.surfaceSelected));
+    expect(mid, isNot(CoraColors.light.notifyTabSelected));
     await tester.pumpAndSettle();
-    expect(_tabColor(tester, '보낸 오퍼 3'), CoraColors.light.surfaceSelected);
+    expect(_tabColor(tester, '보낸 오퍼 3'), CoraColors.light.notifyTabSelected);
   });
 
   testWidgets('does not overflow at 1.3x text on a small phone', (

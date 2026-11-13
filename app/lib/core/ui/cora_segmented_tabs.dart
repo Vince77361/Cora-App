@@ -7,7 +7,8 @@ import '../theme/cora_text_styles.dart';
 import 'cora_pressable.dart';
 
 /// 목록 위의 알약 탭(캔버스 NStoreHome `role="tablist"`). 높이 38, 좌우 안쪽 14, 사이 6.
-/// 선택된 탭은 `surfaceSelected` 바탕, 나머지는 `surface` 바탕이다. 좌우 여백은 화면이 정한다.
+/// 선택된 탭은 `notifyTabSelected` 바탕(라이트 #E3E5E9, 다크 #33363D), 나머지는 `surface` 바탕이고
+/// 글자는 둘 다 `text`다(NStoreHome·NStoreAI·NNotify와 다크 판이 같다). 좌우 여백은 화면이 정한다.
 ///
 /// 탭이 화면 너비보다 길어지면(글자 크게 보기) 옆으로 밀어서 본다.
 class CoraSegmentedTabs extends StatelessWidget {
@@ -89,15 +90,13 @@ class _Tab extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: selected ? c.surfaceSelected : c.surface,
+              color: selected ? c.notifyTabSelected : c.surface,
               borderRadius: BorderRadius.circular(CoraRadius.pill),
             ),
             child: Text(
               label,
               maxLines: 1,
-              style: textStyle.copyWith(
-                color: selected ? c.onSurfaceSelected : c.text,
-              ),
+              style: textStyle.copyWith(color: c.text),
             ),
           ),
         ),
