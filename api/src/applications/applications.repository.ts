@@ -24,10 +24,11 @@ export class ApplicationsRepository {
   async create(
     storeId: string,
     creatorId: string,
+    pitch: string | null = null,
   ): Promise<Application | null> {
     try {
       return await this.prisma.application.create({
-        data: { storeId, creatorId, status: 'APPLIED' },
+        data: { storeId, creatorId, status: 'APPLIED', pitch },
       });
     } catch (error) {
       if (
@@ -93,5 +94,38 @@ export class ApplicationsRepository {
     return this.prisma.application.count({
       where: { storeId, status: 'APPLIED', deletedAt: null },
     });
+  }
+
+  // 크리에이터가 시작한 제안이 오퍼를 만드는 트랜잭션 안에서 부른다. 그 가게에 낸 살아 있는 지원을 오퍼 받음으로 잇고
+  // (APPLIED면 바꾸고, 없으면 만든다), 이어진 지원의 id를 돌려준다.
+  // 읽은 뒤 다른 요청이 같은 지원을 먼저 바꿨으면 null이다 — 호출한 쪽이 트랜잭션을 되돌린다.
+  async linkForProposal(
+    tx: Prisma.TransactionClient,
+    storeId: string,
+    creatorId: string,
+  ): Promise<string | null> {
+    const live = await tx.application.findFirst({
+      where: { storeId, creatorId, ...LIVE },
+      select: { id: true, status: true },
+    });
+    if (live?.status === 'APPLIED') {
+      const { count } = await tx.application.updateMany({
+        where: { id: live.id, status: 'APPLIED' },
+        data: { status: 'OFFERED' },
+      });
+      return count === 1 ? live.id : null;
+    }
+    if (live) {
+      // 열린 오퍼가 없는데 오퍼 받음인 지원은 닫히지 못하고 남은 옛 지원이다. 닫고 새로 만든다.
+      const { count } = await tx.application.updateMany({
+        where: { id: live.id, status: 'OFFERED' },
+        data: { status: 'CLOSED' },
+      });
+      if (count !== 1) return null;
+    }
+    const created = await tx.application.create({
+      data: { storeId, creatorId, status: 'OFFERED' },
+    });
+    return created.id;
   }
 }

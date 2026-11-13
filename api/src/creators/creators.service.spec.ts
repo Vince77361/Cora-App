@@ -1,4 +1,5 @@
-import { UserRole } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
+import { CreatorSeries, UserRole } from '@prisma/client';
 import { AppError } from '../common/errors/app-error';
 import { UploadRateLimiter } from '../uploads/upload-rate-limiter';
 import { UploadsService } from '../uploads/uploads.service';
@@ -9,6 +10,7 @@ import type { UpsertCreatorProfileDto } from './dto/upsert-creator-profile.dto';
 import { CreatorsRepository } from './creators.repository';
 import type {
   CreatorProfileData,
+  CreatorSeriesData,
   CreatorProfileRow,
 } from './creators.repository';
 import { CreatorsService } from './creators.service';
@@ -62,6 +64,41 @@ class FakeCreatorsRepository extends CreatorsRepository {
     const row = this.rows.get(userId);
     if (row) this.rows.set(userId, { ...row, instagramHandle: handle });
     return Promise.resolve();
+  }
+
+  readonly series: CreatorSeries[] = [];
+
+  listSeries(creatorId: string): Promise<CreatorSeries[]> {
+    return Promise.resolve(
+      this.series.filter((s) => s.creatorId === creatorId),
+    );
+  }
+
+  findSeries(creatorId: string, id: string): Promise<CreatorSeries | null> {
+    return Promise.resolve(
+      this.series.find((s) => s.id === id && s.creatorId === creatorId) ?? null,
+    );
+  }
+
+  createSeries(
+    creatorId: string,
+    data: CreatorSeriesData,
+    max: number,
+  ): Promise<CreatorSeries | null> {
+    if (this.series.filter((s) => s.creatorId === creatorId).length >= max) {
+      return Promise.resolve(null);
+    }
+    const now = new Date();
+    const row: CreatorSeries = {
+      id: randomUUID(),
+      creatorId,
+      ...data,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+    this.series.push(row);
+    return Promise.resolve(row);
   }
 }
 
@@ -268,5 +305,58 @@ describe('CreatorsService', () => {
     expect(error?.message).toBe('크리에이터 프로필을 먼저 만들어 주세요.');
     await service.upsertMine(USER, input);
     expect((await service.requireProfile(USER)).displayName).toBe('민지');
+  });
+
+  describe('series', () => {
+    it('turns a blank note into null and trims the name', async () => {
+      const created = await service.createMySeries(USER, {
+        name: '  오늘의 한 컵  ',
+        format: 'REELS',
+        note: '   ',
+      });
+      expect(created).toMatchObject({
+        name: '오늘의 한 컵',
+        format: 'REELS',
+        note: null,
+      });
+    });
+
+    it('refuses a sixth series but lets another creator make their own', async () => {
+      for (let i = 0; i < 5; i += 1) {
+        await service.createMySeries(USER, {
+          name: `시리즈 ${i}`,
+          format: 'REELS',
+        });
+      }
+      expect(
+        await codeOf(
+          service.createMySeries(USER, { name: '여섯째', format: 'REELS' }),
+        ),
+      ).toBe('CONFLICT');
+      await service.createMySeries(OTHER, {
+        name: '다른 사람',
+        format: 'BLOG',
+      });
+      expect(await service.listMySeries(USER)).toHaveLength(5);
+    });
+
+    it('finds only my own series and treats a malformed id as missing', async () => {
+      const mine = await service.createMySeries(USER, {
+        name: '내 것',
+        format: 'REELS',
+      });
+      expect((await service.requireMySeries(USER, mine.id)).name).toBe('내 것');
+      expect(await codeOf(service.requireMySeries(OTHER, mine.id))).toBe(
+        'NOT_FOUND',
+      );
+      expect(await codeOf(service.requireMySeries(USER, 'not-a-uuid'))).toBe(
+        'NOT_FOUND',
+      );
+    });
+
+    it('only lets a creator account use series', async () => {
+      users.role = 'STORE';
+      expect(await codeOf(service.listMySeries(USER))).toBe('FORBIDDEN');
+    });
   });
 });

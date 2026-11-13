@@ -1,4 +1,12 @@
-import { Controller, Delete, Get, HttpCode, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -10,6 +18,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { ApplicationsService } from './applications.service';
 import { ApplicantModel } from './dto/applicant.model';
+import { ApplyDto } from './dto/apply.dto';
 import { ApplicationModel } from './dto/application.model';
 
 @ApiBearerAuth()
@@ -30,8 +39,9 @@ export class ApplicationsController {
   apply(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
+    @Body() dto: ApplyDto,
   ): Promise<ApplicationModel> {
-    return this.applications.apply(user.userId, id);
+    return this.applications.apply(user.userId, id, dto);
   }
 
   @Delete(':id/applications/mine')

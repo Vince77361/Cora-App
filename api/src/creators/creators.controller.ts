@@ -1,8 +1,15 @@
-import { Body, Controller, Get, HttpCode, Put } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { CreatorsService } from './creators.service';
+import { CreateCreatorSeriesDto } from './dto/create-creator-series.dto';
+import { CreatorSeriesModel } from './dto/creator-series.model';
 import { CreatorProfileModel } from './dto/creator-profile.model';
 import { UpsertCreatorProfileDto } from './dto/upsert-creator-profile.dto';
 
@@ -27,5 +34,22 @@ export class CreatorsController {
     @Body() dto: UpsertCreatorProfileDto,
   ): Promise<CreatorProfileModel> {
     return this.creators.upsertMine(user.userId, dto);
+  }
+
+  @Get('me/series')
+  @ApiOperation({ operationId: 'listMyCreatorSeries' })
+  @ApiOkResponse({ type: [CreatorSeriesModel] })
+  listSeries(@CurrentUser() user: AuthUser): Promise<CreatorSeriesModel[]> {
+    return this.creators.listMySeries(user.userId);
+  }
+
+  @Post('me/series')
+  @ApiOperation({ operationId: 'createMyCreatorSeries' })
+  @ApiCreatedResponse({ type: CreatorSeriesModel })
+  createSeries(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CreateCreatorSeriesDto,
+  ): Promise<CreatorSeriesModel> {
+    return this.creators.createMySeries(user.userId, dto);
   }
 }

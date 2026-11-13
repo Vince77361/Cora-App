@@ -11,4 +11,11 @@ export class ApplicantModel {
 
   @ApiProperty({ format: 'date-time', description: '지원한 시각(ISO 8601).' })
   appliedAt!: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: '지원할 때 붙인 한 줄. 없으면 null.',
+  })
+  pitch!: string | null;
 }

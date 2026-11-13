@@ -29,6 +29,7 @@ model User {
   creatorProfile CreatorProfile?
   applications   Application[]
   offers         Offer[]
+  creatorSeries  CreatorSeries[]
 
   commissionedCollaborations Collaboration[]      @relation("CollaborationCommissioner")
   creatorCollaborations      Collaboration[]      @relation("CollaborationCreator")
@@ -233,13 +234,17 @@ model CreatorProfile {
 // 같은 가게·크리에이터의 살아 있는 지원(APPLIED, OFFERED)은 하나뿐이다.
 // 이 제약은 부분 유니크 인덱스라 Prisma 스키마로 적을 수 없어 마이그레이션의 직접 SQL에 있다.
 model Application {
-  id        String            @id @default(uuid()) @db.Uuid
-  storeId   String            @map("store_id") @db.Uuid
-  creatorId String            @map("creator_id") @db.Uuid
-  status    ApplicationStatus
-  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt DateTime?         @map("deleted_at") @db.Timestamptz(3)
+  id                 String            @id @default(uuid()) @db.Uuid
+  storeId            String            @map("store_id") @db.Uuid
+  creatorId          String            @map("creator_id") @db.Uuid
+  status             ApplicationStatus
+  // 지원에 붙인 한 줄(100자까지). 없으면 null.
+  pitch              String?
+  // 사장님이 추천에서 건너뛴 시각(Task 16이 쓴다).
+  skippedFromPicksAt DateTime?         @map("skipped_from_picks_at") @db.Timestamptz(3)
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt          DateTime?         @map("deleted_at") @db.Timestamptz(3)
 
   store   Store   @relation(fields: [storeId], references: [id])
   creator User    @relation(fields: [creatorId], references: [id])
@@ -248,6 +253,23 @@ model Application {
   @@index([storeId, status])
   @@index([creatorId])
   @@map("applications")
+}
+
+// 크리에이터가 만들어 두는 연재(시리즈). 제안을 낼 때 이름·형식·설명을 판본에 사본으로 넣는다. 한 크리에이터에 5개까지.
+model CreatorSeries {
+  id        String        @id @default(uuid()) @db.Uuid
+  creatorId String        @map("creator_id") @db.Uuid
+  name      String
+  format    ContentFormat
+  note      String?
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime?     @map("deleted_at") @db.Timestamptz(3)
+
+  creator User @relation(fields: [creatorId], references: [id])
+
+  @@index([creatorId])
+  @@map("creator_series")
 }
 
 enum OfferParty {

@@ -44,7 +44,11 @@ class FakeApplicationsRepository extends ApplicationsRepository {
     return Promise.resolve(this.live(storeId, creatorId) ?? null);
   }
 
-  create(storeId: string, creatorId: string): Promise<Application | null> {
+  create(
+    storeId: string,
+    creatorId: string,
+    pitch: string | null = null,
+  ): Promise<Application | null> {
     if (this.live(storeId, creatorId)) return Promise.resolve(null);
     this.seq += 1;
     const row: Application = {
@@ -52,6 +56,8 @@ class FakeApplicationsRepository extends ApplicationsRepository {
       storeId,
       creatorId,
       status: 'APPLIED',
+      pitch,
+      skippedFromPicksAt: null,
       createdAt: new Date(Date.UTC(2026, 10, 11, 0, 0, this.seq)),
       updatedAt: new Date(),
       deletedAt: null,
@@ -294,6 +300,24 @@ describe('ApplicationsService', () => {
           dedupeKey: `application-received:${result.id}`,
         },
       ]);
+    });
+
+    it('saves the trimmed pitch and lists it for the owner', async () => {
+      await service.apply(CREATOR, store.id, {
+        pitch: '  성수동 카페 릴스 30편  ',
+      });
+      expect(repo.rows[0].pitch).toBe('성수동 카페 릴스 30편');
+      users.role = 'STORE';
+      expect((await service.listApplicants(OWNER))[0].pitch).toBe(
+        '성수동 카페 릴스 30편',
+      );
+    });
+
+    it('stores a blank pitch as null', async () => {
+      await service.apply(CREATOR, store.id, { pitch: '   ' });
+      expect(repo.rows[0].pitch).toBeNull();
+      users.role = 'STORE';
+      expect((await service.listApplicants(OWNER))[0].pitch).toBeNull();
     });
 
     it('requires the CREATOR role before anything else', async () => {

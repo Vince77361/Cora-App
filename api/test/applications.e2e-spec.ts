@@ -6,7 +6,7 @@ import { PushPort } from '../src/integrations/push/push.port';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakePushPort } from './support/fake-push.port';
-import { USER_A } from './support/fake-token-verifier';
+import { OTHER, USER_A } from './support/fake-token-verifier';
 
 const auth = { Authorization: 'Bearer user-a' };
 const LINKS = [
@@ -26,6 +26,7 @@ interface ApplicationBody {
 }
 interface ApplicantBody {
   applicationId: string;
+  pitch: string | null;
   creator: {
     userId: string;
     displayName: string;
@@ -182,6 +183,32 @@ describe('applications', () => {
         where: { id: body.id },
       });
       expect(row).toMatchObject({ creatorId: USER_A, status: 'APPLIED' });
+    });
+
+    it('saves a blank pitch as null and no body as no pitch', async () => {
+      const store = await seedStore();
+      await request(server)
+        .post(`/stores/${store.id}/applications`)
+        .set(auth)
+        .send({ pitch: '   ' })
+        .expect(201);
+      expect((await prisma.application.findFirstOrThrow()).pitch).toBeNull();
+    });
+
+    it('rejects a pitch longer than 100 characters', async () => {
+      const store = await seedStore();
+      const res = await request(server)
+        .post(`/stores/${store.id}/applications`)
+        .set(auth)
+        .send({ pitch: '가'.repeat(101) })
+        .expect(400);
+      expect(codeOf(res)).toBe('VALIDATION_FAILED');
+      expect(await prisma.application.count()).toBe(0);
+      await request(server)
+        .post(`/stores/${store.id}/applications`)
+        .set(auth)
+        .send({ pitch: '가'.repeat(100) })
+        .expect(201);
     });
 
     it('notifies the store owner on a new application', async () => {
@@ -355,7 +382,29 @@ describe('applications', () => {
           followers: null,
         },
         appliedAt: expect.stringMatching(/^\d{4}-\d\d-\d\dT/) as string,
+        pitch: null,
       });
+    });
+
+    it('saves the pitch with the application and shows it to the owner', async () => {
+      const authB = { Authorization: 'Bearer user-b' };
+      await prisma.user.create({ data: { id: OTHER, role: 'CREATOR' } });
+      await prisma.creatorProfile.create({
+        data: { userId: OTHER, displayName: '한 줄 지원자', ...REGION },
+      });
+      await request(server)
+        .post(`/stores/${storeId}/applications`)
+        .set(authB)
+        .send({ pitch: '  성수동 카페 릴스를 한 달에 네 편 올려요  ' })
+        .expect(201);
+      expect(
+        (await prisma.application.findFirstOrThrow({ where: { storeId } }))
+          .pitch,
+      ).toBe('성수동 카페 릴스를 한 달에 네 편 올려요');
+      const list = (await applicants().expect(200)).body as ApplicantBody[];
+      expect(list.map((a) => a.pitch)).toEqual([
+        '성수동 카페 릴스를 한 달에 네 편 올려요',
+      ]);
     });
 
     it("does not show another owner's applicants", async () => {

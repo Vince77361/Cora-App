@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CreatorProfile } from '@prisma/client';
+import { ContentFormat, CreatorProfile, CreatorSeries } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 // 저장할 값. 선택 항목은 비어 있으면 null이다.
@@ -10,6 +10,12 @@ export interface CreatorProfileData {
   photoPath: string | null;
   regionSido: string;
   regionSigungu: string | null;
+}
+
+export interface CreatorSeriesData {
+  name: string;
+  format: ContentFormat;
+  note: string | null;
 }
 
 // 프로필과 인스타그램 연결(연결이 없거나 지워졌으면 null). 연결 여부와 팔로워 수는 여기서 한 번에 읽는다.
@@ -81,5 +87,38 @@ export class CreatorsRepository {
     return (
       (await this.findActiveByUserId(userId)) ?? { ...saved, instagram: null }
     );
+  }
+
+  // 만든 순서.
+  listSeries(creatorId: string): Promise<CreatorSeries[]> {
+    return this.prisma.creatorSeries.findMany({
+      where: { creatorId, deletedAt: null },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  // 남의 시리즈는 없는 시리즈와 같게 보이도록 소유 조건을 id와 함께 건다.
+  findSeries(creatorId: string, id: string): Promise<CreatorSeries | null> {
+    return this.prisma.creatorSeries.findFirst({
+      where: { id, creatorId, deletedAt: null },
+    });
+  }
+
+  // 개수를 세고 넣는 사이에 다른 요청이 끼어 한도를 넘지 않게, 크리에이터 행을 잠그고 센다.
+  // KEY SHARE를 막지 않는 잠금이라 같은 사용자의 다른 쓰기는 기다리지 않는다. 한도에 닿았으면 null.
+  createSeries(
+    creatorId: string,
+    data: CreatorSeriesData,
+    max: number,
+  ): Promise<CreatorSeries | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT id FROM users WHERE id = ${creatorId}::uuid FOR NO KEY UPDATE`;
+      const count = await tx.creatorSeries.count({
+        where: { creatorId, deletedAt: null },
+      });
+      if (count >= max) return null;
+      return tx.creatorSeries.create({ data: { creatorId, ...data } });
+    });
   }
 }

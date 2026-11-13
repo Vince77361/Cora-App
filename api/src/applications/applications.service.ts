@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Store } from '@prisma/client';
+import { Prisma, Store } from '@prisma/client';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -7,6 +7,7 @@ import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { ApplicationsRepository } from './applications.repository';
 import { ApplicantModel } from './dto/applicant.model';
+import { ApplyDto } from './dto/apply.dto';
 import { ApplicationModel } from './dto/application.model';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -36,7 +37,11 @@ export class ApplicationsService {
   ) {}
 
   // 검사 순서: 역할 → 공개된 가게 → 내 가게 아님 → 프로필 → 중복. 화면이 가장 알맞은 안내를 고르게 한다.
-  async apply(userId: string, storeId: string): Promise<ApplicationModel> {
+  async apply(
+    userId: string,
+    storeId: string,
+    input: ApplyDto = {},
+  ): Promise<ApplicationModel> {
     await this.assertRole(userId, 'CREATOR', '크리에이터 계정만 쓸 수 있어요.');
     const store = await this.stores.requirePublished(storeId);
     if (store.ownerId === userId) {
@@ -47,7 +52,9 @@ export class ApplicationsService {
       throw this.alreadyApplied();
     }
     // 읽은 뒤 동시에 만들어진 경우는 null로 돌아온다.
-    const created = await this.applications.create(store.id, userId);
+    // 한 줄은 DTO가 이미 다듬지만 서비스를 직접 부르는 곳에서도 빈 값이 저장되지 않게 한다.
+    const pitch = input.pitch?.trim() || null;
+    const created = await this.applications.create(store.id, userId, pitch);
     if (!created) throw this.alreadyApplied();
 
     // 알림이 실패해도 이미 저장된 지원은 유효하다. 사장님은 지원자 목록에서 볼 수 있다.
@@ -118,6 +125,7 @@ export class ApplicationsService {
           applicationId: row.id,
           creator,
           appliedAt: row.createdAt.toISOString(),
+          pitch: row.pitch,
         },
       });
     });
@@ -128,6 +136,16 @@ export class ApplicationsService {
   // 오퍼 모듈이 쓴다. 오퍼를 보낼 때 그 크리에이터의 지원 중 지원을 오퍼 받음으로 바꾼다.
   markOffered(storeId: string, creatorId: string): Promise<string | null> {
     return this.applications.markOffered(storeId, creatorId);
+  }
+
+  // 크리에이터가 시작한 제안이 오퍼를 만들 때 같은 트랜잭션에서 부른다. 지원이 있으면 오퍼 받음으로 잇고 없으면 만든다.
+  // 지원 중 인원(newApplications)에는 들지 않는다(OFFERED로 만들기 때문이다). 다른 요청에 졌으면 null이다.
+  linkForProposal(
+    storeId: string,
+    creatorId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<string | null> {
+    return this.applications.linkForProposal(tx, storeId, creatorId);
   }
 
   // 오퍼가 거절·만료·취소로 끝나면 연결된 지원을 닫는다. 여러 번 불려도 안전하다.

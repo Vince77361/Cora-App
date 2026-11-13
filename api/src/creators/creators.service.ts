@@ -1,19 +1,29 @@
 import { Injectable } from '@nestjs/common';
+import { CreatorSeries } from '@prisma/client';
+import { PROPOSAL_POLICY } from '../common/collaboration-policy';
 import { AppError } from '../common/errors/app-error';
 import { StoragePort } from '../integrations/storage/storage.port';
 import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
 import { CreatorProfileRow, CreatorsRepository } from './creators.repository';
+import { CreateCreatorSeriesDto } from './dto/create-creator-series.dto';
+import { CreatorSeriesModel } from './dto/creator-series.model';
 import {
   CreatorProfileModel,
   CreatorSummaryModel,
 } from './dto/creator-profile.model';
 import { UpsertCreatorProfileDto } from './dto/upsert-creator-profile.dto';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // 비어 있거나 공백뿐이면 null. DTO가 이미 다듬지만, 서비스를 직접 부르는 곳에서도 같은 규칙이 지켜지게 한다.
 function blankToNull(value: string | undefined): string | null {
   const text = value?.trim();
   return text ? text : null;
+}
+
+function toSeriesModel(row: CreatorSeries): CreatorSeriesModel {
+  return { id: row.id, name: row.name, format: row.format, note: row.note };
 }
 
 @Injectable()
@@ -57,6 +67,47 @@ export class CreatorsService {
       regionSigungu: blankToNull(input.regionSigungu),
     });
     return this.toProfile(row);
+  }
+
+  async listMySeries(userId: string): Promise<CreatorSeriesModel[]> {
+    await this.assertCreator(userId);
+    return (await this.creators.listSeries(userId)).map(toSeriesModel);
+  }
+
+  async createMySeries(
+    userId: string,
+    input: CreateCreatorSeriesDto,
+  ): Promise<CreatorSeriesModel> {
+    await this.assertCreator(userId);
+    const created = await this.creators.createSeries(
+      userId,
+      {
+        name: input.name.trim(),
+        format: input.format,
+        note: blankToNull(input.note),
+      },
+      PROPOSAL_POLICY.seriesMax,
+    );
+    if (!created) {
+      throw new AppError(
+        'CONFLICT',
+        `시리즈는 ${PROPOSAL_POLICY.seriesMax}개까지 만들 수 있어요.`,
+      );
+    }
+    return toSeriesModel(created);
+  }
+
+  // 제안(판본)이 시리즈를 사본으로 넣을 때 쓴다. 내 것이 아니거나 없으면 404.
+  // uuid 모양이 아닌 값은 DB에 보내지 않고 없는 시리즈로 본다(500이 되지 않게).
+  async requireMySeries(
+    userId: string,
+    seriesId: string,
+  ): Promise<CreatorSeriesModel> {
+    const row = UUID.test(seriesId)
+      ? await this.creators.findSeries(userId, seriesId)
+      : null;
+    if (!row) throw new AppError('NOT_FOUND', '시리즈를 찾을 수 없어요.');
+    return toSeriesModel(row);
   }
 
   // 인스타그램 연결 모듈이 연결 직후 부른다. 프로필이 아직 없으면 할 일이 없고, 나중에 만들 때 upsertMine이 연결된 아이디를 따른다.

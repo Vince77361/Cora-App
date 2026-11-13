@@ -150,4 +150,83 @@ describe('creators', () => {
     await prisma.creatorProfile.updateMany({ data: { deletedAt: new Date() } });
     await request(server).get('/creators/me').set(auth).expect(404);
   });
+
+  describe('series', () => {
+    const create = (over: Record<string, unknown> = {}) =>
+      request(server)
+        .post('/creators/me/series')
+        .set(auth)
+        .send({ name: '오늘의 한 컵', format: 'REELS', ...over });
+    const list = () => request(server).get('/creators/me/series').set(auth);
+    interface SeriesBody {
+      id: string;
+      name: string;
+      format: string;
+      note: string | null;
+    }
+
+    it('rejects a request with no token', async () => {
+      await request(server).get('/creators/me/series').expect(401);
+      await request(server).post('/creators/me/series').send({}).expect(401);
+    });
+
+    it('creates a series and lists it in creation order', async () => {
+      const first = await create({ note: '아침 카페 한 컵' }).expect(201);
+      expect(first.body).toEqual({
+        id: expect.any(String) as string,
+        name: '오늘의 한 컵',
+        format: 'REELS',
+        note: '아침 카페 한 컵',
+      });
+      await create({ name: '두 번째', format: 'BLOG' }).expect(201);
+      const res = await list().expect(200);
+      expect((res.body as SeriesBody[]).map((s) => [s.name, s.note])).toEqual([
+        ['오늘의 한 컵', '아침 카페 한 컵'],
+        ['두 번째', null],
+      ]);
+    });
+
+    it('refuses a sixth series', async () => {
+      for (let i = 0; i < 5; i += 1)
+        await create({ name: `시리즈 ${i}` }).expect(201);
+      const res = await create({ name: '여섯째' }).expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect((res.body as { error: { message: string } }).error.message).toBe(
+        '시리즈는 5개까지 만들 수 있어요.',
+      );
+      expect(await prisma.creatorSeries.count()).toBe(5);
+    });
+
+    it('never goes over five series when requests arrive together', async () => {
+      const results = await Promise.all(
+        Array.from({ length: 8 }, (_, i) => create({ name: `동시 ${i}` })),
+      );
+      expect(results.filter((r) => r.status === 201)).toHaveLength(5);
+      expect(results.filter((r) => r.status === 409)).toHaveLength(3);
+      expect(await prisma.creatorSeries.count()).toBe(5);
+    });
+
+    it('rejects an empty or too long name, a long note and an unknown format', async () => {
+      await create({ name: '   ' }).expect(400);
+      await create({ name: '가'.repeat(21) }).expect(400);
+      await create({ note: '가'.repeat(21) }).expect(400);
+      await create({ format: 'PODCAST' }).expect(400);
+      expect(await prisma.creatorSeries.count()).toBe(0);
+    });
+
+    it('lists only my own series and needs the creator role', async () => {
+      await prisma.user.create({ data: { id: OTHER, role: 'CREATOR' } });
+      await prisma.creatorSeries.create({
+        data: { creatorId: OTHER, name: '남의 시리즈', format: 'REELS' },
+      });
+      await create().expect(201);
+      const res = await list().expect(200);
+      expect((res.body as SeriesBody[]).map((s) => s.name)).toEqual([
+        '오늘의 한 컵',
+      ]);
+      await setRole('STORE');
+      await list().expect(403);
+      await create().expect(403);
+    });
+  });
 });

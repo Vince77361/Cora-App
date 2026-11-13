@@ -76,6 +76,63 @@ describe('applications', () => {
   });
 });
 
+describe('applications pitch', () => {
+  it('keeps the pitch and the skipped-from-picks time, both empty by default', async () => {
+    const plain = await createApplication({ status: 'CLOSED' });
+    expect(plain).toMatchObject({ pitch: null, skippedFromPicksAt: null });
+    const skipped = new Date('2026-12-01T00:00:00Z');
+    const row = await prisma.application.create({
+      data: {
+        storeId,
+        creatorId: CREATOR,
+        status: 'APPLIED',
+        pitch: '성수동 카페 릴스를 한 달에 네 편 올려요',
+        skippedFromPicksAt: skipped,
+      },
+    });
+    expect(row).toMatchObject({
+      pitch: '성수동 카페 릴스를 한 달에 네 편 올려요',
+      skippedFromPicksAt: skipped,
+    });
+  });
+});
+
+describe('creator_series', () => {
+  it('saves a series with an optional note and finds it by creator', async () => {
+    await prisma.creatorSeries.createMany({
+      data: [
+        { creatorId: CREATOR, name: '오늘의 한 컵', format: 'REELS' },
+        {
+          creatorId: CREATOR,
+          name: '동네 한 끼',
+          format: 'BLOG',
+          note: '매주',
+        },
+      ],
+    });
+    const rows = await prisma.creatorSeries.findMany({
+      where: { creatorId: CREATOR },
+      orderBy: { name: 'asc' },
+    });
+    expect(rows.map((r) => [r.name, r.note])).toEqual([
+      ['동네 한 끼', '매주'],
+      ['오늘의 한 컵', null],
+    ]);
+  });
+
+  it('rejects a series for a creator that does not exist', async () => {
+    await expect(
+      prisma.creatorSeries.create({
+        data: {
+          creatorId: '44444444-4444-4444-8444-4444444444ff',
+          name: '없는 사람',
+          format: 'REELS',
+        },
+      }),
+    ).rejects.toThrow();
+  });
+});
+
 describe('offers', () => {
   it('rejects a second open offer for the same store and creator', async () => {
     await createOffer({ status: 'SENT' });
