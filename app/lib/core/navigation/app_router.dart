@@ -33,7 +33,7 @@ import '../../features/store_home/presentation/pages/store_home_page.dart';
 import '../../features/store_home/presentation/pages/store_me_page.dart';
 import '../../features/store_home/presentation/viewmodels/store_home_view_model.dart';
 import '../../features/store_onboarding/presentation/pages/content_drafts_page.dart';
-import '../../features/store_onboarding/presentation/pages/default_terms_page.dart';
+import '../../features/store_onboarding/presentation/pages/recruit_terms_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_edit_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_links_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_page_preview_page.dart';
@@ -149,7 +149,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.storeOnboardingTerms,
         pageBuilder: (context, state) =>
-            _entryPage(state, const DefaultTermsPage()),
+            _entryPage(state, const RecruitTermsPage()),
       ),
       GoRoute(
         path: AppRoutes.storePage,

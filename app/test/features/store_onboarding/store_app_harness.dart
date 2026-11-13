@@ -1,6 +1,7 @@
 import 'package:cora/core/media/photo_picker.dart';
 import 'package:cora/core/network/photo_uploader.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
+import 'package:cora/features/server_config/domain/server_config_repository.dart';
 import 'package:cora/features/store_onboarding/domain/content_draft_repository_provider.dart';
 import 'package:cora/features/store_onboarding/domain/store_repository_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../support/fake_photos.dart';
 import '../../support/pump_cora_app.dart';
 import '../auth/fake_auth_repository.dart';
+import '../server_config/fake_server_config_repository.dart';
 import '../onboarding/fake_me_repository.dart';
 import 'fake_content_draft_repository.dart';
 import 'fake_store_repository.dart';
@@ -18,6 +20,7 @@ Future<void> pumpStoreApp(
   WidgetTester tester, {
   FakeStoreRepository? stores,
   FakeContentDraftRepository? drafts,
+  FakeServerConfigRepository? config,
   FakePhotoPicker? picker,
   FakePhotoUploader? uploader,
 }) async {
@@ -33,6 +36,8 @@ Future<void> pumpStoreApp(
       contentDraftRepositoryProvider.overrideWithValue(
         drafts ?? FakeContentDraftRepository(),
       ),
+      if (config != null)
+        serverConfigRepositoryProvider.overrideWithValue(config),
       photoPickerProvider.overrideWithValue(picker ?? FakePhotoPicker()),
       photoUploaderProvider.overrideWithValue(uploader ?? FakePhotoUploader()),
     ],

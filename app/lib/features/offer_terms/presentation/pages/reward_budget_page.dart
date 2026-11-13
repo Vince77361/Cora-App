@@ -33,10 +33,16 @@ class RewardBudgetPage extends ConsumerWidget {
     super.key,
     required this.target,
     required this.onSend,
+    this.recipientPhotoUrl,
+    this.failureMessage = ReviewSendPage.defaultFailureMessage,
   });
 
   final ProposalTarget target;
   final Future<void> Function(OfferTerms terms) onSend;
+
+  /// F2로 넘기는 값: 받는 사람 사진과 보내기 실패 문구.
+  final String? recipientPhotoUrl;
+  final String failureMessage;
 
   static const pageLabel = '제안 만들기';
   static const step = 2;
@@ -71,6 +77,8 @@ class RewardBudgetPage extends ConsumerWidget {
         config: config.value!,
         terms: draft.value!,
         onSend: onSend,
+        recipientPhotoUrl: recipientPhotoUrl,
+        failureMessage: failureMessage,
       );
     } else if (config.hasError || draft.hasError) {
       body = CoraStateView.loadFailed(
@@ -109,12 +117,16 @@ class _Body extends ConsumerWidget {
     required this.config,
     required this.terms,
     required this.onSend,
+    required this.recipientPhotoUrl,
+    required this.failureMessage,
   });
 
   final ProposalTarget target;
   final ServerConfig config;
   final OfferTerms terms;
   final Future<void> Function(OfferTerms) onSend;
+  final String? recipientPhotoUrl;
+  final String failureMessage;
 
   ProposalDraftViewModel _vm(WidgetRef ref) =>
       ref.read(proposalDraftViewModelProvider(target).notifier);
@@ -166,7 +178,12 @@ class _Body extends ConsumerWidget {
   void _review(BuildContext context) {
     Navigator.of(context, rootNavigator: true).push(
       CoraTransitions.push(
-        ReviewSendPage(target: target, onSend: onSend),
+        ReviewSendPage(
+          target: target,
+          onSend: onSend,
+          recipientPhotoUrl: recipientPhotoUrl,
+          failureMessage: failureMessage,
+        ),
       ).createRoute(context),
     );
   }
