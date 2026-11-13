@@ -46,6 +46,8 @@ SentOffer sentOffer({
   String creatorId = 'c9',
   String name = '민의 옷장 기록',
   OfferView view = OfferView.waiting,
+  bool myTurn = false,
+  int version = 1,
   int? paymentDaysLeft,
   String? collaborationId,
   OfferTerms? terms,
@@ -63,6 +65,8 @@ SentOffer sentOffer({
         ),
       ),
   view: view,
+  myTurn: myTurn,
+  version: version,
   paymentDaysLeft: paymentDaysLeft,
 );
 

@@ -9,6 +9,8 @@ class SentOffer {
     required this.creator,
     required this.terms,
     required this.view,
+    this.version = 1,
+    this.myTurn = false,
     this.paymentDaysLeft,
     this.collaborationId,
   });
@@ -18,11 +20,20 @@ class SentOffer {
   final OfferTerms terms;
   final OfferView view;
 
+  /// 최신 판본의 번호.
+  final int version;
+
+  /// 사장님이 응답할 차례다(크리에이터가 새 판본을 보내 왔다). 답을 기다리는 오퍼에서만 의미가 있다.
+  final bool myTurn;
+
   /// 수락한 오퍼에서 결제까지 남은 날. 수락하지 않았으면 null.
   final int? paymentDaysLeft;
 
   /// 수락해서 만들어진 협업. 결제 화면(A8)이 이것으로 견적을 읽는다. 수락하기 전에는 null.
   final String? collaborationId;
+
+  /// 답을 기다리는 오퍼인데 공이 사장님에게 있다(역제안이 왔다). 줄이 `응답하기`가 된다.
+  bool get needsMyAnswer => view == OfferView.waiting && myTurn;
 
   /// 아직 되돌릴 수 있는 오퍼(답을 기다리거나, 수락됐지만 결제 전). 취소는 이때만 한다.
   bool get cancellable =>

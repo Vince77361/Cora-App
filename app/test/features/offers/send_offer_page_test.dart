@@ -104,7 +104,7 @@ void main() {
     expect(find.text('릴스 1편'), findsOneWidget);
   });
 
-  testWidgets('returns to the sent tab with a confirmation after sending', (
+  testWidgets('goes to the proposal box with a confirmation after sending', (
     tester,
   ) async {
     final home = await _openSendOffer(tester, stores: _storeWithDefaults());
@@ -128,15 +128,10 @@ void main() {
         reward: Reward(voucher: Voucher(name: '빵 세트', value: 30000)),
       ),
     );
-    expect(currentPath(tester), AppRoutes.store);
-    expect(topPath(tester), AppRoutes.store);
+    // 보낸 오퍼는 제안함으로 가고, 안내가 잠깐 보였다가 사라진다.
+    expect(topPath(tester), AppRoutes.storeProposals);
+    expect(find.text('제안함'), findsOneWidget);
     expect(find.text('오퍼를 보냈어요.'), findsOneWidget);
-    // 보낸 오퍼 탭이 열려 있고 방금 보낸 오퍼가 맨 위에 있다.
-    expect(find.text('보낸 오퍼 1'), findsOneWidget);
-    expect(find.text('답을 기다려요'), findsOneWidget);
-    expect(find.text('지원한 크리에이터 2'), findsOneWidget);
-
-    // 잠깐 보이고 사라진다.
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
     expect(find.text('오퍼를 보냈어요.'), findsNothing);

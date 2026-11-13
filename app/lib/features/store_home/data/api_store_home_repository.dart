@@ -98,6 +98,8 @@ class ApiStoreHomeRepository implements StoreHomeRepository {
       api.OfferView.CANCELLED => OfferView.cancelled,
       _ => OfferView.waiting,
     },
+    version: m.version,
+    myTurn: m.myTurn,
     paymentDaysLeft: m.paymentDaysLeft,
     collaborationId: m.collaborationId,
   );

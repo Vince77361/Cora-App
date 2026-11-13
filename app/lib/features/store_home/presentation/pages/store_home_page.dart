@@ -23,7 +23,6 @@ import '../../../store_onboarding/presentation/viewmodels/my_store_view_model.da
 import '../../domain/sent_offer.dart';
 import '../store_home_text.dart';
 import '../viewmodels/store_home_view_model.dart';
-import '../widgets/cancel_offer_sheet.dart';
 
 /// A9 사장님 홈(NStoreHome / DarkNStoreHome). 숫자 세 칸, 바로가기, `지원한 크리에이터`와
 /// `보낸 오퍼` 목록. 아래로 당기면 숫자와 두 목록을 함께 새로 읽는다.
@@ -147,14 +146,27 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
       case StoreHomePage.navChat:
         _comingSoon(CoraNavItems.store[index].label);
       case StoreHomePage.navOffers:
-        vm.selectTab(StoreHomeTab.sentOffers);
+        // 하단 메뉴의 `오퍼`는 제안함(F3)이다. 홈 위로 밀려 들어온다.
+        context.push(AppRoutes.storeProposals);
       case StoreHomePage.navDrafts:
         context.push(AppRoutes.storeDrafts);
     }
   }
 
-  /// 보낸 오퍼 줄의 버튼. `결제하기`는 결제 화면을 열고, `다시 찾기`는 아직 만들지 않은 화면이다.
+  /// 제안 상세를 연다. 돌아오면 숫자와 오퍼 줄을 서버에서 다시 읽는다(상세에서 답했을 수 있다).
+  void _openProposal(SentOffer offer) {
+    context.push(AppRoutes.storeProposal(offer.id)).then((_) {
+      if (mounted) ref.read(storeHomeViewModelProvider.notifier).refresh();
+    });
+  }
+
+  /// 보낸 오퍼 줄의 버튼. `응답하기`는 제안 상세를, `결제하기`는 결제 화면을 열고, `다시 찾기`는 아직 만들지 않은
+  /// 화면이다.
   void _onSentOfferAction(SentOffer offer) {
+    if (offer.needsMyAnswer) {
+      _openProposal(offer);
+      return;
+    }
     final collaborationId = offer.collaborationId;
     if (offer.view == OfferView.accepted && collaborationId != null) {
       // 결제 화면을 닫고 돌아오면(결제했든 그냥 나왔든) 숫자와 오퍼 줄을 서버에서 다시 읽는다.
@@ -167,7 +179,8 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
     if (label != null) _comingSoon(label);
   }
 
-  /// 줄을 눌렀을 때. 결제가 끝난 오퍼는 협업 진행 화면을 열고, 결제 전이면 취소 시트를 연다.
+  /// 줄을 눌렀을 때. 결제가 끝난 오퍼는 협업 진행 화면을, 그 밖의 아직 열린 오퍼는 제안 상세를 연다
+  /// (취소는 제안 상세의 `제안 취소`가 한다).
   void _onSentOffer(SentOffer offer) {
     final collaborationId = offer.collaborationId;
     final state = ref.read(storeHomeViewModelProvider).value;
@@ -180,12 +193,7 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
       return;
     }
     if (!offer.cancellable) return;
-    showCancelOfferSheet(
-      context,
-      offer: offer,
-      onCancel: () =>
-          ref.read(storeHomeViewModelProvider.notifier).cancelOffer(offer.id),
-    );
+    _openProposal(offer);
   }
 
   @override
@@ -617,8 +625,9 @@ class _SentOffers extends StatelessWidget {
       title: offer.creator.displayName,
       subtitle: sentOfferMeta(offer, collaboration: collaboration, now: now),
       actionLabel: sentOfferAction(offer, collaboration: collaboration),
-      // 캔버스에서 강조색 버튼은 결제하기뿐이다.
-      actionHighlighted: offer.view == OfferView.accepted && !paid,
+      // 캔버스에서 강조색 버튼은 결제하기뿐이다. 내가 답할 차례의 `응답하기`도 같게 강조한다(F3의 알약처럼).
+      actionHighlighted:
+          (offer.view == OfferView.accepted && !paid) || offer.needsMyAnswer,
       onAction: () => onAction(offer),
       onTap: offer.cancellable || paid ? () => onTap(offer) : null,
     );

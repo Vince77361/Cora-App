@@ -44,6 +44,13 @@ String? locationFor(String targetKind, String? targetId, UserRole role) {
         UserRole.creator => AppRoutes.creatorCollaboration(id),
         UserRole.brand => null,
       };
+    case 'PROPOSAL':
+      if (id == null) return null;
+      return switch (role) {
+        UserRole.store => AppRoutes.storeProposal(id),
+        UserRole.creator => AppRoutes.creatorProposal(id),
+        UserRole.brand => null,
+      };
     case 'WALLET':
       return role == UserRole.creator ? NotificationRoutes.wallet : null;
   }

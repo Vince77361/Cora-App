@@ -18,6 +18,7 @@ import '../../../../core/ui/cora_state_view.dart';
 import '../../../collaboration/presentation/collaboration_text.dart';
 import '../../../collaboration/presentation/viewmodels/collaboration_list_view_model.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart';
+import '../../../proposals/presentation/viewmodels/proposals_view_model.dart';
 import '../../../store_browse/presentation/widgets/creator_bottom_nav.dart';
 import '../../../store_browse/presentation/widgets/photo_overlays.dart';
 import '../../domain/received_offer.dart';
@@ -31,6 +32,7 @@ class ReceivedOffersPage extends ConsumerWidget {
 
   static const title = '받은 오퍼';
   static const activeTab = '진행 중';
+  static const proposalBox = '제안함';
   static const badge = '소상공인';
   static const decline = '거절';
   static const accept = '수락하기';
@@ -598,13 +600,12 @@ class _ActiveTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(collaborationListViewModelProvider);
     final now = ref.watch(clockProvider).now();
-    return switch (async) {
+    final Widget content = switch (async) {
       AsyncData(:final value) when value.isEmpty => const Padding(
         padding: EdgeInsets.only(top: 12),
         child: CoraStateView.empty(title: ReceivedOffersPage.noActive),
       ),
-      AsyncData(:final value) => ListView(
-        padding: const EdgeInsets.fromLTRB(8, 0, 8, 112),
+      AsyncData(:final value) => Column(
         children: [
           for (final collaboration in value)
             CoraListRow(
@@ -627,5 +628,96 @@ class _ActiveTab extends ConsumerWidget {
       ),
       _ => const CoraStateView.loading(),
     };
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 112),
+      children: [const _ProposalBoxRow(), content],
+    );
+  }
+}
+
+/// 진행 중 탭 맨 위 `제안함` 줄(캔버스 밖): `surface` 둥근 줄에 이름 15/700과 오른쪽 숫자(내가 응답할 차례의 수,
+/// 있으면 라임 알약) · `›`. 누르면 제안함(F3)이 열린다. 수는 제안함을 읽기 전에는 보이지 않는다.
+class _ProposalBoxRow extends ConsumerWidget {
+  const _ProposalBoxRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
+    final count = ref.watch(
+      proposalsViewModelProvider.select((a) => a.value?.myTurnCount),
+    );
+    void open() async {
+      await context.push(AppRoutes.creatorProposals);
+      // 제안함에서 답하고 돌아오면 수가 낡을 수 있다.
+      ref.invalidate(proposalsViewModelProvider);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+      child: Semantics(
+        container: true,
+        button: true,
+        label: count == null
+            ? ReceivedOffersPage.proposalBox
+            : '${ReceivedOffersPage.proposalBox}, 내가 응답할 차례 $count',
+        onTap: open,
+        child: ExcludeSemantics(
+          child: CoraPressable(
+            onTap: open,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: BorderRadius.circular(CoraRadius.panel),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
+                child: Row(
+                  spacing: 8,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        ReceivedOffersPage.proposalBox,
+                        style: CoraTextStyles.buttonMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: c.text,
+                        ),
+                      ),
+                    ),
+                    if (count != null)
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: count > 0 ? c.accent : c.quietSelected,
+                          borderRadius: BorderRadius.circular(CoraRadius.pill),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          child: Text(
+                            '$count',
+                            style: CoraTextStyles.caption.copyWith(
+                              color: count > 0 ? c.onAccent : c.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    Text(
+                      '›',
+                      style: CoraTextStyles.bodyLarge.copyWith(
+                        color: c.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

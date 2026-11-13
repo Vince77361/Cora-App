@@ -46,7 +46,7 @@ class StoreHomeState {
 }
 
 /// 사장님 홈(A9)의 숫자, 지원자·보낸 오퍼 목록, 고른 탭. 홈 위에 쌓이는 오퍼 보내기(A5)도 이것으로
-/// 오퍼를 보낸다. 오퍼를 보내거나 취소하면 숫자와 두 목록을 서버에서 다시 읽는다.
+/// 오퍼를 보낸다. 오퍼를 보내면 숫자와 두 목록을 서버에서 다시 읽는다(보낸 오퍼의 취소는 제안 상세가 한다).
 ///
 /// 로그인한 사용자가 바뀌면 다시 불러온다(고른 탭도 처음으로). Riverpod의 자동 재시도는 끈다.
 final storeHomeViewModelProvider =
@@ -123,17 +123,6 @@ class StoreHomeViewModel extends AsyncNotifier<StoreHomeState> {
   Future<void> sendOffer(String creatorId, OfferTerms terms) async {
     await _repo.sendOffer(creatorId, terms);
     await _reloadOn(StoreHomeTab.sentOffers);
-  }
-
-  /// 오퍼를 취소한다. 그사이 상태가 바뀌어 409여도 목록은 새로 읽어 둔다.
-  Future<void> cancelOffer(String offerId) async {
-    try {
-      await _repo.cancelOffer(offerId);
-    } on StoreHomeFailure catch (failure) {
-      if (failure.conflict) await refresh();
-      rethrow;
-    }
-    await refresh();
   }
 
   Future<void> _reloadOn(StoreHomeTab tab) async {

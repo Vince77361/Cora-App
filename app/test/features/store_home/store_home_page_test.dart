@@ -164,94 +164,55 @@ void main() {
     expect(topPath(tester), AppRoutes.storeComingSoon('릴스로 찾기'));
   });
 
-  group('cancel', () {
-    testWidgets('cancels a waiting offer after confirmation', (tester) async {
-      final home = _homeWithSent();
-      await pumpStoreHome(tester, home: home);
-      await _openSentTab(tester);
+  group('proposals', () {
+    testWidgets('store home marks a sent offer that needs my answer', (
+      tester,
+    ) async {
+      await pumpStoreHome(
+        tester,
+        home: FakeStoreHomeRepository(
+          sent: [
+            sentOffer(id: 'c1', name: '하루 한 컵', myTurn: true, version: 2),
+            sentOffer(id: 'w1', name: '민의 옷장 기록'),
+          ],
+        ),
+      );
+      await _openSentTabOf(tester, 2);
 
-      await tester.tap(find.text('하루 한 컵'));
-      await tester.pumpAndSettle();
-      // 시트: 조건 요약과 `오퍼 취소`.
-      expect(find.text('하루 한 컵에게 보낸 오퍼'), findsOneWidget);
-      expect(find.text('릴스 1편'), findsOneWidget);
-      expect(find.text('오퍼 취소'), findsOneWidget);
-
-      await tester.tap(find.text('오퍼 취소'));
-      await tester.pumpAndSettle();
-      expect(find.text('이 오퍼를 취소할까요?'), findsOneWidget);
-      expect(find.text('그대로 두기'), findsOneWidget);
-      expect(home.cancelled, isEmpty);
-
-      await tester.tap(find.text('취소하기'));
-      await tester.pumpAndSettle();
-      expect(home.cancelled, ['w1']);
-      expect(find.text('이 오퍼를 취소할까요?'), findsNothing);
-      expect(find.text('취소했어요'), findsOneWidget);
-    });
-
-    testWidgets('keeps the offer when the owner backs out', (tester) async {
-      final home = _homeWithSent();
-      await pumpStoreHome(tester, home: home);
-      await _openSentTab(tester);
-
-      await tester.tap(find.text('하루 한 컵'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('오퍼 취소'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('그대로 두기'));
-      await tester.pumpAndSettle();
-
-      expect(home.cancelled, isEmpty);
-      expect(find.text('이 오퍼를 취소할까요?'), findsNothing);
+      expect(find.text('역제안이 왔어요'), findsOneWidget);
+      expect(find.text('응답하기'), findsOneWidget);
       expect(find.text('답을 기다려요'), findsOneWidget);
     });
 
-    testWidgets('also opens for an accepted offer, but not a declined one', (
-      tester,
-    ) async {
-      await pumpStoreHome(tester, home: _homeWithSent());
-      await _openSentTab(tester);
+    testWidgets('the respond button opens the proposal detail', (tester) async {
+      await pumpStoreHome(
+        tester,
+        home: FakeStoreHomeRepository(
+          sent: [sentOffer(id: 'c1', name: '하루 한 컵', myTurn: true)],
+        ),
+      );
+      await _openSentTabOf(tester, 1);
 
-      await tester.tap(find.text('민의 옷장 기록'));
+      await tester.tap(find.text('응답하기'));
       await tester.pumpAndSettle();
-      expect(find.text('오퍼 취소'), findsNothing);
-
-      await tester.tap(find.text('국물 수집가'));
-      await tester.pumpAndSettle();
-      expect(find.text('오퍼 취소'), findsOneWidget);
+      expect(topPath(tester), AppRoutes.storeProposal('c1'));
     });
 
-    testWidgets('says so when the offer was already handled', (tester) async {
-      final home = _homeWithSent()..conflictOnCancel = true;
-      await pumpStoreHome(tester, home: home);
-      await _openSentTab(tester);
+    testWidgets(
+      'a waiting or accepted row opens the proposal detail, not a declined one',
+      (tester) async {
+        await pumpStoreHome(tester, home: _homeWithSent());
+        await _openSentTab(tester);
 
-      await tester.tap(find.text('하루 한 컵'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('오퍼 취소'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('취소하기'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('민의 옷장 기록'));
+        await tester.pumpAndSettle();
+        expect(topPath(tester), AppRoutes.store);
 
-      expect(find.text('이미 처리된 오퍼예요.'), findsOneWidget);
-      expect(find.text('이 오퍼를 취소할까요?'), findsOneWidget);
-    });
-
-    testWidgets('says so when cancelling fails', (tester) async {
-      final home = _homeWithSent()..failCancel = true;
-      await pumpStoreHome(tester, home: home);
-      await _openSentTab(tester);
-
-      await tester.tap(find.text('하루 한 컵'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('오퍼 취소'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('취소하기'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('취소하지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
-    });
+        await tester.tap(find.text('하루 한 컵'));
+        await tester.pumpAndSettle();
+        expect(topPath(tester), AppRoutes.storeProposal('w1'));
+      },
+    );
   });
 
   testWidgets('refreshes counts and lists on pull', (tester) async {
@@ -316,20 +277,18 @@ void main() {
   });
 
   group('bottom menu', () {
-    testWidgets('offer tab opens the sent list', (tester) async {
-      await pumpStoreHome(tester, home: _homeWithSent());
-      expect(find.text('오퍼 보내기'), findsNWidgets(3));
+    testWidgets(
+      'the offer tab in the store bottom nav opens the proposal box',
+      (tester) async {
+        await pumpStoreHome(tester, home: _homeWithSent());
 
-      await tester.tap(find.text('오퍼').last);
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('오퍼').last);
+        await tester.pumpAndSettle();
 
-      expect(find.text('답을 기다려요'), findsOneWidget);
-      expect(find.text('오퍼 보내기'), findsNothing);
-
-      await tester.tap(find.text('홈'));
-      await tester.pumpAndSettle();
-      expect(find.text('오퍼 보내기'), findsNWidgets(3));
-    });
+        expect(topPath(tester), AppRoutes.storeProposals);
+        expect(find.text('제안함'), findsOneWidget);
+      },
+    );
 
     testWidgets('find and chat are placeholders', (tester) async {
       await pumpStoreHome(tester);

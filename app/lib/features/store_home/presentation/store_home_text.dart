@@ -51,7 +51,7 @@ String sentOfferMeta(
     return _collaborationMeta(collaboration!, now!);
   }
   return switch (offer.view) {
-    OfferView.waiting => '답을 기다려요',
+    OfferView.waiting => offer.myTurn ? '역제안이 왔어요' : '답을 기다려요',
     OfferView.accepted =>
       offer.paymentDaysLeft == null
           ? '수락함, 결제를 기다려요'
@@ -84,11 +84,12 @@ String _collaborationMeta(Collaboration c, DateTime now) {
   }
 }
 
-/// 보낸 오퍼 줄의 버튼. 결제를 기다리는 오퍼는 `결제하기`, 거절한 오퍼는 `다시 찾기`, 그 외(결제가 끝난
-/// 오퍼 포함)는 버튼이 없다.
+/// 보낸 오퍼 줄의 버튼. 결제를 기다리는 오퍼는 `결제하기`, 역제안이 와서 내가 답할 차례인 오퍼는 `응답하기`,
+/// 거절한 오퍼는 `다시 찾기`, 그 외(결제가 끝난 오퍼 포함)는 버튼이 없다.
 String? sentOfferAction(SentOffer offer, {Collaboration? collaboration}) {
   if (sentOfferPaid(offer, collaboration)) return null;
   return switch (offer.view) {
+    OfferView.waiting => offer.myTurn ? '응답하기' : null,
     OfferView.accepted => '결제하기',
     OfferView.declined => '다시 찾기',
     _ => null,

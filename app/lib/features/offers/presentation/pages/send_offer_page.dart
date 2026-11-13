@@ -8,6 +8,7 @@ import '../../../offer_terms/domain/offer_terms.dart';
 import '../../../offer_terms/domain/proposal_draft.dart';
 import '../../../offer_terms/presentation/widgets/offer_terms_wizard.dart';
 import '../../../server_config/presentation/viewmodels/server_config_view_model.dart';
+import '../../../proposals/presentation/viewmodels/proposals_view_model.dart';
 import '../../../store_home/domain/applicant.dart';
 import '../../../store_home/domain/store_home_repository.dart';
 import '../../../store_home/presentation/viewmodels/store_home_view_model.dart';
@@ -51,9 +52,11 @@ class _SendOfferPageState extends ConsumerState<SendOfferPage> {
       );
     }
     if (!mounted) return;
-    ref.read(storeHomeNoticeProvider.notifier).show(SendOfferPage.sent);
-    // F1·F2가 위에 떠 있을 수 있어 홈으로 가며 함께 닫는다.
-    context.go(AppRoutes.store);
+    // 보낸 오퍼는 제안함(F3)의 `상대 대기`에 모인다. 이미 읽어 둔 목록이 있으면 낡았으므로 버린다.
+    ref.invalidate(proposalsViewModelProvider);
+    ref.read(proposalsNoticeProvider.notifier).show(SendOfferPage.sent);
+    // F1·F2가 위에 떠 있을 수 있어 제안함으로 가며 함께 닫는다.
+    context.go(AppRoutes.storeProposals);
   }
 
   @override

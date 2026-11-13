@@ -7,6 +7,8 @@ import 'package:cora/features/payment/presentation/viewmodels/payment_view_model
 import 'package:cora/features/payment/presentation/checkout_launcher.dart';
 import 'package:cora/features/notifications/presentation/notification_routes.dart';
 import 'package:cora/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:cora/features/onboarding/domain/user_role.dart';
+import 'package:cora/features/proposals/domain/proposal_repository.dart';
 import 'package:cora/features/store_home/presentation/viewmodels/store_home_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +18,7 @@ import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
 import '../payment/fake_payment_repository.dart';
 import '../payment/payment_harness.dart';
+import '../proposals/fake_proposal_repository.dart';
 import 'fake_notification_repository.dart';
 import 'notifications_harness.dart';
 
@@ -159,6 +162,38 @@ void main() {
     expect(topPath(tester), NotificationRoutes.notifications);
     expect(find.byKey(const ValueKey('notification-dot-n2')), findsNothing);
     expect(find.byKey(const ValueKey('notification-dot-n1')), findsOneWidget);
+  });
+
+  testWidgets('a proposal notification opens the proposal detail', (
+    tester,
+  ) async {
+    final repo = FakeNotificationRepository(
+      items: [_note('prop', kind: 'PROPOSAL', targetId: 'p-7')],
+    );
+    await pumpStoreNotifications(
+      tester,
+      repo: repo,
+      overrides: [
+        proposalRepositoryProvider.overrideWithValue(
+          FakeProposalRepository(
+            details: {'p-7': proposalDetail(offerId: 'p-7')},
+          ),
+        ),
+      ],
+    );
+    await tester.tap(find.text('prop 문구'));
+    await tester.pumpAndSettle();
+    expect(topPath(tester), '/store/proposals/p-7');
+    expect(find.text('이 판본 수락'), findsOneWidget);
+  });
+
+  test('a proposal notification goes to each role proposal detail', () {
+    expect(
+      locationFor('PROPOSAL', 'p-7', UserRole.creator),
+      '/creator/proposals/p-7',
+    );
+    expect(locationFor('PROPOSAL', null, UserRole.store), isNull);
+    expect(locationFor('PROPOSAL', 'p-7', UserRole.brand), isNull);
   });
 
   testWidgets('opens the creator screens for a creator', (tester) async {
