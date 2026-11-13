@@ -18,6 +18,15 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const PAYMENT_DUE_DAYS = 3;
 export const SUBMIT_DUE_DAYS = 14;
 
+// "끝난 협업" 범위. 이 밖의 단계는 모두 진행 중이다(브랜드 계약의 협의 단계도 진행 중이다).
+// 저장소가 끝 단계로 옮길 때 연결된 오퍼를 닫는 기준이기도 하다.
+export const COLLABORATION_DONE_STAGES: CollaborationStage[] = [
+  'SETTLED',
+  'REFUNDED',
+  'CANCELLED',
+  'DROPPED',
+];
+
 // 사장님 홈의 "진행 중"에 세는 단계.
 export const storeInProgressStages: CollaborationStage[] = [
   'AWAITING_PAYMENT',

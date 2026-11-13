@@ -37,7 +37,7 @@ class FakeCollaborations extends CollaborationsRepository {
   rows: Collaboration[] = [];
   askedFor: string[] = [];
   constructor() {
-    super(null as never);
+    super(null as never, null as never);
   }
   listByCreator(creatorId: string) {
     this.askedFor.push(creatorId);

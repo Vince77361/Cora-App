@@ -180,7 +180,7 @@ class FakeCollaborations extends CollaborationsRepository {
   readonly rows: Collaboration[] = [];
 
   constructor() {
-    super(null as never);
+    super(null as never, null as never);
   }
 
   create(data: Parameters<CollaborationsRepository['create']>[0]) {

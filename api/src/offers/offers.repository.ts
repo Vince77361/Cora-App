@@ -86,6 +86,7 @@ export class OffersRepository {
   }
 
   // 같은 가게·크리에이터의 열린 오퍼. 방금 거절해 아직 되돌릴 수 있는 것도 사장님에게는 "답을 기다려요"라 함께 본다.
+  // 협업이 끝나 닫힌(closedAt) 오퍼는 열린 것이 아니다. 부분 유니크 인덱스도 같은 기준이다.
   findOpen(storeId: string, creatorId: string, now: Date): Promise<OfferRow[]> {
     const undoSince = new Date(now.getTime() - DECLINE_UNDO_SECONDS * 1000);
     return this.prisma.offer.findMany({
@@ -94,7 +95,7 @@ export class OffersRepository {
         creatorId,
         deletedAt: null,
         OR: [
-          { status: { in: ['SENT', 'ACCEPTED'] } },
+          { status: { in: ['SENT', 'ACCEPTED'] }, closedAt: null },
           { status: 'DECLINED', declinedAt: { gt: undoSince } },
         ],
       },

@@ -250,7 +250,7 @@ model Application {
   @@map("applications")
 }
 
-// 같은 가게·크리에이터의 열린 오퍼(SENT, ACCEPTED)는 하나뿐이다. 부분 유니크 인덱스는 마이그레이션의 직접 SQL에 있다.
+// 같은 가게·크리에이터의 열린 오퍼(SENT, 또는 협업이 끝나지 않은 ACCEPTED)는 하나뿐이다. 부분 유니크 인덱스는 마이그레이션의 직접 SQL에 있다.
 model Offer {
   id                  String        @id @default(uuid()) @db.Uuid
   storeId             String        @map("store_id") @db.Uuid
@@ -272,6 +272,8 @@ model Offer {
   paymentDueAt        DateTime?     @map("payment_due_at") @db.Timestamptz(3)
   declinedAt          DateTime?     @map("declined_at") @db.Timestamptz(3)
   respondedAt         DateTime?     @map("responded_at") @db.Timestamptz(3)
+  // 연결된 협업이 끝난(SETTLED, REFUNDED, CANCELLED) 시각. 차면 ACCEPTED여도 열린 오퍼로 세지 않아 같은 가게가 다시 오퍼할 수 있다.
+  closedAt            DateTime?     @map("closed_at") @db.Timestamptz(3)
   createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt           DateTime?     @map("deleted_at") @db.Timestamptz(3)

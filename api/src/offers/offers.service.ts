@@ -529,9 +529,10 @@ export class OffersService {
   }
 
   private isOpen(row: OfferRow, now: Date): boolean {
+    // 협업이 끝나 닫힌 오퍼는 ACCEPTED여도 열린 것이 아니다.
     return (
       row.status === 'SENT' ||
-      row.status === 'ACCEPTED' ||
+      (row.status === 'ACCEPTED' && row.closedAt === null) ||
       canUndoDecline(row, now)
     );
   }

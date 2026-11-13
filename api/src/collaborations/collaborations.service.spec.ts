@@ -38,7 +38,7 @@ class Rolled<R> extends Error {
 class FakeCollaborationsRepository extends CollaborationsRepository {
   row: Collaboration = collaboration();
   constructor() {
-    super(null as never);
+    super(null as never, null as never);
   }
   findById(id: string) {
     return Promise.resolve(id === this.row.id ? { ...this.row } : null);

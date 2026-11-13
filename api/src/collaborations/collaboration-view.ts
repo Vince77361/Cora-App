@@ -6,16 +6,12 @@ import {
 } from '@prisma/client';
 import { settleReward } from '../settlements/settlement-math';
 import { RewardTerms } from '../stores/reward-terms';
+import { COLLABORATION_DONE_STAGES } from './collaboration-stage';
 
 // 협업 조회 모델을 만드는 순수 함수들. 시각과 DB를 모른다(시각은 호출한 쪽이 인자로 준다).
 
-// "끝난 협업" 범위. 이 밖의 단계는 모두 진행 중이다(브랜드 계약의 협의 단계도 진행 중이다).
-export const COLLABORATION_DONE_STAGES: CollaborationStage[] = [
-  'SETTLED',
-  'REFUNDED',
-  'CANCELLED',
-  'DROPPED',
-];
+// "끝난 협업" 범위는 단계 규칙(collaboration-stage.ts)에 있고, 저장소도 쓰므로 여기서는 다시 내보내기만 한다.
+export { COLLABORATION_DONE_STAGES };
 
 export type StepKey = 'ACCEPTED' | 'PAID' | 'VISIT' | 'SUBMIT' | 'SETTLE';
 export type StepState = 'DONE' | 'NOW' | 'TODO';

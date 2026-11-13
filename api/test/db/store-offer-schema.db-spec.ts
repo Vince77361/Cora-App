@@ -31,6 +31,7 @@ function createApplication(input: {
 function createOffer(input: {
   status: 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'CANCELLED';
   deletedAt?: Date;
+  closedAt?: Date;
 }) {
   return prisma.offer.create({
     data: {
@@ -95,6 +96,29 @@ describe('offers', () => {
 
   it('allows a new offer after the previous one was soft-deleted', async () => {
     await createOffer({ status: 'SENT', deletedAt: new Date() });
+    await expect(createOffer({ status: 'SENT' })).resolves.toBeDefined();
+  });
+
+  // 2번 R11 안전망: 이 인덱스는 Prisma 스키마 밖이라 마이그레이션이 지우거나 바꿔도 컴파일이 알려 주지 않는다.
+  it('keeps the open-offer partial unique index with the closed_at condition', async () => {
+    const rows = await prisma.$queryRaw<{ indexdef: string }[]>`
+      SELECT indexdef FROM pg_indexes
+      WHERE indexname = 'offers_open_store_creator_key'
+        AND schemaname = current_schema()`;
+    expect(rows).toHaveLength(1);
+    const def = rows[0].indexdef;
+    expect(def).toContain('UNIQUE');
+    expect(def).toContain('closed_at IS NULL');
+    expect(def).toContain('deleted_at IS NULL');
+  });
+
+  it('rejects a new sent offer while an accepted offer is still open', async () => {
+    await createOffer({ status: 'ACCEPTED' });
+    await expect(createOffer({ status: 'SENT' })).rejects.toThrow();
+  });
+
+  it('allows a new sent offer next to an accepted offer that was closed', async () => {
+    await createOffer({ status: 'ACCEPTED', closedAt: new Date() });
     await expect(createOffer({ status: 'SENT' })).resolves.toBeDefined();
   });
 });

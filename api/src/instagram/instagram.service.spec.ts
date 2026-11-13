@@ -87,7 +87,7 @@ class FakeCollaborations extends CollaborationsRepository {
   held: Pick<Collaboration, 'kind' | 'stage'>[] = [];
   asked: { creatorId: string; methods: string[] }[] = [];
   constructor() {
-    super(null as never);
+    super(null as never, null as never);
   }
   listForCreator(creatorId: string, methods: SettlementMethod[]) {
     this.asked.push({ creatorId, methods });

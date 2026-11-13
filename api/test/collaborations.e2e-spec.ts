@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import request from 'supertest';
 import { scheduleSubmissionDeadlineJobs } from '../src/collaborations/collaboration-jobs';
+import { CollaborationsRepository } from '../src/collaborations/collaborations.repository';
 import { Clock } from '../src/common/clock';
 import { FakePaymentAdapter } from '../src/integrations/payment/fake-payment.adapter';
 import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
@@ -1176,6 +1177,134 @@ describe('collaborations', () => {
           })
         ).status,
       ).toBe('ACCEPTED');
+    });
+  });
+
+  // 협업이 끝나면 오퍼와 지원이 닫혀, 같은 가게가 다시 오퍼하고 크리에이터가 다시 지원할 수 있다(5번 인계 문제).
+  describe('closing the offer when the collaboration ends', () => {
+    const sendAgain = (creatorId: string) =>
+      request(server)
+        .post('/offers')
+        .set(ownerAuth)
+        .send({
+          creatorId,
+          format: 'REELS',
+          reward: { voucher: { name: '식사권', value: 40000, people: 2 } },
+        });
+    const apply = (storeId: string) =>
+      request(server).post(`/stores/${storeId}/applications`).set(creatorAuth);
+    const storeDetail = (storeId: string) =>
+      request(server).get(`/stores/${storeId}`).set(creatorAuth);
+
+    // 오퍼를 받아 수락한 지원이 OFFERED로 남아 있는 상태를 만든다.
+    async function linkApplication(s: Seeded): Promise<string> {
+      const application = await prisma.application.create({
+        data: { storeId: s.storeId, creatorId: s.creatorId, status: 'OFFERED' },
+      });
+      await prisma.offer.update({
+        where: { id: s.offerId },
+        data: { applicationId: application.id },
+      });
+      return application.id;
+    }
+    const offerOf = (id: string) =>
+      prisma.offer.findUniqueOrThrow({ where: { id } });
+    const applicationOf = (id: string) =>
+      prisma.application.findUniqueOrThrow({ where: { id } });
+
+    it('closes the offer and the application when the creator cancels, so the creator can apply again', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      const applicationId = await linkApplication(s);
+      expect(
+        (await storeDetail(s.storeId).expect(200)).body as {
+          myApplicationStatus: string;
+        },
+      ).toMatchObject({ myApplicationStatus: 'OFFERED' });
+
+      await cancel(s.collaborationId).expect(200);
+
+      expect((await offerOf(s.offerId)).closedAt).toEqual(T0);
+      expect((await offerOf(s.offerId)).status).toBe('ACCEPTED');
+      expect((await applicationOf(applicationId)).status).toBe('CLOSED');
+      expect(
+        (await storeDetail(s.storeId).expect(200)).body as {
+          myApplicationStatus: string;
+        },
+      ).toMatchObject({ myApplicationStatus: 'NONE' });
+      await apply(s.storeId).expect(201);
+    });
+
+    it('lets the owner send a new offer after the creator cancelled', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      await linkApplication(s);
+      await cancel(s.collaborationId).expect(200);
+      await sendAgain(s.creatorId).expect(201);
+      expect(await prisma.offer.count()).toBe(2);
+    });
+
+    it('lets the owner send a new offer after a voucher-only collaboration settled', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      const applicationId = await linkApplication(s);
+      await submit(s.collaborationId, REELS_URL).expect(200);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('SETTLED');
+
+      expect((await offerOf(s.offerId)).closedAt).toEqual(T0);
+      expect((await applicationOf(applicationId)).status).toBe('CLOSED');
+      await sendAgain(s.creatorId).expect(201);
+    });
+
+    it('closes the offer when an unsubmitted collaboration is refunded at its deadline', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      await linkApplication(s);
+      clock.set(new Date(T0.getTime() + 15 * DAY));
+      await scheduler.runDue(clock.now(), { allowFailures: true });
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('REFUNDED');
+
+      expect((await offerOf(s.offerId)).closedAt).not.toBeNull();
+      await sendAgain(s.creatorId).expect(201);
+    });
+
+    it('keeps the offer open while the collaboration is in progress', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      await linkApplication(s);
+      const res = await sendAgain(s.creatorId).expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect((await offerOf(s.offerId)).closedAt).toBeNull();
+      expect(await prisma.offer.count()).toBe(1);
+    });
+
+    it('does not close the offer when the stage move finds another stage', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      const applicationId = await linkApplication(s);
+      const repo = app.get(CollaborationsRepository);
+      // 협업은 FUNDED인데 COUNTING에서 옮기려는 요청: 이동이 0행이라 오퍼와 지원은 그대로여야 한다.
+      expect(await repo.advance(s.collaborationId, 'COUNTING', 'SETTLED')).toBe(
+        false,
+      );
+      expect((await offerOf(s.offerId)).closedAt).toBeNull();
+      expect((await applicationOf(applicationId)).status).toBe('OFFERED');
+    });
+
+    it('closes the offer through advanceByOffer and leaves a brand collaboration without an offer alone', async () => {
+      const s = await seed({ rewardType: 'VOUCHER' });
+      await linkApplication(s);
+      const repo = app.get(CollaborationsRepository);
+      expect(await repo.advanceByOffer(s.offerId, 'FUNDED', 'REFUNDED')).toBe(
+        true,
+      );
+      expect((await offerOf(s.offerId)).closedAt).toEqual(T0);
+      // 오퍼에 묶이지 않은 협업(브랜드 계약)은 닫을 오퍼가 없어도 이동된다.
+      const brand = await prisma.collaboration.create({
+        data: {
+          kind: 'BRAND_CONTRACT',
+          stage: 'PUBLISHED',
+          commissionerId: s.ownerId,
+          creatorId: s.creatorId,
+          terms: {},
+          settlementMethod: 'NONE',
+        },
+      });
+      expect(await repo.advance(brand.id, 'PUBLISHED', 'SETTLED')).toBe(true);
     });
   });
 });
