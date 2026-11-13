@@ -61,8 +61,7 @@ void main() {
     expect(find.text('25,000원'), findsOneWidget);
     expect(find.text('사장님께 환불'), findsOneWidget);
     expect(find.text('35,000원'), findsOneWidget);
-    // 집계 출처 줄은 Task 21이 더한다.
-    expect(find.text('집계 출처와 계산 보기'), findsNothing);
+    expect(find.text('집계 출처와 계산 보기'), findsOneWidget);
     for (final label in ['새 오퍼', '영상 받기', '하루 한 컵과 다시 만나기']) {
       expect(find.text(label), findsOneWidget);
     }

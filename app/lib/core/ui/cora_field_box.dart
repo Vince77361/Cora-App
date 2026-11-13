@@ -22,6 +22,8 @@ class CoraFieldBox extends StatefulWidget {
     this.enabled = true,
     this.onSubmitted,
     this.textInputAction = TextInputAction.done,
+    this.minLines,
+    this.maxLines = 1,
   });
 
   final String label;
@@ -35,6 +37,10 @@ class CoraFieldBox extends StatefulWidget {
   final bool enabled;
   final ValueChanged<String>? onSubmitted;
   final TextInputAction textInputAction;
+
+  /// 여러 줄 입력(이의 사유처럼 긴 글). 기본은 한 줄이다. [maxLines]를 null로 두면 줄 수에 제한이 없다.
+  final int? minLines;
+  final int? maxLines;
 
   @override
   State<CoraFieldBox> createState() => _CoraFieldBoxState();
@@ -83,6 +89,8 @@ class _CoraFieldBoxState extends State<CoraFieldBox> {
                   enabled: widget.enabled,
                   keyboardType: widget.keyboardType,
                   textInputAction: widget.textInputAction,
+                  minLines: widget.minLines,
+                  maxLines: widget.maxLines,
                   autofillHints: widget.autofillHints,
                   style: CoraTextStyles.bodyLarge.copyWith(
                     fontWeight: FontWeight.w400,

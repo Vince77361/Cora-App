@@ -49,6 +49,14 @@ String? locationFor(String targetKind, String? targetId, UserRole role) {
       return id == null || role != UserRole.store
           ? null
           : AppRoutes.storeResult(id);
+    case 'VIEW_REPORT':
+      // 조회 자료 확인(F4). 서버는 협업 id를 준다. 집계가 끝난 알림, 캡처 요청, 이의 알림이 연다.
+      if (id == null) return null;
+      return switch (role) {
+        UserRole.store => AppRoutes.storeViewReport(id),
+        UserRole.creator => AppRoutes.creatorViewReport(id),
+        UserRole.brand => null,
+      };
     case 'PROPOSAL':
       if (id == null) return null;
       return switch (role) {

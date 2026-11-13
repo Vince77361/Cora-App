@@ -36,6 +36,7 @@ import '../../features/store_browse/presentation/pages/store_detail_page.dart';
 import '../../features/store_browse/presentation/pages/store_list_page.dart';
 import '../../features/store_home/presentation/pages/store_home_page.dart';
 import '../../features/trial_compare/presentation/pages/trial_compare_page.dart';
+import '../../features/view_report/presentation/pages/view_report_page.dart';
 import '../../features/trial_compare/presentation/pages/trial_info_page.dart';
 import '../../features/store_result/presentation/pages/store_result_page.dart';
 import '../../features/store_home/presentation/pages/store_me_page.dart';
@@ -260,6 +261,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: AppRoutes.storeViewReportPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          ViewReportPage(
+            collaborationId: state.pathParameters['collaborationId']!,
+            viewer: ViewReportViewer.owner,
+          ),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.storeCollaborationPattern,
         pageBuilder: (context, state) => CoraTransitions.push(
           StoreCollaborationPage(
@@ -353,6 +364,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '${AppRoutes.creatorCollaborationPattern}/submit',
         pageBuilder: (context, state) => CoraTransitions.push(
           SubmitLinkPage(collaborationId: state.pathParameters['id']!),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.creatorCollaborationPattern}/report',
+        pageBuilder: (context, state) => CoraTransitions.push(
+          ViewReportPage(
+            collaborationId: state.pathParameters['id']!,
+            viewer: ViewReportViewer.creator,
+          ),
           key: state.pageKey,
         ),
       ),

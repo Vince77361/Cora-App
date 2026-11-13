@@ -20,6 +20,8 @@ import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/domain/auth_repository_provider.dart';
 import 'features/collaboration/data/api_collaboration_repository.dart';
 import 'features/collaboration/domain/collaboration_repository.dart';
+import 'features/view_report/data/api_view_report_repository.dart';
+import 'features/view_report/domain/view_report_repository.dart';
 import 'features/creator_profile/data/api_creator_profile_repository.dart';
 import 'features/creator_profile/domain/creator_profile_repository.dart';
 import 'features/instagram_connect/data/api_instagram_repository.dart';
@@ -136,6 +138,9 @@ Future<void> main() async {
         ),
         paymentRepositoryProvider.overrideWith(
           (ref) => ApiPaymentRepository(ref.watch(apiClientProvider)),
+        ),
+        viewReportRepositoryProvider.overrideWith(
+          (ref) => ApiViewReportRepository(ref.watch(apiClientProvider)),
         ),
         collaborationRepositoryProvider.overrideWith(
           (ref) => ApiCollaborationRepository(ref.watch(apiClientProvider)),

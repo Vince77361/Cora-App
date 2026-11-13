@@ -208,6 +208,19 @@ void main() {
     expect(locationFor('STORE_RESULT', 'c-3', UserRole.brand), isNull);
   });
 
+  test('a view report notification goes to the report of each role', () {
+    expect(
+      locationFor('VIEW_REPORT', 'c-3', UserRole.store),
+      '/store/collaborations/c-3/report',
+    );
+    expect(
+      locationFor('VIEW_REPORT', 'c-3', UserRole.creator),
+      '/creator/collaborations/c-3/report',
+    );
+    expect(locationFor('VIEW_REPORT', null, UserRole.store), isNull);
+    expect(locationFor('VIEW_REPORT', 'c-3', UserRole.brand), isNull);
+  });
+
   testWidgets('a settlement notification opens the seven day result', (
     tester,
   ) async {

@@ -1,6 +1,7 @@
 import 'package:cora/features/collaboration/domain/collaboration.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart';
+import 'package:cora/features/view_report/domain/view_report.dart';
 
 /// 캔버스 A7의 단계 다섯 개. 기본은 오퍼 수락과 가게 결제가 끝나고 방문·촬영이 지금 단계다.
 List<CollaborationStep> stepsAt(StepKey now, {DateTime? acceptedAt}) {
@@ -49,6 +50,7 @@ Collaboration collaboration({
   PayoutStatus payoutStatus = PayoutStatus.none,
   DateTime? payoutScheduledFor,
   CollaborationSettlement? settlement,
+  ViewReportStatus? viewReportStatus,
 }) => Collaboration(
   id: id,
   role: role,
@@ -77,6 +79,7 @@ Collaboration collaboration({
   payoutStatus: payoutStatus,
   payoutScheduledFor: payoutScheduledFor,
   settlement: settlement,
+  viewReportStatus: viewReportStatus,
 );
 
 /// 사장님이 취소를 요청한 뒤의 협업(서버처럼 요청이 생기고 다시 요청할 수 없다).
@@ -104,6 +107,7 @@ Collaboration withOwnerCancelRequest(Collaboration c) => Collaboration(
   payoutScheduledFor: c.payoutScheduledFor,
   settlement: c.settlement,
   expectedRefund: c.expectedRefund,
+  viewReportStatus: c.viewReportStatus,
 );
 
 /// 손으로 쓴 가짜 협업 저장소. 제출·취소·동의를 받으면 목록과 상세를 서버처럼 바꾼다.

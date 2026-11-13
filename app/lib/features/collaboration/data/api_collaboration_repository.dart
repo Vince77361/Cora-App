@@ -2,6 +2,7 @@ import 'package:cora_api/api.dart' as api;
 
 import '../../../core/network/api_error.dart';
 import '../../offer_terms/data/offer_terms_from_wire.dart';
+import '../../view_report/domain/view_report.dart';
 import '../domain/collaboration.dart';
 import '../domain/collaboration_repository.dart';
 
@@ -148,5 +149,13 @@ class ApiCollaborationRepository implements CollaborationRepository {
             refundAmount: m.settlement!.refundAmount,
           ),
     expectedRefund: m.expectedRefund,
+    viewReportStatus: switch (m.viewReportStatus) {
+      api.CollaborationViewReportStatus.COUNTING => ViewReportStatus.counting,
+      api.CollaborationViewReportStatus.UNCONFIRMED =>
+        ViewReportStatus.unconfirmed,
+      api.CollaborationViewReportStatus.CONFIRMED => ViewReportStatus.confirmed,
+      api.CollaborationViewReportStatus.DISPUTED => ViewReportStatus.disputed,
+      _ => null,
+    },
   );
 }

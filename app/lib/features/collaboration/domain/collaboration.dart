@@ -1,4 +1,5 @@
 import '../../offer_terms/domain/offer_terms.dart';
+import '../../view_report/domain/view_report.dart';
 
 /// 협업의 단계. 가게 오퍼가 지나는 단계만 이름을 두고, 브랜드 계약의 단계는 [other]로 묶는다
 /// (이 화면은 가게 오퍼 협업만 그린다).
@@ -47,7 +48,8 @@ class CancelRequest {
   final bool requestedByMe;
 }
 
-/// 정산 결과. 조회수를 읽지 못해 멈춘 협업은 null이다.
+/// 정산 결과. 확인 완료 뒤에만 있다: 조회수 수당이 있는 협업은 자료가 확인되기 전에 정산 결과가 없다
+/// (0원도, 지급 완료도 아니다). 조회수를 읽지 못해 멈춘 협업도 없다.
 class CollaborationSettlement {
   const CollaborationSettlement({
     required this.finalViews,
@@ -83,6 +85,7 @@ class Collaboration {
     this.payoutScheduledFor,
     this.settlement,
     this.expectedRefund,
+    this.viewReportStatus,
   });
 
   final String id;
@@ -114,6 +117,10 @@ class Collaboration {
   final CollaborationSettlement? settlement;
   final int? expectedRefund;
 
+  /// 조회 자료 확인(F4)의 단계. null이면 확인할 자료가 없다(조회수 수당이 없거나 링크를 내기 전이거나 끝난
+  /// 협업). 값이 있으면 A7·사장님 진행 화면에 `조회 자료와 보상 계산 확인` 줄이 보인다.
+  final ViewReportStatus? viewReportStatus;
+
   /// 협업 번호의 앞 8자리. 식사권 화면과 문의 메일 제목에 쓴다.
   String get shortId => id.length <= 8 ? id : id.substring(0, 8);
 
@@ -125,6 +132,13 @@ class Collaboration {
   /// 돈이 지금 실제로 보관돼 있다(결제 뒤이고 조회수당 지급이 있는 협업). 조건이 아니라 서버가 준
   /// `escrowAmount`로 따진다: 결제 전과 식사권만 있는 협업은 0이다.
   bool get hasEscrow => escrowAmount > 0;
+
+  /// 집계 기간이 끝났지만 자료가 아직 확인되지 않았다(계산이 나왔거나 이의가 걸렸다). 협업 단계는 그대로
+  /// 집계 중이다: 돈은 보관 중이고 정산 결과는 아직 없다.
+  bool get awaitsReportConfirmation =>
+      stage == CollaborationStage.counting &&
+      (viewReportStatus == ViewReportStatus.unconfirmed ||
+          viewReportStatus == ViewReportStatus.disputed);
 
   CollaborationStep? step(StepKey key) {
     for (final s in steps) {

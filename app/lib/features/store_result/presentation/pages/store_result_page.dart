@@ -12,6 +12,7 @@ import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_pill_button.dart';
+import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../collaboration/presentation/link_launcher.dart';
 import '../../../collaboration/presentation/store_collaboration_text.dart';
@@ -24,7 +25,7 @@ import '../store_result_text.dart';
 import '../viewmodels/store_result_view_model.dart';
 
 /// G1 7일 결과(NResult / DarkNResult). 사진 위에 조회수, 우리 가게 평소 게시물과의 비교, 크리에이터 지급과
-/// 사장님께 환불, 아래에 `새 오퍼`·`영상 받기`·`다시 만나기`. `집계 출처와 계산 보기`(F4)는 Task 21이 더한다.
+/// 사장님께 환불, 아래에 `새 오퍼`·`영상 받기`·`다시 만나기`. `집계 출처와 계산 보기`는 F4로 잇는다.
 class StoreResultPage extends ConsumerStatefulWidget {
   const StoreResultPage({super.key, required this.collaborationId});
 
@@ -42,6 +43,7 @@ class StoreResultPage extends ConsumerStatefulWidget {
   static const refund = '사장님께 환불';
   static const newOffer = '새 오퍼';
   static const receiveVideo = '영상 받기';
+  static const sourceLink = '집계 출처와 계산 보기';
 
   /// 캔버스에 없는 상태의 문구.
   static const loadFailed = '7일 결과를 불러오지 못했어요.';
@@ -111,7 +113,12 @@ class _StoreResultPageState extends ConsumerState<StoreResultPage> {
               child: switch (async) {
                 AsyncData(:final value) => SingleChildScrollView(
                   padding: const EdgeInsets.only(bottom: 16),
-                  child: _Content(result: value.result),
+                  child: _Content(
+                    result: value.result,
+                    onOpenReport: () => context.push(
+                      AppRoutes.storeViewReport(widget.collaborationId),
+                    ),
+                  ),
                 ),
                 AsyncError(:final error) =>
                   error is StoreResultFailure && error.notFound
@@ -148,9 +155,10 @@ class _StoreResultPageState extends ConsumerState<StoreResultPage> {
 }
 
 class _Content extends StatelessWidget {
-  const _Content({required this.result});
+  const _Content({required this.result, required this.onOpenReport});
 
   final StoreResult result;
+  final VoidCallback onOpenReport;
 
   @override
   Widget build(BuildContext context) {
@@ -198,6 +206,28 @@ class _Content extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+          // 조회수 수당이 있던 협업만 성과 확인(F4)이 있다. 12/400, 바깥 여백 8/24.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Semantics(
+                link: true,
+                onTap: onOpenReport,
+                child: ExcludeSemantics(
+                  child: CoraPressable(
+                    onTap: onOpenReport,
+                    child: Text(
+                      StoreResultPage.sourceLink,
+                      style: CoraTextStyles.fieldLabel.copyWith(
+                        color: context.colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

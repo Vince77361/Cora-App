@@ -14,6 +14,7 @@ import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart';
+import '../../../view_report/presentation/widgets/view_report_entry_row.dart';
 import '../../domain/collaboration.dart';
 import '../collaboration_text.dart';
 import '../link_launcher.dart';
@@ -146,6 +147,9 @@ class _StoreCollaborationPageState
                     collaboration: value.collaboration,
                     onViewContent: () => _viewContent(value.collaboration),
                     onSeeResult: () => _openResult(value.collaboration),
+                    onOpenReport: () => context.push(
+                      AppRoutes.storeViewReport(widget.collaborationId),
+                    ),
                   ),
                 ),
                 AsyncError() => CoraStateView.loadFailed(
@@ -194,11 +198,13 @@ class _Content extends StatelessWidget {
     required this.collaboration,
     required this.onViewContent,
     required this.onSeeResult,
+    required this.onOpenReport,
   });
 
   final Collaboration collaboration;
   final VoidCallback onViewContent;
   final VoidCallback onSeeResult;
+  final VoidCallback onOpenReport;
 
   /// 7일 결과(G1)가 있는 협업이다: 정산이 끝났고, 식사권만 있던 협업이 아니며(서버는 404), 게시 링크가 있다.
   bool get _hasResult =>
@@ -209,6 +215,7 @@ class _Content extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final request = collaboration.cancelRequest;
+    final reportStatus = collaboration.viewReportStatus;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -221,8 +228,22 @@ class _Content extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: _HeldBox(collaboration: collaboration),
         ),
+        // A7과 같은 구성이라 두 칸 아래에 같은 성과 확인 줄이 있다.
+        if (reportStatus != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: ViewReportEntryRow(
+              status: reportStatus,
+              onTap: onOpenReport,
+            ),
+          ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            reportStatus == null ? 22 : 16,
+            20,
+            0,
+          ),
           child: CollaborationSteps(
             steps: collaboration.steps,
             titleOf: storeStepTitle,

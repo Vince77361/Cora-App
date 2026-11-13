@@ -55,6 +55,15 @@ abstract final class AppRoutes {
   /// [storePay]의 라우트 패턴.
   static const storePayPattern = '/store/collaborations/:collaborationId/pay';
 
+  /// 협업 [collaborationId]의 성과 확인(F4), 사장님 쪽. 진행 화면의 `조회 자료와 보상 계산 확인` 줄과 G1의
+  /// `집계 출처와 계산 보기`가 연다.
+  static String storeViewReport(String collaborationId) =>
+      '${storeCollaboration(collaborationId)}/report';
+
+  /// [storeViewReport]의 라우트 패턴.
+  static const storeViewReportPattern =
+      '/store/collaborations/:collaborationId/report';
+
   /// 협업 [collaborationId]의 7일 결과(G1). 정산 알림과 끝난 협업의 `7일 결과 보기`가 연다.
   static String storeResult(String collaborationId) =>
       '${storeCollaboration(collaborationId)}/result';
@@ -115,6 +124,10 @@ abstract final class AppRoutes {
   static String creatorVoucher(String id) =>
       '${creatorCollaboration(id)}/voucher';
   static const creatorCollaborationPattern = '/creator/collaborations/:id';
+
+  /// 협업 [id]의 성과 확인(F4), 크리에이터 쪽. A7의 `조회 자료와 보상 계산 확인` 줄과 알림이 연다.
+  static String creatorViewReport(String id) =>
+      '${creatorCollaboration(id)}/report';
 
   /// 지급받을 계좌와 인스타그램 연동. 협업 화면과 받은 오퍼 카드에서 밀려 들어온다.
   static const creatorPayoutAccount = '/creator/payout-account';

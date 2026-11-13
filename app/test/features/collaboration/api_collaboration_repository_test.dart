@@ -4,6 +4,7 @@ import 'package:cora/features/collaboration/data/api_collaboration_repository.da
 import 'package:cora/features/collaboration/domain/collaboration.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart';
+import 'package:cora/features/view_report/domain/view_report.dart';
 import 'package:cora_api/api.dart' as api;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -81,6 +82,21 @@ void main() {
       ),
     );
     expect(c.payoutStatus, PayoutStatus.none);
+  });
+
+  test('fetch maps the view report status, NONE to null', () async {
+    final fake = FakeHttpClient()..body = jsonEncode(_json());
+    expect((await _repo(fake).fetch('col-1')).viewReportStatus, isNull);
+
+    for (final (wire, expected) in [
+      ('COUNTING', ViewReportStatus.counting),
+      ('UNCONFIRMED', ViewReportStatus.unconfirmed),
+      ('CONFIRMED', ViewReportStatus.confirmed),
+      ('DISPUTED', ViewReportStatus.disputed),
+    ]) {
+      fake.body = jsonEncode({..._json(), 'viewReportStatus': wire});
+      expect((await _repo(fake).fetch('col-1')).viewReportStatus, expected);
+    }
   });
 
   test('fetchActive and fetchDone ask for their scope', () async {

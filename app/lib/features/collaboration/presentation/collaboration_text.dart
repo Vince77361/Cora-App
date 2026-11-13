@@ -74,6 +74,8 @@ String activeRowSubtitle(Collaboration c, DateTime now) {
       final due = c.submitDueAt;
       return due == null ? '방문하고 촬영해 주세요' : '방문하고 촬영해 주세요 · ${dueLabel(due)}';
     case CollaborationStage.counting:
+      // 집계가 끝나고 자료 확인을 기다리는 중이다(단계는 그대로 집계 중). "N일 남음"이 아니다.
+      if (c.awaitsReportConfirmation) return '집계를 확인하고 있어요';
       final end = c.countingEndsAt;
       return end == null ? '집계 중' : '집계 중 · ${daysLeft(end, now)}일 남음';
     case CollaborationStage.halted:

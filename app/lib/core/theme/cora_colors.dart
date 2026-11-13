@@ -67,6 +67,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     this.quietSelected = const Color(0xFFFFFFFF),
     this.roleCardIdle = const Color(0xFFFFFFFF),
     this.compareBarNow = const Color(0xFF17181C),
+    this.reportBadge = const Color(0xFFFFFFFF),
   });
 
   final Color background;
@@ -195,6 +196,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
   /// G1 7일 결과의 `이번` 막대(NResult #17181C, DarkNResult #0F1012). 평소 막대는 `line`이다. 다크의
   /// 막대는 `surface` 상자(#1C1E22) 위에서 거의 묻히지만 캔버스 그대로다.
   final Color compareBarNow;
+
+  /// F4 `성과 확인`의 표지(`미확인`·`이의 제기됨`)의 바탕(NMetrics #FFFFFF, DarkNMetrics #2A2D33). 글자는
+  /// `미확인`이 `textSecondary`, `이의 제기됨`이 `text`다. `확인 완료`는 `accent`/`onAccent`다.
+  final Color reportBadge;
 
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
@@ -336,6 +341,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     quietSelected: Color(0xFF2A2D33),
     roleCardIdle: Color(0xFF2A2D33),
     compareBarNow: Color(0xFF0F1012),
+    reportBadge: Color(0xFF2A2D33),
   );
 
   @override
@@ -403,6 +409,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? quietSelected,
     Color? roleCardIdle,
     Color? compareBarNow,
+    Color? reportBadge,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -469,6 +476,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
       quietSelected: quietSelected ?? this.quietSelected,
       roleCardIdle: roleCardIdle ?? this.roleCardIdle,
       compareBarNow: compareBarNow ?? this.compareBarNow,
+      reportBadge: reportBadge ?? this.reportBadge,
     );
   }
 
@@ -543,6 +551,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
       quietSelected: mix(quietSelected, other.quietSelected),
       roleCardIdle: mix(roleCardIdle, other.roleCardIdle),
       compareBarNow: mix(compareBarNow, other.compareBarNow),
+      reportBadge: mix(reportBadge, other.reportBadge),
     );
   }
 }

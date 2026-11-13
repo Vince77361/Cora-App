@@ -270,6 +270,21 @@ void main() {
     }
   });
 
+  test('F4 report badge matches NMetrics and DarkNMetrics', () {
+    expect(CoraColors.light.reportBadge, const Color(0xFFFFFFFF));
+    expect(CoraColors.dark.reportBadge, const Color(0xFF2A2D33));
+    expect(
+      CoraColors.light.lerp(CoraColors.dark, 1).reportBadge,
+      const Color(0xFF2A2D33),
+    );
+    expect(
+      CoraColors.light
+          .copyWith(reportBadge: const Color(0xFF123456))
+          .reportBadge,
+      const Color(0xFF123456),
+    );
+  });
+
   test('G1 compare bar matches NResult and DarkNResult', () {
     expect(CoraColors.light.compareBarNow, const Color(0xFF17181C));
     expect(CoraColors.dark.compareBarNow, const Color(0xFF0F1012));

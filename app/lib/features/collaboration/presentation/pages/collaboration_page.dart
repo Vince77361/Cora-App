@@ -17,6 +17,7 @@ import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart';
+import '../../../view_report/presentation/widgets/view_report_entry_row.dart';
 import '../../domain/collaboration.dart';
 import '../collaboration_text.dart';
 import '../mail_launcher.dart';
@@ -127,6 +128,9 @@ class _CollaborationPageState extends ConsumerState<CollaborationPage> {
                     onShowVoucher: () => context.push(
                       AppRoutes.creatorVoucher(widget.collaborationId),
                     ),
+                    onOpenReport: () => context.push(
+                      AppRoutes.creatorViewReport(widget.collaborationId),
+                    ),
                   ),
                 ),
                 AsyncError() => CoraStateView.loadFailed(
@@ -194,16 +198,19 @@ class _Content extends StatelessWidget {
     required this.busy,
     required this.onAcceptCancel,
     required this.onShowVoucher,
+    required this.onOpenReport,
   });
 
   final Collaboration collaboration;
   final bool busy;
   final ValueChanged<String> onAcceptCancel;
   final VoidCallback onShowVoucher;
+  final VoidCallback onOpenReport;
 
   @override
   Widget build(BuildContext context) {
     final request = collaboration.cancelRequest;
+    final reportStatus = collaboration.viewReportStatus;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -220,8 +227,22 @@ class _Content extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: _HeldBox(collaboration: collaboration),
         ),
+        // 조회수 수당이 있는 협업이 링크를 낸 뒤에는 두 칸 아래에 성과 확인 줄이 있다(NEscrow).
+        if (reportStatus != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: ViewReportEntryRow(
+              status: reportStatus,
+              onTap: onOpenReport,
+            ),
+          ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            reportStatus == null ? 22 : 16,
+            20,
+            0,
+          ),
           child: CollaborationSteps(
             steps: collaboration.steps,
             titleOf: stepTitle,
@@ -424,6 +445,10 @@ class _BottomBar extends StatelessWidget {
       case CollaborationStage.funded:
         return (label: CollaborationPage.submit, onPressed: onSubmit);
       case CollaborationStage.counting:
+        // 집계는 끝났고 자료 확인을 기다린다: 협업 단계는 그대로 집계 중이지만 "N일 남음"이 아니다.
+        if (co.awaitsReportConfirmation) {
+          return (label: CollaborationPage.checking, onPressed: null);
+        }
         final end = co.countingEndsAt;
         return (
           label: end == null
