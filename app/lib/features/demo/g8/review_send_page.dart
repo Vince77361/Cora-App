@@ -47,7 +47,7 @@ class ReviewSendPage extends StatelessWidget {
                 G8Header(
                   pal: pal,
                   onBack: () => demoBack(context, fallback: 'NBudget.dc.html'),
-                  center: const G8Pill('제안 만들기'),
+                  center: const SizedBox.shrink(), // 소유자 요청으로 머리의 알약 제목은 뺀다.
                   right: '3 / 3',
                 ),
                 G8Progress(pal: pal, fraction: 1),

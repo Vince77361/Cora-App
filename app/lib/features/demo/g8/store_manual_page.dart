@@ -51,7 +51,7 @@ class _StoreManualPageState extends State<StoreManualPage> {
                   pal: pal,
                   onBack: () =>
                       demoBack(context, fallback: 'NStoreLink.dc.html'),
-                  center: const G8Pill('가게 등록'),
+                  center: const SizedBox.shrink(), // 소유자 요청으로 머리의 알약 제목은 뺀다.
                   right: '1 / 3',
                 ),
                 G8Progress(pal: pal, fraction: 0.33),

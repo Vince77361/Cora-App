@@ -167,10 +167,15 @@ class _PrinciplesPageState extends State<PrinciplesPage> {
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    if (_step > 0) setState(() => _step -= 1);
+                    // 첫 질문에서는 실제 앱처럼 이 화면을 떠난다.
+                    if (_step > 0) {
+                      setState(() => _step -= 1);
+                    } else {
+                      demoBack(context, fallback: 'NRole.dc.html');
+                    }
                   },
                   child: Opacity(
-                    opacity: _step > 0 ? 1 : 0.3,
+                    opacity: 1,
                     child: SizedBox(
                       width: 44,
                       height: 44,

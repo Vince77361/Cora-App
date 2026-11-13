@@ -73,7 +73,12 @@ class _OfferPageState extends State<OfferPage> {
   }
 
   void _prev() {
-    if (_step > 0) setState(() => _step--);
+    // 첫 단계에서는 실제 앱처럼 이 화면을 떠난다(캔버스는 미리보기라 꺼진 모양이었다).
+    if (_step > 0) {
+      setState(() => _step--);
+    } else {
+      demoBack(context, fallback: 'NStoreHome.dc.html');
+    }
   }
 
   void _next() {
@@ -95,7 +100,7 @@ class _OfferPageState extends State<OfferPage> {
                 G5Header(
                   pal: pal,
                   onBack: _prev,
-                  backOpacity: _step > 0 ? 1 : 0.3,
+                  backOpacity: 1,
                   center: const SizedBox.shrink(),
                   right: '${_step + 1} / 3',
                 ),
