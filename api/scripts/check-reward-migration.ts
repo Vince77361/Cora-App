@@ -118,6 +118,14 @@ async function readBefore(prisma: PrismaClient): Promise<BeforeSnapshot> {
   };
 }
 
+// 판본 이전이 끝나면 offers에서 옛 조건 열이 지워진다. fixed_cash 열이 아직 있어야 이전 전후 비교가 뜻이 있다.
+async function offersKeepRewardColumns(prisma: PrismaClient): Promise<boolean> {
+  const rows = await prisma.$queryRawUnsafe<Row[]>(
+    `SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'offers' AND column_name = 'fixed_cash'`,
+  );
+  return Number(rows[0].n) > 0;
+}
+
 async function readAfter(prisma: PrismaClient): Promise<AfterSnapshot> {
   const { paid, settled } = await paidAndSettled(prisma);
   // 결제 승인 때 장부 ESCROW에 올라간 금액(결제 행 합이 아니라 장부 줄의 합).
@@ -199,6 +207,15 @@ async function main(): Promise<number> {
       writeFileSync(RECORD_PATH, `${JSON.stringify(snapshot, null, 2)}\n`);
       console.log(
         `이전 전 기록을 남겼어요: 협업 ${snapshot.collaborations.length}건, 오퍼 ${snapshot.offers.length}건, 가게 ${snapshot.stores.length}곳`,
+      );
+      return 0;
+    }
+    // 판본 이전이 끝나면 offers에서 옛 조건 열이 지워진다. 이전 직후의 비교(13건 통과)는 원장에 남아 있고,
+    // 그 뒤 개발 DB는 계속 바뀌어(행 수, 정산, 오퍼 다시 시드) 이전 전 기록과 다시 맞춰 보는 것이 뜻이 없다.
+    // 그래서 이전이 끝났다고만 알리고 끝낸다(조건 값은 판본 1과 협업 사본의 db-spec이 지킨다).
+    if (!(await offersKeepRewardColumns(prisma))) {
+      console.log(
+        '이전이 끝나 옛 조건 열이 없어요. 이전 전후 비교는 이전 직후에 마쳤고, 그 뒤 개발 DB가 바뀌어 다시 비교하지 않아요.',
       );
       return 0;
     }
