@@ -30,15 +30,19 @@ export function settleReward(p: {
   };
 }
 
+// 배수의 상한(9999 = 999.9배). multiplier_tenths는 INTEGER(32비트)라 평소 1회에 이번 2억 회처럼 계산값이
+// 열의 범위를 넘으면 저장이 DB 오류가 된다. 화면에 999.9배를 넘는 값은 의미가 없어 이 값으로 자른다(스키마는 그대로).
+export const MAX_MULTIPLIER_TENTHS = 9999;
+
 // 평소 조회수 대비 이번 조회수의 배수. 소수 첫째 자리까지 내림해 정수(31 = 3.1배)로 둔다.
-// 평소 조회수가 0 이하면 나눌 수 없어 null이다(비교 상자를 숨긴다).
+// 평소 조회수가 0 이하면 나눌 수 없어 null이다(비교 상자를 숨긴다). 계산값이 상한을 넘으면 상한으로 자른다.
 export function multiplierTenthsOf(
   views: number,
   usualViews: number,
 ): number | null {
   assertWholeWon(views, '조회수');
   if (!Number.isInteger(usualViews) || usualViews <= 0) return null;
-  return Math.floor((views * 10) / usualViews);
+  return Math.min(Math.floor((views * 10) / usualViews), MAX_MULTIPLIER_TENTHS);
 }
 
 function assertWholeWon(value: number, label: string): void {

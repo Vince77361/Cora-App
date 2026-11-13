@@ -380,7 +380,8 @@ export class SettlementsService {
   // 가게 인스타그램 계정의 평소 조회수를 한 번 읽어 배수와 함께 정산 줄에 저장한다.
   // 읽은 적이 있으면(읽지 못한 것도 읽은 것이다) 다시 읽지 않는다: 같은 협업의 결과가 읽을 때마다 달라지지 않게.
   // 조회수를 세지 않은 협업(고정 현금만)과 최종 조회수가 없는 정산(강제 지급)은 비교할 값이 없어 건너뛴다.
-  // 비교는 덤이라 여기서 실패해도 정산의 나머지 단계를 막지 않는다(다음에 다시 이 단계가 돌 때 이어서 읽는다).
+  // 조회수 계정을 못 읽는 것(ViewCountUnavailableError)만 "읽지 못함"으로 저장하고 넘어간다. 그 밖의 오류는 던진다:
+  // 정산 작업이 실패로 남아 다시 돌 때 usualReadAt이 비어 있으면 이어서 읽고, 삼키면 영영 비어 비교 상자가 숨겨진다.
   private async recordUsualViews(
     collaboration: Collaboration,
     settlement: Settlement,
@@ -392,34 +393,28 @@ export class SettlementsService {
     ) {
       return;
     }
-    try {
-      const handle = collaboration.storeId
-        ? await this.stores.getInstagramHandle(collaboration.storeId)
-        : null;
-      let usualViews: number | null = null;
-      if (handle) {
-        try {
-          const average = await this.viewCount.readAccountAverage(handle);
-          // 음수나 소수는 잘못 읽은 값이다. 0은 나눌 수 없어 쓰지 않는다.
-          usualViews =
-            Number.isInteger(average) && average > 0 ? average : null;
-        } catch (error) {
-          if (!(error instanceof ViewCountUnavailableError)) throw error;
-        }
+    const handle = collaboration.storeId
+      ? await this.stores.getInstagramHandle(collaboration.storeId)
+      : null;
+    let usualViews: number | null = null;
+    if (handle) {
+      try {
+        const average = await this.viewCount.readAccountAverage(handle);
+        // 음수나 소수는 잘못 읽은 값이다. 0은 나눌 수 없어 쓰지 않는다.
+        usualViews = Number.isInteger(average) && average > 0 ? average : null;
+      } catch (error) {
+        // 못 읽은 것만 "읽지 못함"으로 저장한다. 그 밖의 오류(DB, 코드 버그)는 던져 작업이 다시 돌게 한다.
+        if (!(error instanceof ViewCountUnavailableError)) throw error;
       }
-      await this.repository.saveUsualViews(settlement.id, {
-        usualViews,
-        multiplierTenths:
-          usualViews === null
-            ? null
-            : multiplierTenthsOf(settlement.finalViews, usualViews),
-        readAt: this.clock.now(),
-      });
-    } catch (error) {
-      this.logger.warn(
-        `평소 조회수를 저장하지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
-      );
     }
+    await this.repository.saveUsualViews(settlement.id, {
+      usualViews,
+      multiplierTenths:
+        usualViews === null
+          ? null
+          : multiplierTenthsOf(settlement.finalViews, usualViews),
+      readAt: this.clock.now(),
+    });
   }
 
   // 그날의 줄이 없을 때만 읽어서 저장한다. 읽지 못하면 views = null이다(0이 아니다).

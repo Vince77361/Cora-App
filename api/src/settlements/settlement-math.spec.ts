@@ -1,4 +1,9 @@
-import { feeFor, multiplierTenthsOf, settleReward } from './settlement-math';
+import {
+  feeFor,
+  MAX_MULTIPLIER_TENTHS,
+  multiplierTenthsOf,
+  settleReward,
+} from './settlement-math';
 
 describe('feeFor', () => {
   it('charges a 10 percent fee rounded down', () => {
@@ -146,5 +151,16 @@ describe('multiplierTenthsOf', () => {
   it('gives no multiplier when the usual views are zero or less', () => {
     expect(multiplierTenthsOf(12500, 0)).toBeNull();
     expect(multiplierTenthsOf(12500, -1)).toBeNull();
+  });
+
+  it('caps the multiplier so it always fits the 32-bit integer column', () => {
+    expect(MAX_MULTIPLIER_TENTHS).toBe(9999);
+    // 평소 1회, 이번 2억 회: 계산값 2,000,000,000은 int32 안이지만 상한(9999)을 넘는다.
+    expect(multiplierTenthsOf(200_000_000, 1)).toBe(9999);
+    // 평소 1회, 이번 3억 회: 계산값 3,000,000,000이 int32(2,147,483,647)를 넘는다.
+    expect(multiplierTenthsOf(300_000_000, 1)).toBe(9999);
+    expect(multiplierTenthsOf(999_900, 1000)).toBe(9999);
+    expect(multiplierTenthsOf(999_800, 1000)).toBe(9998);
+    expect(multiplierTenthsOf(1_000_000, 1000)).toBe(9999);
   });
 });

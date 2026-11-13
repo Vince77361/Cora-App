@@ -983,6 +983,33 @@ describe('settlements', () => {
         });
       });
 
+      it('fails the settle job on an unexpected error and fills the usual views on the retry', async () => {
+        const s = await seed({
+          ratePerThousand: 2000,
+          perViewCap: 60000,
+          instagram: 'https://www.instagram.com/haru_cup/',
+        });
+        // ViewCountUnavailableError만 "못 읽음"으로 삼킨다. 그 밖의 오류는 작업을 실패로 만들어 다시 돌게 한다.
+        jest
+          .spyOn(app.get(ViewCountPort), 'readAccountAverage')
+          .mockRejectedValueOnce(new Error('boom'));
+        await submit(s.collaborationId, `${REELS_URL}?views=12500`).expect(200);
+        clock.set(new Date(T0.getTime() + 7 * DAY));
+        const ran = await scheduler.runDue(clock.now(), {
+          allowFailures: true,
+        });
+        expect(
+          ran.some((j) => j.name === 'settle' && j.status === 'failed'),
+        ).toBe(true);
+        expect((await settlementOf(s.collaborationId)).usualReadAt).toBeNull();
+        const job = settleJob(s.collaborationId);
+        await scheduler.registry.run(job.name, job.payload);
+        expect(await settlementOf(s.collaborationId)).toMatchObject({
+          usualViews: 4000,
+          multiplierTenths: 31,
+        });
+      });
+
       it('does not read the usual views for a fixed cash only collaboration', async () => {
         const s = await seed({
           rewardType: 'FIXED_ONLY',
