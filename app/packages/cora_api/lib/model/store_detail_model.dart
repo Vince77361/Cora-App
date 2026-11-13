@@ -22,6 +22,7 @@ class StoreDetailModel {
     required this.industry,
     required this.intro,
     required this.myApplicationStatus,
+    required this.myOpenOffer,
     required this.name,
     required this.neighborhood,
     required this.regionSido,
@@ -49,6 +50,9 @@ class StoreDetailModel {
   /// 내가 이 가게에 낸 지금 살아 있는 지원의 상태. 없으면 NONE.
   MyApplicationStatus myApplicationStatus;
 
+  /// 내가 이 가게와 주고받는 열린 오퍼. 없으면 null.
+  MyOpenOfferModel? myOpenOffer;
+
   String name;
 
   String? neighborhood;
@@ -74,6 +78,7 @@ class StoreDetailModel {
           other.industry == industry &&
           other.intro == intro &&
           other.myApplicationStatus == myApplicationStatus &&
+          other.myOpenOffer == myOpenOffer &&
           other.name == name &&
           other.neighborhood == neighborhood &&
           other.regionSido == regionSido &&
@@ -93,6 +98,7 @@ class StoreDetailModel {
       (industry.hashCode) +
       (intro == null ? 0 : intro!.hashCode) +
       (myApplicationStatus.hashCode) +
+      (myOpenOffer == null ? 0 : myOpenOffer!.hashCode) +
       (name.hashCode) +
       (neighborhood == null ? 0 : neighborhood!.hashCode) +
       (regionSido == null ? 0 : regionSido!.hashCode) +
@@ -102,7 +108,7 @@ class StoreDetailModel {
 
   @override
   String toString() =>
-      'StoreDetailModel[bestShootingTime=$bestShootingTime, category=$category, coverPhotoUrl=$coverPhotoUrl, defaultTerms=$defaultTerms, hours=$hours, id=$id, industry=$industry, intro=$intro, myApplicationStatus=$myApplicationStatus, name=$name, neighborhood=$neighborhood, regionSido=$regionSido, regionSigungu=$regionSigungu, seats=$seats, signatureMenu=$signatureMenu]';
+      'StoreDetailModel[bestShootingTime=$bestShootingTime, category=$category, coverPhotoUrl=$coverPhotoUrl, defaultTerms=$defaultTerms, hours=$hours, id=$id, industry=$industry, intro=$intro, myApplicationStatus=$myApplicationStatus, myOpenOffer=$myOpenOffer, name=$name, neighborhood=$neighborhood, regionSido=$regionSido, regionSigungu=$regionSigungu, seats=$seats, signatureMenu=$signatureMenu]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -135,6 +141,11 @@ class StoreDetailModel {
       json[r'intro'] = null;
     }
     json[r'myApplicationStatus'] = this.myApplicationStatus;
+    if (this.myOpenOffer != null) {
+      json[r'myOpenOffer'] = this.myOpenOffer;
+    } else {
+      json[r'myOpenOffer'] = null;
+    }
     json[r'name'] = this.name;
     if (this.neighborhood != null) {
       json[r'neighborhood'] = this.neighborhood;
@@ -201,6 +212,8 @@ class StoreDetailModel {
             'Required key "StoreDetailModel[myApplicationStatus]" is missing from JSON.');
         assert(json[r'myApplicationStatus'] != null,
             'Required key "StoreDetailModel[myApplicationStatus]" has a null value in JSON.');
+        assert(json.containsKey(r'myOpenOffer'),
+            'Required key "StoreDetailModel[myOpenOffer]" is missing from JSON.');
         assert(json.containsKey(r'name'),
             'Required key "StoreDetailModel[name]" is missing from JSON.');
         assert(json[r'name'] != null,
@@ -229,6 +242,7 @@ class StoreDetailModel {
         intro: mapValueOfType<String>(json, r'intro'),
         myApplicationStatus:
             MyApplicationStatus.fromJson(json[r'myApplicationStatus'])!,
+        myOpenOffer: MyOpenOfferModel.fromJson(json[r'myOpenOffer']),
         name: mapValueOfType<String>(json, r'name')!,
         neighborhood: mapValueOfType<String>(json, r'neighborhood'),
         regionSido: mapValueOfType<String>(json, r'regionSido'),
@@ -300,6 +314,7 @@ class StoreDetailModel {
     'industry',
     'intro',
     'myApplicationStatus',
+    'myOpenOffer',
     'name',
     'neighborhood',
     'regionSido',

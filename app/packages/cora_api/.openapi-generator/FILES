@@ -12,6 +12,7 @@ doc/ApplicantModel.md
 doc/ApplicationModel.md
 doc/ApplicationStatus.md
 doc/ApplicationsApi.md
+doc/ApplyDto.md
 doc/BankModel.md
 doc/CancelRequestModel.md
 doc/CollaborationCounterpartModel.md
@@ -30,9 +31,11 @@ doc/ContentDraftKind.md
 doc/ContentDraftModel.md
 doc/ContentDraftsApi.md
 doc/ContentFormat.md
+doc/CreateCreatorSeriesDto.md
 doc/CreatePaymentDto.md
 doc/CreatePhotoUploadDto.md
 doc/CreatorProfileModel.md
+doc/CreatorSeriesModel.md
 doc/CreatorSummaryModel.md
 doc/CreatorsApi.md
 doc/DraftSceneModel.md
@@ -49,6 +52,7 @@ doc/InstagramConnectUrlModel.md
 doc/InstagramConnectionModel.md
 doc/MeModel.md
 doc/MyApplicationStatus.md
+doc/MyOpenOfferModel.md
 doc/MyStoreModel.md
 doc/NotificationActorModel.md
 doc/NotificationGlyph.md
@@ -95,6 +99,8 @@ doc/SourceLinkKind.md
 doc/StoreDetailModel.md
 doc/StoreHomeSummaryModel.md
 doc/StoreOnboardingStep.md
+doc/StoreProposalDto.md
+doc/StoreProposalResultModel.md
 doc/StoreSourceLinkModel.md
 doc/StoreStatus.md
 doc/StoreSummaryModel.md
@@ -154,6 +160,7 @@ lib/model/app_config_model.dart
 lib/model/applicant_model.dart
 lib/model/application_model.dart
 lib/model/application_status.dart
+lib/model/apply_dto.dart
 lib/model/bank_model.dart
 lib/model/cancel_request_model.dart
 lib/model/collaboration_counterpart_model.dart
@@ -170,9 +177,11 @@ lib/model/complete_instagram_connect_dto.dart
 lib/model/content_draft_kind.dart
 lib/model/content_draft_model.dart
 lib/model/content_format.dart
+lib/model/create_creator_series_dto.dart
 lib/model/create_payment_dto.dart
 lib/model/create_photo_upload_dto.dart
 lib/model/creator_profile_model.dart
+lib/model/creator_series_model.dart
 lib/model/creator_summary_model.dart
 lib/model/draft_scene_model.dart
 lib/model/end_offer_dto.dart
@@ -186,6 +195,7 @@ lib/model/instagram_connect_url_model.dart
 lib/model/instagram_connection_model.dart
 lib/model/me_model.dart
 lib/model/my_application_status.dart
+lib/model/my_open_offer_model.dart
 lib/model/my_store_model.dart
 lib/model/notification_actor_model.dart
 lib/model/notification_glyph.dart
@@ -227,6 +237,8 @@ lib/model/source_link_kind.dart
 lib/model/store_detail_model.dart
 lib/model/store_home_summary_model.dart
 lib/model/store_onboarding_step.dart
+lib/model/store_proposal_dto.dart
+lib/model/store_proposal_result_model.dart
 lib/model/store_source_link_model.dart
 lib/model/store_status.dart
 lib/model/store_summary_model.dart
@@ -258,6 +270,7 @@ test/applicant_model_test.dart
 test/application_model_test.dart
 test/application_status_test.dart
 test/applications_api_test.dart
+test/apply_dto_test.dart
 test/bank_model_test.dart
 test/cancel_request_model_test.dart
 test/collaboration_counterpart_model_test.dart
@@ -276,9 +289,11 @@ test/content_draft_kind_test.dart
 test/content_draft_model_test.dart
 test/content_drafts_api_test.dart
 test/content_format_test.dart
+test/create_creator_series_dto_test.dart
 test/create_payment_dto_test.dart
 test/create_photo_upload_dto_test.dart
 test/creator_profile_model_test.dart
+test/creator_series_model_test.dart
 test/creator_summary_model_test.dart
 test/creators_api_test.dart
 test/draft_scene_model_test.dart
@@ -295,6 +310,7 @@ test/instagram_connect_url_model_test.dart
 test/instagram_connection_model_test.dart
 test/me_model_test.dart
 test/my_application_status_test.dart
+test/my_open_offer_model_test.dart
 test/my_store_model_test.dart
 test/notification_actor_model_test.dart
 test/notification_glyph_test.dart
@@ -341,6 +357,8 @@ test/source_link_kind_test.dart
 test/store_detail_model_test.dart
 test/store_home_summary_model_test.dart
 test/store_onboarding_step_test.dart
+test/store_proposal_dto_test.dart
+test/store_proposal_result_model_test.dart
 test/store_source_link_model_test.dart
 test/store_status_test.dart
 test/store_summary_model_test.dart

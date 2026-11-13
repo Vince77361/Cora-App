@@ -38,6 +38,12 @@ void main() {
       // TODO
     });
 
+    // 내 시리즈의 id. 이름·형식·설명이 판본에 사본으로 들어간다. 크리에이터만 쓴다.
+    // String seriesId
+    test('to test the property `seriesId`', () async {
+      // TODO
+    });
+
     // 없으면 앞 판본의 사용권.
     // UsageRights usageRights
     test('to test the property `usageRights`', () async {

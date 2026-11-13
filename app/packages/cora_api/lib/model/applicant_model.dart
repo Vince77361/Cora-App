@@ -16,6 +16,7 @@ class ApplicantModel {
     required this.applicationId,
     required this.appliedAt,
     required this.creator,
+    required this.pitch,
   });
 
   String applicationId;
@@ -25,28 +26,40 @@ class ApplicantModel {
 
   CreatorSummaryModel creator;
 
+  /// 지원할 때 붙인 한 줄. 없으면 null.
+  String? pitch;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is ApplicantModel &&
           other.applicationId == applicationId &&
           other.appliedAt == appliedAt &&
-          other.creator == creator;
+          other.creator == creator &&
+          other.pitch == pitch;
 
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
-      (applicationId.hashCode) + (appliedAt.hashCode) + (creator.hashCode);
+      (applicationId.hashCode) +
+      (appliedAt.hashCode) +
+      (creator.hashCode) +
+      (pitch == null ? 0 : pitch!.hashCode);
 
   @override
   String toString() =>
-      'ApplicantModel[applicationId=$applicationId, appliedAt=$appliedAt, creator=$creator]';
+      'ApplicantModel[applicationId=$applicationId, appliedAt=$appliedAt, creator=$creator, pitch=$pitch]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
     json[r'applicationId'] = this.applicationId;
     json[r'appliedAt'] = this.appliedAt.toUtc().toIso8601String();
     json[r'creator'] = this.creator;
+    if (this.pitch != null) {
+      json[r'pitch'] = this.pitch;
+    } else {
+      json[r'pitch'] = null;
+    }
     return json;
   }
 
@@ -73,6 +86,8 @@ class ApplicantModel {
             'Required key "ApplicantModel[creator]" is missing from JSON.');
         assert(json[r'creator'] != null,
             'Required key "ApplicantModel[creator]" has a null value in JSON.');
+        assert(json.containsKey(r'pitch'),
+            'Required key "ApplicantModel[pitch]" is missing from JSON.');
         return true;
       }());
 
@@ -80,6 +95,7 @@ class ApplicantModel {
         applicationId: mapValueOfType<String>(json, r'applicationId')!,
         appliedAt: mapDateTime(json, r'appliedAt', r'')!,
         creator: CreatorSummaryModel.fromJson(json[r'creator'])!,
+        pitch: mapValueOfType<String>(json, r'pitch'),
       );
     }
     return null;
@@ -139,5 +155,6 @@ class ApplicantModel {
     'applicationId',
     'appliedAt',
     'creator',
+    'pitch',
   };
 }

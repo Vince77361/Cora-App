@@ -69,7 +69,9 @@ Class | Method | HTTP request | Description
 *CollaborationsApi* | [**requestCollaborationCancel**](doc//CollaborationsApi.md#requestcollaborationcancel) | **POST** /collaborations/{id}/cancel-requests | 사장님이 취소를 요청한다. 3일 안에 답이 없으면 사라진다.
 *ContentDraftsApi* | [**listMyContentDrafts**](doc//ContentDraftsApi.md#listmycontentdrafts) | **GET** /stores/me/content-drafts | 
 *ContentDraftsApi* | [**regenerateMyContentDraft**](doc//ContentDraftsApi.md#regeneratemycontentdraft) | **POST** /stores/me/content-drafts/{kind}/regenerate | 
+*CreatorsApi* | [**createMyCreatorSeries**](doc//CreatorsApi.md#createmycreatorseries) | **POST** /creators/me/series | 
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
+*CreatorsApi* | [**listMyCreatorSeries**](doc//CreatorsApi.md#listmycreatorseries) | **GET** /creators/me/series | 
 *CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
 *HealthApi* | [**getHealth**](doc//HealthApi.md#gethealth) | **GET** /health | 
 *InstagramApi* | [**beginInstagramConnect**](doc//InstagramApi.md#begininstagramconnect) | **POST** /instagram/connect | 
@@ -90,6 +92,7 @@ Class | Method | HTTP request | Description
 *OffersApi* | [**listReceivedOffers**](doc//OffersApi.md#listreceivedoffers) | **GET** /offers/received | 
 *OffersApi* | [**listSentOffers**](doc//OffersApi.md#listsentoffers) | **GET** /offers/sent | 
 *OffersApi* | [**proposeOfferVersion**](doc//OffersApi.md#proposeofferversion) | **POST** /offers/{id}/versions | 
+*OffersApi* | [**proposeToStore**](doc//OffersApi.md#proposetostore) | **POST** /stores/{id}/proposals | 
 *OffersApi* | [**sendOffer**](doc//OffersApi.md#sendoffer) | **POST** /offers | 
 *OffersApi* | [**undoDeclineOffer**](doc//OffersApi.md#undodeclineoffer) | **POST** /offers/{id}/undo-decline | 
 *PaymentsApi* | [**createPayment**](doc//PaymentsApi.md#createpayment) | **POST** /collaborations/{id}/payments | 
@@ -124,6 +127,7 @@ Class | Method | HTTP request | Description
  - [ApplicantModel](doc//ApplicantModel.md)
  - [ApplicationModel](doc//ApplicationModel.md)
  - [ApplicationStatus](doc//ApplicationStatus.md)
+ - [ApplyDto](doc//ApplyDto.md)
  - [BankModel](doc//BankModel.md)
  - [CancelRequestModel](doc//CancelRequestModel.md)
  - [CollaborationCounterpartModel](doc//CollaborationCounterpartModel.md)
@@ -140,9 +144,11 @@ Class | Method | HTTP request | Description
  - [ContentDraftKind](doc//ContentDraftKind.md)
  - [ContentDraftModel](doc//ContentDraftModel.md)
  - [ContentFormat](doc//ContentFormat.md)
+ - [CreateCreatorSeriesDto](doc//CreateCreatorSeriesDto.md)
  - [CreatePaymentDto](doc//CreatePaymentDto.md)
  - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
  - [CreatorProfileModel](doc//CreatorProfileModel.md)
+ - [CreatorSeriesModel](doc//CreatorSeriesModel.md)
  - [CreatorSummaryModel](doc//CreatorSummaryModel.md)
  - [DraftSceneModel](doc//DraftSceneModel.md)
  - [EndOfferDto](doc//EndOfferDto.md)
@@ -156,6 +162,7 @@ Class | Method | HTTP request | Description
  - [InstagramConnectionModel](doc//InstagramConnectionModel.md)
  - [MeModel](doc//MeModel.md)
  - [MyApplicationStatus](doc//MyApplicationStatus.md)
+ - [MyOpenOfferModel](doc//MyOpenOfferModel.md)
  - [MyStoreModel](doc//MyStoreModel.md)
  - [NotificationActorModel](doc//NotificationActorModel.md)
  - [NotificationGlyph](doc//NotificationGlyph.md)
@@ -197,6 +204,8 @@ Class | Method | HTTP request | Description
  - [StoreDetailModel](doc//StoreDetailModel.md)
  - [StoreHomeSummaryModel](doc//StoreHomeSummaryModel.md)
  - [StoreOnboardingStep](doc//StoreOnboardingStep.md)
+ - [StoreProposalDto](doc//StoreProposalDto.md)
+ - [StoreProposalResultModel](doc//StoreProposalResultModel.md)
  - [StoreSourceLinkModel](doc//StoreSourceLinkModel.md)
  - [StoreStatus](doc//StoreStatus.md)
  - [StoreSummaryModel](doc//StoreSummaryModel.md)

@@ -222,6 +222,8 @@ class ApiClient {
           return ApplicationModel.fromJson(value);
         case 'ApplicationStatus':
           return ApplicationStatusTypeTransformer().decode(value);
+        case 'ApplyDto':
+          return ApplyDto.fromJson(value);
         case 'BankModel':
           return BankModel.fromJson(value);
         case 'CancelRequestModel':
@@ -254,12 +256,16 @@ class ApiClient {
           return ContentDraftModel.fromJson(value);
         case 'ContentFormat':
           return ContentFormatTypeTransformer().decode(value);
+        case 'CreateCreatorSeriesDto':
+          return CreateCreatorSeriesDto.fromJson(value);
         case 'CreatePaymentDto':
           return CreatePaymentDto.fromJson(value);
         case 'CreatePhotoUploadDto':
           return CreatePhotoUploadDto.fromJson(value);
         case 'CreatorProfileModel':
           return CreatorProfileModel.fromJson(value);
+        case 'CreatorSeriesModel':
+          return CreatorSeriesModel.fromJson(value);
         case 'CreatorSummaryModel':
           return CreatorSummaryModel.fromJson(value);
         case 'DraftSceneModel':
@@ -286,6 +292,8 @@ class ApiClient {
           return MeModel.fromJson(value);
         case 'MyApplicationStatus':
           return MyApplicationStatusTypeTransformer().decode(value);
+        case 'MyOpenOfferModel':
+          return MyOpenOfferModel.fromJson(value);
         case 'MyStoreModel':
           return MyStoreModel.fromJson(value);
         case 'NotificationActorModel':
@@ -368,6 +376,10 @@ class ApiClient {
           return StoreHomeSummaryModel.fromJson(value);
         case 'StoreOnboardingStep':
           return StoreOnboardingStepTypeTransformer().decode(value);
+        case 'StoreProposalDto':
+          return StoreProposalDto.fromJson(value);
+        case 'StoreProposalResultModel':
+          return StoreProposalResultModel.fromJson(value);
         case 'StoreSourceLinkModel':
           return StoreSourceLinkModel.fromJson(value);
         case 'StoreStatus':

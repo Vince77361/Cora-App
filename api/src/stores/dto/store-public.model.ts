@@ -35,6 +35,20 @@ export class StoreSummaryModel {
   defaultTerms!: OfferTermsModel;
 }
 
+// 내가 이 가게와 주고받는 열린 오퍼. "내 방식으로 제안"을 어느 오퍼에 붙일지 정하는 데 쓴다.
+export class MyOpenOfferModel {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ type: 'integer', description: '가장 새 판본의 번호.' })
+  latestVersion!: number;
+
+  @ApiProperty({
+    description: '내가 응답할 차례이면 true. 내 방식으로 새 판본을 낼 수 있다.',
+  })
+  myTurn!: boolean;
+}
+
 export class StoreDetailModel extends StoreSummaryModel {
   @ApiProperty({ type: String, nullable: true })
   signatureMenu!: string | null;
@@ -57,4 +71,11 @@ export class StoreDetailModel extends StoreSummaryModel {
     description: '내가 이 가게에 낸 지금 살아 있는 지원의 상태. 없으면 NONE.',
   })
   myApplicationStatus!: MyApplicationStatus;
+
+  @ApiProperty({
+    type: MyOpenOfferModel,
+    nullable: true,
+    description: '내가 이 가게와 주고받는 열린 오퍼. 없으면 null.',
+  })
+  myOpenOffer!: MyOpenOfferModel | null;
 }

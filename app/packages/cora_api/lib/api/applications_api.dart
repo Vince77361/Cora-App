@@ -23,21 +23,24 @@ class ApplicationsApi {
   /// Parameters:
   ///
   /// * [String] id (required):
+  ///
+  /// * [ApplyDto] applyDto (required):
   Future<Response> applyToStoreWithHttpInfo(
-    String id, {
+    String id,
+    ApplyDto applyDto, {
     Future<void>? abortTrigger,
   }) async {
     // ignore: prefer_const_declarations
     final path = r'/stores/{id}/applications'.replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
-    Object? postBody;
+    Object? postBody = applyDto;
 
     final queryParams = <QueryParam>[];
     final headerParams = <String, String>{};
     final formParams = <String, String>{};
 
-    const contentTypes = <String>[];
+    const contentTypes = <String>['application/json'];
 
     return apiClient.invokeAPI(
       path,
@@ -56,12 +59,16 @@ class ApplicationsApi {
   /// Parameters:
   ///
   /// * [String] id (required):
+  ///
+  /// * [ApplyDto] applyDto (required):
   Future<ApplicationModel?> applyToStore(
-    String id, {
+    String id,
+    ApplyDto applyDto, {
     Future<void>? abortTrigger,
   }) async {
     final response = await applyToStoreWithHttpInfo(
       id,
+      applyDto,
       abortTrigger: abortTrigger,
     );
     if (response.statusCode >= HttpStatus.badRequest) {

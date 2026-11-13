@@ -2460,4 +2460,460 @@ describe('offers', () => {
       });
     });
   });
+
+  // 사장님은 user-a, 크리에이터는 user-b다. 크리에이터가 가게 페이지에서 먼저 제안한다.
+  describe('creator-started proposals', () => {
+    const authB = { Authorization: 'Bearer user-b' };
+    const PROPOSAL = {
+      format: 'REELS',
+      reward: { voucher: {}, fixedCash: 30000 },
+      idea: '아침 햇살 속 한 컵 릴스',
+      principles: ['광고 티 안 내기'],
+    };
+    let storeId: string;
+
+    const proposeTo = (
+      id: string,
+      body: Record<string, unknown> = PROPOSAL,
+      headers: Record<string, string> = authB,
+    ) =>
+      request(server).post(`/stores/${id}/proposals`).set(headers).send(body);
+    const versionsOf = (offerId: string) =>
+      prisma.offerVersion.findMany({
+        where: { offerId },
+        orderBy: { number: 'asc' },
+      });
+    const connectAsB = () =>
+      request(server)
+        .post('/instagram/connect/complete')
+        .set(authB)
+        .send({ code: 'haru_b' })
+        .expect(200);
+    const createSeries = (over: Record<string, unknown> = {}) =>
+      request(server)
+        .post('/creators/me/series')
+        .set(authB)
+        .send({
+          name: '오늘의 한 컵',
+          format: 'REELS',
+          note: '아침 카페',
+          ...over,
+        });
+
+    beforeEach(async () => {
+      storeId = await publishMine();
+      await prisma.user.create({ data: { id: OTHER, role: 'CREATOR' } });
+      await prisma.creatorProfile.create({
+        data: { userId: OTHER, displayName: '하루 한 컵', ...REGION },
+      });
+    });
+
+    it('creates an offer with the store terms as version 1 and the creator proposal as version 2', async () => {
+      const res = await proposeTo(storeId).expect(201);
+      const { offerId, version } = res.body as {
+        offerId: string;
+        version: number;
+      };
+      expect(version).toBe(2);
+      const offer = await prisma.offer.findUniqueOrThrow({
+        where: { id: offerId },
+      });
+      expect(offer).toMatchObject({
+        storeId,
+        creatorId: OTHER,
+        status: 'SENT',
+        latestVersion: 2,
+        initiatedBy: 'CREATOR',
+      });
+      const [one, two] = await versionsOf(offerId);
+      expect(one).toMatchObject({
+        number: 1,
+        authorParty: 'STORE',
+        format: 'REELS',
+        voucherName: '식사권',
+        voucherValue: 40000,
+        voucherPeople: 2,
+        fixedCash: 0,
+        viewRatePerThousand: null,
+        idea: null,
+        principles: [],
+      });
+      expect(two).toMatchObject({
+        number: 2,
+        authorParty: 'CREATOR',
+        fixedCash: 30000,
+        voucherName: '식사권',
+        idea: '아침 햇살 속 한 컵 릴스',
+        principles: ['광고 티 안 내기'],
+      });
+      expect(await prisma.offerVersion.count({ where: { offerId } })).toBe(2);
+    });
+
+    it('gives the first turn to the store and starts the 7 day window', async () => {
+      const { offerId } = (await proposeTo(storeId).expect(201)).body as {
+        offerId: string;
+      };
+      const offer = await prisma.offer.findUniqueOrThrow({
+        where: { id: offerId },
+      });
+      expect(offer.turn).toBe('STORE');
+      expect(offer.createdAt).toEqual(T0);
+      expect(offer.expiresAt).toEqual(new Date(T0.getTime() + 7 * DAY));
+      expect(scheduler.pending()).toMatchObject([
+        {
+          name: 'offer-response-expiry',
+          payload: { offerId, version: 2 },
+          runAt: new Date(T0.getTime() + 7 * DAY),
+          jobKey: `offer-expiry:${offerId}:2`,
+        },
+      ]);
+      // 사장님에게 "제안했어요"가 한 번 간다.
+      expect(await prisma.notification.findMany()).toMatchObject([
+        {
+          userId: USER_A,
+          role: 'STORE',
+          kind: 'OFFER_COUNTERED',
+          actorUserId: OTHER,
+          dedupeKey: `offer-version:${offerId}:2`,
+        },
+      ]);
+    });
+
+    it('lets the store accept the creator proposal as version 2', async () => {
+      const { offerId } = (await proposeTo(storeId).expect(201)).body as {
+        offerId: string;
+      };
+      await request(server)
+        .post(`/offers/${offerId}/accept`)
+        .set(auth)
+        .send({ version: 1 })
+        .expect(409);
+      await request(server)
+        .post(`/offers/${offerId}/accept`)
+        .set(auth)
+        .send({ version: 2 })
+        .expect(200);
+      const collaboration = await prisma.collaboration.findUniqueOrThrow({
+        where: { offerId },
+      });
+      expect(collaboration.terms).toMatchObject({
+        version: 2,
+        fixedCash: 30000,
+      });
+    });
+
+    it('links a new OFFERED application so the proposal is not counted as a new applicant', async () => {
+      const { offerId } = (await proposeTo(storeId).expect(201)).body as {
+        offerId: string;
+      };
+      const apps = await prisma.application.findMany();
+      expect(apps).toMatchObject([
+        { storeId, creatorId: OTHER, status: 'OFFERED', pitch: null },
+      ]);
+      expect(
+        (await prisma.offer.findUniqueOrThrow({ where: { id: offerId } }))
+          .applicationId,
+      ).toBe(apps[0].id);
+      expect(
+        ((await summary().expect(200)).body as SummaryBody).newApplications,
+      ).toBe(0);
+      const applicants = await request(server)
+        .get('/stores/me/applications')
+        .set(auth)
+        .expect(200);
+      expect(applicants.body).toEqual([]);
+    });
+
+    it('reuses my live application when I had applied before proposing', async () => {
+      await request(server)
+        .post(`/stores/${storeId}/applications`)
+        .set(authB)
+        .send({ pitch: '성수동 카페 릴스' })
+        .expect(201);
+      expect(
+        ((await summary().expect(200)).body as SummaryBody).newApplications,
+      ).toBe(1);
+      const before = await prisma.application.findFirstOrThrow();
+      const { offerId } = (await proposeTo(storeId).expect(201)).body as {
+        offerId: string;
+      };
+      const apps = await prisma.application.findMany();
+      expect(apps).toMatchObject([
+        { id: before.id, status: 'OFFERED', pitch: '성수동 카페 릴스' },
+      ]);
+      expect(
+        (await prisma.offer.findUniqueOrThrow({ where: { id: offerId } }))
+          .applicationId,
+      ).toBe(before.id);
+      // 지원이 오퍼 받음으로 바뀌어 새 지원자에서 빠진다.
+      expect(
+        ((await summary().expect(200)).body as SummaryBody).newApplications,
+      ).toBe(0);
+    });
+
+    it('replaces a stale OFFERED application that has no open offer', async () => {
+      const stale = await prisma.application.create({
+        data: { storeId, creatorId: OTHER, status: 'OFFERED' },
+      });
+      const { offerId } = (await proposeTo(storeId).expect(201)).body as {
+        offerId: string;
+      };
+      expect(
+        (
+          await prisma.application.findUniqueOrThrow({
+            where: { id: stale.id },
+          })
+        ).status,
+      ).toBe('CLOSED');
+      const offer = await prisma.offer.findUniqueOrThrow({
+        where: { id: offerId },
+        include: { application: true },
+      });
+      expect(offer.application).toMatchObject({ status: 'OFFERED' });
+      expect(offer.applicationId).not.toBe(stale.id);
+    });
+
+    it('closes the linked application when the proposal ends', async () => {
+      const { offerId } = (await proposeTo(storeId).expect(201)).body as {
+        offerId: string;
+      };
+      await request(server)
+        .post(`/offers/${offerId}/end`)
+        .set(auth)
+        .send({ reason: 'SCHEDULE' })
+        .expect(200);
+      expect((await prisma.application.findFirstOrThrow()).status).toBe(
+        'CLOSED',
+      );
+    });
+
+    it('adds the next version to an open offer when it is my turn', async () => {
+      const { offerId } = (await proposeTo(storeId).expect(201)).body as {
+        offerId: string;
+      };
+      // 사장님이 판본 3을 돌려보내면 크리에이터의 차례다.
+      await request(server)
+        .post(`/offers/${offerId}/versions`)
+        .set(auth)
+        .send({ format: 'REELS', reward: { voucher: {}, fixedCash: 20000 } })
+        .expect(201);
+      scheduler.jobs.length = 0;
+      const res = await proposeTo(storeId, {
+        ...PROPOSAL,
+        reward: { voucher: {}, fixedCash: 40000 },
+      }).expect(201);
+      expect(res.body).toEqual({ offerId, version: 4 });
+      expect(await prisma.offer.count()).toBe(1);
+      expect(await prisma.application.count()).toBe(1);
+      expect(
+        await prisma.offer.findUniqueOrThrow({ where: { id: offerId } }),
+      ).toMatchObject({ latestVersion: 4, turn: 'STORE' });
+      expect((await versionsOf(offerId))[3]).toMatchObject({
+        number: 4,
+        authorParty: 'CREATOR',
+        fixedCash: 40000,
+      });
+      expect(scheduler.pending()).toMatchObject([
+        { jobKey: `offer-expiry:${offerId}:4` },
+      ]);
+    });
+
+    it('refuses a second proposal while the store has not answered', async () => {
+      await proposeTo(storeId).expect(201);
+      const res = await proposeTo(storeId).expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect((res.body as { error: { message: string } }).error.message).toBe(
+        '이미 진행 중인 제안이 있어요.',
+      );
+      expect(await prisma.offerVersion.count()).toBe(2);
+    });
+
+    it('refuses a proposal while an accepted offer is still running', async () => {
+      const offer = await seedOffer(storeId, OTHER, { status: 'ACCEPTED' });
+      const res = await proposeTo(storeId).expect(409);
+      expect((res.body as { error: { message: string } }).error.message).toBe(
+        '이미 진행 중인 제안이 있어요.',
+      );
+      expect(await prisma.offer.count({ where: { id: offer.id } })).toBe(1);
+      expect(await prisma.offer.count()).toBe(1);
+    });
+
+    it('lets me propose again once the earlier collaboration has ended', async () => {
+      const finished = await seedOffer(storeId, OTHER, {
+        status: 'ACCEPTED',
+        closedAt: T0,
+      });
+      const res = await proposeTo(storeId).expect(201);
+      const { offerId } = res.body as { offerId: string };
+      expect(offerId).not.toBe(finished.id);
+      expect(await prisma.offer.count()).toBe(2);
+    });
+
+    it('settles an expired open offer before checking for a duplicate', async () => {
+      const old = await seedOffer(storeId, OTHER);
+      clock.advance(8 * DAY);
+      const res = await proposeTo(storeId).expect(201);
+      expect((res.body as { offerId: string }).offerId).not.toBe(old.id);
+      expect(
+        (await prisma.offer.findUniqueOrThrow({ where: { id: old.id } }))
+          .status,
+      ).toBe('EXPIRED');
+    });
+
+    it('refuses a proposal with view pay without instagram, and accepts it once connected', async () => {
+      const viewPay = {
+        format: 'REELS',
+        reward: { perView: { ratePerThousand: 2000, cap: 60000 } },
+      };
+      const res = await proposeTo(storeId, viewPay).expect(409);
+      expect((res.body as { error: { message: string } }).error.message).toBe(
+        '인스타그램을 연동하면 수락할 수 있어요.',
+      );
+      expect(await prisma.offer.count()).toBe(0);
+      expect(await prisma.application.count()).toBe(0);
+      await connectAsB();
+      await proposeTo(storeId, viewPay).expect(201);
+    });
+
+    it("copies my series into the version and rejects someone else's series", async () => {
+      const mine = (await createSeries().expect(201)).body as { id: string };
+      const { offerId } = (
+        await proposeTo(storeId, { ...PROPOSAL, seriesId: mine.id }).expect(201)
+      ).body as { offerId: string };
+      expect((await versionsOf(offerId))[1]).toMatchObject({
+        seriesName: '오늘의 한 컵',
+        seriesFormat: 'REELS',
+        seriesNote: '아침 카페',
+      });
+      // 시리즈를 지우거나 바꿔도 이미 낸 판본은 그대로다(사본).
+      await prisma.creatorSeries.update({
+        where: { id: mine.id },
+        data: { name: '바뀐 이름' },
+      });
+      expect((await versionsOf(offerId))[1].seriesName).toBe('오늘의 한 컵');
+
+      const stranger = randomUUID();
+      await prisma.user.create({ data: { id: stranger, role: 'CREATOR' } });
+      const theirs = await prisma.creatorSeries.create({
+        data: { creatorId: stranger, name: '남의 시리즈', format: 'REELS' },
+      });
+      const other = await seedStore();
+      await proposeTo(other.id, { ...PROPOSAL, seriesId: theirs.id }).expect(
+        404,
+      );
+      await proposeTo(other.id, { ...PROPOSAL, seriesId: randomUUID() }).expect(
+        404,
+      );
+      expect(await prisma.offer.count({ where: { storeId: other.id } })).toBe(
+        0,
+      );
+    });
+
+    it('copies my series into a next version too', async () => {
+      const { offerId } = (await proposeTo(storeId).expect(201)).body as {
+        offerId: string;
+      };
+      await request(server)
+        .post(`/offers/${offerId}/versions`)
+        .set(auth)
+        .send({ format: 'REELS', reward: { voucher: {} } })
+        .expect(201);
+      const mine = (await createSeries().expect(201)).body as { id: string };
+      await request(server)
+        .post(`/offers/${offerId}/versions`)
+        .set(authB)
+        .send({ ...PROPOSAL, seriesId: mine.id })
+        .expect(201);
+      expect((await versionsOf(offerId))[3]).toMatchObject({
+        number: 4,
+        seriesName: '오늘의 한 컵',
+      });
+      await request(server)
+        .post(`/offers/${offerId}/versions`)
+        .set(auth)
+        .send({ format: 'REELS', reward: { voucher: {} } })
+        .expect(201);
+      await request(server)
+        .post(`/offers/${offerId}/versions`)
+        .set(authB)
+        .send({ ...PROPOSAL, seriesId: randomUUID() })
+        .expect(404);
+    });
+
+    it('checks the store, my own store, the role and my profile', async () => {
+      await proposeTo(randomUUID()).expect(404);
+      await proposeTo('not-a-uuid').expect(404);
+      // 등록 중인 가게는 없는 가게와 같다.
+      const draftOwner = randomUUID();
+      await prisma.user.create({ data: { id: draftOwner, role: 'STORE' } });
+      const draft = await prisma.store.create({
+        data: { ownerId: draftOwner, name: '등록 중' },
+      });
+      await proposeTo(draft.id).expect(404);
+      // 내 가게에는 제안할 수 없다.
+      await setRole('CREATOR');
+      await putProfile();
+      expect(codeOf(await proposeTo(storeId, PROPOSAL, auth).expect(409))).toBe(
+        'CONFLICT',
+      );
+      // 사장님 역할은 제안할 수 없다.
+      await setRole('STORE');
+      await proposeTo(storeId, PROPOSAL, auth).expect(403);
+      // 프로필이 없으면 막힌다.
+      await prisma.creatorProfile.deleteMany({ where: { userId: OTHER } });
+      expect(codeOf(await proposeTo(storeId).expect(409))).toBe('CONFLICT');
+      expect(await prisma.offer.count()).toBe(0);
+    });
+
+    it('rejects out-of-range or malformed conditions without creating anything', async () => {
+      await proposeTo(storeId, { format: 'REELS', reward: {} }).expect(400);
+      await proposeTo(storeId, {
+        format: 'REELS',
+        reward: { voucher: {}, fixedCash: 5 },
+      }).expect(400);
+      await proposeTo(storeId, {
+        ...PROPOSAL,
+        idea: '가'.repeat(201),
+      }).expect(400);
+      await proposeTo(storeId, { ...PROPOSAL, seriesId: 'nope' }).expect(400);
+      expect(await prisma.offer.count()).toBe(0);
+      expect(await prisma.application.count()).toBe(0);
+    });
+
+    it('requires a token', async () => {
+      await request(server)
+        .post(`/stores/${storeId}/proposals`)
+        .send(PROPOSAL)
+        .expect(401);
+    });
+
+    it('lets only one of two concurrent proposals create the offer', async () => {
+      const results = await Promise.all([
+        proposeTo(storeId),
+        proposeTo(storeId),
+      ]);
+      expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+      expect(await prisma.offer.count()).toBe(1);
+      expect(await prisma.offerVersion.count()).toBe(2);
+      expect(await prisma.application.count()).toBe(1);
+      expect(await prisma.notification.count()).toBe(1);
+    });
+
+    it('lets only one of two concurrent proposals use my earlier application', async () => {
+      await request(server)
+        .post(`/stores/${storeId}/applications`)
+        .set(authB)
+        .send()
+        .expect(201);
+      const results = await Promise.all([
+        proposeTo(storeId),
+        proposeTo(storeId),
+      ]);
+      expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+      expect(await prisma.offer.count()).toBe(1);
+      expect(await prisma.application.findMany()).toMatchObject([
+        { status: 'OFFERED' },
+      ]);
+    });
+  });
 });

@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import {
   ApplicationStatus,
   ContentFormat,
+  OfferParty,
+  OfferStatus,
   IndustryCategory,
   SourceLinkKind,
   Store,
@@ -13,9 +15,15 @@ import { PrismaService } from '../prisma/prisma.service';
 
 export type StoreWithLinks = Store & { sourceLinks: StoreSourceLink[] };
 
-// 공개 상세: 요청자의 살아 있는 지원(지원 중, 오퍼 받음)이 있으면 한 건 함께 읽는다.
+// 공개 상세: 요청자의 살아 있는 지원(지원 중, 오퍼 받음)과 열린 오퍼가 있으면 한 건씩 함께 읽는다.
 export type PublishedStoreDetail = Store & {
   applications: { status: ApplicationStatus }[];
+  offers: {
+    id: string;
+    latestVersion: number;
+    status: OfferStatus;
+    turn: OfferParty;
+  }[];
 };
 
 // 가게의 글자 항목. 비어 있으면 null이다(업종 분류는 항상 값이 있다).
@@ -84,9 +92,11 @@ export class StoresRepository {
   }
 
   // 지원 모듈을 import하면 모듈이 순환하므로, 내 지원 상태는 관계로 함께 읽는다.
+  // 열린 오퍼: 기한 전의 SENT, 또는 협업이 끝나지 않은(closedAt 없는) ACCEPTED. 결제 기한이 지난 ACCEPTED는 곧 만료로 저장되므로 뺀다.
   findPublishedDetail(
     storeId: string,
     viewerId: string,
+    now: Date,
   ): Promise<PublishedStoreDetail | null> {
     return this.prisma.store.findFirst({
       where: { id: storeId, ...PUBLISHED },
@@ -98,6 +108,22 @@ export class StoresRepository {
             deletedAt: null,
           },
           select: { status: true },
+          take: 1,
+        },
+        offers: {
+          where: {
+            creatorId: viewerId,
+            deletedAt: null,
+            closedAt: null,
+            OR: [
+              { status: 'SENT', expiresAt: { gt: now } },
+              {
+                status: 'ACCEPTED',
+                OR: [{ paymentDueAt: null }, { paymentDueAt: { gt: now } }],
+              },
+            ],
+          },
+          select: { id: true, latestVersion: true, status: true, turn: true },
           take: 1,
         },
       },

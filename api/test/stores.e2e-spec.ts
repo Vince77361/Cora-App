@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
 import { StoragePort } from '../src/integrations/storage/storage.port';
+import { createOffer } from './helpers/create-offer';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
@@ -738,6 +739,107 @@ describe('stores', () => {
       expect(
         (res.body as { myApplicationStatus: string }).myApplicationStatus,
       ).toBe('NONE');
+    });
+
+    describe('my open offer', () => {
+      interface OpenOfferBody {
+        myOpenOffer: {
+          id: string;
+          latestVersion: number;
+          myTurn: boolean;
+        } | null;
+      }
+      const openOffer = async (storeId: string) =>
+        (
+          (
+            await request(server)
+              .get(`/stores/${storeId}`)
+              .set(auth)
+              .expect(200)
+          ).body as OpenOfferBody
+        ).myOpenOffer;
+      const seedOffer = async (
+        storeId: string,
+        over: Partial<{
+          status: 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
+          turn: 'STORE' | 'CREATOR';
+          expiresAt: Date;
+          closedAt: Date;
+          creatorId: string;
+        }> = {},
+      ) => {
+        await prisma.creatorProfile.upsert({
+          where: { userId: USER_A },
+          create: {
+            userId: USER_A,
+            displayName: '하루 한 컵',
+            regionSido: '서울특별시',
+          },
+          update: {},
+        });
+        return createOffer(prisma, {
+          storeId,
+          creatorId: over.creatorId ?? USER_A,
+          status: over.status ?? 'SENT',
+          turn: over.turn ?? 'CREATOR',
+          expiresAt:
+            over.expiresAt ?? new Date(clock.now().getTime() + 86400000),
+          closedAt: over.closedAt,
+          voucherName: '식사권',
+          voucherValue: 40000,
+          voucherPeople: 2,
+        });
+      };
+
+      it('is null when there is no open offer and tells whose turn it is otherwise', async () => {
+        const store = await seedStore();
+        expect(await openOffer(store)).toBeNull();
+        const offer = await seedOffer(store, { turn: 'CREATOR' });
+        expect(await openOffer(store)).toEqual({
+          id: offer.id,
+          latestVersion: 1,
+          myTurn: true,
+        });
+        await prisma.offer.update({
+          where: { id: offer.id },
+          data: { turn: 'STORE', latestVersion: 2 },
+        });
+        expect(await openOffer(store)).toEqual({
+          id: offer.id,
+          latestVersion: 2,
+          myTurn: false,
+        });
+      });
+
+      it('shows an accepted offer as not my turn and hides ended ones', async () => {
+        const store = await seedStore();
+        const accepted = await seedOffer(store, { status: 'ACCEPTED' });
+        expect(await openOffer(store)).toEqual({
+          id: accepted.id,
+          latestVersion: 1,
+          myTurn: false,
+        });
+        // 협업이 끝나 닫힌 오퍼는 열린 것이 아니다.
+        await prisma.offer.update({
+          where: { id: accepted.id },
+          data: { closedAt: clock.now() },
+        });
+        expect(await openOffer(store)).toBeNull();
+      });
+
+      it('hides an offer past its deadline and offers of other stores or people', async () => {
+        const store = await seedStore();
+        const elsewhere = await seedStore({ name: '다른 가게' });
+        await seedOffer(store, {
+          expiresAt: new Date(clock.now().getTime() - 1000),
+        });
+        await seedOffer(elsewhere);
+        const stranger = randomUUID();
+        await prisma.user.create({ data: { id: stranger, role: 'CREATOR' } });
+        await seedOffer(store, { creatorId: stranger });
+        expect(await openOffer(store)).toBeNull();
+        expect(await openOffer(elsewhere)).not.toBeNull();
+      });
     });
   });
 });

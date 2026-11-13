@@ -228,10 +228,11 @@ export class StoresService {
     storeId: string,
   ): Promise<StoreDetailModel> {
     const store = UUID.test(storeId)
-      ? await this.stores.findPublishedDetail(storeId, userId)
+      ? await this.stores.findPublishedDetail(storeId, userId, this.clock.now())
       : null;
     if (!store) throw new AppError('NOT_FOUND', '가게를 찾을 수 없어요.');
     const mine = store.applications[0]?.status;
+    const open = store.offers[0];
     return {
       ...this.toSummary(store),
       signatureMenu: store.signatureMenu,
@@ -241,6 +242,13 @@ export class StoresService {
       intro: store.intro,
       myApplicationStatus:
         mine === 'APPLIED' || mine === 'OFFERED' ? mine : 'NONE',
+      myOpenOffer: open
+        ? {
+            id: open.id,
+            latestVersion: open.latestVersion,
+            myTurn: open.status === 'SENT' && open.turn === 'CREATOR',
+          }
+        : null,
     };
   }
 

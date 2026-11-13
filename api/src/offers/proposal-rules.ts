@@ -1,4 +1,4 @@
-import { OfferParty, OfferVersion } from '@prisma/client';
+import { ContentFormat, OfferParty, OfferVersion } from '@prisma/client';
 import { OfferTermsModel } from '../stores/dto/offer-terms.model';
 import { RewardDefaults, termsModelOf } from '../stores/reward-terms';
 import { OfferVersionModel } from './dto/offer-version.model';
@@ -133,15 +133,24 @@ export function defaultsOfVersion(row: OfferVersion): RewardDefaults {
   };
 }
 
-// 사장님이 보낸 idea·principles는 저장하지 않는다. 한 줄 설명과 원칙은 크리에이터의 판본에만 있다.
+// 시리즈는 판본에 사본으로 넣는다(원본을 고치거나 지워도 이미 낸 판본은 그대로여야 해서).
+export interface SeriesCopy {
+  name: string | null;
+  format: ContentFormat | null;
+  note: string | null;
+}
+
+// 사장님이 보낸 idea·principles·시리즈는 저장하지 않는다. 한 줄 설명과 원칙, 시리즈는 크리에이터의 판본에만 있다.
 export function proposalExtras(
   author: OfferParty,
   input: { idea?: string; principles?: string[] },
-): { idea: string | null; principles: string[] } {
-  if (author !== 'CREATOR') return { idea: null, principles: [] };
+  series: SeriesCopy | null = null,
+): { idea: string | null; principles: string[]; series: SeriesCopy | null } {
+  if (author !== 'CREATOR') return { idea: null, principles: [], series: null };
   const idea = input.idea?.trim() ?? '';
   return {
     idea: idea === '' ? null : idea,
     principles: input.principles ?? [],
+    series,
   };
 }

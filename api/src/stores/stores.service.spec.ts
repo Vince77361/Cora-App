@@ -63,6 +63,16 @@ class FakeStoresRepository extends StoresRepository {
     status: ApplicationStatus;
   }[] = [];
 
+  // 테스트가 직접 채우는 열린 오퍼.
+  readonly openOffers: {
+    storeId: string;
+    creatorId: string;
+    id: string;
+    latestVersion: number;
+    status: 'SENT' | 'ACCEPTED';
+    turn: 'STORE' | 'CREATOR';
+  }[] = [];
+
   findPublishedDetail(
     storeId: string,
     viewerId: string,
@@ -76,6 +86,14 @@ class FakeStoresRepository extends StoresRepository {
       applications: this.applications
         .filter((a) => a.storeId === storeId && a.creatorId === viewerId)
         .map((a) => ({ status: a.status })),
+      offers: this.openOffers
+        .filter((o) => o.storeId === storeId && o.creatorId === viewerId)
+        .map(({ id, latestVersion, status, turn }) => ({
+          id,
+          latestVersion,
+          status,
+          turn,
+        })),
     });
   }
 
@@ -682,6 +700,45 @@ describe('StoresService', () => {
       expect(
         (await service.getPublished(OWNER, published.id)).myApplicationStatus,
       ).toBe('NONE');
+    });
+
+    it('reads my open offer onto the detail and says whose turn it is', async () => {
+      const published = makeStore({
+        ownerId: OWNER,
+        status: 'PUBLISHED',
+        name: '한그릇 라멘',
+        defaultFormat: 'REELS',
+      });
+      repo.stores.push(published);
+      expect(
+        (await service.getPublished(OTHER, published.id)).myOpenOffer,
+      ).toBeNull();
+      const offerId = randomUUID();
+      repo.openOffers.push({
+        storeId: published.id,
+        creatorId: OTHER,
+        id: offerId,
+        latestVersion: 2,
+        status: 'SENT',
+        turn: 'CREATOR',
+      });
+      expect(
+        (await service.getPublished(OTHER, published.id)).myOpenOffer,
+      ).toEqual({ id: offerId, latestVersion: 2, myTurn: true });
+      repo.openOffers[0].turn = 'STORE';
+      expect(
+        (await service.getPublished(OTHER, published.id)).myOpenOffer,
+      ).toEqual({ id: offerId, latestVersion: 2, myTurn: false });
+      // 수락된 오퍼는 열려 있어도 내가 새 판본을 낼 차례가 아니다.
+      repo.openOffers[0].status = 'ACCEPTED';
+      repo.openOffers[0].turn = 'CREATOR';
+      expect(
+        (await service.getPublished(OTHER, published.id)).myOpenOffer?.myTurn,
+      ).toBe(false);
+      // 다른 사람의 오퍼는 보이지 않는다.
+      expect(
+        (await service.getPublished(OWNER, published.id)).myOpenOffer,
+      ).toBeNull();
     });
 
     it('hides drafts and soft-deleted stores', async () => {

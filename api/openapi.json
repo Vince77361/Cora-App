@@ -96,12 +96,18 @@
           },
           "creator": {
             "$ref": "#/components/schemas/CreatorSummaryModel"
+          },
+          "pitch": {
+            "description": "지원할 때 붙인 한 줄. 없으면 null.",
+            "nullable": true,
+            "type": "string"
           }
         },
         "required": [
           "applicationId",
           "creator",
-          "appliedAt"
+          "appliedAt",
+          "pitch"
         ],
         "type": "object"
       },
@@ -138,6 +144,16 @@
           "CLOSED"
         ],
         "type": "string"
+      },
+      "ApplyDto": {
+        "properties": {
+          "pitch": {
+            "description": "사장님이 지원자 목록에서 보는 한 줄. 비우면 저장하지 않는다.",
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "type": "object"
       },
       "BankModel": {
         "properties": {
@@ -545,6 +561,32 @@
         ],
         "type": "string"
       },
+      "CreateCreatorSeriesDto": {
+        "properties": {
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "name": {
+            "maxLength": 20,
+            "minLength": 1,
+            "type": "string"
+          },
+          "note": {
+            "description": "시리즈를 한 줄로 설명한다. 비우면 저장하지 않는다.",
+            "maxLength": 20,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "format"
+        ],
+        "type": "object"
+      },
       "CreatePaymentDto": {
         "properties": {
           "method": {
@@ -638,6 +680,37 @@
           "instagramConnected",
           "followers",
           "instagramHandle"
+        ],
+        "type": "object"
+      },
+      "CreatorSeriesModel": {
+        "properties": {
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 20,
+            "type": "string"
+          },
+          "note": {
+            "maxLength": 20,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "format",
+          "note"
         ],
         "type": "object"
       },
@@ -909,6 +982,28 @@
           "OFFERED"
         ],
         "type": "string"
+      },
+      "MyOpenOfferModel": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "latestVersion": {
+            "description": "가장 새 판본의 번호.",
+            "type": "integer"
+          },
+          "myTurn": {
+            "description": "내가 응답할 차례이면 true. 내 방식으로 새 판본을 낼 수 있다.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "latestVersion",
+          "myTurn"
+        ],
+        "type": "object"
       },
       "MyStoreModel": {
         "properties": {
@@ -1616,6 +1711,11 @@
           "reward": {
             "$ref": "#/components/schemas/RewardInputDto"
           },
+          "seriesId": {
+            "description": "내 시리즈의 id. 이름·형식·설명이 판본에 사본으로 들어간다. 크리에이터만 쓴다.",
+            "format": "uuid",
+            "type": "string"
+          },
           "usageRights": {
             "allOf": [
               {
@@ -2013,6 +2113,16 @@
             ],
             "description": "내가 이 가게에 낸 지금 살아 있는 지원의 상태. 없으면 NONE."
           },
+          "myOpenOffer": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyOpenOfferModel"
+              }
+            ],
+            "description": "내가 이 가게와 주고받는 열린 오퍼. 없으면 null.",
+            "nullable": true,
+            "type": "object"
+          },
           "name": {
             "type": "string"
           },
@@ -2052,7 +2162,8 @@
           "seats",
           "bestShootingTime",
           "intro",
-          "myApplicationStatus"
+          "myApplicationStatus",
+          "myOpenOffer"
         ],
         "type": "object"
       },
@@ -2086,6 +2197,67 @@
           "DONE"
         ],
         "type": "string"
+      },
+      "StoreProposalDto": {
+        "properties": {
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "idea": {
+            "description": "내 방식의 한 줄 설명. 크리에이터만 쓴다.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "principles": {
+            "description": "내가 지키는 원칙. 최대 3개, 각 10자까지. 크리에이터만 쓴다.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "reward": {
+            "$ref": "#/components/schemas/RewardInputDto"
+          },
+          "seriesId": {
+            "description": "내 시리즈의 id. 이름·형식·설명이 판본에 사본으로 들어간다. 크리에이터만 쓴다.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "usageRights": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UsageRights"
+              }
+            ],
+            "description": "없으면 앞 판본의 사용권."
+          }
+        },
+        "required": [
+          "format",
+          "reward"
+        ],
+        "type": "object"
+      },
+      "StoreProposalResultModel": {
+        "properties": {
+          "offerId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "version": {
+            "description": "방금 낸 판본의 번호. 새 오퍼면 2다(1은 가게의 모집 조건).",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "offerId",
+          "version"
+        ],
+        "type": "object"
       },
       "StoreSourceLinkModel": {
         "properties": {
@@ -3037,6 +3209,71 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreatorProfileModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Creators"
+        ]
+      }
+    },
+    "/creators/me/series": {
+      "get": {
+        "operationId": "listMyCreatorSeries",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CreatorSeriesModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Creators"
+        ]
+      },
+      "post": {
+        "operationId": "createMyCreatorSeries",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCreatorSeriesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatorSeriesModel"
                 }
               }
             },
@@ -4316,6 +4553,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
@@ -4365,6 +4612,53 @@
         "summary": "",
         "tags": [
           "Applications"
+        ]
+      }
+    },
+    "/stores/{id}/proposals": {
+      "post": {
+        "description": "크리에이터가 가게 페이지에서 내 방식으로 제안한다. 열린 오퍼가 없으면 새 오퍼(판본 1은 가게의 모집 조건, 판본 2가 이 제안)를 만들고, 내 차례인 열린 오퍼가 있으면 다음 판본을 낸다.",
+        "operationId": "proposeToStore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreProposalDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreProposalResultModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Offers"
         ]
       }
     },

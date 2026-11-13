@@ -25,6 +25,10 @@ import { ReceivedOfferModel } from './dto/received-offer.model';
 import { SendOfferDto } from './dto/send-offer.dto';
 import { SentOfferModel } from './dto/sent-offer.model';
 import { StoreHomeSummaryModel } from './dto/store-home-summary.model';
+import {
+  StoreProposalDto,
+  StoreProposalResultModel,
+} from './dto/store-proposal.dto';
 import { OffersService } from './offers.service';
 
 // 사장님 홈 숫자는 경로가 /stores 아래지만 오퍼 모듈이 만든다. "stores/me/summary"는 한 칸 더 깊어
@@ -99,6 +103,21 @@ export class OffersController {
     @Body() dto: ProposeVersionDto,
   ): Promise<OfferVersionModel> {
     return this.offers.proposeVersion(user.userId, id, dto);
+  }
+
+  @Post('stores/:id/proposals')
+  @ApiOperation({
+    operationId: 'proposeToStore',
+    description:
+      '크리에이터가 가게 페이지에서 내 방식으로 제안한다. 열린 오퍼가 없으면 새 오퍼(판본 1은 가게의 모집 조건, 판본 2가 이 제안)를 만들고, 내 차례인 열린 오퍼가 있으면 다음 판본을 낸다.',
+  })
+  @ApiCreatedResponse({ type: StoreProposalResultModel })
+  proposeToStore(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: StoreProposalDto,
+  ): Promise<StoreProposalResultModel> {
+    return this.offers.proposeToStore(user.userId, id, dto);
   }
 
   @Post('offers/:id/end')

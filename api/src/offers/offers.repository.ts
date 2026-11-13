@@ -10,7 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OfferTermsModel } from '../stores/dto/offer-terms.model';
 import { DECLINE_UNDO_SECONDS } from './offer-rules';
 import { OfferVersionsRepository } from './offer-versions.repository';
-import { turnAfter } from './proposal-rules';
+import { SeriesCopy, turnAfter } from './proposal-rules';
 
 // 연결된 지원의 상태를 함께 읽어, 이미 닫힌 지원에 닫기를 다시 부르지 않게 한다.
 // 조건은 판본에 있어서 가장 새 판본 하나를 함께 읽는다(오퍼를 만드는 트랜잭션이 번호와 판본을 같이 올린다).
@@ -40,6 +40,21 @@ export interface NewOffer {
   expiresAt: Date;
 }
 
+// 크리에이터가 시작한 오퍼. 판본 1은 가게의 모집 조건, 판본 2는 크리에이터의 제안이다.
+export interface NewCreatorOffer {
+  storeId: string;
+  creatorId: string;
+  // 판본 1: 가게가 공개한 모집 조건.
+  storeTerms: OfferTermsModel;
+  // 판본 2: 크리에이터의 제안.
+  terms: OfferTermsModel;
+  idea: string | null;
+  principles: string[];
+  series: SeriesCopy | null;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
 // 새 판본 하나. readVersion은 서비스가 읽은 최신 번호다(갱신 조건에 걸어 읽은 뒤 바뀌었으면 0행이 되게 한다).
 export interface NewProposal {
   offerId: string;
@@ -48,6 +63,7 @@ export interface NewProposal {
   terms: OfferTermsModel;
   idea: string | null;
   principles: string[];
+  series?: SeriesCopy | null;
   now: Date;
   // 새 판본이 나올 때마다 응답 기한을 다시 센다.
   expiresAt: Date;
@@ -168,6 +184,58 @@ export class OffersRepository {
     }
   }
 
+  // 크리에이터가 먼저 시작한 오퍼: 가게의 모집 조건(판본 1)과 크리에이터의 제안(판본 2)을 한 트랜잭션으로 만든다.
+  // 응답할 차례는 사장님이다. 지원 잇기(linkApplication)는 같은 트랜잭션 안이라, 오퍼를 못 만들면 지원 변경도 함께 되돌아간다.
+  // 열린 오퍼 중복(P2002)이나 지원 잇기 경쟁에서 졌으면 null이다.
+  async createFromCreator(
+    data: NewCreatorOffer,
+    linkApplication: (tx: Prisma.TransactionClient) => Promise<string | null>,
+  ): Promise<OfferRow | null> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const applicationId = await linkApplication(tx);
+        if (applicationId === null) throw new Rollback();
+        const offer = await tx.offer.create({
+          data: {
+            storeId: data.storeId,
+            creatorId: data.creatorId,
+            applicationId,
+            status: 'SENT',
+            latestVersion: 2,
+            turn: 'STORE',
+            initiatedBy: 'CREATOR',
+            createdAt: data.createdAt,
+            expiresAt: data.expiresAt,
+          },
+        });
+        await this.versions.insert(tx, {
+          offerId: offer.id,
+          number: 1,
+          authorParty: 'STORE',
+          terms: data.storeTerms,
+          createdAt: data.createdAt,
+        });
+        await this.versions.insert(tx, {
+          offerId: offer.id,
+          number: 2,
+          authorParty: 'CREATOR',
+          terms: data.terms,
+          idea: data.idea,
+          principles: data.principles,
+          series: data.series,
+          createdAt: data.createdAt,
+        });
+        return tx.offer.findUniqueOrThrow({
+          where: { id: offer.id },
+          include: WITH_APPLICATION,
+        });
+      });
+    } catch (error) {
+      if (error instanceof Rollback || isUniqueViolation(error)) return null;
+      throw error;
+    }
+  }
+
   // 새 판본: 오퍼를 읽은 번호·차례·기한 전일 때만 갱신(번호 +1, 차례를 상대에게, 응답 기한을 다시 셈)하고 판본을 넣는다.
   // 수락과 같은 번호 조건을 쓰므로 동시에 오면 하나만 이긴다(수락이 이기면 0행, 새 판본이 이기면 수락이 0행).
   // 0행이면 null이다.
@@ -197,6 +265,7 @@ export class OffersRepository {
         terms: data.terms,
         idea: data.idea,
         principles: data.principles,
+        series: data.series,
         createdAt: data.now,
       });
     });

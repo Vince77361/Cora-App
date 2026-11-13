@@ -31,5 +31,11 @@ void main() {
     test('to test the property `creator`', () async {
       // TODO
     });
+
+    // 지원할 때 붙인 한 줄. 없으면 null.
+    // String pitch
+    test('to test the property `pitch`', () async {
+      // TODO
+    });
   });
 }

@@ -17,6 +17,7 @@ Method | HTTP request | Description
 [**listReceivedOffers**](OffersApi.md#listreceivedoffers) | **GET** /offers/received | 
 [**listSentOffers**](OffersApi.md#listsentoffers) | **GET** /offers/sent | 
 [**proposeOfferVersion**](OffersApi.md#proposeofferversion) | **POST** /offers/{id}/versions | 
+[**proposeToStore**](OffersApi.md#proposetostore) | **POST** /stores/{id}/proposals | 
 [**sendOffer**](OffersApi.md#sendoffer) | **POST** /offers | 
 [**undoDeclineOffer**](OffersApi.md#undodeclineoffer) | **POST** /offers/{id}/undo-decline | 
 
@@ -383,6 +384,57 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**OfferVersionModel**](OfferVersionModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **proposeToStore**
+> StoreProposalResultModel proposeToStore(id, storeProposalDto)
+
+
+
+크리에이터가 가게 페이지에서 내 방식으로 제안한다. 열린 오퍼가 없으면 새 오퍼(판본 1은 가게의 모집 조건, 판본 2가 이 제안)를 만들고, 내 차례인 열린 오퍼가 있으면 다음 판본을 낸다.
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = OffersApi();
+final id = id_example; // String | 
+final storeProposalDto = StoreProposalDto(); // StoreProposalDto | 
+
+try {
+    final result = api_instance.proposeToStore(id, storeProposalDto);
+    print(result);
+} catch (e) {
+    print('Exception when calling OffersApi->proposeToStore: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **storeProposalDto** | [**StoreProposalDto**](StoreProposalDto.md)|  | 
+
+### Return type
+
+[**StoreProposalResultModel**](StoreProposalResultModel.md)
 
 ### Authorization
 

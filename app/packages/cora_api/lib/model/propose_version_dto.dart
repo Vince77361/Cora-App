@@ -17,6 +17,7 @@ class ProposeVersionDto {
     this.idea,
     this.principles = const [],
     required this.reward,
+    this.seriesId,
     this.usageRights,
   });
 
@@ -36,6 +37,15 @@ class ProposeVersionDto {
 
   RewardInputDto reward;
 
+  /// 내 시리즈의 id. 이름·형식·설명이 판본에 사본으로 들어간다. 크리에이터만 쓴다.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? seriesId;
+
   /// 없으면 앞 판본의 사용권.
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -53,6 +63,7 @@ class ProposeVersionDto {
           other.idea == idea &&
           _deepEquality.equals(other.principles, principles) &&
           other.reward == reward &&
+          other.seriesId == seriesId &&
           other.usageRights == usageRights;
 
   @override
@@ -62,11 +73,12 @@ class ProposeVersionDto {
       (idea == null ? 0 : idea!.hashCode) +
       (principles.hashCode) +
       (reward.hashCode) +
+      (seriesId == null ? 0 : seriesId!.hashCode) +
       (usageRights == null ? 0 : usageRights!.hashCode);
 
   @override
   String toString() =>
-      'ProposeVersionDto[format=$format, idea=$idea, principles=$principles, reward=$reward, usageRights=$usageRights]';
+      'ProposeVersionDto[format=$format, idea=$idea, principles=$principles, reward=$reward, seriesId=$seriesId, usageRights=$usageRights]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -78,6 +90,11 @@ class ProposeVersionDto {
     }
     json[r'principles'] = this.principles;
     json[r'reward'] = this.reward;
+    if (this.seriesId != null) {
+      json[r'seriesId'] = this.seriesId;
+    } else {
+      json[r'seriesId'] = null;
+    }
     if (this.usageRights != null) {
       json[r'usageRights'] = this.usageRights;
     } else {
@@ -117,6 +134,7 @@ class ProposeVersionDto {
                 .toList(growable: false)
             : const [],
         reward: RewardInputDto.fromJson(json[r'reward'])!,
+        seriesId: mapValueOfType<String>(json, r'seriesId'),
         usageRights: UsageRights.fromJson(json[r'usageRights']),
       );
     }

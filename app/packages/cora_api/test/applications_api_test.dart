@@ -18,7 +18,7 @@ void main() {
   group('tests for ApplicationsApi', () {
     //
     //
-    //Future<ApplicationModel> applyToStore(String id) async
+    //Future<ApplicationModel> applyToStore(String id, ApplyDto applyDto) async
     test('test applyToStore', () async {
       // TODO
     });

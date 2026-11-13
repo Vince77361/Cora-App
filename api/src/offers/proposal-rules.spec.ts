@@ -200,17 +200,30 @@ describe('proposalExtras', () => {
     expect(proposalExtras('CREATOR', input)).toEqual({
       idea: '내 방식',
       principles: ['광고 티 안 내기'],
+      series: null,
     });
     expect(proposalExtras('STORE', input)).toEqual({
       idea: null,
       principles: [],
+      series: null,
     });
+  });
+
+  it('copies the series only for the creator', () => {
+    const series = {
+      name: '오늘의 한 컵',
+      format: 'REELS',
+      note: '아침',
+    } as const;
+    expect(proposalExtras('CREATOR', {}, series).series).toEqual(series);
+    expect(proposalExtras('STORE', {}, series).series).toBeNull();
   });
 
   it('stores an empty idea as null', () => {
     expect(proposalExtras('CREATOR', { idea: '  ' })).toEqual({
       idea: null,
       principles: [],
+      series: null,
     });
   });
 });

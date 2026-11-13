@@ -27,6 +27,7 @@ import { UsersService } from '../users/users.service';
 import { EndedOfferModel } from './dto/ended-offer.model';
 import { OfferVersionModel } from './dto/offer-version.model';
 import { ProposeVersionDto } from './dto/propose-version.dto';
+import { StoreProposalDto } from './dto/store-proposal.dto';
 import { ReceivedOfferModel } from './dto/received-offer.model';
 import { SendOfferDto } from './dto/send-offer.dto';
 import { SentOfferModel } from './dto/sent-offer.model';
@@ -435,6 +436,11 @@ export class OffersService {
       );
     }
     const terms = buildTerms(input, defaultsOfVersion(latestVersionOf(row)));
+    // 시리즈는 내 것만 고를 수 있다. 사장님의 판본에는 시리즈가 없어 보지 않는다.
+    const series =
+      party === 'CREATOR' && input.seriesId
+        ? await this.creators.requireMySeries(userId, input.seriesId)
+        : null;
     // 조회수 수당이 켜진 판본은 크리에이터가 인스타그램을 연동해야 수락할 수 있다. 사장님의 판본은 크리에이터가 수락할 때 본다.
     if (party === 'CREATOR') {
       const connected = (await this.instagram.getConnection(userId)) !== null;
@@ -453,7 +459,7 @@ export class OffersService {
       author: party,
       readVersion: row.latestVersion,
       terms,
-      ...proposalExtras(party, input),
+      ...proposalExtras(party, input, series),
       now,
       expiresAt,
     });
@@ -489,6 +495,86 @@ export class OffersService {
       }));
     }
     return versionModelOf(created);
+  }
+
+  // 크리에이터가 가게 페이지에서 "내 방식으로 제안"을 보낸다. 검사 순서: 역할 → 공개된 가게 → 내 가게 아님 → 프로필 → 조건 → 시리즈 → 인스타그램 → 열린 오퍼.
+  // 열린 오퍼가 없으면 오퍼를 새로 만든다: 판본 1은 가게의 모집 조건, 판본 2가 이 제안이고 응답할 차례는 사장님이다.
+  // 열린 오퍼가 있고 내 차례면 판본 내기와 같은 길로 다음 판본을 낸다. 사장님 차례거나 이미 수락됐으면 409다.
+  async proposeToStore(
+    userId: string,
+    storeId: string,
+    input: StoreProposalDto,
+  ): Promise<{ offerId: string; version: number }> {
+    await this.assertRole(userId, 'CREATOR', '크리에이터 계정만 쓸 수 있어요.');
+    const card = UUID.test(storeId) ? await this.card(storeId) : null;
+    if (!card) throw new AppError('NOT_FOUND', '가게를 찾을 수 없어요.');
+    if (card.ownerId === userId) {
+      throw new AppError('CONFLICT', '내 가게에는 제안할 수 없어요.');
+    }
+    await this.creators.requireProfile(userId);
+    // 비운 값은 가게의 모집 조건(판본 1)으로 채운다.
+    const storeTerms = card.summary.defaultTerms;
+    const terms = buildTerms(input, storeTerms);
+    const series = input.seriesId
+      ? await this.creators.requireMySeries(userId, input.seriesId)
+      : null;
+    const connected = (await this.instagram.getConnection(userId)) !== null;
+    if (needsInstagram(terms, connected)) {
+      throw new AppError('CONFLICT', '인스타그램을 연동하면 수락할 수 있어요.');
+    }
+
+    const now = this.clock.now();
+    // 기한이 지난 오퍼가 막지 않도록, 열린 오퍼를 보기 전에 만료를 저장한다.
+    let open: OfferRow | null = null;
+    for (const row of await this.offers.findOpen(
+      card.summary.id,
+      userId,
+      now,
+    )) {
+      const settled = await this.settle(row, now);
+      if (settled && this.isOpen(settled, now)) open = settled;
+    }
+    if (open) {
+      // 내 차례인 SENT만 다음 판본으로 이어 간다. 그 밖(사장님 차례, 수락됨, 방금 한 거절)은 진행 중인 제안이다.
+      if (open.status !== 'SENT' || open.turn !== 'CREATOR') {
+        throw this.alreadyProposed();
+      }
+      const created = await this.proposeVersion(userId, open.id, input);
+      return { offerId: open.id, version: created.number };
+    }
+
+    const expiresAt = new Date(
+      now.getTime() + PROPOSAL_POLICY.responseDays * DAY_MS,
+    );
+    const { idea, principles } = proposalExtras('CREATOR', input);
+    const created = await this.offers.createFromCreator(
+      {
+        storeId: card.summary.id,
+        creatorId: userId,
+        storeTerms,
+        terms,
+        idea,
+        principles,
+        series,
+        createdAt: now,
+        expiresAt,
+      },
+      // 지원이 있으면 오퍼 받음으로 잇고 없으면 만든다. 오퍼 만들기와 한 트랜잭션이라 둘이 함께 되돌아간다.
+      (tx) => this.applications.linkForProposal(card.summary.id, userId, tx),
+    );
+    // 동시에 낸 다른 제안이 먼저 오퍼를 만들었다.
+    if (!created) throw this.alreadyProposed();
+
+    await this.scheduleExpiry(created.id, 2, expiresAt);
+    await this.notify(async () => ({
+      userId: card.ownerId,
+      role: 'STORE',
+      kind: 'OFFER_COUNTERED',
+      actor: await this.actorOf(userId),
+      target: { kind: 'PROPOSAL', id: created.id },
+      dedupeKey: `offer-version:${created.id}:2`,
+    }));
+    return { offerId: created.id, version: 2 };
   }
 
   // 사유를 골라 제안을 끝낸다(양쪽 모두, 되돌릴 수 없다). 최신 판본을 쓴 쪽이 끝내면 CANCELLED, 받은 쪽이 끝내면 DECLINED다.
@@ -979,6 +1065,10 @@ export class OffersService {
 
   private notYourTurn(): AppError {
     return new AppError('CONFLICT', '지금은 상대가 답할 차례예요.');
+  }
+
+  private alreadyProposed(): AppError {
+    return new AppError('CONFLICT', '이미 진행 중인 제안이 있어요.');
   }
 
   private alreadyHandled(): AppError {

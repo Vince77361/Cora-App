@@ -74,6 +74,15 @@ void main() {
 
     //
     //
+    // 크리에이터가 가게 페이지에서 내 방식으로 제안한다. 열린 오퍼가 없으면 새 오퍼(판본 1은 가게의 모집 조건, 판본 2가 이 제안)를 만들고, 내 차례인 열린 오퍼가 있으면 다음 판본을 낸다.
+    //
+    //Future<StoreProposalResultModel> proposeToStore(String id, StoreProposalDto storeProposalDto) async
+    test('test proposeToStore', () async {
+      // TODO
+    });
+
+    //
+    //
     //Future<SentOfferModel> sendOffer(SendOfferDto sendOfferDto) async
     test('test sendOffer', () async {
       // TODO

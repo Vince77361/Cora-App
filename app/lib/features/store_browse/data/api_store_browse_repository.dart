@@ -50,7 +50,7 @@ class ApiStoreBrowseRepository implements StoreBrowseRepository {
 
   @override
   Future<void> apply(String storeId) =>
-      _guard(() => _applications.applyToStore(storeId));
+      _guard(() => _applications.applyToStore(storeId, api.ApplyDto()));
 
   @override
   Future<void> cancelApplication(String storeId) =>

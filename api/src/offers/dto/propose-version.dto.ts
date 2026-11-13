@@ -8,6 +8,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
   ValidateNested,
@@ -40,6 +41,16 @@ export class ProposeVersionDto {
   @IsOptional()
   @IsEnum(UsageRights)
   usageRights?: UsageRights;
+
+  @ApiProperty({
+    required: false,
+    format: 'uuid',
+    description:
+      '내 시리즈의 id. 이름·형식·설명이 판본에 사본으로 들어간다. 크리에이터만 쓴다.',
+  })
+  @IsOptional()
+  @IsUUID()
+  seriesId?: string;
 
   @ApiProperty({
     required: false,

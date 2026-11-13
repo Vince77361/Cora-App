@@ -17,6 +17,7 @@ Name | Type | Description | Notes
 **industry** | [**IndustryCategory**](IndustryCategory.md) |  | 
 **intro** | **String** |  | 
 **myApplicationStatus** | [**MyApplicationStatus**](MyApplicationStatus.md) | 내가 이 가게에 낸 지금 살아 있는 지원의 상태. 없으면 NONE. | 
+**myOpenOffer** | [**MyOpenOfferModel**](MyOpenOfferModel.md) | 내가 이 가게와 주고받는 열린 오퍼. 없으면 null. | 
 **name** | **String** |  | 
 **neighborhood** | **String** |  | 
 **regionSido** | **String** |  | 

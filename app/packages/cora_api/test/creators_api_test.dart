@@ -18,8 +18,22 @@ void main() {
   group('tests for CreatorsApi', () {
     //
     //
+    //Future<CreatorSeriesModel> createMyCreatorSeries(CreateCreatorSeriesDto createCreatorSeriesDto) async
+    test('test createMyCreatorSeries', () async {
+      // TODO
+    });
+
+    //
+    //
     //Future<CreatorProfileModel> getMyCreatorProfile() async
     test('test getMyCreatorProfile', () async {
+      // TODO
+    });
+
+    //
+    //
+    //Future<List<CreatorSeriesModel>> listMyCreatorSeries() async
+    test('test listMyCreatorSeries', () async {
       // TODO
     });
 
