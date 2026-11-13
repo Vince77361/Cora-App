@@ -1,4 +1,5 @@
 import '../../offer_terms/domain/offer_terms.dart';
+import '../../trial_compare/domain/trial_info.dart';
 import 'source_link.dart';
 
 /// 가게가 공개됐는지. 등록 중이면 `draft`.
@@ -54,6 +55,8 @@ class MyStore {
     this.tags = const [],
     this.customerPhrases = const [],
     this.recruitLine,
+    this.trialInfo,
+    this.trialBanner,
   });
 
   final String id;
@@ -86,6 +89,12 @@ class MyStore {
   final List<String> tags;
   final List<String> customerPhrases;
   final String? recruitLine;
+
+  /// 사장님이 넣은 체험단 계약 정보. 없으면 null.
+  final TrialInfo? trialInfo;
+
+  /// 사장님 홈에 보일 체험단 줄. 언제 보일지는 서버가 정한다. 없으면 null.
+  final TrialBannerKind? trialBanner;
 
   bool get isPublished => status == StoreStatus.published;
 

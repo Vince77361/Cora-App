@@ -3,6 +3,7 @@ import 'package:cora_api/api.dart' as api;
 import '../../../core/network/api_error.dart';
 import '../../offer_terms/data/offer_terms_from_wire.dart';
 import '../../offer_terms/domain/offer_terms.dart';
+import '../../trial_compare/domain/trial_info.dart';
 import '../domain/my_store.dart';
 import '../domain/source_link.dart';
 import '../domain/store_repository.dart';
@@ -204,6 +205,12 @@ MyStore _toStore(api.MyStoreModel m) => MyStore(
   tags: m.tags,
   customerPhrases: m.customerPhrases,
   recruitLine: m.recruitLine,
+  trialInfo: _toTrialInfo(m.trialInfo),
+  trialBanner: switch (m.trialBanner) {
+    api.TrialBanner.COMPARE => TrialBannerKind.compare,
+    api.TrialBanner.HINT => TrialBannerKind.hint,
+    _ => null,
+  },
   defaultTerms: m.defaultTerms == null
       ? null
       : offerTermsFromWire(m.defaultTerms!),
@@ -251,3 +258,15 @@ api.IndustryCategory _industryToWire(IndustryCategory c) => _industries[c]!;
 
 IndustryCategory _industryFromWire(api.IndustryCategory c) =>
     _industries.entries.firstWhere((e) => e.value == c).key;
+
+/// 서버의 체험단 계약 정보. 종료일은 날짜만 의미가 있다.
+TrialInfo? _toTrialInfo(api.TrialInfoModel? m) {
+  if (m == null) return null;
+  final endsOn = parseTrialDate(m.endsOn);
+  if (endsOn == null) return null;
+  return TrialInfo(
+    monthlyFee: m.monthlyFee.toInt(),
+    endsOn: endsOn,
+    postCount: m.postCount.toInt(),
+  );
+}

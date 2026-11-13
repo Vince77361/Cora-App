@@ -39,6 +39,8 @@ import 'features/offers/domain/received_offers_repository.dart';
 import 'features/payment/data/api_payment_repository.dart';
 import 'features/payment/domain/payment_repository.dart';
 import 'features/server_config/data/api_server_config_repository.dart';
+import 'features/trial_compare/data/api_trial_compare_repository.dart';
+import 'features/trial_compare/domain/trial_compare_repository.dart';
 import 'features/server_config/domain/server_config_repository.dart';
 import 'features/proposals/data/api_counter_proposal_repository.dart';
 import 'features/proposals/data/api_proposal_repository.dart';
@@ -125,6 +127,9 @@ Future<void> main() async {
         ),
         applicantPicksRepositoryProvider.overrideWith(
           (ref) => ApiApplicantPicksRepository(ref.watch(apiClientProvider)),
+        ),
+        trialCompareRepositoryProvider.overrideWith(
+          (ref) => ApiTrialCompareRepository(ref.watch(apiClientProvider)),
         ),
         storeResultRepositoryProvider.overrideWith(
           (ref) => ApiStoreResultRepository(ref.watch(apiClientProvider)),

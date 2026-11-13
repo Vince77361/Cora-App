@@ -4,6 +4,7 @@ import 'package:cora/features/offer_terms/domain/offer_terms.dart';
 import 'package:cora/features/store_onboarding/domain/my_store.dart';
 import 'package:cora/features/store_onboarding/domain/source_link.dart';
 import 'package:cora/features/store_onboarding/domain/store_repository.dart';
+import 'package:cora/features/trial_compare/domain/trial_info.dart';
 
 /// 캔버스 A3의 견본 가게(`한그릇 라멘`).
 MyStore sampleStore({
@@ -19,6 +20,8 @@ MyStore sampleStore({
   List<String> tags = const ['진한국물', '바좌석', '조용한오후'],
   List<String> customerPhrases = const ['국물이 진해요', '혼밥하기 좋아요'],
   String? recruitLine,
+  TrialInfo? trialInfo,
+  TrialBannerKind? trialBanner,
 }) => MyStore(
   id: 'store-1',
   status: status,
@@ -40,6 +43,8 @@ MyStore sampleStore({
   tags: tags,
   customerPhrases: customerPhrases,
   recruitLine: recruitLine,
+  trialInfo: trialInfo,
+  trialBanner: trialBanner,
   sourceLinks:
       sourceLinks ??
       const [
@@ -97,6 +102,9 @@ MyStore _copy(
   List<String>? customerPhrases,
   String? recruitLine,
   StoreStatus? status,
+  bool replaceTrial = false,
+  TrialInfo? trialInfo,
+  TrialBannerKind? trialBanner,
 }) => MyStore(
   id: s.id,
   status: status ?? s.status,
@@ -120,7 +128,14 @@ MyStore _copy(
   tags: tags ?? s.tags,
   customerPhrases: customerPhrases ?? s.customerPhrases,
   recruitLine: recruitLine ?? s.recruitLine,
+  // 체험단 정보는 지울 수 있어야 해서 [replaceTrial]일 때만 바꾼다(null이 지운다는 뜻).
+  trialInfo: replaceTrial ? trialInfo : s.trialInfo,
+  trialBanner: replaceTrial ? trialBanner : s.trialBanner,
 );
+
+/// 서버가 체험단 줄과 계약 정보를 바꾼 것을 흉내 낸다.
+MyStore withTrial(MyStore s, {TrialInfo? info, TrialBannerKind? banner}) =>
+    _copy(s, replaceTrial: true, trialInfo: info, trialBanner: banner);
 
 /// 손으로 쓴 가짜 가게 저장소. 서버가 가진 가게를 흉내 내고 실패와 지연을 정한다.
 class FakeStoreRepository implements StoreRepository {

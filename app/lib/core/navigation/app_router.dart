@@ -35,6 +35,8 @@ import '../../features/offers/presentation/pages/send_offer_page.dart';
 import '../../features/store_browse/presentation/pages/store_detail_page.dart';
 import '../../features/store_browse/presentation/pages/store_list_page.dart';
 import '../../features/store_home/presentation/pages/store_home_page.dart';
+import '../../features/trial_compare/presentation/pages/trial_compare_page.dart';
+import '../../features/trial_compare/presentation/pages/trial_info_page.dart';
 import '../../features/store_result/presentation/pages/store_result_page.dart';
 import '../../features/store_home/presentation/pages/store_me_page.dart';
 import '../../features/store_home/presentation/viewmodels/store_home_view_model.dart';
@@ -180,6 +182,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.storeMe,
         pageBuilder: (context, state) =>
             CoraTransitions.push(const StoreMePage(), key: state.pageKey),
+      ),
+      // 체험단 계약 정보 입력. 내 가게와 홈의 안내 줄이 연다.
+      GoRoute(
+        path: AppRoutes.storeTrialInfo,
+        pageBuilder: (context, state) =>
+            CoraTransitions.push(const TrialInfoPage(), key: state.pageKey),
+      ),
+      // 지난 3개월 비교(G3). 사장님 홈 위로 밀려 들어온다.
+      GoRoute(
+        path: AppRoutes.storeTrialCompare,
+        pageBuilder: (context, state) =>
+            CoraTransitions.push(const TrialComparePage(), key: state.pageKey),
       ),
       GoRoute(
         path: AppRoutes.storeDrafts,

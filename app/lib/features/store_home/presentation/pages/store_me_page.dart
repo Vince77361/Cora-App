@@ -12,12 +12,13 @@ import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../store_onboarding/presentation/viewmodels/my_store_view_model.dart';
 
 /// 내 가게(`/store/me`). 사장님 홈 머리의 가게 사진을 누르면 열린다. 캔버스에 없는 화면이라
-/// 가게 사진·이름 머리와 줄 네 개를 기존 토큰으로 최소로 만들었다.
+/// 가게 사진·이름 머리와 줄 다섯 개를 기존 토큰으로 최소로 만들었다.
 class StoreMePage extends ConsumerWidget {
   const StoreMePage({super.key});
 
   static const title = '내 가게';
   static const storePage = '가게 페이지';
+  static const trialInfo = '체험단 계약 정보';
   static const archive = '보관함';
   static const settings = '설정';
   static const signOut = '로그아웃';
@@ -97,6 +98,10 @@ class StoreMePage extends ConsumerWidget {
                     _Row(
                       label: storePage,
                       onTap: () => context.push(AppRoutes.storePage),
+                    ),
+                    _Row(
+                      label: trialInfo,
+                      onTap: () => context.push(AppRoutes.storeTrialInfo),
                     ),
                     _Row(label: archive, onTap: () => comingSoon(archive)),
                     _Row(label: settings, onTap: () => comingSoon(settings)),

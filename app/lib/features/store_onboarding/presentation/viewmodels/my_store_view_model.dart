@@ -51,6 +51,17 @@ class MyStoreViewModel extends AsyncNotifier<MyStore?> {
 
   Future<void> publish() => _apply(_repo.publish());
 
+  /// 서버의 지금 가게로 조용히 바꾼다. 불러오는 중으로 돌아가지 않아서(진입 화면이 다시 비지 않는다) 체험단
+  /// 줄처럼 다른 화면이 서버 값을 바꾼 뒤에 쓴다. 읽지 못하면 보던 값을 그대로 둔다.
+  Future<void> reload() async {
+    try {
+      final store = await _repo.fetchMine();
+      if (ref.mounted) state = AsyncData(store);
+    } on StoreFailure {
+      // 보던 값 유지.
+    }
+  }
+
   Future<void> _apply(Future<MyStore> call) async {
     final store = await call;
     if (ref.mounted) state = AsyncData(store);
