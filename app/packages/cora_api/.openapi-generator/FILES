@@ -119,6 +119,9 @@ doc/StoreSummaryModel.md
 doc/StoresApi.md
 doc/SubmissionsApi.md
 doc/SubmitContentDto.md
+doc/TrialBanner.md
+doc/TrialInfoDto.md
+doc/TrialInfoModel.md
 doc/UnreadCountModel.md
 doc/UpdateNotificationSettingsDto.md
 doc/UpdateRoleDto.md
@@ -267,6 +270,9 @@ lib/model/store_source_link_model.dart
 lib/model/store_status.dart
 lib/model/store_summary_model.dart
 lib/model/submit_content_dto.dart
+lib/model/trial_banner.dart
+lib/model/trial_info_dto.dart
+lib/model/trial_info_model.dart
 lib/model/unread_count_model.dart
 lib/model/update_notification_settings_dto.dart
 lib/model/update_role_dto.dart
@@ -401,6 +407,9 @@ test/store_summary_model_test.dart
 test/stores_api_test.dart
 test/submissions_api_test.dart
 test/submit_content_dto_test.dart
+test/trial_banner_test.dart
+test/trial_info_dto_test.dart
+test/trial_info_model_test.dart
 test/unread_count_model_test.dart
 test/update_notification_settings_dto_test.dart
 test/update_role_dto_test.dart

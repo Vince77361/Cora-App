@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -9,7 +10,12 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { AdvanceOnboardingDto } from './dto/advance-onboarding.dto';
@@ -22,6 +28,7 @@ import {
 import { StoreBranchModel } from './dto/store-branch.model';
 import { SetDefaultTermsDto } from './dto/set-default-terms.dto';
 import { StoreDetailModel, StoreSummaryModel } from './dto/store-public.model';
+import { TrialInfoDto } from './dto/trial-info.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { StoresService } from './stores.service';
 
@@ -101,6 +108,41 @@ export class StoresController {
     @Body() dto: SetDefaultTermsDto,
   ): Promise<MyStoreModel> {
     return this.stores.setDefaultTerms(user.userId, dto);
+  }
+
+  @Put('me/trial-info')
+  @HttpCode(200)
+  @ApiOperation({ operationId: 'putMyStoreTrialInfo' })
+  @ApiOkResponse({ type: MyStoreModel })
+  putTrialInfo(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: TrialInfoDto,
+  ): Promise<MyStoreModel> {
+    return this.stores.putTrialInfo(user.userId, dto);
+  }
+
+  @Delete('me/trial-info')
+  @HttpCode(204)
+  @ApiOperation({ operationId: 'deleteMyStoreTrialInfo' })
+  @ApiNoContentResponse()
+  deleteTrialInfo(@CurrentUser() user: AuthUser): Promise<void> {
+    return this.stores.deleteTrialInfo(user.userId);
+  }
+
+  @Post('me/trial-info/snooze')
+  @HttpCode(204)
+  @ApiOperation({ operationId: 'snoozeMyStoreTrialCompare' })
+  @ApiNoContentResponse()
+  snoozeTrialCompare(@CurrentUser() user: AuthUser): Promise<void> {
+    return this.stores.snoozeTrialCompare(user.userId);
+  }
+
+  @Post('me/trial-info/hint-seen')
+  @HttpCode(204)
+  @ApiOperation({ operationId: 'markMyStoreTrialHintSeen' })
+  @ApiNoContentResponse()
+  markTrialHintSeen(@CurrentUser() user: AuthUser): Promise<void> {
+    return this.stores.markTrialHintSeen(user.userId);
   }
 
   @Post('me/publish')

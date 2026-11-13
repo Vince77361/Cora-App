@@ -129,5 +129,16 @@ void main() {
     test('to test the property `tags`', () async {
       // TODO
     });
+
+    // COMPARE: 종료일이 30일 안이라 비교를 보여 준다. HINT: 계약 정보를 넣으면 비교해 준다는 안내를 한 번 보여 준다.
+    // TrialBanner trialBanner
+    test('to test the property `trialBanner`', () async {
+      // TODO
+    });
+
+    // TrialInfoModel trialInfo
+    test('to test the property `trialInfo`', () async {
+      // TODO
+    });
   });
 }

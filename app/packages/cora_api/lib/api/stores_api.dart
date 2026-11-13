@@ -210,6 +210,48 @@ class StoresApi {
   ///
   ///
   /// Note: This method returns the HTTP [Response].
+  Future<Response> deleteMyStoreTrialInfoWithHttpInfo({
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/stores/me/trial-info';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+    return apiClient.invokeAPI(
+      path,
+      'DELETE',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  ///
+  Future<void> deleteMyStoreTrialInfo({
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await deleteMyStoreTrialInfoWithHttpInfo(
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+  }
+
+  ///
+  ///
+  /// Note: This method returns the HTTP [Response].
   ///
   /// Parameters:
   ///
@@ -450,6 +492,48 @@ class StoresApi {
   ///
   ///
   /// Note: This method returns the HTTP [Response].
+  Future<Response> markMyStoreTrialHintSeenWithHttpInfo({
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/stores/me/trial-info/hint-seen';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  ///
+  Future<void> markMyStoreTrialHintSeen({
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await markMyStoreTrialHintSeenWithHttpInfo(
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+  }
+
+  ///
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> publishMyStoreWithHttpInfo({
     Future<void>? abortTrigger,
   }) async {
@@ -482,6 +566,70 @@ class StoresApi {
     Future<void>? abortTrigger,
   }) async {
     final response = await publishMyStoreWithHttpInfo(
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(
+        await _decodeBodyBytes(response),
+        'MyStoreModel',
+      ) as MyStoreModel;
+    }
+    return null;
+  }
+
+  ///
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [TrialInfoDto] trialInfoDto (required):
+  Future<Response> putMyStoreTrialInfoWithHttpInfo(
+    TrialInfoDto trialInfoDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/stores/me/trial-info';
+
+    // ignore: prefer_final_locals
+    Object? postBody = trialInfoDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+    return apiClient.invokeAPI(
+      path,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  ///
+  ///
+  /// Parameters:
+  ///
+  /// * [TrialInfoDto] trialInfoDto (required):
+  Future<MyStoreModel?> putMyStoreTrialInfo(
+    TrialInfoDto trialInfoDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await putMyStoreTrialInfoWithHttpInfo(
+      trialInfoDto,
       abortTrigger: abortTrigger,
     );
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -562,6 +710,48 @@ class StoresApi {
       ) as MyStoreModel;
     }
     return null;
+  }
+
+  ///
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> snoozeMyStoreTrialCompareWithHttpInfo({
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/stores/me/trial-info/snooze';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  ///
+  Future<void> snoozeMyStoreTrialCompare({
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await snoozeMyStoreTrialCompareWithHttpInfo(
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
   }
 
   ///

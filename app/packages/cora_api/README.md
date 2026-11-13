@@ -106,12 +106,16 @@ Class | Method | HTTP request | Description
 *StoresApi* | [**advanceMyStoreOnboarding**](doc//StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
 *StoresApi* | [**analyzeMyStoreLinks**](doc//StoresApi.md#analyzemystorelinks) | **POST** /stores/me/analyze | 
 *StoresApi* | [**createMyStoreManually**](doc//StoresApi.md#createmystoremanually) | **POST** /stores/me/manual | 
+*StoresApi* | [**deleteMyStoreTrialInfo**](doc//StoresApi.md#deletemystoretrialinfo) | **DELETE** /stores/me/trial-info | 
 *StoresApi* | [**findMyStoreBranches**](doc//StoresApi.md#findmystorebranches) | **GET** /stores/me/branches | 
 *StoresApi* | [**getMyStore**](doc//StoresApi.md#getmystore) | **GET** /stores/me | 
 *StoresApi* | [**getPublishedStore**](doc//StoresApi.md#getpublishedstore) | **GET** /stores/{id} | 
 *StoresApi* | [**listPublishedStores**](doc//StoresApi.md#listpublishedstores) | **GET** /stores | 
+*StoresApi* | [**markMyStoreTrialHintSeen**](doc//StoresApi.md#markmystoretrialhintseen) | **POST** /stores/me/trial-info/hint-seen | 
 *StoresApi* | [**publishMyStore**](doc//StoresApi.md#publishmystore) | **POST** /stores/me/publish | 
+*StoresApi* | [**putMyStoreTrialInfo**](doc//StoresApi.md#putmystoretrialinfo) | **PUT** /stores/me/trial-info | 
 *StoresApi* | [**setMyStoreDefaultTerms**](doc//StoresApi.md#setmystoredefaultterms) | **PUT** /stores/me/default-terms | 
+*StoresApi* | [**snoozeMyStoreTrialCompare**](doc//StoresApi.md#snoozemystoretrialcompare) | **POST** /stores/me/trial-info/snooze | 
 *StoresApi* | [**updateMyStore**](doc//StoresApi.md#updatemystore) | **PATCH** /stores/me | 
 *SubmissionsApi* | [**submitContentLink**](doc//SubmissionsApi.md#submitcontentlink) | **POST** /collaborations/{id}/submission | 
 *UploadsApi* | [**createPhotoUpload**](doc//UploadsApi.md#createphotoupload) | **POST** /uploads/photos | 
@@ -225,6 +229,9 @@ Class | Method | HTTP request | Description
  - [StoreStatus](doc//StoreStatus.md)
  - [StoreSummaryModel](doc//StoreSummaryModel.md)
  - [SubmitContentDto](doc//SubmitContentDto.md)
+ - [TrialBanner](doc//TrialBanner.md)
+ - [TrialInfoDto](doc//TrialInfoDto.md)
+ - [TrialInfoModel](doc//TrialInfoModel.md)
  - [UnreadCountModel](doc//UnreadCountModel.md)
  - [UpdateNotificationSettingsDto](doc//UpdateNotificationSettingsDto.md)
  - [UpdateRoleDto](doc//UpdateRoleDto.md)

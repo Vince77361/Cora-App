@@ -39,6 +39,8 @@ interface StoreBody {
   tags: string[];
   customerPhrases: string[];
   recruitLine: string | null;
+  trialInfo: { monthlyFee: number; endsOn: string; postCount: number } | null;
+  trialBanner: 'COMPARE' | 'HINT' | null;
   defaultTerms: Record<string, unknown> | null;
   sourceLinks: { kind: string; url: string; summary: string | null }[];
 }
@@ -496,6 +498,125 @@ describe('stores', () => {
     it('requires the STORE role', async () => {
       await setRole('CREATOR');
       await manual({ name: '가게' }).expect(403);
+    });
+  });
+
+  describe('trial info', () => {
+    const put = (body: Record<string, unknown>) =>
+      request(server).put('/stores/me/trial-info').set(auth).send(body);
+    const post = (path: string) =>
+      request(server).post(`/stores/me/trial-info/${path}`).set(auth).send();
+    const INFO = { monthlyFee: 300000, endsOn: '2026-12-10', postCount: 12 };
+
+    beforeEach(async () => {
+      // 한국 시간 2026-11-11 12:00
+      await analyze().expect(200);
+    });
+
+    it('saves, reads and deletes the contract info', async () => {
+      const res = await put(INFO).expect(200);
+      expect(res.body).toMatchObject({ trialInfo: INFO });
+      expect((await mine()).trialInfo).toEqual(INFO);
+      await request(server)
+        .delete('/stores/me/trial-info')
+        .set(auth)
+        .expect(204);
+      expect((await mine()).trialInfo).toBeNull();
+    });
+
+    it('shows the compare banner within 30 days of the trial end and hides it while snoozed', async () => {
+      await put({ ...INFO, endsOn: '2026-12-11' }).expect(200); // 30일 뒤
+      expect((await mine()).trialBanner).toBe('COMPARE');
+      await post('snooze').expect(204);
+      expect((await mine()).trialBanner).toBeNull();
+      const row = await prisma.store.findFirstOrThrow({
+        where: { ownerId: USER_A },
+      });
+      expect(row.trialSnoozedUntil).toEqual(
+        new Date('2026-11-18T03:00:00.000Z'),
+      );
+      clock.advance(7 * 24 * 3_600_000);
+      // 종료일(12-11)까지 아직 30일 안이라 숨김이 풀리면 다시 보인다.
+      expect((await mine()).trialBanner).toBe('COMPARE');
+    });
+
+    it('shows no compare banner before 30 days out or after the end', async () => {
+      await put({ ...INFO, endsOn: '2026-12-12' }).expect(200); // 31일 뒤
+      expect((await mine()).trialBanner).toBeNull();
+      await put({ ...INFO, endsOn: '2026-11-10' }).expect(200); // 어제 끝남
+      expect((await mine()).trialBanner).toBeNull();
+      await put({ ...INFO, endsOn: '2026-11-11' }).expect(200); // 오늘 끝남
+      expect((await mine()).trialBanner).toBe('COMPARE');
+    });
+
+    it('clears the snooze when the info is saved again', async () => {
+      await put(INFO).expect(200);
+      await post('snooze').expect(204);
+      await put({ ...INFO, postCount: 13 }).expect(200);
+      expect((await mine()).trialBanner).toBe('COMPARE');
+    });
+
+    it('shows the hint once for a store with a review post link and no trial info', async () => {
+      expect((await mine()).trialBanner).toBeNull();
+      await analyze([
+        ...LINKS,
+        { kind: 'REVIEW_POST', url: 'https://blog.naver.com/a/1' },
+      ]).expect(200);
+      expect((await mine()).trialBanner).toBe('HINT');
+      await post('hint-seen').expect(204);
+      expect((await mine()).trialBanner).toBeNull();
+      // 두 번째로 눌러도 처음 본 시각이 그대로다.
+      const first = await prisma.store.findFirstOrThrow({
+        where: { ownerId: USER_A },
+      });
+      clock.advance(3_600_000);
+      await post('hint-seen').expect(204);
+      const second = await prisma.store.findFirstOrThrow({
+        where: { ownerId: USER_A },
+      });
+      expect(second.trialHintSeenAt).toEqual(first.trialHintSeenAt);
+    });
+
+    it('does not show the hint for a store that already has trial info', async () => {
+      await analyze([
+        ...LINKS,
+        { kind: 'REVIEW_POST', url: 'https://blog.naver.com/a/1' },
+      ]).expect(200);
+      await put({ ...INFO, endsOn: '2027-06-01' }).expect(200);
+      expect((await mine()).trialBanner).toBeNull();
+    });
+
+    it('rejects invalid values', async () => {
+      await put({ ...INFO, monthlyFee: 0 }).expect(400);
+      await put({ ...INFO, monthlyFee: 1.5 }).expect(400);
+      await put({ ...INFO, monthlyFee: 100000001 }).expect(400);
+      await put({ ...INFO, postCount: 0 }).expect(400);
+      await put({ ...INFO, endsOn: '2026-02-30' }).expect(400);
+      await put({ ...INFO, endsOn: '2026/12/10' }).expect(400);
+      await put({ ...INFO, endsOn: '12월 10일' }).expect(400);
+      await put({ monthlyFee: 300000 }).expect(400);
+      await put({ ...INFO, extra: 1 }).expect(400);
+      expect((await mine()).trialInfo).toBeNull();
+    });
+
+    it('requires a token, a store and the STORE role', async () => {
+      await request(server).put('/stores/me/trial-info').send(INFO).expect(401);
+      await request(server).post('/stores/me/trial-info/snooze').expect(401);
+      await setRole('CREATOR');
+      await put(INFO).expect(403);
+      await post('snooze').expect(403);
+      await request(server)
+        .delete('/stores/me/trial-info')
+        .set(auth)
+        .expect(403);
+    });
+
+    it('returns 404 before the store exists', async () => {
+      await truncateTestDb(prisma);
+      await setRole('STORE');
+      await put(INFO).expect(404);
+      await post('snooze').expect(404);
+      await post('hint-seen').expect(404);
     });
   });
 

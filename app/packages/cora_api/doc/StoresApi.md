@@ -12,12 +12,16 @@ Method | HTTP request | Description
 [**advanceMyStoreOnboarding**](StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
 [**analyzeMyStoreLinks**](StoresApi.md#analyzemystorelinks) | **POST** /stores/me/analyze | 
 [**createMyStoreManually**](StoresApi.md#createmystoremanually) | **POST** /stores/me/manual | 
+[**deleteMyStoreTrialInfo**](StoresApi.md#deletemystoretrialinfo) | **DELETE** /stores/me/trial-info | 
 [**findMyStoreBranches**](StoresApi.md#findmystorebranches) | **GET** /stores/me/branches | 
 [**getMyStore**](StoresApi.md#getmystore) | **GET** /stores/me | 
 [**getPublishedStore**](StoresApi.md#getpublishedstore) | **GET** /stores/{id} | 
 [**listPublishedStores**](StoresApi.md#listpublishedstores) | **GET** /stores | 
+[**markMyStoreTrialHintSeen**](StoresApi.md#markmystoretrialhintseen) | **POST** /stores/me/trial-info/hint-seen | 
 [**publishMyStore**](StoresApi.md#publishmystore) | **POST** /stores/me/publish | 
+[**putMyStoreTrialInfo**](StoresApi.md#putmystoretrialinfo) | **PUT** /stores/me/trial-info | 
 [**setMyStoreDefaultTerms**](StoresApi.md#setmystoredefaultterms) | **PUT** /stores/me/default-terms | 
+[**snoozeMyStoreTrialCompare**](StoresApi.md#snoozemystoretrialcompare) | **POST** /stores/me/trial-info/snooze | 
 [**updateMyStore**](StoresApi.md#updatemystore) | **PATCH** /stores/me | 
 
 
@@ -159,6 +163,48 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json
  - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **deleteMyStoreTrialInfo**
+> deleteMyStoreTrialInfo()
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = StoresApi();
+
+try {
+    api_instance.deleteMyStoreTrialInfo();
+} catch (e) {
+    print('Exception when calling StoresApi->deleteMyStoreTrialInfo: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -342,6 +388,48 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **markMyStoreTrialHintSeen**
+> markMyStoreTrialHintSeen()
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = StoresApi();
+
+try {
+    api_instance.markMyStoreTrialHintSeen();
+} catch (e) {
+    print('Exception when calling StoresApi->markMyStoreTrialHintSeen: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **publishMyStore**
 > MyStoreModel publishMyStore()
 
@@ -381,6 +469,53 @@ This endpoint does not need any parameter.
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **putMyStoreTrialInfo**
+> MyStoreModel putMyStoreTrialInfo(trialInfoDto)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = StoresApi();
+final trialInfoDto = TrialInfoDto(); // TrialInfoDto | 
+
+try {
+    final result = api_instance.putMyStoreTrialInfo(trialInfoDto);
+    print(result);
+} catch (e) {
+    print('Exception when calling StoresApi->putMyStoreTrialInfo: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **trialInfoDto** | [**TrialInfoDto**](TrialInfoDto.md)|  | 
+
+### Return type
+
+[**MyStoreModel**](MyStoreModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -429,6 +564,48 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json
  - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **snoozeMyStoreTrialCompare**
+> snoozeMyStoreTrialCompare()
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = StoresApi();
+
+try {
+    api_instance.snoozeMyStoreTrialCompare();
+} catch (e) {
+    print('Exception when calling StoresApi->snoozeMyStoreTrialCompare: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 

@@ -25,9 +25,11 @@ import { OfferTermsModel } from './dto/offer-terms.model';
 import { StoreBranchModel } from './dto/store-branch.model';
 import { SetDefaultTermsDto } from './dto/set-default-terms.dto';
 import { StoreDetailModel, StoreSummaryModel } from './dto/store-public.model';
+import { TrialInfoDto } from './dto/trial-info.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { buildTerms, hasAnyRewardElement, termsModelOf } from './reward-terms';
 import { slugify } from './slugify';
+import { trialBannerOf } from './trial-banner';
 import {
   StoreFields,
   StoresRepository,
@@ -217,6 +219,46 @@ export class StoresService {
     return this.toMyStore(
       await this.ensureSlug(await this.stores.update(store.id, data)),
     );
+  }
+
+  // 체험단 계약 정보를 저장한다(F8 비교와 홈의 줄이 쓴다). 등록 중이든 공개 뒤든 고칠 수 있다.
+  async putTrialInfo(
+    userId: string,
+    input: TrialInfoDto,
+  ): Promise<MyStoreModel> {
+    await this.assertStoreRole(userId);
+    const store = await this.requireMine(userId);
+    return this.toMyStore(
+      await this.stores.setTrialInfo(store.id, {
+        monthlyFee: input.monthlyFee,
+        // 날짜만 저장하는 열이라 UTC 0시로 넣어도 날짜가 밀리지 않는다.
+        endsOn: new Date(`${input.endsOn}T00:00:00.000Z`),
+        postCount: input.postCount,
+      }),
+    );
+  }
+
+  async deleteTrialInfo(userId: string): Promise<void> {
+    await this.assertStoreRole(userId);
+    const store = await this.requireMine(userId);
+    await this.stores.clearTrialInfo(store.id);
+  }
+
+  // "나중에": 7일 동안 비교 줄을 숨긴다.
+  async snoozeTrialCompare(userId: string): Promise<void> {
+    await this.assertStoreRole(userId);
+    const store = await this.requireMine(userId);
+    const until = new Date(
+      this.clock.now().getTime() +
+        STORE_PAGE_POLICY.trialSnoozeDays * 24 * 60 * 60 * 1000,
+    );
+    await this.stores.snoozeTrialCompare(store.id, until);
+  }
+
+  async markTrialHintSeen(userId: string): Promise<void> {
+    await this.assertStoreRole(userId);
+    const store = await this.requireMine(userId);
+    await this.stores.markTrialHintSeen(store.id, this.clock.now());
   }
 
   // 앞 단계로만 간다. 같거나 뒤 단계 요청은 바꾸지 않고 지금 상태를 돌려준다.
@@ -468,6 +510,25 @@ export class StoresService {
       tags: store.tags,
       customerPhrases: store.customerPhrases,
       recruitLine: store.recruitLine,
+      trialInfo:
+        store.trialMonthlyFee !== null &&
+        store.trialEndsOn !== null &&
+        store.trialPostCount !== null
+          ? {
+              monthlyFee: store.trialMonthlyFee,
+              endsOn: store.trialEndsOn.toISOString().slice(0, 10),
+              postCount: store.trialPostCount,
+            }
+          : null,
+      trialBanner: trialBannerOf(
+        {
+          ...store,
+          hasReviewPostLink: store.sourceLinks.some(
+            (link) => link.kind === 'REVIEW_POST',
+          ),
+        },
+        this.clock.now(),
+      ),
       defaultTerms: this.termsOf(store),
       sourceLinks: store.sourceLinks.map((link) => ({
         kind: link.kind,

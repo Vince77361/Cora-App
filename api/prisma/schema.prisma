@@ -159,6 +159,13 @@ model Store {
   customerPhrases            String[]            @default([]) @map("customer_phrases")
   // 크리에이터에게 보이는 모집 한 줄.
   recruitLine                String?             @map("recruit_line")
+  // 체험단 계약 정보(사장님이 직접 넣는다): 월 금액, 종료일(한국 날짜), 석 달 동안 받은 글 수.
+  trialMonthlyFee            Int?                @map("trial_monthly_fee")
+  trialEndsOn                DateTime?           @map("trial_ends_on") @db.Date
+  trialPostCount             Int?                @map("trial_post_count")
+  // 비교 줄을 "나중에"로 숨긴 시각 까지(7일), 계약 정보 안내를 이미 본 시각.
+  trialSnoozedUntil          DateTime?           @map("trial_snoozed_until") @db.Timestamptz(3)
+  trialHintSeenAt            DateTime?           @map("trial_hint_seen_at") @db.Timestamptz(3)
   defaultFormat              ContentFormat?      @map("default_format")
   defaultVoucherName         String?             @map("default_voucher_name")
   defaultVoucherValue        Int?                @map("default_voucher_value")

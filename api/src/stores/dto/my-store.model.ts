@@ -5,6 +5,8 @@ import {
   StoreOnboardingStep,
   StoreStatus,
 } from '@prisma/client';
+import { TRIAL_BANNERS } from '../trial-banner';
+import type { TrialBanner } from '../trial-banner';
 import { OfferTermsModel } from './offer-terms.model';
 
 export class StoreSourceLinkModel {
@@ -16,6 +18,21 @@ export class StoreSourceLinkModel {
 
   @ApiProperty({ type: String, nullable: true })
   summary!: string | null;
+}
+
+// 사장님이 직접 넣은 체험단 계약 정보.
+export class TrialInfoModel {
+  @ApiProperty({ description: '월 계약 금액(원).' })
+  monthlyFee!: number;
+
+  @ApiProperty({
+    example: '2026-12-10',
+    description: '계약 종료일(YYYY-MM-DD).',
+  })
+  endsOn!: string;
+
+  @ApiProperty({ description: '석 달 동안 받은 글 수.' })
+  postCount!: number;
 }
 
 // 주인에게만 보이는 가게. 링크 주소와 등록 단계가 들어 있다.
@@ -87,6 +104,18 @@ export class MyStoreModel {
 
   @ApiProperty({ type: String, nullable: true })
   recruitLine!: string | null;
+
+  @ApiProperty({ type: TrialInfoModel, nullable: true })
+  trialInfo!: TrialInfoModel | null;
+
+  @ApiProperty({
+    enum: TRIAL_BANNERS,
+    enumName: 'TrialBanner',
+    nullable: true,
+    description:
+      'COMPARE: 종료일이 30일 안이라 비교를 보여 준다. HINT: 계약 정보를 넣으면 비교해 준다는 안내를 한 번 보여 준다.',
+  })
+  trialBanner!: TrialBanner | null;
 
   @ApiProperty({ type: OfferTermsModel, nullable: true })
   defaultTerms!: OfferTermsModel | null;

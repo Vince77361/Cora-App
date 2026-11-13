@@ -154,6 +154,43 @@ class FakeStoresRepository extends StoresRepository {
     return Promise.resolve(Object.assign(this.byId(storeId), data));
   }
 
+  setTrialInfo(
+    storeId: string,
+    info: { monthlyFee: number; endsOn: Date; postCount: number },
+  ): Promise<StoreWithLinks> {
+    return Promise.resolve(
+      Object.assign(this.byId(storeId), {
+        trialMonthlyFee: info.monthlyFee,
+        trialEndsOn: info.endsOn,
+        trialPostCount: info.postCount,
+        trialSnoozedUntil: null,
+      }),
+    );
+  }
+
+  clearTrialInfo(storeId: string): Promise<StoreWithLinks> {
+    return Promise.resolve(
+      Object.assign(this.byId(storeId), {
+        trialMonthlyFee: null,
+        trialEndsOn: null,
+        trialPostCount: null,
+        trialSnoozedUntil: null,
+      }),
+    );
+  }
+
+  snoozeTrialCompare(storeId: string, until: Date): Promise<StoreWithLinks> {
+    return Promise.resolve(
+      Object.assign(this.byId(storeId), { trialSnoozedUntil: until }),
+    );
+  }
+
+  markTrialHintSeen(storeId: string, now: Date): Promise<void> {
+    const store = this.byId(storeId);
+    store.trialHintSeenAt ??= now;
+    return Promise.resolve();
+  }
+
   saveManualDraft(
     ownerId: string,
     fields: StoreFields,
@@ -318,6 +355,11 @@ function makeStore(over: Partial<StoreWithLinks> = {}): StoreWithLinks {
     tags: [],
     customerPhrases: [],
     recruitLine: null,
+    trialMonthlyFee: null,
+    trialEndsOn: null,
+    trialPostCount: null,
+    trialSnoozedUntil: null,
+    trialHintSeenAt: null,
     defaultFormat: null,
     defaultVoucherName: null,
     defaultVoucherValue: null,
@@ -530,6 +572,43 @@ describe('StoresService', () => {
       expect(await codeOf(service.findBranches(OWNER, '한그릇 라멘'))).toBe(
         'FORBIDDEN',
       );
+    });
+  });
+
+  describe('trial info', () => {
+    beforeEach(async () => {
+      await service.analyze(OWNER, LINKS);
+    });
+
+    it('saves the contract info and snoozes the compare banner for 7 days', async () => {
+      clock.set(new Date('2026-11-13T03:00:00.000Z'));
+      const saved = await service.putTrialInfo(OWNER, {
+        monthlyFee: 300000,
+        endsOn: '2026-12-10',
+        postCount: 12,
+      });
+      expect(saved.trialInfo).toEqual({
+        monthlyFee: 300000,
+        endsOn: '2026-12-10',
+        postCount: 12,
+      });
+      expect(saved.trialBanner).toBe('COMPARE');
+      await service.snoozeTrialCompare(OWNER);
+      expect((await service.getMine(OWNER)).trialBanner).toBeNull();
+      clock.advance(7 * 24 * 60 * 60 * 1000);
+      expect((await service.getMine(OWNER)).trialBanner).toBe('COMPARE');
+    });
+
+    it('clears the info and needs the STORE role', async () => {
+      await service.putTrialInfo(OWNER, {
+        monthlyFee: 1,
+        endsOn: '2027-01-01',
+        postCount: 1,
+      });
+      await service.deleteTrialInfo(OWNER);
+      expect((await service.getMine(OWNER)).trialInfo).toBeNull();
+      users.role = 'CREATOR';
+      expect(await codeOf(service.snoozeTrialCompare(OWNER))).toBe('FORBIDDEN');
     });
   });
 

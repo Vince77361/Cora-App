@@ -158,6 +158,9 @@ String parameterToString(dynamic value) {
   if (value is StoreStatus) {
     return StoreStatusTypeTransformer().encode(value).toString();
   }
+  if (value is TrialBanner) {
+    return TrialBannerTypeTransformer().encode(value).toString();
+  }
   if (value is UsageRights) {
     return UsageRightsTypeTransformer().encode(value).toString();
   }

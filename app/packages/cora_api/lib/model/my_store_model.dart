@@ -35,6 +35,8 @@ class MyStoreModel {
     this.sourceLinks = const [],
     required this.status,
     this.tags = const [],
+    required this.trialBanner,
+    required this.trialInfo,
   });
 
   String? bestShootingTime;
@@ -85,6 +87,11 @@ class MyStoreModel {
   /// 꼬리표(# 없이).
   List<String> tags;
 
+  /// COMPARE: 종료일이 30일 안이라 비교를 보여 준다. HINT: 계약 정보를 넣으면 비교해 준다는 안내를 한 번 보여 준다.
+  TrialBanner? trialBanner;
+
+  TrialInfoModel? trialInfo;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -110,7 +117,9 @@ class MyStoreModel {
           other.slug == slug &&
           _deepEquality.equals(other.sourceLinks, sourceLinks) &&
           other.status == status &&
-          _deepEquality.equals(other.tags, tags);
+          _deepEquality.equals(other.tags, tags) &&
+          other.trialBanner == trialBanner &&
+          other.trialInfo == trialInfo;
 
   @override
   int get hashCode =>
@@ -136,11 +145,13 @@ class MyStoreModel {
       (slug == null ? 0 : slug!.hashCode) +
       (sourceLinks.hashCode) +
       (status.hashCode) +
-      (tags.hashCode);
+      (tags.hashCode) +
+      (trialBanner == null ? 0 : trialBanner!.hashCode) +
+      (trialInfo == null ? 0 : trialInfo!.hashCode);
 
   @override
   String toString() =>
-      'MyStoreModel[bestShootingTime=$bestShootingTime, category=$category, coverPhotoUrl=$coverPhotoUrl, customerPhrases=$customerPhrases, defaultTerms=$defaultTerms, hours=$hours, id=$id, industry=$industry, intro=$intro, name=$name, neighborhood=$neighborhood, onboardingStep=$onboardingStep, publicUrl=$publicUrl, recruitLine=$recruitLine, regionSido=$regionSido, regionSigungu=$regionSigungu, seats=$seats, signatureMenu=$signatureMenu, slug=$slug, sourceLinks=$sourceLinks, status=$status, tags=$tags]';
+      'MyStoreModel[bestShootingTime=$bestShootingTime, category=$category, coverPhotoUrl=$coverPhotoUrl, customerPhrases=$customerPhrases, defaultTerms=$defaultTerms, hours=$hours, id=$id, industry=$industry, intro=$intro, name=$name, neighborhood=$neighborhood, onboardingStep=$onboardingStep, publicUrl=$publicUrl, recruitLine=$recruitLine, regionSido=$regionSido, regionSigungu=$regionSigungu, seats=$seats, signatureMenu=$signatureMenu, slug=$slug, sourceLinks=$sourceLinks, status=$status, tags=$tags, trialBanner=$trialBanner, trialInfo=$trialInfo]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -226,6 +237,16 @@ class MyStoreModel {
     json[r'sourceLinks'] = this.sourceLinks;
     json[r'status'] = this.status;
     json[r'tags'] = this.tags;
+    if (this.trialBanner != null) {
+      json[r'trialBanner'] = this.trialBanner;
+    } else {
+      json[r'trialBanner'] = null;
+    }
+    if (this.trialInfo != null) {
+      json[r'trialInfo'] = this.trialInfo;
+    } else {
+      json[r'trialInfo'] = null;
+    }
     return json;
   }
 
@@ -298,6 +319,10 @@ class MyStoreModel {
             'Required key "MyStoreModel[tags]" is missing from JSON.');
         assert(json[r'tags'] != null,
             'Required key "MyStoreModel[tags]" has a null value in JSON.');
+        assert(json.containsKey(r'trialBanner'),
+            'Required key "MyStoreModel[trialBanner]" is missing from JSON.');
+        assert(json.containsKey(r'trialInfo'),
+            'Required key "MyStoreModel[trialInfo]" is missing from JSON.');
         return true;
       }());
 
@@ -330,6 +355,8 @@ class MyStoreModel {
         tags: json[r'tags'] is Iterable
             ? (json[r'tags'] as Iterable).cast<String>().toList(growable: false)
             : const [],
+        trialBanner: TrialBanner.fromJson(json[r'trialBanner']),
+        trialInfo: TrialInfoModel.fromJson(json[r'trialInfo']),
       );
     }
     return null;
@@ -408,5 +435,7 @@ class MyStoreModel {
     'sourceLinks',
     'status',
     'tags',
+    'trialBanner',
+    'trialInfo',
   };
 }

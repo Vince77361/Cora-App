@@ -36,6 +36,8 @@ String _storeJson({String status = 'DRAFT', String step = 'PAGE'}) =>
       'tags': ['진한국물'],
       'customerPhrases': ['국물이 진해요'],
       'recruitLine': null,
+      'trialInfo': null,
+      'trialBanner': null,
       'defaultTerms': {
         'format': 'CARD_NEWS',
         'pieces': 1,

@@ -193,6 +193,52 @@ export class StoresRepository {
     });
   }
 
+  setTrialInfo(
+    storeId: string,
+    info: { monthlyFee: number; endsOn: Date; postCount: number },
+  ): Promise<StoreWithLinks> {
+    return this.prisma.store.update({
+      where: { id: storeId },
+      // 정보가 바뀌면 "나중에"로 숨긴 것도 풀어, 새 종료일 기준으로 다시 보여 준다.
+      data: {
+        trialMonthlyFee: info.monthlyFee,
+        trialEndsOn: info.endsOn,
+        trialPostCount: info.postCount,
+        trialSnoozedUntil: null,
+      },
+      include: WITH_LINKS,
+    });
+  }
+
+  clearTrialInfo(storeId: string): Promise<StoreWithLinks> {
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data: {
+        trialMonthlyFee: null,
+        trialEndsOn: null,
+        trialPostCount: null,
+        trialSnoozedUntil: null,
+      },
+      include: WITH_LINKS,
+    });
+  }
+
+  snoozeTrialCompare(storeId: string, until: Date): Promise<StoreWithLinks> {
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data: { trialSnoozedUntil: until },
+      include: WITH_LINKS,
+    });
+  }
+
+  // 처음 본 시각만 남긴다.
+  async markTrialHintSeen(storeId: string, now: Date): Promise<void> {
+    await this.prisma.store.updateMany({
+      where: { id: storeId, trialHintSeenAt: null },
+      data: { trialHintSeenAt: now },
+    });
+  }
+
   // 직접 입력으로 등록 중인 가게를 만들거나 덮어쓴다. 이미 저장된 링크는 건드리지 않는다.
   // 공개된 가게면 아무것도 바꾸지 않고 null이다(replaceDraft와 같은 조건부 갱신).
   async saveManualDraft(

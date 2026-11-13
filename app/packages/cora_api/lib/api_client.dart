@@ -410,6 +410,12 @@ class ApiClient {
           return StoreSummaryModel.fromJson(value);
         case 'SubmitContentDto':
           return SubmitContentDto.fromJson(value);
+        case 'TrialBanner':
+          return TrialBannerTypeTransformer().decode(value);
+        case 'TrialInfoDto':
+          return TrialInfoDto.fromJson(value);
+        case 'TrialInfoModel':
+          return TrialInfoModel.fromJson(value);
         case 'UnreadCountModel':
           return UnreadCountModel.fromJson(value);
         case 'UpdateNotificationSettingsDto':

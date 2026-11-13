@@ -30,6 +30,8 @@ Name | Type | Description | Notes
 **sourceLinks** | [**List<StoreSourceLinkModel>**](StoreSourceLinkModel.md) |  | [default to const []]
 **status** | [**StoreStatus**](StoreStatus.md) |  | 
 **tags** | **List<String>** | 꼬리표(# 없이). | [default to const []]
+**trialBanner** | [**TrialBanner**](TrialBanner.md) | COMPARE: 종료일이 30일 안이라 비교를 보여 준다. HINT: 계약 정보를 넣으면 비교해 준다는 안내를 한 번 보여 준다. | 
+**trialInfo** | [**TrialInfoModel**](TrialInfoModel.md) |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

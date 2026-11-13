@@ -1166,6 +1166,24 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "trialBanner": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TrialBanner"
+              }
+            ],
+            "description": "COMPARE: 종료일이 30일 안이라 비교를 보여 준다. HINT: 계약 정보를 넣으면 비교해 준다는 안내를 한 번 보여 준다.",
+            "nullable": true
+          },
+          "trialInfo": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TrialInfoModel"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
           }
         },
         "required": [
@@ -1189,6 +1207,8 @@
           "tags",
           "customerPhrases",
           "recruitLine",
+          "trialInfo",
+          "trialBanner",
           "defaultTerms",
           "sourceLinks"
         ],
@@ -2743,6 +2763,64 @@
         },
         "required": [
           "url"
+        ],
+        "type": "object"
+      },
+      "TrialBanner": {
+        "description": "COMPARE: 종료일이 30일 안이라 비교를 보여 준다. HINT: 계약 정보를 넣으면 비교해 준다는 안내를 한 번 보여 준다.",
+        "enum": [
+          "COMPARE",
+          "HINT"
+        ],
+        "type": "string"
+      },
+      "TrialInfoDto": {
+        "properties": {
+          "endsOn": {
+            "description": "계약 종료일(한국 날짜, YYYY-MM-DD).",
+            "example": "2026-12-10",
+            "type": "string"
+          },
+          "monthlyFee": {
+            "description": "월 계약 금액(원).",
+            "maximum": 100000000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "postCount": {
+            "description": "석 달 동안 받은 글 수.",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "monthlyFee",
+          "endsOn",
+          "postCount"
+        ],
+        "type": "object"
+      },
+      "TrialInfoModel": {
+        "properties": {
+          "endsOn": {
+            "description": "계약 종료일(YYYY-MM-DD).",
+            "example": "2026-12-10",
+            "type": "string"
+          },
+          "monthlyFee": {
+            "description": "월 계약 금액(원).",
+            "type": "number"
+          },
+          "postCount": {
+            "description": "석 달 동안 받은 글 수.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "monthlyFee",
+          "endsOn",
+          "postCount"
         ],
         "type": "object"
       },
@@ -5069,6 +5147,101 @@
         "summary": "",
         "tags": [
           "Offers"
+        ]
+      }
+    },
+    "/stores/me/trial-info": {
+      "delete": {
+        "operationId": "deleteMyStoreTrialInfo",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      },
+      "put": {
+        "operationId": "putMyStoreTrialInfo",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrialInfoDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyStoreModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/me/trial-info/hint-seen": {
+      "post": {
+        "operationId": "markMyStoreTrialHintSeen",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/me/trial-info/snooze": {
+      "post": {
+        "operationId": "snoozeMyStoreTrialCompare",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
         ]
       }
     },

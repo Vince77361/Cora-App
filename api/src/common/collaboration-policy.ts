@@ -59,6 +59,9 @@ export const STORE_PAGE_POLICY = {
   recruitLineMax: 40,
   trialBannerDays: 30,
   trialSnoozeDays: 7,
+  // 체험단 계약 정보 입력 범위(사장님이 직접 넣는 값이라 터무니없는 값만 막는다).
+  trialMonthlyFeeMax: 100000000,
+  trialPostCountMax: 1000,
   publicPageHost: 'cora.page',
 } as const;
 

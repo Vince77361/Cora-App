@@ -223,7 +223,22 @@ describe('store page fields', () => {
       tags: [],
       customerPhrases: [],
       recruitLine: null,
+      trialMonthlyFee: null,
+      trialEndsOn: null,
+      trialPostCount: null,
+      trialSnoozedUntil: null,
+      trialHintSeenAt: null,
     });
+  });
+
+  it('keeps the trial end as a date without a time zone shift', async () => {
+    await prisma.store.update({
+      where: { id: storeId },
+      data: { trialEndsOn: new Date('2026-12-10T00:00:00.000Z') },
+    });
+    const rows = await prisma.$queryRaw<{ day: string }[]>`
+      SELECT trial_ends_on::text AS day FROM stores WHERE id = ${storeId}::uuid`;
+    expect(rows[0].day).toBe('2026-12-10');
   });
 
   it('rejects the same slug on two stores', async () => {

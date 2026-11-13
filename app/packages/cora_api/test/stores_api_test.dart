@@ -39,6 +39,13 @@ void main() {
 
     //
     //
+    //Future deleteMyStoreTrialInfo() async
+    test('test deleteMyStoreTrialInfo', () async {
+      // TODO
+    });
+
+    //
+    //
     //Future<List<StoreBranchModel>> findMyStoreBranches(String name) async
     test('test findMyStoreBranches', () async {
       // TODO
@@ -67,6 +74,13 @@ void main() {
 
     //
     //
+    //Future markMyStoreTrialHintSeen() async
+    test('test markMyStoreTrialHintSeen', () async {
+      // TODO
+    });
+
+    //
+    //
     //Future<MyStoreModel> publishMyStore() async
     test('test publishMyStore', () async {
       // TODO
@@ -74,8 +88,22 @@ void main() {
 
     //
     //
+    //Future<MyStoreModel> putMyStoreTrialInfo(TrialInfoDto trialInfoDto) async
+    test('test putMyStoreTrialInfo', () async {
+      // TODO
+    });
+
+    //
+    //
     //Future<MyStoreModel> setMyStoreDefaultTerms(SetDefaultTermsDto setDefaultTermsDto) async
     test('test setMyStoreDefaultTerms', () async {
+      // TODO
+    });
+
+    //
+    //
+    //Future snoozeMyStoreTrialCompare() async
+    test('test snoozeMyStoreTrialCompare', () async {
       // TODO
     });
 
