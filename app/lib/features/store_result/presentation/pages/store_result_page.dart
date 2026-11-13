@@ -273,10 +273,11 @@ class _Hero extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         viewsLabel(views),
+                        // 캔버스는 줄 높이를 주지 않아(`normal`) 글자 크기의 1.448배다.
                         style: CoraTextStyles.display.copyWith(
                           fontSize: 30,
                           letterSpacing: -1.5,
-                          height: 1.3,
+                          height: 1.448,
                           color: c.onPhoto,
                         ),
                       ),
@@ -331,7 +332,7 @@ class _Comparison extends StatelessWidget {
                   style: CoraTextStyles.display.copyWith(
                     fontSize: 40,
                     letterSpacing: -2,
-                    height: 1.3,
+                    height: 1.448,
                     color: c.text,
                   ),
                 ),

@@ -179,14 +179,18 @@ class _Body extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            picksIntro(totalNew: state.totalNew, picked: state.total),
-            style: CoraTextStyles.meta.copyWith(color: c.textSecondary),
+        // 캔버스는 카드를 머리에서 100 아래(안내 글 36 아래)에 고정한다. 안내가 두 줄이어도 카드가 그 아래에서
+        // 시작하고, 글자가 커져 더 길어지면 카드가 그만큼 내려간다.
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 36),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              picksIntro(totalNew: state.totalNew, picked: state.total),
+              style: CoraTextStyles.meta.copyWith(color: c.textSecondary),
+            ),
           ),
         ),
-        const SizedBox(height: 17),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
