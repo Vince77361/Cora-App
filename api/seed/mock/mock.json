@@ -173,6 +173,38 @@
       "source": ["NStorePage.dc.html", "NStoreAI.dc.html", "NStoreHome.dc.html"]
     }
   ],
+  "storeFlow": {
+    "origin": "가게 흐름 개정(2026-11-12) 캔버스 NStorePage, NApplicants, NProposals, NCounter, NResult, NMetrics에서 옮긴 값이에요. sampleOnly에 적힌 항목만 캔버스에 값이 없어 시드용으로 정한 예시예요.",
+    "source": ["NStorePage.dc.html", "NApplicants.dc.html", "NProposals.dc.html", "NCounter.dc.html", "NResult.dc.html", "NMetrics.dc.html"],
+    "storePage": {
+      "slug": "hangeureut-ramen",
+      "tags": ["진한국물", "바좌석", "조용한오후"],
+      "customerPhrases": ["국물이 진해요", "혼밥하기 좋아요"],
+      "recruitLine": "첫 숟가락 릴스",
+      "instagramUrl": "https://www.instagram.com/hangeureut.ramen/"
+    },
+    "trial": { "monthlyFee": 300000, "postCount": 9, "endsInDays": 28 },
+    "pitches": {
+      "onecup": "김 오르는 첫 숟가락을 슬로모션으로 찍을게요",
+      "min": "출근 전 라멘 한 그릇, 손만 나오게 찍을게요",
+      "seoyun": "바 좌석 18석의 조용한 오후를 담을게요"
+    },
+    "counterOffer": {
+      "creator": "onecup",
+      "format": "CARD_NEWS",
+      "fixedCash": 30000,
+      "idea": "성수동 골목의 라멘 한 그릇을 카드뉴스 5장으로 보여 줄게요.",
+      "principles": ["#얼굴출연없음"],
+      "series": "동네 점심 지도"
+    },
+    "series": [
+      { "name": "한 그릇 일기", "format": "REELS", "note": "30초 릴스 · 손 중심" },
+      { "name": "동네 점심 지도", "format": "CARD_NEWS", "note": "카드뉴스 5장" },
+      { "name": "소리로 먹는 집", "format": "REELS", "note": "ASMR 릴스" }
+    ],
+    "result": { "creator": "onecup", "views": 12500, "usualViews": 4000, "postUrl": "https://www.instagram.com/reel/SeedHaruCup1/" },
+    "sampleOnly": ["storePage.instagramUrl", "trial.monthlyFee", "trial.postCount", "counterOffer.idea", "result.postUrl"]
+  },
   "brands": [
     {
       "key": "moaStudio",
