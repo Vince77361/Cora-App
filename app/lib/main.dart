@@ -39,7 +39,9 @@ import 'features/payment/domain/payment_repository.dart';
 import 'features/server_config/data/api_server_config_repository.dart';
 import 'features/server_config/domain/server_config_repository.dart';
 import 'features/proposals/data/api_counter_proposal_repository.dart';
+import 'features/proposals/data/api_proposal_repository.dart';
 import 'features/proposals/domain/counter_proposal_repository.dart';
+import 'features/proposals/domain/proposal_repository.dart';
 import 'features/store_browse/data/api_store_browse_repository.dart';
 import 'features/store_browse/domain/store_browse_repository.dart';
 import 'features/store_home/data/api_store_home_repository.dart';
@@ -110,6 +112,9 @@ Future<void> main() async {
         ),
         counterProposalRepositoryProvider.overrideWith(
           (ref) => ApiCounterProposalRepository(ref.watch(apiClientProvider)),
+        ),
+        proposalRepositoryProvider.overrideWith(
+          (ref) => ApiProposalRepository(ref.watch(apiClientProvider)),
         ),
         storeHomeRepositoryProvider.overrideWith(
           (ref) => ApiStoreHomeRepository(ref.watch(apiClientProvider)),

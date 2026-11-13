@@ -6,10 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
-import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_network_photo.dart';
-import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
@@ -22,6 +19,7 @@ import '../../domain/offer_terms.dart';
 import '../../domain/proposal_draft.dart';
 import '../offer_terms_text.dart';
 import '../viewmodels/proposal_draft_view_model.dart';
+import '../widgets/terms_summary.dart';
 import '../widgets/usage_rights_sheet.dart';
 
 /// F2 보내기 전 검토(NReviewSend / DarkNReviewSend). 받는 사람과 조건을 한 번 더 보여 주고, 마지막
@@ -257,36 +255,36 @@ class _Body extends StatelessWidget {
     final reward = terms.reward;
     final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
     final burden = reward.maxCashBurden;
-    final rows = <_Row>[
-      _Row(label: ReviewSendPage.recruitLabel, value: storeName),
-      _Row(
+    final rows = <TermsRow>[
+      TermsRow(label: ReviewSendPage.recruitLabel, value: storeName),
+      TermsRow(
         label: ReviewSendPage.deliverableLabel,
         value: deliverableLine(terms.format, terms.pieces),
       ),
-      _Row(
+      TermsRow(
         label: ReviewSendPage.benefitLabel,
         value: reward.voucher == null
             ? ReviewSendPage.none
             : benefitLine(reward.voucher!),
       ),
-      _Row(
+      TermsRow(
         label: ReviewSendPage.fixedCashLabel,
         value: reward.fixedCash == 0
             ? ReviewSendPage.none
             : fixedCashLabel(reward.fixedCash),
       ),
-      _Row(
+      TermsRow(
         label: ReviewSendPage.viewPayLabel,
         value: reward.viewPay == null
             ? ReviewSendPage.none
             : viewPayLine(reward.viewPay!),
       ),
-      _Row(
+      TermsRow(
         label: ReviewSendPage.usageRightsLabel,
         value: usageRightsLabel(terms.usageRights),
         onTap: onPickUsageRights,
       ),
-      _Row(
+      TermsRow(
         label: ReviewSendPage.burdenLabel,
         value: wonExact(burden),
         bold: true,
@@ -321,28 +319,15 @@ class _Body extends StatelessWidget {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: _RecipientCard(
+                  child: TermsRecipientCard(
+                    label: ReviewSendPage.recipientLabel,
                     name: recipientName,
                     photoUrl: recipientPhotoUrl,
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: c.surface,
-                      borderRadius: BorderRadius.circular(CoraRadius.panel),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-                      child: Column(
-                        children: [
-                          for (var i = 0; i < rows.length; i++)
-                            _RowView(row: rows[i], first: i == 0),
-                        ],
-                      ),
-                    ),
-                  ),
+                  child: TermsRowsCard(rows: rows),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
@@ -418,139 +403,6 @@ class _Body extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 받는 사람 카드: 모서리 22, `surface` 바탕, 안쪽 14, 사진 52 원 + 라벨 12 / 이름 16/700.
-/// 캔버스 오른쪽의 고른 작품 사진은 쓸 자료가 없어 그리지 않는다.
-class _RecipientCard extends StatelessWidget {
-  const _RecipientCard({required this.name, required this.photoUrl});
-
-  final String name;
-  final String? photoUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return MergeSemantics(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: c.surface,
-          borderRadius: BorderRadius.circular(CoraRadius.panel),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            spacing: 12,
-            children: [
-              ExcludeSemantics(
-                child: ClipOval(
-                  child: SizedBox.square(
-                    dimension: 52,
-                    child: CoraNetworkPhoto(
-                      url: photoUrl,
-                      alignment: const Alignment(0, -0.5),
-                      background: c.creatorPhotoPlaceholder,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      ReviewSendPage.recipientLabel,
-                      style: CoraTextStyles.caption.copyWith(
-                        fontWeight: FontWeight.w400,
-                        color: c.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      name,
-                      style: CoraTextStyles.bodyLarge.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: c.text,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Row {
-  const _Row({
-    required this.label,
-    required this.value,
-    this.onTap,
-    this.bold = false,
-  });
-
-  final String label;
-  final String value;
-  final VoidCallback? onTap;
-  final bool bold;
-}
-
-/// 줄 하나: 위아래 10, 첫 줄 말고는 위에 1px `line`. 왼쪽 13 보조색, 오른쪽 15/500(마지막 줄 700).
-class _RowView extends StatelessWidget {
-  const _RowView({required this.row, required this.first});
-
-  final _Row row;
-  final bool first;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final content = DecoratedBox(
-      decoration: BoxDecoration(
-        border: first ? null : Border(top: BorderSide(color: c.line)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          spacing: 12,
-          children: [
-            Text(
-              row.label,
-              style: CoraTextStyles.meta.copyWith(color: c.textSecondary),
-            ),
-            Flexible(
-              child: Text(
-                row.value,
-                textAlign: TextAlign.right,
-                style: CoraTextStyles.body.copyWith(
-                  height: 1.448,
-                  fontWeight: row.bold ? FontWeight.w700 : FontWeight.w500,
-                  color: c.text,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    final onTap = row.onTap;
-    return Semantics(
-      container: true,
-      button: onTap != null,
-      label: '${row.label}, ${row.value}',
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: onTap == null
-            ? content
-            : CoraPressable(onTap: onTap, child: content),
-      ),
     );
   }
 }

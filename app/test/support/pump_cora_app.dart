@@ -7,6 +7,7 @@ import 'package:cora/features/collaboration/domain/collaboration_repository.dart
 import 'package:cora/features/notification_settings/domain/notification_settings_repository.dart';
 import 'package:cora/features/notifications/domain/notification_repository.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
+import 'package:cora/features/proposals/domain/proposal_repository.dart';
 import 'package:cora/features/server_config/domain/server_config_repository.dart';
 import 'package:cora/features/store_home/domain/store_home_repository.dart';
 import 'package:cora/features/wallet/domain/wallet_repository.dart';
@@ -24,6 +25,7 @@ import '../features/collaboration/fake_collaboration_repository.dart';
 import '../features/notification_settings/fake_notification_settings_repository.dart';
 import '../features/notifications/fake_notification_repository.dart';
 import '../features/onboarding/fake_me_repository.dart';
+import '../features/proposals/fake_proposal_repository.dart';
 import '../features/server_config/fake_server_config_repository.dart';
 import '../features/store_home/fake_store_home_repository.dart';
 import '../features/store_onboarding/fake_content_draft_repository.dart';
@@ -91,6 +93,9 @@ Widget coraAppWith(
         serverConfigRepositoryProvider.overrideWithValue(
           FakeServerConfigRepository(),
         ),
+      // 제안함(F3)과 받은 오퍼의 `제안함` 줄이 읽는다. 기본은 제안이 없는 계정이다.
+      if (!_overrides(overrides, proposalRepositoryProvider))
+        proposalRepositoryProvider.overrideWithValue(FakeProposalRepository()),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(
           FakeContentDraftRepository(),

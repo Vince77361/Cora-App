@@ -26,11 +26,15 @@ class CoraSecondaryButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.tone = CoraSecondaryTone.surface,
+    this.fitLabel = false,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final CoraSecondaryTone tone;
+
+  /// 좁은 칸이나 큰 글자에서 라벨을 자르지 않고 한 줄로 줄여 맞춘다(기본 버튼은 `…`으로 자른다).
+  final bool fitLabel;
 
   static const double height = 58;
 
@@ -67,16 +71,27 @@ class CoraSecondaryButton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(CoraRadius.pill),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.symmetric(horizontal: fitLabel ? 12 : 24),
                 child: Center(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: CoraTextStyles.buttonMedium.copyWith(
-                      color: foreground,
-                    ),
-                  ),
+                  child: fitLabel
+                      ? FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            style: CoraTextStyles.buttonMedium.copyWith(
+                              color: foreground,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: CoraTextStyles.buttonMedium.copyWith(
+                            color: foreground,
+                          ),
+                        ),
                 ),
               ),
             ),

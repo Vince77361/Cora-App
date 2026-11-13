@@ -24,6 +24,7 @@ import '../../../store_browse/domain/store_detail.dart';
 import '../../../store_browse/presentation/viewmodels/store_detail_view_model.dart';
 import '../../domain/creator_series.dart';
 import '../counter_proposal_text.dart';
+import '../viewmodels/proposal_detail_view_model.dart';
 import '../viewmodels/counter_proposal_view_model.dart';
 import '../widgets/hope_reward_sheet.dart';
 import '../widgets/principles_sheet.dart';
@@ -104,12 +105,28 @@ class _Loaded extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final open = detail.myOpenOffer;
+    // 내 차례의 열린 오퍼에 답하는 판본은 가게의 모집 조건이 아니라 그 오퍼의 최신 판본 조건에서 시작한다
+    // (다음 판본을 내는 것이므로). 최신 판본을 읽기 전에는 화면을 보이지 않는다.
+    final replying = open != null && open.myTurn;
+    final latest = replying
+        ? ref.watch(proposalDetailViewModelProvider(open.offerId))
+        : null;
+    if (latest != null) {
+      if (latest.hasError) {
+        return CoraStateView.loadFailed(
+          title: CounterProposalPage.loadFailed,
+          onRetry: () =>
+              ref.invalidate(proposalDetailViewModelProvider(open!.offerId)),
+        );
+      }
+      if (latest.value == null) return const CoraStateView.loading();
+    }
     final target = CounterTarget(
       storeId: open == null ? storeId : null,
       offerId: open?.offerId,
       storeName: detail.summary.name,
       nextVersion: open == null ? 2 : open.latestVersion + 1,
-      start: detail.summary.defaultTerms,
+      start: latest?.value?.detail.latest.terms ?? detail.summary.defaultTerms,
     );
     final args = CounterProposalArgs(target: target, pitch: pitch);
     final waiting = open != null && !open.myTurn;

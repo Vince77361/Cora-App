@@ -22,7 +22,10 @@ import '../../features/onboarding/presentation/pages/role_home_placeholder_page.
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
 import '../../features/instagram_connect/presentation/pages/fake_instagram_connect_page.dart';
+import '../../features/proposals/domain/offer_version.dart';
 import '../../features/proposals/presentation/pages/counter_proposal_page.dart';
+import '../../features/proposals/presentation/pages/proposal_detail_page.dart';
+import '../../features/proposals/presentation/pages/proposals_page.dart';
 import '../../features/instagram_connect/presentation/pages/instagram_connect_page.dart';
 import '../../features/offers/presentation/pages/received_offers_page.dart';
 import '../../features/payout_account/presentation/pages/payout_account_page.dart';
@@ -178,6 +181,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
+      // 제안함(F3)과 제안 상세. 사장님 홈 위로 밀려 들어온다.
+      GoRoute(
+        path: AppRoutes.storeProposals,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const ProposalsPage(party: ProposalParty.store),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.storeProposalPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          ProposalDetailPage(
+            offerId: state.pathParameters['offerId']!,
+            party: ProposalParty.store,
+          ),
+          key: state.pageKey,
+        ),
+      ),
       GoRoute(
         path: AppRoutes.storePayPattern,
         pageBuilder: (context, state) => CoraTransitions.push(
@@ -251,6 +272,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.creatorOffers,
         pageBuilder: (context, state) =>
             _entryPage(state, const ReceivedOffersPage()),
+      ),
+      // 크리에이터의 제안함(F3)과 제안 상세. 받은 오퍼 위로 밀려 들어온다.
+      GoRoute(
+        path: AppRoutes.creatorProposals,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const ProposalsPage(party: ProposalParty.creator),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.creatorProposalPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          ProposalDetailPage(
+            offerId: state.pathParameters['offerId']!,
+            party: ProposalParty.creator,
+          ),
+          key: state.pageKey,
+        ),
       ),
       GoRoute(
         path: AppRoutes.creatorCollaborationPattern,

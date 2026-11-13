@@ -87,15 +87,23 @@ class CounterProposalViewModel extends AsyncNotifier<CounterProposalState> {
   Future<CounterProposalState> build() async {
     final series = await _repo.fetchSeries();
     final idea = _args.pitch.trim();
-    // 시리즈가 있으면 첫 시리즈가 골라져 있고(캔버스), 그 형식이 이 제안의 형식이다. 고른 조건은 F1·F2와
-    // 같은 초안이 들고 있으므로 초안이 만들어진 뒤에 형식을 맞춘다.
-    if (series.isNotEmpty) {
+    // 새 제안은 시리즈가 있으면 첫 시리즈가 골라져 있고(캔버스) 그 형식이 이 제안의 형식이다. 고른 조건은 F1·F2와
+    // 같은 초안이 들고 있으므로 초안이 만들어진 뒤에 형식을 맞춘다. 열린 오퍼에 답하는 판본은 최신 판본의 형식을
+    // 지키고, 같은 형식의 첫 시리즈만 골라 둔다(없으면 시리즈 없이 시작한다).
+    final replyFormat = _args.target.offerId == null
+        ? null
+        : _args.target.start?.format;
+    CreatorSeries? picked;
+    if (replyFormat != null) {
+      picked = series.where((s) => s.format == replyFormat).firstOrNull;
+    } else if (series.isNotEmpty) {
+      picked = series.first;
       await ref.read(proposalDraftViewModelProvider(_args.target).future);
-      if (ref.mounted) _draft.setFormat(series.first.format);
+      if (ref.mounted) _draft.setFormat(picked.format);
     }
     return CounterProposalState(
       series: series,
-      seriesId: series.isEmpty ? null : series.first.id,
+      seriesId: picked?.id,
       idea: idea.length > CounterProposal.ideaMaxLength
           ? idea.substring(0, CounterProposal.ideaMaxLength)
           : idea,

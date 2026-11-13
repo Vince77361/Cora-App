@@ -45,17 +45,22 @@ final class NewOfferTarget extends ProposalTarget {
   int get hashCode => Object.hash(NewOfferTarget, creatorId, creatorName);
 }
 
-/// 받은 제안에 사장님이 답으로 내는 새 판본(Task 12가 쓴다).
+/// 받은 제안에 사장님이 답으로 내는 새 판본(Task 12가 쓴다). 고르는 조건은 [start](그 제안의 최신 판본 조건)에서
+/// 시작한다. 주지 않으면 서버 설정의 기본값에서 시작한다.
 final class ReplyTarget extends ProposalTarget {
   const ReplyTarget({
     required this.offerId,
     required this.counterpartName,
     required this.nextVersion,
+    this.start,
   });
 
   final String offerId;
   final String counterpartName;
   final int nextVersion;
+
+  /// 고르는 조건의 처음 값(최신 판본의 조건).
+  final OfferTerms? start;
 
   @override
   int get versionNumber => nextVersion;
@@ -65,11 +70,12 @@ final class ReplyTarget extends ProposalTarget {
       other is ReplyTarget &&
       other.offerId == offerId &&
       other.counterpartName == counterpartName &&
-      other.nextVersion == nextVersion;
+      other.nextVersion == nextVersion &&
+      other.start == start;
 
   @override
   int get hashCode =>
-      Object.hash(ReplyTarget, offerId, counterpartName, nextVersion);
+      Object.hash(ReplyTarget, offerId, counterpartName, nextVersion, start);
 }
 
 /// 크리에이터가 가게의 모집 조건이나 받은 오퍼에 내는 역제안(Task 10이 쓴다). 새 제안이면

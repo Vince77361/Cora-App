@@ -52,6 +52,16 @@ abstract final class AppRoutes {
   /// [storePay]의 라우트 패턴.
   static const storePayPattern = '/store/collaborations/:collaborationId/pay';
 
+  /// 제안함(F3). 사장님 하단 메뉴의 `오퍼`가 열고, 오퍼를 보낸 뒤에도 여기로 온다.
+  static const storeProposals = '/store/proposals';
+
+  /// 제안 [offerId]의 상세. 제안함과 보낸 오퍼 줄이 연다.
+  static String storeProposal(String offerId) =>
+      '$storeProposals/${Uri.encodeComponent(offerId)}';
+
+  /// [storeProposal]의 라우트 패턴.
+  static const storeProposalPattern = '/store/proposals/:offerId';
+
   /// 아직 만들지 않은 가게 쪽 화면. [title]이 한글이어도 되도록 인코딩한다.
   static String storeComingSoon(String title) =>
       '/store/coming-soon/${Uri.encodeComponent(title)}';
@@ -68,6 +78,16 @@ abstract final class AppRoutes {
 
   /// [creatorStoreProposal]의 라우트 패턴.
   static const creatorStoreProposalPattern = '/creator/stores/:id/propose';
+
+  /// 크리에이터의 제안함(F3). 받은 오퍼의 `진행 중` 탭 맨 위 `제안함` 줄이 연다.
+  static const creatorProposals = '/creator/proposals';
+
+  /// 제안 [offerId]의 상세.
+  static String creatorProposal(String offerId) =>
+      '$creatorProposals/${Uri.encodeComponent(offerId)}';
+
+  /// [creatorProposal]의 라우트 패턴.
+  static const creatorProposalPattern = '/creator/proposals/:offerId';
 
   /// 크리에이터의 협업 진행(A7)과 거기서 여는 링크 제출·식사권 화면.
   static String creatorCollaboration(String id) =>

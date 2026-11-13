@@ -44,6 +44,15 @@ abstract final class CoraShadows {
     ),
   ];
 
+  /// F3 제안함 탭의 고른 탭: 0 2px 8px, 알파 0.10. 라이트·다크가 같다.
+  static final segmentSelected = [
+    BoxShadow(
+      color: const Color.fromRGBO(23, 24, 28, 0.10),
+      offset: const Offset(0, 2),
+      blurRadius: blurRadiusFor(8),
+    ),
+  ];
+
   /// 프로필 사진 위 `사진 바꾸기` 버튼: 0 2px 8px. 색은 테마의 `avatarEditShadow`.
   static List<BoxShadow> avatarEdit(Color color) => [
     BoxShadow(

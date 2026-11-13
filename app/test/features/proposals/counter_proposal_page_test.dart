@@ -3,6 +3,8 @@ import 'package:cora/features/instagram_connect/domain/instagram_connection.dart
 import 'package:cora/features/offer_terms/domain/offer_terms.dart';
 import 'package:cora/features/proposals/domain/counter_proposal_repository.dart';
 import 'package:cora/features/proposals/domain/creator_series.dart';
+import 'package:cora/features/proposals/domain/offer_version.dart';
+import 'package:cora/features/proposals/domain/proposal_repository.dart';
 import 'package:cora/features/store_browse/domain/store_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +14,7 @@ import '../instagram_connect/fake_instagram_repository.dart';
 import '../store_browse/creator_app_harness.dart';
 import '../store_browse/fake_store_browse_repository.dart';
 import 'fake_counter_proposal_repository.dart';
+import 'fake_proposal_repository.dart';
 
 const _connected = InstagramConnection(handle: 'seoyun', followers: 1200);
 
@@ -330,6 +333,13 @@ void main() {
       stores: stores,
       counter: counter,
       instagram: FakeInstagramRepository(connection: _connected),
+      overrides: [
+        proposalRepositoryProvider.overrideWithValue(
+          FakeProposalRepository(
+            details: {'o-1': proposalDetail(offerId: 'o-1')},
+          ),
+        ),
+      ],
     );
     await _openCounter(tester);
     await _review(tester);
@@ -346,6 +356,61 @@ void main() {
     expect(sent.storeId, isNull);
     expect(find.text('제안을 보냈어요.'), findsOneWidget);
   });
+
+  testWidgets(
+    'F6 on an open offer starts from the latest version terms and format',
+    (tester) async {
+      // 가게의 모집 조건(FakeStoreBrowseRepository)은 식사권 + 조회수 수당이다. 최신 판본은 카드뉴스에 고정 현금 3만 원이다.
+      final stores = FakeStoreBrowseRepository()
+        ..statuses['1'] = MyApplicationStatus.offered
+        ..openOffers['1'] = const MyOpenOffer(
+          offerId: 'o-1',
+          latestVersion: 2,
+          myTurn: true,
+        );
+      final counter = FakeCounterProposalRepository(series: sampleSeries);
+      final detail = proposalDetail(
+        offerId: 'o-1',
+        latest: const OfferVersion(
+          number: 2,
+          authorParty: ProposalParty.store,
+          terms: OfferTerms(
+            format: ContentFormat.cardNews,
+            reward: Reward(
+              voucher: Voucher(name: '식사권', value: 40000, people: 2),
+              fixedCash: 30000,
+            ),
+          ),
+        ),
+      );
+      await pumpCreatorApp(
+        tester,
+        stores: stores,
+        counter: counter,
+        instagram: FakeInstagramRepository(connection: _connected),
+        overrides: [
+          proposalRepositoryProvider.overrideWithValue(
+            FakeProposalRepository(details: {'o-1': detail}),
+          ),
+        ],
+      );
+      await _openCounter(tester);
+
+      // 희망 보상은 가게 모집 조건(조회수 수당)이 아니라 최신 판본(고정 현금)이다.
+      expect(find.text('식사권 + 3만 원'), findsOneWidget);
+      await _review(tester);
+      // 형식은 첫 시리즈(릴스)가 아니라 최신 판본의 카드뉴스다.
+      expect(find.text('카드뉴스 1편 · 3–5장'), findsOneWidget);
+      await tester.tap(find.text('이 조건으로 보내기'));
+      await tester.pumpAndSettle();
+      final sent = counter.sent.single.proposal;
+      expect(sent.terms.format, ContentFormat.cardNews);
+      expect(sent.terms.reward.fixedCash, 30000);
+      expect(sent.terms.reward.viewPay, isNull);
+      // 같은 형식의 첫 시리즈(`동네 점심 지도`)가 골라져 있다.
+      expect(sent.seriesId, sampleSeries[1].id);
+    },
+  );
 
   testWidgets('F6 asks for instagram before sending view pay', (tester) async {
     final instagram = FakeInstagramRepository();
