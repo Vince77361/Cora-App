@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/domain/current_user_provider.dart';
@@ -81,10 +83,13 @@ class ProposalDetailViewModel extends AsyncNotifier<ProposalDetailState> {
     return ProposalDetailState(detail: await _repo.fetchDetail(_offerId));
   }
 
-  /// 제안이 바뀌면 제안함 목록과 사장님 홈의 보낸 오퍼 줄도 낡는다. 아직 만들어지지 않은 쪽은 아무 일도 없다.
+  /// 제안이 바뀌면 제안함 목록과 사장님 홈의 보낸 오퍼 줄도 낡는다. 홈은 무효화하면 처음 탭으로 돌아가서, 살아 있을
+  /// 때만 보던 탭을 지키는 새로 읽기를 부른다(아직 만들어지지 않았으면 다음에 열릴 때 새로 읽는다).
   void _invalidateLists() {
     ref.invalidate(proposalsViewModelProvider);
-    ref.invalidate(storeHomeViewModelProvider);
+    if (ref.read(storeHomeViewModelProvider.exists)) {
+      unawaited(ref.read(storeHomeViewModelProvider.notifier).refresh());
+    }
   }
 
   /// 서버 값으로 다시 읽는다. 실패하면 보던 내용을 그대로 둔다.
