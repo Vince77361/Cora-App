@@ -12,6 +12,9 @@ enum CoraSecondaryTone {
 
   /// `surfaceMuted` 바탕(NStoreAI `다시 만들기`: 라이트·다크 모두 #F2F3F5에 #17181C 글자).
   muted,
+
+  /// `subtleAction` 바탕(NReviewSend `고치기`: 라이트 #F2F3F5에 #17181C, 다크 #2A2D33에 #F2F3F5).
+  subtle,
 }
 
 /// 기본 버튼 옆에 두는 알약 보조 버튼(캔버스 NStorePage `정보 고치기`). 높이 58, 글자 15px 500.
@@ -38,12 +41,14 @@ class CoraSecondaryButton extends StatelessWidget {
     final background = switch (tone) {
       CoraSecondaryTone.surface => c.surface,
       CoraSecondaryTone.muted => c.surfaceMuted,
+      CoraSecondaryTone.subtle => c.subtleAction,
     };
     final foreground = !enabled
         ? c.textSecondary
         : switch (tone) {
             CoraSecondaryTone.surface => c.text,
             CoraSecondaryTone.muted => c.onSurfaceMuted,
+            CoraSecondaryTone.subtle => c.onSubtleAction,
           };
     return Semantics(
       container: true,

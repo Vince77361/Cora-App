@@ -117,10 +117,7 @@ void main() {
       expect(find.text('쇼츠 1편을\n부탁했어요'), findsOneWidget);
       // 식사권만이면 보상 줄과 설명이 모두 혜택 한 줄로 시작한다.
       expect(find.text('빵 세트 30,000원'), findsOneWidget);
-      expect(
-        find.text('빵 세트 30,000원. 갓 구운 빵 향이 나는 동네 빵집이에요.'),
-        findsOneWidget,
-      );
+      expect(find.text('빵 세트 30,000원. 갓 구운 빵 향이 나는 동네 빵집이에요.'), findsOneWidget);
       expect(find.text('#팔로워무관'), findsOneWidget);
       expect(find.textContaining('#오후'), findsNothing);
     });

@@ -1,0 +1,105 @@
+/// 제안(조건)을 만드는 화면(F1 보상·예산 설정, F2 보내기 전 검토)이 누구에게 무엇을 만드는지.
+///
+/// provider 인자로 쓰이므로 값이 같으면 같은 대상이다. 같은 대상의 F1과 F2는 고르는 중인
+/// 조건을 함께 쓴다.
+sealed class ProposalTarget {
+  const ProposalTarget();
+
+  /// 이번에 만들어질 판본 번호. 새로 보내는 오퍼와 모집 조건은 1이다.
+  int get versionNumber;
+}
+
+/// 가게의 모집 조건. 받는 사람이 없고 공개된다.
+final class RecruitTarget extends ProposalTarget {
+  const RecruitTarget();
+
+  @override
+  int get versionNumber => 1;
+
+  @override
+  bool operator ==(Object other) => other is RecruitTarget;
+
+  @override
+  int get hashCode => (RecruitTarget).hashCode;
+}
+
+/// 지원한 크리에이터에게 새로 보내는 오퍼.
+final class NewOfferTarget extends ProposalTarget {
+  const NewOfferTarget({required this.creatorId, required this.creatorName});
+
+  final String creatorId;
+  final String creatorName;
+
+  @override
+  int get versionNumber => 1;
+
+  @override
+  bool operator ==(Object other) =>
+      other is NewOfferTarget &&
+      other.creatorId == creatorId &&
+      other.creatorName == creatorName;
+
+  @override
+  int get hashCode => Object.hash(NewOfferTarget, creatorId, creatorName);
+}
+
+/// 받은 제안에 사장님이 답으로 내는 새 판본(Task 12가 쓴다).
+final class ReplyTarget extends ProposalTarget {
+  const ReplyTarget({
+    required this.offerId,
+    required this.counterpartName,
+    required this.nextVersion,
+  });
+
+  final String offerId;
+  final String counterpartName;
+  final int nextVersion;
+
+  @override
+  int get versionNumber => nextVersion;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ReplyTarget &&
+      other.offerId == offerId &&
+      other.counterpartName == counterpartName &&
+      other.nextVersion == nextVersion;
+
+  @override
+  int get hashCode =>
+      Object.hash(ReplyTarget, offerId, counterpartName, nextVersion);
+}
+
+/// 크리에이터가 가게의 모집 조건이나 받은 오퍼에 내는 역제안(Task 10이 쓴다). 새 제안이면
+/// [storeId]를, 받은 오퍼에 답하는 판본이면 [offerId]를 준다.
+final class CounterTarget extends ProposalTarget {
+  const CounterTarget({
+    this.storeId,
+    this.offerId,
+    required this.storeName,
+    required this.nextVersion,
+  }) : assert(
+         (storeId == null) != (offerId == null),
+         'storeId or offerId, not both',
+       );
+
+  final String? storeId;
+  final String? offerId;
+  final String storeName;
+  final int nextVersion;
+
+  @override
+  int get versionNumber => nextVersion;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CounterTarget &&
+      other.storeId == storeId &&
+      other.offerId == offerId &&
+      other.storeName == storeName &&
+      other.nextVersion == nextVersion;
+
+  @override
+  int get hashCode =>
+      Object.hash(CounterTarget, storeId, offerId, storeName, nextVersion);
+}
