@@ -18,6 +18,7 @@ import { CancelRequestExpiryHandler } from './jobs/cancel-request-expiry.handler
 import { StoreResultController } from './store-result.controller';
 import { StoreResultService } from './store-result.service';
 import { SubmissionsController } from './submissions.controller';
+import { ViewReportController } from './view-report.controller';
 
 // 협업을 읽고 결제 뒤에 그만두는 API. 결제·정산·장부·계좌·알림 모듈을 모두 쓰므로 그 모듈들이 import하는
 // 기본 CollaborationsModule과 따로 둔다(원장 판단 R10): 이 모듈은 아무도 import하지 않아 순환이 없다.
@@ -38,6 +39,7 @@ import { SubmissionsController } from './submissions.controller';
     CollaborationsController,
     SubmissionsController,
     StoreResultController,
+    ViewReportController,
   ],
   providers: [
     CollaborationsService,

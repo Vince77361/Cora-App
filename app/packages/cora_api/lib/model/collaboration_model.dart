@@ -34,6 +34,7 @@ class CollaborationModel {
     required this.submitDueAt,
     required this.submittedUrl,
     required this.terms,
+    required this.viewReportStatus,
   });
 
   /// 크리에이터가 지금 협업을 그만둘 수 있으면 true(링크를 제출하기 전).
@@ -75,7 +76,7 @@ class CollaborationModel {
   /// 내 쪽. COMMISSIONER는 맡긴 쪽(사장님·브랜드), CREATOR는 크리에이터.
   CollaborationRole role;
 
-  /// 정산이 확정된 뒤의 결과. 정산 전이거나 식사권만 있으면 null.
+  /// 정산이 확정된 뒤의 결과. 정산 전이거나(조회 자료 확인 전 포함) 식사권만 있으면 null.
   CollaborationSettlementModel? settlement;
 
   CollaborationStage stage;
@@ -92,6 +93,9 @@ class CollaborationModel {
 
   /// 수락할 때의 조건(사본).
   OfferTermsModel terms;
+
+  /// 조회 자료 확인 단계. NONE: 조회수 수당이 없거나 링크 제출 전, COUNTING: 집계 중, UNCONFIRMED: 계산이 나와 확인을 기다림, CONFIRMED: 확인됨, DISPUTED: 이의 중.
+  CollaborationViewReportStatus viewReportStatus;
 
   @override
   bool operator ==(Object other) =>
@@ -117,7 +121,8 @@ class CollaborationModel {
           other.store == store &&
           other.submitDueAt == submitDueAt &&
           other.submittedUrl == submittedUrl &&
-          other.terms == terms;
+          other.terms == terms &&
+          other.viewReportStatus == viewReportStatus;
 
   @override
   int get hashCode =>
@@ -142,11 +147,12 @@ class CollaborationModel {
       (store == null ? 0 : store!.hashCode) +
       (submitDueAt == null ? 0 : submitDueAt!.hashCode) +
       (submittedUrl == null ? 0 : submittedUrl!.hashCode) +
-      (terms.hashCode);
+      (terms.hashCode) +
+      (viewReportStatus.hashCode);
 
   @override
   String toString() =>
-      'CollaborationModel[canCancel=$canCancel, canRequestCancel=$canRequestCancel, cancelRequest=$cancelRequest, counterpart=$counterpart, countingEndsAt=$countingEndsAt, currentViews=$currentViews, earnedSoFar=$earnedSoFar, escrowAmount=$escrowAmount, expectedRefund=$expectedRefund, id=$id, kind=$kind, payoutScheduledFor=$payoutScheduledFor, payoutStatus=$payoutStatus, role=$role, settlement=$settlement, stage=$stage, steps=$steps, store=$store, submitDueAt=$submitDueAt, submittedUrl=$submittedUrl, terms=$terms]';
+      'CollaborationModel[canCancel=$canCancel, canRequestCancel=$canRequestCancel, cancelRequest=$cancelRequest, counterpart=$counterpart, countingEndsAt=$countingEndsAt, currentViews=$currentViews, earnedSoFar=$earnedSoFar, escrowAmount=$escrowAmount, expectedRefund=$expectedRefund, id=$id, kind=$kind, payoutScheduledFor=$payoutScheduledFor, payoutStatus=$payoutStatus, role=$role, settlement=$settlement, stage=$stage, steps=$steps, store=$store, submitDueAt=$submitDueAt, submittedUrl=$submittedUrl, terms=$terms, viewReportStatus=$viewReportStatus]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -212,6 +218,7 @@ class CollaborationModel {
       json[r'submittedUrl'] = null;
     }
     json[r'terms'] = this.terms;
+    json[r'viewReportStatus'] = this.viewReportStatus;
     return json;
   }
 
@@ -290,6 +297,10 @@ class CollaborationModel {
             'Required key "CollaborationModel[terms]" is missing from JSON.');
         assert(json[r'terms'] != null,
             'Required key "CollaborationModel[terms]" has a null value in JSON.');
+        assert(json.containsKey(r'viewReportStatus'),
+            'Required key "CollaborationModel[viewReportStatus]" is missing from JSON.');
+        assert(json[r'viewReportStatus'] != null,
+            'Required key "CollaborationModel[viewReportStatus]" has a null value in JSON.');
         return true;
       }());
 
@@ -316,6 +327,8 @@ class CollaborationModel {
         submitDueAt: mapDateTime(json, r'submitDueAt', r''),
         submittedUrl: mapValueOfType<String>(json, r'submittedUrl'),
         terms: OfferTermsModel.fromJson(json[r'terms'])!,
+        viewReportStatus:
+            CollaborationViewReportStatus.fromJson(json[r'viewReportStatus'])!,
       );
     }
     return null;
@@ -393,5 +406,6 @@ class CollaborationModel {
     'submitDueAt',
     'submittedUrl',
     'terms',
+    'viewReportStatus',
   };
 }

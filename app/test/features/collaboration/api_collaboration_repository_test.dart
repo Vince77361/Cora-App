@@ -30,6 +30,7 @@ Map<String, Object?> _json({String stage = 'COUNTING'}) => {
   'payoutStatus': 'NONE',
   'role': 'CREATOR',
   'settlement': null,
+  'viewReportStatus': 'NONE',
   'stage': stage,
   'steps': [
     {'key': 'ACCEPTED', 'state': 'DONE', 'at': '2026-11-10T03:00:00.000Z'},

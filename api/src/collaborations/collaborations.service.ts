@@ -13,7 +13,7 @@ import { PayoutAccountsService } from '../payout-accounts/payout-accounts.servic
 import { RefundsService } from '../settlements/refunds.service';
 import { SettlementsRepository } from '../settlements/settlements.repository';
 import { StoresService } from '../stores/stores.service';
-import { readTerms } from '../stores/reward-terms';
+import { hasViewPay, readTerms } from '../stores/reward-terms';
 import { CancelRequestsRepository } from './cancel-requests.repository';
 import { submissionDeadlineJobKeys } from './collaboration-jobs';
 import { CollaborationsRepository } from './collaborations.repository';
@@ -22,6 +22,7 @@ import {
   COLLABORATION_DONE_STAGES,
   liveAmounts,
   payoutStatusOf,
+  viewReportStatusOf,
 } from './collaboration-view';
 import { CollaborationScope } from './dto/collaboration-query.dto';
 import { CollaborationModel } from './dto/collaboration.model';
@@ -571,6 +572,12 @@ export class CollaborationsService {
             refundAmount: confirmed.refundAmount,
           }
         : null,
+      viewReportStatus: viewReportStatusOf({
+        stage: row.stage,
+        submitted: row.submittedUrl !== null,
+        hasViewPay: hasViewPay(terms),
+        settlementStatus: settlement?.status ?? null,
+      }),
       payoutStatus: payoutView.status,
       payoutScheduledFor: payoutView.scheduledFor?.toISOString() ?? null,
       cancelRequest: pendingRequest

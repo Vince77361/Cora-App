@@ -248,6 +248,8 @@ class ApiClient {
           return CollaborationStepModel.fromJson(value);
         case 'CollaborationStepState':
           return CollaborationStepStateTypeTransformer().decode(value);
+        case 'CollaborationViewReportStatus':
+          return CollaborationViewReportStatusTypeTransformer().decode(value);
         case 'CompleteInstagramConnectDto':
           return CompleteInstagramConnectDto.fromJson(value);
         case 'ContentCountModel':
@@ -448,6 +450,16 @@ class ApiClient {
           return UsageRightsTypeTransformer().decode(value);
         case 'UserRole':
           return UserRoleTypeTransformer().decode(value);
+        case 'ViewReportCalcModel':
+          return ViewReportCalcModel.fromJson(value);
+        case 'ViewReportEvidenceModel':
+          return ViewReportEvidenceModel.fromJson(value);
+        case 'ViewReportModel':
+          return ViewReportModel.fromJson(value);
+        case 'ViewReportSource':
+          return ViewReportSourceTypeTransformer().decode(value);
+        case 'ViewReportStatus':
+          return ViewReportStatusTypeTransformer().decode(value);
         case 'VoucherDefaultsModel':
           return VoucherDefaultsModel.fromJson(value);
         case 'VoucherInputDto':

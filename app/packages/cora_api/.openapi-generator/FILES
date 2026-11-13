@@ -25,6 +25,7 @@ doc/CollaborationStage.md
 doc/CollaborationStepKey.md
 doc/CollaborationStepModel.md
 doc/CollaborationStepState.md
+doc/CollaborationViewReportStatus.md
 doc/CollaborationsApi.md
 doc/CompleteInstagramConnectDto.md
 doc/ContentCountModel.md
@@ -142,6 +143,12 @@ doc/UpsertPayoutAccountDto.md
 doc/UsageRights.md
 doc/UserRole.md
 doc/UsersApi.md
+doc/ViewReportApi.md
+doc/ViewReportCalcModel.md
+doc/ViewReportEvidenceModel.md
+doc/ViewReportModel.md
+doc/ViewReportSource.md
+doc/ViewReportStatus.md
 doc/VoucherDefaultsModel.md
 doc/VoucherInputDto.md
 doc/WalletAccountModel.md
@@ -170,6 +177,7 @@ lib/api/stores_api.dart
 lib/api/submissions_api.dart
 lib/api/uploads_api.dart
 lib/api/users_api.dart
+lib/api/view_report_api.dart
 lib/api/wallet_api.dart
 lib/api_client.dart
 lib/api_exception.dart
@@ -201,6 +209,7 @@ lib/model/collaboration_stage.dart
 lib/model/collaboration_step_key.dart
 lib/model/collaboration_step_model.dart
 lib/model/collaboration_step_state.dart
+lib/model/collaboration_view_report_status.dart
 lib/model/complete_instagram_connect_dto.dart
 lib/model/content_count_model.dart
 lib/model/content_draft_kind.dart
@@ -301,6 +310,11 @@ lib/model/upsert_creator_profile_dto.dart
 lib/model/upsert_payout_account_dto.dart
 lib/model/usage_rights.dart
 lib/model/user_role.dart
+lib/model/view_report_calc_model.dart
+lib/model/view_report_evidence_model.dart
+lib/model/view_report_model.dart
+lib/model/view_report_source.dart
+lib/model/view_report_status.dart
 lib/model/voucher_defaults_model.dart
 lib/model/voucher_input_dto.dart
 lib/model/wallet_account_model.dart
@@ -333,6 +347,7 @@ test/collaboration_stage_test.dart
 test/collaboration_step_key_test.dart
 test/collaboration_step_model_test.dart
 test/collaboration_step_state_test.dart
+test/collaboration_view_report_status_test.dart
 test/collaborations_api_test.dart
 test/complete_instagram_connect_dto_test.dart
 test/content_count_model_test.dart
@@ -450,6 +465,12 @@ test/upsert_payout_account_dto_test.dart
 test/usage_rights_test.dart
 test/user_role_test.dart
 test/users_api_test.dart
+test/view_report_api_test.dart
+test/view_report_calc_model_test.dart
+test/view_report_evidence_model_test.dart
+test/view_report_model_test.dart
+test/view_report_source_test.dart
+test/view_report_status_test.dart
 test/voucher_defaults_model_test.dart
 test/voucher_input_dto_test.dart
 test/wallet_account_model_test.dart

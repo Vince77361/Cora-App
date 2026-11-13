@@ -13,6 +13,13 @@ export const COLLABORATION_STEP_KEYS = [
   'SETTLE',
 ] as const;
 export const COLLABORATION_STEP_STATES = ['DONE', 'NOW', 'TODO'] as const;
+export const COLLABORATION_VIEW_REPORT_STATUSES = [
+  'NONE',
+  'COUNTING',
+  'UNCONFIRMED',
+  'CONFIRMED',
+  'DISPUTED',
+] as const;
 export const PAYOUT_STATUSES = [
   'NONE',
   'NEEDS_ACCOUNT',
@@ -170,9 +177,18 @@ export class CollaborationModel {
   @ApiProperty({
     type: CollaborationSettlementModel,
     nullable: true,
-    description: '정산이 확정된 뒤의 결과. 정산 전이거나 식사권만 있으면 null.',
+    description:
+      '정산이 확정된 뒤의 결과. 정산 전이거나(조회 자료 확인 전 포함) 식사권만 있으면 null.',
   })
   settlement!: CollaborationSettlementModel | null;
+
+  @ApiProperty({
+    enum: COLLABORATION_VIEW_REPORT_STATUSES,
+    enumName: 'CollaborationViewReportStatus',
+    description:
+      '조회 자료 확인 단계. NONE: 조회수 수당이 없거나 링크 제출 전, COUNTING: 집계 중, UNCONFIRMED: 계산이 나와 확인을 기다림, CONFIRMED: 확인됨, DISPUTED: 이의 중.',
+  })
+  viewReportStatus!: (typeof COLLABORATION_VIEW_REPORT_STATUSES)[number];
 
   @ApiProperty({
     enum: PAYOUT_STATUSES,

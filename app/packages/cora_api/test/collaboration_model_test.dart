@@ -97,7 +97,7 @@ void main() {
       // TODO
     });
 
-    // 정산이 확정된 뒤의 결과. 정산 전이거나 식사권만 있으면 null.
+    // 정산이 확정된 뒤의 결과. 정산 전이거나(조회 자료 확인 전 포함) 식사권만 있으면 null.
     // CollaborationSettlementModel settlement
     test('to test the property `settlement`', () async {
       // TODO
@@ -133,6 +133,12 @@ void main() {
     // 수락할 때의 조건(사본).
     // OfferTermsModel terms
     test('to test the property `terms`', () async {
+      // TODO
+    });
+
+    // 조회 자료 확인 단계. NONE: 조회수 수당이 없거나 링크 제출 전, COUNTING: 집계 중, UNCONFIRMED: 계산이 나와 확인을 기다림, CONFIRMED: 확인됨, DISPUTED: 이의 중.
+    // CollaborationViewReportStatus viewReportStatus
+    test('to test the property `viewReportStatus`', () async {
       // TODO
     });
   });

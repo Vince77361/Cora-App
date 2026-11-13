@@ -95,6 +95,22 @@ export function buildSteps(input: StepInput): Step[] {
   ];
 }
 
+export type ViewReportStatusOfCollaboration =
+  'NONE' | 'COUNTING' | 'UNCONFIRMED' | 'CONFIRMED' | 'DISPUTED';
+
+// 협업 조회 모델의 조회 자료 확인 단계. 정산 행이 있으면 그 상태고, 없으면 링크를 낸 뒤 집계 중인 협업만 COUNTING이다
+// (조회수를 읽지 못해 멈춘 협업도 정산 행이 없어 집계 중이다). 조회수 수당이 없거나 제출 전이거나 끝난 협업은 NONE이다.
+export function viewReportStatusOf(p: {
+  stage: CollaborationStage;
+  submitted: boolean;
+  hasViewPay: boolean;
+  settlementStatus: 'UNCONFIRMED' | 'CONFIRMED' | 'DISPUTED' | null;
+}): ViewReportStatusOfCollaboration {
+  if (!p.hasViewPay || !p.submitted) return 'NONE';
+  if (p.settlementStatus) return p.settlementStatus;
+  return p.stage === 'COUNTING' || p.stage === 'HALTED' ? 'COUNTING' : 'NONE';
+}
+
 export type PayoutStatus =
   'NONE' | 'NEEDS_ACCOUNT' | 'PENDING' | 'DONE' | 'FAILED';
 

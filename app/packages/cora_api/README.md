@@ -125,6 +125,8 @@ Class | Method | HTTP request | Description
 *UploadsApi* | [**createPhotoUpload**](doc//UploadsApi.md#createphotoupload) | **POST** /uploads/photos | 
 *UsersApi* | [**getMe**](doc//UsersApi.md#getme) | **GET** /me | 
 *UsersApi* | [**updateMyRole**](doc//UsersApi.md#updatemyrole) | **PATCH** /me/role | 
+*ViewReportApi* | [**confirmViewReport**](doc//ViewReportApi.md#confirmviewreport) | **POST** /collaborations/{id}/view-report/confirm | 맡긴 쪽이 \"자료 확인했어요\"를 누른다. 확인되면 정산이 이어진다. 확인할 수 없는 상태면 409, 크리에이터는 403.
+*ViewReportApi* | [**getViewReport**](doc//ViewReportApi.md#getviewreport) | **GET** /collaborations/{id}/view-report | 조회 자료 확인(F4). 당사자만 읽는다. 조회수 수당이 없거나 링크 제출 전이면 404.
 *WalletApi* | [**getWallet**](doc//WalletApi.md#getwallet) | **GET** /wallet | 
 
 
@@ -152,6 +154,7 @@ Class | Method | HTTP request | Description
  - [CollaborationStepKey](doc//CollaborationStepKey.md)
  - [CollaborationStepModel](doc//CollaborationStepModel.md)
  - [CollaborationStepState](doc//CollaborationStepState.md)
+ - [CollaborationViewReportStatus](doc//CollaborationViewReportStatus.md)
  - [CompleteInstagramConnectDto](doc//CompleteInstagramConnectDto.md)
  - [ContentCountModel](doc//ContentCountModel.md)
  - [ContentDraftKind](doc//ContentDraftKind.md)
@@ -252,6 +255,11 @@ Class | Method | HTTP request | Description
  - [UpsertPayoutAccountDto](doc//UpsertPayoutAccountDto.md)
  - [UsageRights](doc//UsageRights.md)
  - [UserRole](doc//UserRole.md)
+ - [ViewReportCalcModel](doc//ViewReportCalcModel.md)
+ - [ViewReportEvidenceModel](doc//ViewReportEvidenceModel.md)
+ - [ViewReportModel](doc//ViewReportModel.md)
+ - [ViewReportSource](doc//ViewReportSource.md)
+ - [ViewReportStatus](doc//ViewReportStatus.md)
  - [VoucherDefaultsModel](doc//VoucherDefaultsModel.md)
  - [VoucherInputDto](doc//VoucherInputDto.md)
  - [WalletAccountModel](doc//WalletAccountModel.md)

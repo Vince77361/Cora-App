@@ -89,6 +89,11 @@ String parameterToString(dynamic value) {
   if (value is CollaborationStepState) {
     return CollaborationStepStateTypeTransformer().encode(value).toString();
   }
+  if (value is CollaborationViewReportStatus) {
+    return CollaborationViewReportStatusTypeTransformer()
+        .encode(value)
+        .toString();
+  }
   if (value is ContentDraftKind) {
     return ContentDraftKindTypeTransformer().encode(value).toString();
   }
@@ -166,6 +171,12 @@ String parameterToString(dynamic value) {
   }
   if (value is UserRole) {
     return UserRoleTypeTransformer().encode(value).toString();
+  }
+  if (value is ViewReportSource) {
+    return ViewReportSourceTypeTransformer().encode(value).toString();
+  }
+  if (value is ViewReportStatus) {
+    return ViewReportStatusTypeTransformer().encode(value).toString();
   }
   if (value is WalletEntryKind) {
     return WalletEntryKindTypeTransformer().encode(value).toString();

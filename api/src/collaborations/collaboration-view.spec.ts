@@ -5,6 +5,7 @@ import {
   liveAmounts,
   payoutStatusOf,
   StepInput,
+  viewReportStatusOf,
 } from './collaboration-view';
 
 const T0 = new Date('2026-12-01T03:00:00.000Z');
@@ -278,5 +279,36 @@ describe('COLLABORATION_DONE_STAGES', () => {
     expect([...COLLABORATION_DONE_STAGES].sort()).toEqual(
       ['CANCELLED', 'DROPPED', 'REFUNDED', 'SETTLED'].sort(),
     );
+  });
+});
+
+describe('viewReportStatusOf', () => {
+  const base = {
+    stage: 'COUNTING' as CollaborationStage,
+    submitted: true,
+    hasViewPay: true,
+    settlementStatus: null,
+  };
+
+  it('is none without view pay or before the link is submitted', () => {
+    expect(viewReportStatusOf({ ...base, hasViewPay: false })).toBe('NONE');
+    expect(viewReportStatusOf({ ...base, submitted: false })).toBe('NONE');
+  });
+
+  it('is counting while the period runs and when the views could not be read', () => {
+    expect(viewReportStatusOf(base)).toBe('COUNTING');
+    expect(viewReportStatusOf({ ...base, stage: 'HALTED' })).toBe('COUNTING');
+  });
+
+  it('follows the settlement row once there is one', () => {
+    for (const status of ['UNCONFIRMED', 'CONFIRMED', 'DISPUTED'] as const) {
+      expect(viewReportStatusOf({ ...base, settlementStatus: status })).toBe(
+        status,
+      );
+    }
+  });
+
+  it('is none for a collaboration that ended without a calculation', () => {
+    expect(viewReportStatusOf({ ...base, stage: 'REFUNDED' })).toBe('NONE');
   });
 });
