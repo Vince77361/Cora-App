@@ -250,12 +250,16 @@ class ApiClient {
           return CollaborationStepStateTypeTransformer().decode(value);
         case 'CompleteInstagramConnectDto':
           return CompleteInstagramConnectDto.fromJson(value);
+        case 'ContentCountModel':
+          return ContentCountModel.fromJson(value);
         case 'ContentDraftKind':
           return ContentDraftKindTypeTransformer().decode(value);
         case 'ContentDraftModel':
           return ContentDraftModel.fromJson(value);
         case 'ContentFormat':
           return ContentFormatTypeTransformer().decode(value);
+        case 'CoraSideModel':
+          return CoraSideModel.fromJson(value);
         case 'CreateCreatorSeriesDto':
           return CreateCreatorSeriesDto.fromJson(value);
         case 'CreatePaymentDto':
@@ -416,10 +420,14 @@ class ApiClient {
           return SubmitContentDto.fromJson(value);
         case 'TrialBanner':
           return TrialBannerTypeTransformer().decode(value);
+        case 'TrialComparisonModel':
+          return TrialComparisonModel.fromJson(value);
         case 'TrialInfoDto':
           return TrialInfoDto.fromJson(value);
         case 'TrialInfoModel':
           return TrialInfoModel.fromJson(value);
+        case 'TrialSideModel':
+          return TrialSideModel.fromJson(value);
         case 'UnreadCountModel':
           return UnreadCountModel.fromJson(value);
         case 'UpdateNotificationSettingsDto':

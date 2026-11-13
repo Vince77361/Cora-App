@@ -20,6 +20,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { PayoutAccountsModule } from './payout-accounts/payout-accounts.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SettlementsModule } from './settlements/settlements.module';
+import { StoreInsightsModule } from './store-insights/store-insights.module';
 import { StoresModule } from './stores/stores.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
@@ -48,6 +49,7 @@ import { WalletModule } from './wallet/wallet.module';
     PayoutAccountsModule,
     SettlementsModule,
     CollaborationsApiModule,
+    StoreInsightsModule,
     WalletModule,
     OpsModule,
     PaymentsDevModule.register(process.env),

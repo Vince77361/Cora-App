@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  Collaboration,
   Payout,
   Prisma,
   Refund,
@@ -182,6 +183,27 @@ export class SettlementsRepository {
       },
     });
     return count === 1;
+  }
+
+  // 그 가게의 끝난(SETTLED) 가게 오퍼 협업의 정산 줄. since 이후에 정산된 것만이다(체험단 비교가 쓴다).
+  listSettledForStore(
+    storeId: string,
+    since: Date,
+  ): Promise<(Settlement & { collaboration: Collaboration })[]> {
+    return this.prisma.settlement.findMany({
+      where: {
+        deletedAt: null,
+        settledAt: { gte: since },
+        collaboration: {
+          storeId,
+          kind: 'STORE_OFFER',
+          stage: 'SETTLED',
+          deletedAt: null,
+        },
+      },
+      include: { collaboration: true },
+      orderBy: { settledAt: 'asc' },
+    });
   }
 
   // 협업당 한 줄(유일 제약). 이미 있으면 예외 없이 false다(호출한 쪽 트랜잭션이 중단되지 않는다).

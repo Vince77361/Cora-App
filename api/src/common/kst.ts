@@ -62,3 +62,16 @@ export function startOfNextKstMonth(at: Date): Date {
       KST_OFFSET_MS,
   );
 }
+
+// 그 순간이 속한 한국 날짜에서 달력으로 months개월 앞선 같은 날의 0시(UTC 시각). 그 달에 같은 날이 없으면 그 달의 마지막 날이다
+// (5월 31일의 석 달 전은 2월 28일). "오늘부터 석 달 전까지" 같은 범위의 시작이다.
+export function startOfKstDayMonthsAgo(at: Date, months: number): Date {
+  const shifted = new Date(at.getTime() + KST_OFFSET_MS);
+  const monthIndex =
+    shifted.getUTCFullYear() * 12 + shifted.getUTCMonth() - months;
+  const year = Math.floor(monthIndex / 12);
+  const month = monthIndex - year * 12;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const day = Math.min(shifted.getUTCDate(), lastDay);
+  return new Date(Date.UTC(year, month, day) - KST_OFFSET_MS);
+}

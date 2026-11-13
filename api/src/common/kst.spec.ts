@@ -3,6 +3,7 @@ import {
   kstTimeOnDate,
   kstWeekdayFromMonday,
   startOfKstDay,
+  startOfKstDayMonthsAgo,
   startOfKstMonth,
   startOfKstWeek,
   startOfNextKstMonth,
@@ -134,5 +135,34 @@ describe('startOfKstMonth and startOfNextKstMonth', () => {
     expect(startOfNextKstMonth(new Date('2026-12-15T03:00:00.000Z'))).toEqual(
       new Date('2026-12-31T15:00:00.000Z'),
     );
+  });
+});
+
+describe('startOfKstDayMonthsAgo', () => {
+  it('goes back three calendar months to the same Korean day at midnight', () => {
+    // 2026-11-14 12:00 KST → 2026-08-14 00:00 KST
+    expect(
+      startOfKstDayMonthsAgo(new Date('2026-11-14T03:00:00.000Z'), 3),
+    ).toEqual(new Date('2026-08-13T15:00:00.000Z'));
+  });
+
+  it('crosses the year boundary', () => {
+    expect(
+      startOfKstDayMonthsAgo(new Date('2026-02-10T03:00:00.000Z'), 3),
+    ).toEqual(new Date('2025-11-09T15:00:00.000Z'));
+  });
+
+  it('clamps to the last day of a shorter month', () => {
+    // 5월 31일의 석 달 전은 2월 28일
+    expect(
+      startOfKstDayMonthsAgo(new Date('2026-05-31T03:00:00.000Z'), 3),
+    ).toEqual(new Date('2026-02-27T15:00:00.000Z'));
+  });
+
+  it('uses the Korean date near midnight', () => {
+    // 2026-11-14 00:30 KST = 11-13 15:30 UTC
+    expect(
+      startOfKstDayMonthsAgo(new Date('2026-11-13T15:30:00.000Z'), 3),
+    ).toEqual(new Date('2026-08-13T15:00:00.000Z'));
   });
 });

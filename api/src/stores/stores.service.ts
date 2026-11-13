@@ -441,6 +441,16 @@ export class StoresService {
     return url ? instagramHandleOf(url) : null;
   }
 
+  // 체험단 비교(G3)가 읽는 내 가게와 체험단 계약 정보. 가게가 없으면 404, 계약 정보가 없으면 trial이 null이다.
+  async getTrialContext(userId: string): Promise<{
+    storeId: string;
+    trial: { monthlyFee: number; endsOn: string; postCount: number } | null;
+  }> {
+    await this.assertStoreRole(userId);
+    const store = await this.requireMine(userId);
+    return { storeId: store.id, trial: this.toMyStore(store).trialInfo };
+  }
+
   private async requireMine(userId: string): Promise<StoreWithLinks> {
     const store = await this.stores.findActiveByOwnerId(userId);
     if (!store) throw new AppError('NOT_FOUND', '가게를 먼저 만들어 주세요.');

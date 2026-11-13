@@ -27,10 +27,12 @@ doc/CollaborationStepModel.md
 doc/CollaborationStepState.md
 doc/CollaborationsApi.md
 doc/CompleteInstagramConnectDto.md
+doc/ContentCountModel.md
 doc/ContentDraftKind.md
 doc/ContentDraftModel.md
 doc/ContentDraftsApi.md
 doc/ContentFormat.md
+doc/CoraSideModel.md
 doc/CreateCreatorSeriesDto.md
 doc/CreatePaymentDto.md
 doc/CreatePhotoUploadDto.md
@@ -110,6 +112,7 @@ doc/SourceLinkKind.md
 doc/StoreBranchModel.md
 doc/StoreDetailModel.md
 doc/StoreHomeSummaryModel.md
+doc/StoreInsightsApi.md
 doc/StoreOnboardingStep.md
 doc/StoreProposalDto.md
 doc/StoreProposalResultModel.md
@@ -123,8 +126,10 @@ doc/StoresApi.md
 doc/SubmissionsApi.md
 doc/SubmitContentDto.md
 doc/TrialBanner.md
+doc/TrialComparisonModel.md
 doc/TrialInfoDto.md
 doc/TrialInfoModel.md
+doc/TrialSideModel.md
 doc/UnreadCountModel.md
 doc/UpdateNotificationSettingsDto.md
 doc/UpdateRoleDto.md
@@ -157,6 +162,7 @@ lib/api/offers_api.dart
 lib/api/payments_api.dart
 lib/api/payout_accounts_api.dart
 lib/api/proposals_api.dart
+lib/api/store_insights_api.dart
 lib/api/store_result_api.dart
 lib/api/stores_api.dart
 lib/api/submissions_api.dart
@@ -194,9 +200,11 @@ lib/model/collaboration_step_key.dart
 lib/model/collaboration_step_model.dart
 lib/model/collaboration_step_state.dart
 lib/model/complete_instagram_connect_dto.dart
+lib/model/content_count_model.dart
 lib/model/content_draft_kind.dart
 lib/model/content_draft_model.dart
 lib/model/content_format.dart
+lib/model/cora_side_model.dart
 lib/model/create_creator_series_dto.dart
 lib/model/create_payment_dto.dart
 lib/model/create_photo_upload_dto.dart
@@ -277,8 +285,10 @@ lib/model/store_status.dart
 lib/model/store_summary_model.dart
 lib/model/submit_content_dto.dart
 lib/model/trial_banner.dart
+lib/model/trial_comparison_model.dart
 lib/model/trial_info_dto.dart
 lib/model/trial_info_model.dart
+lib/model/trial_side_model.dart
 lib/model/unread_count_model.dart
 lib/model/update_notification_settings_dto.dart
 lib/model/update_role_dto.dart
@@ -321,10 +331,12 @@ test/collaboration_step_model_test.dart
 test/collaboration_step_state_test.dart
 test/collaborations_api_test.dart
 test/complete_instagram_connect_dto_test.dart
+test/content_count_model_test.dart
 test/content_draft_kind_test.dart
 test/content_draft_model_test.dart
 test/content_drafts_api_test.dart
 test/content_format_test.dart
+test/cora_side_model_test.dart
 test/create_creator_series_dto_test.dart
 test/create_payment_dto_test.dart
 test/create_photo_upload_dto_test.dart
@@ -404,6 +416,7 @@ test/source_link_kind_test.dart
 test/store_branch_model_test.dart
 test/store_detail_model_test.dart
 test/store_home_summary_model_test.dart
+test/store_insights_api_test.dart
 test/store_onboarding_step_test.dart
 test/store_proposal_dto_test.dart
 test/store_proposal_result_model_test.dart
@@ -417,8 +430,10 @@ test/stores_api_test.dart
 test/submissions_api_test.dart
 test/submit_content_dto_test.dart
 test/trial_banner_test.dart
+test/trial_comparison_model_test.dart
 test/trial_info_dto_test.dart
 test/trial_info_model_test.dart
+test/trial_side_model_test.dart
 test/unread_count_model_test.dart
 test/update_notification_settings_dto_test.dart
 test/update_role_dto_test.dart

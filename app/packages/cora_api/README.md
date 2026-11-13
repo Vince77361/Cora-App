@@ -103,6 +103,7 @@ Class | Method | HTTP request | Description
 *PayoutAccountsApi* | [**upsertPayoutAccount**](doc//PayoutAccountsApi.md#upsertpayoutaccount) | **PUT** /payout-account | 
 *ProposalsApi* | [**getProposal**](doc//ProposalsApi.md#getproposal) | **GET** /offers/{id} | 
 *ProposalsApi* | [**listProposals**](doc//ProposalsApi.md#listproposals) | **GET** /offers/proposals | 
+*StoreInsightsApi* | [**getMyStoreTrialComparison**](doc//StoreInsightsApi.md#getmystoretrialcomparison) | **GET** /stores/me/trial-comparison | 체험단 재계약 전 비교(G3). 체험단 계약 정보가 없으면 404다.
 *StoreResultApi* | [**getStoreResult**](doc//StoreResultApi.md#getstoreresult) | **GET** /collaborations/{id}/result | 사장님의 7일 결과(G1). 끝난 협업의 지급·환불과 평소 조회수 대비 배수를 돌려준다.
 *StoresApi* | [**advanceMyStoreOnboarding**](doc//StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
 *StoresApi* | [**analyzeMyStoreLinks**](doc//StoresApi.md#analyzemystorelinks) | **POST** /stores/me/analyze | 
@@ -150,9 +151,11 @@ Class | Method | HTTP request | Description
  - [CollaborationStepModel](doc//CollaborationStepModel.md)
  - [CollaborationStepState](doc//CollaborationStepState.md)
  - [CompleteInstagramConnectDto](doc//CompleteInstagramConnectDto.md)
+ - [ContentCountModel](doc//ContentCountModel.md)
  - [ContentDraftKind](doc//ContentDraftKind.md)
  - [ContentDraftModel](doc//ContentDraftModel.md)
  - [ContentFormat](doc//ContentFormat.md)
+ - [CoraSideModel](doc//CoraSideModel.md)
  - [CreateCreatorSeriesDto](doc//CreateCreatorSeriesDto.md)
  - [CreatePaymentDto](doc//CreatePaymentDto.md)
  - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
@@ -233,8 +236,10 @@ Class | Method | HTTP request | Description
  - [StoreSummaryModel](doc//StoreSummaryModel.md)
  - [SubmitContentDto](doc//SubmitContentDto.md)
  - [TrialBanner](doc//TrialBanner.md)
+ - [TrialComparisonModel](doc//TrialComparisonModel.md)
  - [TrialInfoDto](doc//TrialInfoDto.md)
  - [TrialInfoModel](doc//TrialInfoModel.md)
+ - [TrialSideModel](doc//TrialSideModel.md)
  - [UnreadCountModel](doc//UnreadCountModel.md)
  - [UpdateNotificationSettingsDto](doc//UpdateNotificationSettingsDto.md)
  - [UpdateRoleDto](doc//UpdateRoleDto.md)

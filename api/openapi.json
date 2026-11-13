@@ -508,6 +508,25 @@
         ],
         "type": "object"
       },
+      "ContentCountModel": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          }
+        },
+        "required": [
+          "format",
+          "count"
+        ],
+        "type": "object"
+      },
       "ContentDraftKind": {
         "enum": [
           "CARD_NEWS",
@@ -560,6 +579,37 @@
           "BLOG"
         ],
         "type": "string"
+      },
+      "CoraSideModel": {
+        "properties": {
+          "averageMultiplierTenths": {
+            "description": "평소 대비 배수(10배 한 정수, 26 = 2.6배)의 평균, 소수 첫째 자리까지 내림. 배수가 있는 협업이 없으면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "contentByFormat": {
+            "description": "형식별 생긴 콘텐츠 수. 0편인 형식은 없다.",
+            "items": {
+              "$ref": "#/components/schemas/ContentCountModel"
+            },
+            "type": "array"
+          },
+          "offerCount": {
+            "description": "끝난 협업 수(오퍼 건수).",
+            "type": "integer"
+          },
+          "spent": {
+            "description": "들어간 돈(원). 끝난 협업의 크리에이터 지급액과 수수료의 합.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "offerCount",
+          "spent",
+          "contentByFormat",
+          "averageMultiplierTenths"
+        ],
+        "type": "object"
       },
       "CreateCreatorSeriesDto": {
         "properties": {
@@ -2864,6 +2914,21 @@
         ],
         "type": "string"
       },
+      "TrialComparisonModel": {
+        "properties": {
+          "cora": {
+            "$ref": "#/components/schemas/CoraSideModel"
+          },
+          "trial": {
+            "$ref": "#/components/schemas/TrialSideModel"
+          }
+        },
+        "required": [
+          "trial",
+          "cora"
+        ],
+        "type": "object"
+      },
       "TrialInfoDto": {
         "properties": {
           "endsOn": {
@@ -2911,6 +2976,34 @@
           "monthlyFee",
           "endsOn",
           "postCount"
+        ],
+        "type": "object"
+      },
+      "TrialSideModel": {
+        "properties": {
+          "endsOn": {
+            "description": "계약 종료일(한국 날짜, YYYY-MM-DD).",
+            "example": "2026-12-10",
+            "type": "string"
+          },
+          "monthlyFee": {
+            "description": "월 계약 금액(원).",
+            "type": "integer"
+          },
+          "postCount": {
+            "description": "석 달 동안 받은 글 수.",
+            "type": "integer"
+          },
+          "spent": {
+            "description": "석 달 동안 들어간 돈(원). 월 계약 금액 × 3.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "monthlyFee",
+          "endsOn",
+          "postCount",
+          "spent"
         ],
         "type": "object"
       },
@@ -5273,6 +5366,33 @@
         "summary": "",
         "tags": [
           "Offers"
+        ]
+      }
+    },
+    "/stores/me/trial-comparison": {
+      "get": {
+        "operationId": "getMyStoreTrialComparison",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrialComparisonModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "체험단 재계약 전 비교(G3). 체험단 계약 정보가 없으면 404다.",
+        "tags": [
+          "StoreInsights"
         ]
       }
     },
