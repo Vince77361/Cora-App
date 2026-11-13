@@ -47,6 +47,8 @@ import 'features/store_browse/domain/store_browse_repository.dart';
 import 'features/store_home/data/api_store_home_repository.dart';
 import 'features/store_home/domain/store_home_repository.dart';
 import 'features/store_onboarding/data/api_content_draft_repository.dart';
+import 'features/store_result/data/api_store_result_repository.dart';
+import 'features/store_result/domain/store_result_repository.dart';
 import 'features/store_onboarding/data/api_store_repository.dart';
 import 'features/store_onboarding/domain/content_draft_repository_provider.dart';
 import 'features/store_onboarding/domain/store_repository_provider.dart';
@@ -118,6 +120,9 @@ Future<void> main() async {
         ),
         storeHomeRepositoryProvider.overrideWith(
           (ref) => ApiStoreHomeRepository(ref.watch(apiClientProvider)),
+        ),
+        storeResultRepositoryProvider.overrideWith(
+          (ref) => ApiStoreResultRepository(ref.watch(apiClientProvider)),
         ),
         paymentRepositoryProvider.overrideWith(
           (ref) => ApiPaymentRepository(ref.watch(apiClientProvider)),

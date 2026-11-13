@@ -34,6 +34,7 @@ import '../../features/offers/presentation/pages/send_offer_page.dart';
 import '../../features/store_browse/presentation/pages/store_detail_page.dart';
 import '../../features/store_browse/presentation/pages/store_list_page.dart';
 import '../../features/store_home/presentation/pages/store_home_page.dart';
+import '../../features/store_result/presentation/pages/store_result_page.dart';
 import '../../features/store_home/presentation/pages/store_me_page.dart';
 import '../../features/store_home/presentation/viewmodels/store_home_view_model.dart';
 import '../../features/store_onboarding/presentation/pages/content_drafts_page.dart';
@@ -189,7 +190,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/store/offers/new/:creatorId',
         pageBuilder: (context, state) => CoraTransitions.push(
-          SendOfferPage(creatorId: state.pathParameters['creatorId']!),
+          SendOfferPage(
+            creatorId: state.pathParameters['creatorId']!,
+            // G1·G2가 받는 사람(지원자가 아닐 수 있다)과 지난 조건을 넘긴다.
+            args: state.extra is SendOfferArgs
+                ? state.extra! as SendOfferArgs
+                : const SendOfferArgs(),
+          ),
           key: state.pageKey,
         ),
       ),
@@ -215,6 +222,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.storePayPattern,
         pageBuilder: (context, state) => CoraTransitions.push(
           StorePaymentPage(
+            collaborationId: state.pathParameters['collaborationId']!,
+          ),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.storeResultPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          StoreResultPage(
             collaborationId: state.pathParameters['collaborationId']!,
           ),
           key: state.pageKey,

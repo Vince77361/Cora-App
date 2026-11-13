@@ -36,6 +36,7 @@ class OfferTermsWizard extends ConsumerStatefulWidget {
     required this.storeName,
     required this.onSend,
     this.recipientPhotoUrl,
+    this.openDetailsFirst = false,
   });
 
   final NewOfferTarget target;
@@ -45,6 +46,9 @@ class OfferTermsWizard extends ConsumerStatefulWidget {
 
   /// F2의 받는 사람 사진.
   final String? recipientPhotoUrl;
+
+  /// 처음 그린 뒤 바로 `자세히 설정`(F1)을 연다. 지난 조건이 채워진 오퍼(G1 `다시 만나기`)가 쓴다.
+  final bool openDetailsFirst;
 
   static const nextLabel = '다음';
   static const reviewLabel = '검토하고 보내기';
@@ -58,6 +62,16 @@ class OfferTermsWizard extends ConsumerStatefulWidget {
 }
 
 class _OfferTermsWizardState extends ConsumerState<OfferTermsWizard> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.openDetailsFirst) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openDetails();
+      });
+    }
+  }
+
   OfferTermsWizardViewModel get _vm =>
       ref.read(offerTermsWizardViewModelProvider(widget.target).notifier);
 

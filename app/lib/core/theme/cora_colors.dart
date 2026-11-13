@@ -66,6 +66,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     this.switchKnob = const Color(0xFFFFFFFF),
     this.quietSelected = const Color(0xFFFFFFFF),
     this.roleCardIdle = const Color(0xFFFFFFFF),
+    this.compareBarNow = const Color(0xFF17181C),
   });
 
   final Color background;
@@ -190,6 +191,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
   /// A1 역할 카드의 고르지 않은 칸 바탕(NRole #FFFFFF, DarkNRole #2A2D33). 고른 칸은 `notifyTabSelected`,
   /// 점은 `accent`/`onAccent`, 글자는 `text`다. 그림자(0 8px 24px, 알파 0.06)는 두 모드가 같다.
   final Color roleCardIdle;
+
+  /// G1 7일 결과의 `이번` 막대(NResult #17181C, DarkNResult #0F1012). 평소 막대는 `line`이다. 다크의
+  /// 막대는 `surface` 상자(#1C1E22) 위에서 거의 묻히지만 캔버스 그대로다.
+  final Color compareBarNow;
 
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
@@ -330,6 +335,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     switchTrackOff: Color(0xFF2A2D33),
     quietSelected: Color(0xFF2A2D33),
     roleCardIdle: Color(0xFF2A2D33),
+    compareBarNow: Color(0xFF0F1012),
   );
 
   @override
@@ -396,6 +402,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? switchKnob,
     Color? quietSelected,
     Color? roleCardIdle,
+    Color? compareBarNow,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -461,6 +468,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
       switchKnob: switchKnob ?? this.switchKnob,
       quietSelected: quietSelected ?? this.quietSelected,
       roleCardIdle: roleCardIdle ?? this.roleCardIdle,
+      compareBarNow: compareBarNow ?? this.compareBarNow,
     );
   }
 
@@ -534,6 +542,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
       switchKnob: mix(switchKnob, other.switchKnob),
       quietSelected: mix(quietSelected, other.quietSelected),
       roleCardIdle: mix(roleCardIdle, other.roleCardIdle),
+      compareBarNow: mix(compareBarNow, other.compareBarNow),
     );
   }
 }

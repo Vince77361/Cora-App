@@ -10,6 +10,7 @@ import 'package:cora/features/notifications/presentation/pages/notifications_pag
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/proposals/domain/proposal_repository.dart';
 import 'package:cora/features/store_home/presentation/viewmodels/store_home_view_model.dart';
+import 'package:cora/features/store_result/domain/store_result_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,6 +20,7 @@ import '../../support/pump_cora_app.dart';
 import '../payment/fake_payment_repository.dart';
 import '../payment/payment_harness.dart';
 import '../proposals/fake_proposal_repository.dart';
+import '../store_result/fake_store_result_repository.dart';
 import 'fake_notification_repository.dart';
 import 'notifications_harness.dart';
 
@@ -194,6 +196,39 @@ void main() {
     );
     expect(locationFor('PROPOSAL', null, UserRole.store), isNull);
     expect(locationFor('PROPOSAL', 'p-7', UserRole.brand), isNull);
+  });
+
+  test('a settlement notification goes to the store seven day result', () {
+    expect(
+      locationFor('STORE_RESULT', 'c-3', UserRole.store),
+      '/store/collaborations/c-3/result',
+    );
+    expect(locationFor('STORE_RESULT', null, UserRole.store), isNull);
+    expect(locationFor('STORE_RESULT', 'c-3', UserRole.creator), isNull);
+    expect(locationFor('STORE_RESULT', 'c-3', UserRole.brand), isNull);
+  });
+
+  testWidgets('a settlement notification opens the seven day result', (
+    tester,
+  ) async {
+    final repo = FakeNotificationRepository(
+      items: [_note('result', kind: 'STORE_RESULT', targetId: 'col-7')],
+    );
+    final results = FakeStoreResultRepository();
+    await pumpStoreNotifications(
+      tester,
+      repo: repo,
+      overrides: [storeResultRepositoryProvider.overrideWithValue(results)],
+    );
+
+    await tester.tap(find.text('result 문구'));
+    await tester.pumpAndSettle();
+
+    expect(topPath(tester), AppRoutes.storeResult('col-7'));
+    expect(results.fetched, ['col-7']);
+    expect(find.text('7일 결과'), findsOneWidget);
+    expect(find.text('12,500회'), findsOneWidget);
+    expect(repo.readIds, ['result']);
   });
 
   testWidgets('opens the creator screens for a creator', (tester) async {

@@ -2,12 +2,14 @@ import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/features/collaboration/domain/collaboration.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart';
+import 'package:cora/features/store_result/domain/store_result_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
 import '../store_home/store_home_harness.dart';
 import 'collaboration_harness.dart' show FakeMailLauncher;
 import 'fake_collaboration_repository.dart';
+import '../store_result/fake_store_result_repository.dart';
 import 'store_collaboration_harness.dart';
 
 const _id = storeCollaborationId;
@@ -328,6 +330,77 @@ void main() {
     expect(find.text('보관 중인 금액'), findsNothing);
     expect(find.text('올라온 콘텐츠 보기'), findsOneWidget);
     expect(find.bySemanticsLabel('더보기'), findsNothing);
+    // 끝난 협업에는 7일 결과(G1) 입구가 있다.
+    expect(find.text('7일 결과 보기'), findsOneWidget);
+  });
+
+  testWidgets('opens the seven day result from a settled collaboration', (
+    tester,
+  ) async {
+    final c = _owned(
+      stage: CollaborationStage.settled,
+      steps: [
+        for (final key in StepKey.values)
+          CollaborationStep(key: key, state: StepState.done),
+      ],
+      submittedUrl: _url,
+      settlement: const CollaborationSettlement(
+        finalViews: 12500,
+        payoutAmount: 25000,
+        refundAmount: 35000,
+      ),
+    );
+    await pumpStoreCollaboration(
+      tester,
+      repo: _repo(c),
+      overrides: [
+        storeResultRepositoryProvider.overrideWithValue(
+          FakeStoreResultRepository(),
+        ),
+      ],
+    );
+
+    await tester.tap(find.text('7일 결과 보기'));
+    await tester.pumpAndSettle();
+
+    expect(topPath(tester), AppRoutes.storeResult(_id));
+    expect(find.text('12,500회'), findsOneWidget);
+  });
+
+  testWidgets('has no seven day result before settling', (tester) async {
+    await pumpStoreCollaboration(
+      tester,
+      repo: _repo(
+        _owned(
+          stage: CollaborationStage.counting,
+          now: StepKey.settle,
+          submittedUrl: _url,
+          currentViews: 4320,
+          expectedRefund: 56800,
+          countingEndsAt: DateTime.utc(2026, 11, 18, 12),
+        ),
+      ),
+    );
+    expect(find.text('7일 결과 보기'), findsNothing);
+  });
+
+  testWidgets('has no seven day result for a voucher only collaboration', (
+    tester,
+  ) async {
+    final c = collaboration(
+      id: _id,
+      storeName: '하루 한 컵',
+      role: CollaborationRole.commissioner,
+      stage: CollaborationStage.settled,
+      terms: const OfferTerms(
+        format: ContentFormat.reels,
+        reward: Reward(voucher: Voucher(name: '식사권', value: 40000)),
+      ),
+      submittedUrl: _url,
+    );
+    await pumpStoreCollaboration(tester, repo: _repo(c));
+
+    expect(find.text('7일 결과 보기'), findsNothing);
   });
 
   testWidgets('opens the mail composer with the operator address', (

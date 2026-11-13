@@ -25,12 +25,22 @@ final class RecruitTarget extends ProposalTarget {
   int get hashCode => (RecruitTarget).hashCode;
 }
 
-/// 지원한 크리에이터에게 새로 보내는 오퍼.
+/// 크리에이터에게 새로 보내는 오퍼. 지원자에게 보내거나(G2), 끝난 협업의 크리에이터에게 다시 보낸다(G1).
+///
+/// 고르는 조건은 [start]에서 시작한다. 주지 않으면 가게의 모집 조건에서 시작한다. G1의 `다시 만나기`가
+/// 지난 협업의 조건을 [start]로 준다.
 final class NewOfferTarget extends ProposalTarget {
-  const NewOfferTarget({required this.creatorId, required this.creatorName});
+  const NewOfferTarget({
+    required this.creatorId,
+    required this.creatorName,
+    this.start,
+  });
 
   final String creatorId;
   final String creatorName;
+
+  /// 고르는 조건의 처음 값(지난 협업의 조건).
+  final OfferTerms? start;
 
   @override
   int get versionNumber => 1;
@@ -39,10 +49,12 @@ final class NewOfferTarget extends ProposalTarget {
   bool operator ==(Object other) =>
       other is NewOfferTarget &&
       other.creatorId == creatorId &&
-      other.creatorName == creatorName;
+      other.creatorName == creatorName &&
+      other.start == start;
 
   @override
-  int get hashCode => Object.hash(NewOfferTarget, creatorId, creatorName);
+  int get hashCode =>
+      Object.hash(NewOfferTarget, creatorId, creatorName, start);
 }
 
 /// 받은 제안에 사장님이 답으로 내는 새 판본(Task 12가 쓴다). 고르는 조건은 [start](그 제안의 최신 판본 조건)에서

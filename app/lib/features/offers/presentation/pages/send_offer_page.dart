@@ -15,13 +15,32 @@ import '../../../store_home/presentation/viewmodels/store_home_view_model.dart';
 import '../../../store_onboarding/presentation/viewmodels/my_store_view_model.dart';
 import '../viewmodels/send_offer_view_model.dart';
 
+/// A5를 지원자 목록 밖에서 열 때 넘기는 값(라우트의 `extra`).
+class SendOfferArgs {
+  const SendOfferArgs({this.creator, this.start});
+
+  /// 받는 사람. 없으면 사장님 홈의 지원자 목록에서 찾는다.
+  final CreatorSummary? creator;
+
+  /// 고르는 조건의 처음 값. 없으면 가게의 모집 조건이다.
+  final OfferTerms? start;
+}
+
 /// A5 오퍼 보내기(NOffer / DarkNOffer). 형식 → 보상(빠른 조합) → 확인 세 단계를 가게의 모집 조건에서
 /// 시작해 보여 주고, 마지막 단계의 `검토하고 보내기`가 F2를 연다. F2의 `이 조건으로 보내기`가 지원한
 /// 크리에이터에게 오퍼를 보내면 사장님 홈의 `보낸 오퍼` 탭으로 돌아가 `오퍼를 보냈어요.`를 잠깐 보인다.
+///
+/// 지원자가 아닌 크리에이터에게도 열린다(G1의 `새 오퍼`·`다시 만나기`). 그때는 [args]가 받는 사람을 알려 주고,
+/// `다시 만나기`는 지난 협업의 조건을 [SendOfferArgs.start]로 주어 `자세히 설정`(F1)을 바로 연다.
 class SendOfferPage extends ConsumerStatefulWidget {
-  const SendOfferPage({super.key, required this.creatorId});
+  const SendOfferPage({
+    super.key,
+    required this.creatorId,
+    this.args = const SendOfferArgs(),
+  });
 
   final String creatorId;
+  final SendOfferArgs args;
 
   static String pageLabel(String creatorName) => '$creatorName에게 오퍼';
   static const sent = '오퍼를 보냈어요.';
@@ -38,7 +57,7 @@ class SendOfferPage extends ConsumerStatefulWidget {
 class _SendOfferPageState extends ConsumerState<SendOfferPage> {
   /// 처음 찾은 크리에이터를 들고 있는다. 보낸 직후 홈이 새로 읽히면 지원자 목록에서 빠지는데,
   /// 그 사이 화면이 `찾지 못했어요`로 바뀌면 안 된다.
-  Applicant? _applicant;
+  CreatorSummary? _creator;
 
   /// F2의 마지막 버튼이 부른다. 실패하면 F2가 실패 이유에 맞는 문구를 보이도록 [ProposalSendFailure]로 알린다.
   Future<void> _send(OfferTerms terms) async {
@@ -61,12 +80,14 @@ class _SendOfferPageState extends ConsumerState<SendOfferPage> {
 
   @override
   Widget build(BuildContext context) {
-    _applicant ??= ref.watch(sendOfferApplicantProvider(widget.creatorId));
-    final applicant = _applicant;
+    _creator ??=
+        widget.args.creator ??
+        ref.watch(sendOfferApplicantProvider(widget.creatorId))?.creator;
+    final creator = _creator;
     final store = ref.watch(myStoreViewModelProvider).value;
     final config = ref.watch(serverConfigViewModelProvider);
     final Widget body;
-    if (applicant == null || store == null || config.value == null) {
+    if (creator == null || store == null || config.value == null) {
       final loading =
           ref.watch(storeHomeViewModelProvider).isLoading || config.isLoading;
       body = loading
@@ -79,12 +100,17 @@ class _SendOfferPageState extends ConsumerState<SendOfferPage> {
               },
             );
     } else {
-      final name = applicant.creator.displayName;
+      final name = creator.displayName;
       body = OfferTermsWizard(
-        target: NewOfferTarget(creatorId: widget.creatorId, creatorName: name),
+        target: NewOfferTarget(
+          creatorId: widget.creatorId,
+          creatorName: name,
+          start: widget.args.start,
+        ),
         pageLabel: SendOfferPage.pageLabel(name),
         storeName: store.name ?? '',
-        recipientPhotoUrl: applicant.creator.photoUrl,
+        recipientPhotoUrl: creator.photoUrl,
+        openDetailsFirst: widget.args.start != null,
         onSend: _send,
       );
     }

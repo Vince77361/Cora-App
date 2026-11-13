@@ -36,6 +36,9 @@ class StoreCollaborationPage extends ConsumerStatefulWidget {
   static const refundLabel = '예상 환급액';
   static const submitFirst = '크리에이터가 링크를 제출하면 집계가 시작돼요.';
   static const viewContent = '올라온 콘텐츠 보기';
+
+  /// 끝난 협업의 G1 입구(캔버스에 없다).
+  static const seeResult = '7일 결과 보기';
   static const inquiry = '문의하기';
 
   /// `…` 메뉴와 확인 시트.
@@ -97,6 +100,9 @@ class _StoreCollaborationPageState
     _vm.showNotice(linkFailedMessage);
   }
 
+  void _openResult(Collaboration c) =>
+      context.push(AppRoutes.storeResult(c.id));
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -139,6 +145,7 @@ class _StoreCollaborationPageState
                   child: _Content(
                     collaboration: value.collaboration,
                     onViewContent: () => _viewContent(value.collaboration),
+                    onSeeResult: () => _openResult(value.collaboration),
                   ),
                 ),
                 AsyncError() => CoraStateView.loadFailed(
@@ -183,10 +190,21 @@ class _StoreCollaborationPageState
 }
 
 class _Content extends StatelessWidget {
-  const _Content({required this.collaboration, required this.onViewContent});
+  const _Content({
+    required this.collaboration,
+    required this.onViewContent,
+    required this.onSeeResult,
+  });
 
   final Collaboration collaboration;
   final VoidCallback onViewContent;
+  final VoidCallback onSeeResult;
+
+  /// 7일 결과(G1)가 있는 협업이다: 정산이 끝났고, 식사권만 있던 협업이 아니며(서버는 404), 게시 링크가 있다.
+  bool get _hasResult =>
+      collaboration.stage == CollaborationStage.settled &&
+      (collaboration.hasPerView || collaboration.terms.reward.fixedCash > 0) &&
+      (collaboration.submittedUrl ?? '').isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -217,6 +235,14 @@ class _Content extends StatelessWidget {
             child: CoraSecondaryButton(
               label: StoreCollaborationPage.viewContent,
               onPressed: onViewContent,
+            ),
+          ),
+        if (_hasResult)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: CoraSecondaryButton(
+              label: StoreCollaborationPage.seeResult,
+              onPressed: onSeeResult,
             ),
           ),
       ],

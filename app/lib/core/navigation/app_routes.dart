@@ -55,6 +55,21 @@ abstract final class AppRoutes {
   /// [storePay]의 라우트 패턴.
   static const storePayPattern = '/store/collaborations/:collaborationId/pay';
 
+  /// 협업 [collaborationId]의 7일 결과(G1). 정산 알림과 끝난 협업의 `7일 결과 보기`가 연다.
+  static String storeResult(String collaborationId) =>
+      '${storeCollaboration(collaborationId)}/result';
+
+  /// [storeResult]의 라우트 패턴.
+  static const storeResultPattern =
+      '/store/collaborations/:collaborationId/result';
+
+  /// 지원자 추천 3명(G2). 사장님 홈의 `지원자 추천`이 연다.
+  static const storeApplicantPicks = '/store/applicants/picks';
+
+  /// 지난 3개월 비교(G3)와 체험단 계약 정보 입력. 홈의 체험단 줄과 내 가게가 연다.
+  static const storeTrialCompare = '/store/trial-compare';
+  static const storeTrialInfo = '/store/me/trial-info';
+
   /// 제안함(F3). 사장님 하단 메뉴의 `오퍼`가 열고, 오퍼를 보낸 뒤에도 여기로 온다.
   static const storeProposals = '/store/proposals';
 

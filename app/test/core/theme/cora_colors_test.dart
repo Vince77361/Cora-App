@@ -269,6 +269,21 @@ void main() {
     }
   });
 
+  test('G1 compare bar matches NResult and DarkNResult', () {
+    expect(CoraColors.light.compareBarNow, const Color(0xFF17181C));
+    expect(CoraColors.dark.compareBarNow, const Color(0xFF0F1012));
+    expect(
+      CoraColors.light.lerp(CoraColors.dark, 1).compareBarNow,
+      const Color(0xFF0F1012),
+    );
+    expect(
+      CoraColors.light
+          .copyWith(compareBarNow: const Color(0xFF123456))
+          .compareBarNow,
+      const Color(0xFF123456),
+    );
+  });
+
   test('lerp returns the endpoints field by field', () {
     _expectSameFields(
       CoraColors.light.lerp(CoraColors.dark, 0),

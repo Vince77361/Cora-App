@@ -44,6 +44,11 @@ String? locationFor(String targetKind, String? targetId, UserRole role) {
         UserRole.creator => AppRoutes.creatorCollaboration(id),
         UserRole.brand => null,
       };
+    case 'STORE_RESULT':
+      // 정산이 끝난 협업의 7일 결과(G1). 서버는 협업 id를 준다.
+      return id == null || role != UserRole.store
+          ? null
+          : AppRoutes.storeResult(id);
     case 'PROPOSAL':
       if (id == null) return null;
       return switch (role) {
