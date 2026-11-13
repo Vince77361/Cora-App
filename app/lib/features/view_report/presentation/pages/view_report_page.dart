@@ -55,7 +55,8 @@ class ViewReportPage extends ConsumerStatefulWidget {
   static const confirm = '자료 확인했어요';
   static const noViews = '-';
 
-  /// 제출된 캡처 그림의 접근성 이름(캔버스에 없다).
+  /// 캡처 요청을 받은 크리에이터의 버튼과 제출된 캡처 그림의 접근성 이름(캔버스에 없다).
+  static const uploadEvidence = '캡처 올리기';
   static const evidenceImage = '제출한 인사이트 캡처';
 
   @override
@@ -141,8 +142,12 @@ class _ViewReportPageState extends ConsumerState<ViewReportPage> {
                 state: value,
                 notice: _linkNotice ?? value.notice,
                 bottom: bottom,
+                viewer: widget.viewer,
                 onDispute: _openDispute,
                 onConfirm: _vm.confirm,
+                onUploadEvidence: () => context.push(
+                  AppRoutes.creatorViewEvidence(widget.collaborationId),
+                ),
               ),
           ],
         ),
@@ -243,6 +248,9 @@ class _DataBox extends StatelessWidget {
               value: postLinkLabel(report.postUrl),
               first: true,
               onTapValue: onOpenPost,
+              // 실제 게시 링크는 캔버스의 자리 글(`[게시 링크]`)보다 길다. 항목 이름이 줄어들지 않게 링크를 한 줄로
+              // 줄여 보인다.
+              singleLineValue: true,
             ),
             _KeyValueRow(
               term: ViewReportPage.period,
@@ -408,6 +416,7 @@ class _KeyValueRow extends StatelessWidget {
     this.first = false,
     this.bold = false,
     this.onTapValue,
+    this.singleLineValue = false,
   });
 
   final String term;
@@ -417,6 +426,9 @@ class _KeyValueRow extends StatelessWidget {
 
   /// 값을 누르면 하는 일(게시 링크를 연다). 없으면 글자일 뿐이다.
   final VoidCallback? onTapValue;
+
+  /// 값을 한 줄로 두고 길면 말줄임표로 줄인다(항목 이름은 줄어들지 않는다).
+  final bool singleLineValue;
 
   static const double _gap = 12;
 
@@ -447,6 +459,8 @@ class _KeyValueRow extends StatelessWidget {
     Widget valueText = Text(
       value,
       textAlign: TextAlign.right,
+      maxLines: singleLineValue ? 1 : null,
+      overflow: singleLineValue ? TextOverflow.ellipsis : TextOverflow.clip,
       style: valueStyle,
     );
     if (onTapValue != null) {
@@ -466,15 +480,23 @@ class _KeyValueRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: MergeSemantics(
           child: Row(
+            // 둘이 한 줄에 들어가면 양 끝에 붙고, 넘치면 본래 너비 비율로 줄어든다.
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Flexible(
-                flex: termFlex,
-                child: Text(term, style: termStyle),
-              ),
-              const SizedBox(width: _gap),
-              Flexible(flex: valueFlex, child: valueText),
+              if (singleLineValue) ...[
+                Text(term, style: termStyle),
+                const SizedBox(width: _gap),
+                Flexible(child: valueText),
+              ] else ...[
+                Flexible(
+                  flex: termFlex,
+                  child: Text(term, style: termStyle),
+                ),
+                const SizedBox(width: _gap),
+                Flexible(flex: valueFlex, child: valueText),
+              ],
             ],
           ),
         ),
@@ -491,15 +513,19 @@ class _BottomBar extends StatelessWidget {
     required this.state,
     required this.notice,
     required this.bottom,
+    required this.viewer,
     required this.onDispute,
     required this.onConfirm,
+    required this.onUploadEvidence,
   });
 
   final ViewReportState state;
   final String? notice;
   final double bottom;
+  final ViewReportViewer viewer;
   final VoidCallback onDispute;
   final VoidCallback onConfirm;
+  final VoidCallback onUploadEvidence;
 
   @override
   Widget build(BuildContext context) {
@@ -508,6 +534,8 @@ class _BottomBar extends StatelessWidget {
     final busy = state.busy;
     final primary = r.canConfirm
         ? (label: ViewReportPage.confirm, onTap: onConfirm)
+        : (viewer == ViewReportViewer.creator && r.canUploadEvidence)
+        ? (label: ViewReportPage.uploadEvidence, onTap: onUploadEvidence)
         : null;
     if (!r.canDispute && primary == null && notice == null) {
       return SizedBox(height: bottom);

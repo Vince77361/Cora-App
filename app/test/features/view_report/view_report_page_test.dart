@@ -82,6 +82,36 @@ void main() {
     },
   );
 
+  testWidgets(
+    'A7 is refreshed when it comes back from a report that moved on',
+    (tester) async {
+      final repo = FakeCollaborationRepository(
+        active: [_awaitingConfirmation(status: ViewReportStatus.counting)],
+      );
+      await pumpCollaboration(
+        tester,
+        repo: repo,
+        id: reportCollaborationId,
+        overrides: [
+          viewReportRepositoryProvider.overrideWithValue(
+            FakeViewReportRepository(),
+          ),
+        ],
+      );
+      expect(find.text('집계 중'), findsOneWidget);
+
+      // 집계가 끝나 계산이 나왔다(서버 쪽 변화).
+      repo.active = [_awaitingConfirmation()];
+      await tester.tap(find.text('조회 자료와 보상 계산 확인'));
+      await tester.pumpAndSettle();
+      routerOf(tester).pop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('미확인'), findsOneWidget);
+      expect(find.text('집계 중'), findsNothing);
+    },
+  );
+
   testWidgets('A7 has no report row without a report status', (tester) async {
     final repo = FakeCollaborationRepository(
       active: [collaboration(id: reportCollaborationId)],
@@ -177,6 +207,20 @@ void main() {
         '자료가 확인되기 전에는 0원이나 지급 완료로 처리하지 않아요. 지급 방식(직접 지급 기록 또는 Cora 보관)은 아직 정하는 중이에요.',
       ),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('F4 puts the values at the right edge and the terms at the left '
+      'like the canvas', (tester) async {
+    await pumpOwnerReport(tester);
+
+    final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    // 상자 안쪽: 바깥 16 + 안쪽 18.
+    expect(tester.getTopRight(find.text('연결 계정')).dx, closeTo(width - 34, 0.5));
+    expect(tester.getTopLeft(find.text('자료 출처')).dx, closeTo(34, 0.5));
+    expect(
+      tester.getTopRight(find.text('60,000원 · 상한 안')).dx,
+      closeTo(width - 34, 0.5),
     );
   });
 

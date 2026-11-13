@@ -1,5 +1,6 @@
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/features/collaboration/domain/collaboration.dart';
+import 'package:cora/features/view_report/domain/view_report.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/offers/domain/offer_view.dart';
 import 'package:cora/features/payment/domain/payment_repository.dart';
@@ -19,6 +20,7 @@ Collaboration _owned(
   StepKey now = StepKey.visit,
   DateTime? countingEndsAt,
   CollaborationSettlement? settlement,
+  ViewReportStatus? viewReportStatus,
 }) => collaboration(
   id: id,
   storeName: '하루 한 컵',
@@ -27,6 +29,7 @@ Collaboration _owned(
   now: now,
   countingEndsAt: countingEndsAt,
   settlement: settlement,
+  viewReportStatus: viewReportStatus,
   currentViews: 4320,
   expectedRefund: 56800,
 );
@@ -210,4 +213,26 @@ void main() {
     );
     expect(sentOfferAction(offer, collaboration: _owned('c')), isNull);
   });
+
+  test(
+    'does not count days left while the view report awaits confirmation',
+    () {
+      final offer = sentOffer(view: OfferView.accepted, collaborationId: 'c');
+
+      expect(
+        sentOfferMeta(
+          offer,
+          collaboration: _owned(
+            'c',
+            stage: CollaborationStage.counting,
+            now: StepKey.settle,
+            countingEndsAt: DateTime.utc(2026, 11, 14, 12),
+            viewReportStatus: ViewReportStatus.unconfirmed,
+          ),
+          now: DateTime.utc(2026, 11, 15, 12),
+        ),
+        '집계를 확인하고 있어요',
+      );
+    },
+  );
 }

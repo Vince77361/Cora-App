@@ -129,6 +129,10 @@ abstract final class AppRoutes {
   static String creatorViewReport(String id) =>
       '${creatorCollaboration(id)}/report';
 
+  /// 협업 [id]의 조회수 캡처 올리기. F4의 `캡처 올리기`가 연다.
+  static String creatorViewEvidence(String id) =>
+      '${creatorCollaboration(id)}/evidence';
+
   /// 지급받을 계좌와 인스타그램 연동. 협업 화면과 받은 오퍼 카드에서 밀려 들어온다.
   static const creatorPayoutAccount = '/creator/payout-account';
   static const creatorInstagram = '/creator/instagram';

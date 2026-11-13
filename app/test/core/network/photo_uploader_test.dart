@@ -45,6 +45,26 @@ void main() {
     expect(path, 'creators/u1/abc.jpg');
   });
 
+  test('asks for the view evidence purpose and PUTs before returning', () async {
+    final fake = FakeHttpClient()
+      ..body =
+          '{"path":"evidence/u1/abc.png","uploadUrl":"https://storage.example.test/upload?token=t"}';
+
+    final path = await _uploader(fake).upload(
+      purpose: PhotoPurpose.viewEvidence,
+      bytes: Uint8List.fromList([1, 2]),
+      contentType: 'image/png',
+    );
+
+    expect(path, 'evidence/u1/abc.png');
+    expect(jsonDecode((fake.requests[0] as http.Request).body), {
+      'contentType': 'image/png',
+      'purpose': 'VIEW_EVIDENCE',
+      'sizeBytes': 2,
+    });
+    expect((fake.requests[1] as http.Request).method, 'PUT');
+  });
+
   test(
     'asks for an address, PUTs the bytes with the content type, returns the path',
     () async {

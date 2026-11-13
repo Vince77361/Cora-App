@@ -36,6 +36,7 @@ import '../../features/store_browse/presentation/pages/store_detail_page.dart';
 import '../../features/store_browse/presentation/pages/store_list_page.dart';
 import '../../features/store_home/presentation/pages/store_home_page.dart';
 import '../../features/trial_compare/presentation/pages/trial_compare_page.dart';
+import '../../features/view_report/presentation/pages/view_evidence_page.dart';
 import '../../features/view_report/presentation/pages/view_report_page.dart';
 import '../../features/trial_compare/presentation/pages/trial_info_page.dart';
 import '../../features/store_result/presentation/pages/store_result_page.dart';
@@ -374,6 +375,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             collaborationId: state.pathParameters['id']!,
             viewer: ViewReportViewer.creator,
           ),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.creatorCollaborationPattern}/evidence',
+        pageBuilder: (context, state) => CoraTransitions.push(
+          ViewEvidencePage(collaborationId: state.pathParameters['id']!),
           key: state.pageKey,
         ),
       ),

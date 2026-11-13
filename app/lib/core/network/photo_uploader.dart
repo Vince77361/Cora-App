@@ -7,8 +7,9 @@ import 'package:http/http.dart' as http;
 
 import 'api_error.dart';
 
-/// 사진이 쓰이는 곳. 서버가 올릴 폴더(`stores/…`, `creators/…`)를 이것으로 정한다.
-enum PhotoPurpose { storeCover, creatorPhoto }
+/// 사진이 쓰이는 곳. 서버가 올릴 폴더(`stores/…`, `creators/…`)를 이것으로 정한다. [viewEvidence]는 조회수
+/// 캡처로, 공개 저장소가 아니라 비공개 저장소에 올라간다(서버가 정한다).
+enum PhotoPurpose { storeCover, creatorPhoto, viewEvidence }
 
 /// 서버가 받는 사진 한 장의 최대 크기(`api/src/uploads/photo-rules.ts`의 `MAX_PHOTO_BYTES`).
 const maxPhotoBytes = 5 * 1024 * 1024;
@@ -84,6 +85,8 @@ class ApiPhotoUploader implements PhotoUploader {
               api.CreatePhotoUploadDtoPurposeEnum.STORE_COVER,
             PhotoPurpose.creatorPhoto =>
               api.CreatePhotoUploadDtoPurposeEnum.CREATOR_PHOTO,
+            PhotoPurpose.viewEvidence =>
+              api.CreatePhotoUploadDtoPurposeEnum.VIEW_EVIDENCE,
           },
           sizeBytes: bytes.length,
         ),

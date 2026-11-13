@@ -50,7 +50,13 @@ class ViewReportViewModel extends AsyncNotifier<ViewReportState> {
   @override
   Future<ViewReportState> build() async {
     ref.watch(currentUserIdProvider);
-    return ViewReportState(report: await _repo.fetch(collaborationId));
+    final report = await _repo.fetch(collaborationId);
+    // 집계가 끝나 계산이 나오는 것처럼 협업 화면이 열린 사이에 단계가 바뀌었을 수 있다. 뒤로 돌아갔을 때
+    // 낡은 `집계 중`이 남지 않게 협업 쪽도 다시 읽게 한다(방금 연 화면이라 다른 데이터가 흔들리지 않는다).
+    Future.microtask(() {
+      if (ref.mounted) _refreshCollaboration();
+    });
+    return ViewReportState(report: report);
   }
 
   /// 다른 화면이 서버에서 받은 최신 조회 자료를 넘긴다.

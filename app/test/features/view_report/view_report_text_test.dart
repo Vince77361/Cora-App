@@ -56,5 +56,9 @@ void main() {
       postLinkLabel('http://instagram.com/reel/x'),
       'instagram.com/reel/x',
     );
+    expect(
+      postLinkLabel('https://www.instagram.com/reel/abc/?views=12500#top'),
+      'instagram.com/reel/abc',
+    );
   });
 }

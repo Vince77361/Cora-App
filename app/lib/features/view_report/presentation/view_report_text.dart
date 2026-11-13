@@ -47,9 +47,12 @@ String viewsLabel(int views) => '${_commas(views)}회';
 /// 쉼표로 끊은 숫자(`12,500`).
 String _commas(int n) => wonExact(n).replaceAll('원', '');
 
-/// 게시 링크를 줄에 맞게 줄여 보인다: 앞의 `https://`와 `www.`, 끝의 `/`를 뗀다.
+/// 게시 링크를 줄에 맞게 줄여 보인다: 앞의 `https://`와 `www.`, 끝의 `/`, 뒤의 `?…`·`#…`를 뗀다(여는 주소는
+/// 따로 원래 링크 그대로다).
 String postLinkLabel(String url) {
   var text = url.trim();
+  final cut = text.indexOf(RegExp(r'[?#]'));
+  if (cut >= 0) text = text.substring(0, cut);
   text = text.replaceFirst(RegExp(r'^https?://', caseSensitive: false), '');
   text = text.replaceFirst(RegExp(r'^www\.', caseSensitive: false), '');
   while (text.endsWith('/')) {
