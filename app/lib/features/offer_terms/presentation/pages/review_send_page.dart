@@ -127,10 +127,16 @@ class _ReviewSendPageState extends ConsumerState<ReviewSendPage> {
         .setUsageRights(picked);
   }
 
-  /// 크리에이터가 조회수 수당이 켜진 제안을 보내려는데 인스타그램 연동이 없다. 연동을 읽는 중이거나
-  /// 읽지 못했으면 막지 않는다(서버가 보낼 때 다시 확인한다).
+  /// 크리에이터가 조회수 수당이 켜진 제안을 보내려는데 인스타그램 연동이 없다. 서버 `needsInstagram`과 같은
+  /// 규칙이다: 릴스와 카드뉴스의 조회수 수당만 연동으로 조회수를 읽는다(쇼츠와 블로그는 아니다). 연동을
+  /// 읽는 중이거나 읽지 못했으면 막지 않는다(서버가 보낼 때 다시 확인한다).
   bool _needsInstagram(OfferTerms terms) {
-    if (widget.target is! CounterTarget || terms.reward.viewPay == null) {
+    final readsViewsByInstagram =
+        terms.format == ContentFormat.reels ||
+        terms.format == ContentFormat.cardNews;
+    if (widget.target is! CounterTarget ||
+        terms.reward.viewPay == null ||
+        !readsViewsByInstagram) {
       return false;
     }
     final connection = ref.watch(instagramConnectViewModelProvider);

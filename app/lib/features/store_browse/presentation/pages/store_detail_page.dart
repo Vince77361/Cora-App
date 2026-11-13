@@ -527,11 +527,12 @@ class _BottomBar extends StatelessWidget {
     // 열린 제안이 있는데 내 차례가 아니면 사장님의 답을 기다린다. 이때는 지원 상태가 무엇이든
     // 새로 지원하거나 제안할 수 없다.
     final waiting = open != null && !open.myTurn;
-    // 지원한 뒤에는 방금 적은 한 줄이 있을 때만 남겨 둔다(앱을 다시 열면 서버가 돌려주지 않는다).
+    // 한 줄 칸은 캔버스처럼 지원한 뒤에도 남는다(지원한 뒤에는 고치지 못한다). 오퍼가 도착한 상태와
+    // 사장님의 답을 기다리는 상태에서는 지원할 일이 없어 보이지 않는다.
     final showPitch =
         !waiting &&
         (status == MyApplicationStatus.none ||
-            (status == MyApplicationStatus.applied && pitch.text.isNotEmpty));
+            status == MyApplicationStatus.applied);
     final Widget actions;
     if (waiting) {
       actions = Column(
@@ -677,7 +678,7 @@ class _PitchBox extends StatelessWidget {
               const SizedBox(height: 4),
               TextField(
                 controller: controller,
-                enabled: enabled,
+                readOnly: !enabled,
                 textInputAction: TextInputAction.done,
                 inputFormatters: [
                   LengthLimitingTextInputFormatter(

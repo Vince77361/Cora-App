@@ -171,6 +171,29 @@ void main() {
       expect(find.text('지원했어요. 사장님이 고르면 오퍼가 도착해요.'), findsOneWidget);
       expect(find.text('취소'), findsOneWidget);
       expect(find.text('조건 그대로 지원'), findsNothing);
+      // 한 줄 칸은 지원한 뒤에도 남고, 쓴 글이 그대로 보이며 더는 고칠 수 없다.
+      expect(
+        find.text('이 가게라면 이렇게 찍겠다 · 한 줄 · 조회수가 없어도 지원할 수 있어요'),
+        findsOneWidget,
+      );
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller!.text, '  김 오르는 첫 숟가락을 슬로모션으로 ');
+      expect(field.readOnly, isTrue);
+    });
+
+    testWidgets('D2 keeps the pitch box once applied from an earlier visit', (
+      tester,
+    ) async {
+      final stores = FakeStoreBrowseRepository()
+        ..statuses['1'] = MyApplicationStatus.applied;
+      await pumpCreatorApp(tester, stores: stores);
+      await _openFirstStore(tester);
+
+      expect(
+        find.text('이 가게라면 이렇게 찍겠다 · 한 줄 · 조회수가 없어도 지원할 수 있어요'),
+        findsOneWidget,
+      );
+      expect(find.text('지원했어요. 사장님이 고르면 오퍼가 도착해요.'), findsOneWidget);
     });
 
     testWidgets('D2 applies without a pitch and limits it to 100 characters', (

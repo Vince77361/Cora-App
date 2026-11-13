@@ -389,6 +389,41 @@ void main() {
     expect(find.text('이 조건으로 보내기'), findsOneWidget);
   });
 
+  testWidgets('F6 sends shorts view pay without instagram like the server', (
+    tester,
+  ) async {
+    // 서버 needsInstagram: 릴스와 카드뉴스의 조회수 수당만 연동을 요구한다. 쇼츠는 아니다.
+    final counter = FakeCounterProposalRepository();
+    await pumpCreatorApp(
+      tester,
+      counter: counter,
+      instagram: FakeInstagramRepository(),
+    );
+    await _openCounter(tester);
+    await tester.tap(find.text('쇼츠'));
+    await tester.pumpAndSettle();
+    expect(find.text('식사권 + 조회수 수당'), findsOneWidget);
+    await _review(tester);
+
+    expect(find.text('인스타그램을 연동하면 수락할 수 있어요'), findsNothing);
+    expect(find.text('연동하기'), findsNothing);
+    expect(find.text('이 조건으로 보내기'), findsOneWidget);
+    await tester.tap(find.text('이 조건으로 보내기'));
+    await tester.pumpAndSettle();
+    expect(counter.sent.single.proposal.terms.format, ContentFormat.shorts);
+  });
+
+  testWidgets('F6 asks for instagram for card news view pay', (tester) async {
+    await pumpCreatorApp(tester, instagram: FakeInstagramRepository());
+    await _openCounter(tester);
+    await tester.tap(find.text('카드뉴스'));
+    await tester.pumpAndSettle();
+    await _review(tester);
+
+    expect(find.text('연동하기'), findsOneWidget);
+    expect(find.text('이 조건으로 보내기'), findsNothing);
+  });
+
   testWidgets('F6 shows the server message when sending fails', (tester) async {
     final counter = FakeCounterProposalRepository()
       ..failSend = const CounterProposalFailure(message: '이미 진행 중인 제안이 있어요.');
