@@ -12,6 +12,8 @@ Method | HTTP request | Description
 [**applyToStore**](ApplicationsApi.md#applytostore) | **POST** /stores/{id}/applications | 
 [**cancelMyApplication**](ApplicationsApi.md#cancelmyapplication) | **DELETE** /stores/{id}/applications/mine | 
 [**listMyStoreApplicants**](ApplicationsApi.md#listmystoreapplicants) | **GET** /stores/me/applications | 
+[**listRecommendedApplicants**](ApplicationsApi.md#listrecommendedapplicants) | **GET** /stores/me/applications/recommended | 
+[**skipRecommendedApplicant**](ApplicationsApi.md#skiprecommendedapplicant) | **POST** /stores/me/applications/{id}/skip | 
 
 
 # **applyToStore**
@@ -149,6 +151,95 @@ This endpoint does not need any parameter.
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **listRecommendedApplicants**
+> RecommendedApplicantsModel listRecommendedApplicants()
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = ApplicationsApi();
+
+try {
+    final result = api_instance.listRecommendedApplicants();
+    print(result);
+} catch (e) {
+    print('Exception when calling ApplicationsApi->listRecommendedApplicants: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**RecommendedApplicantsModel**](RecommendedApplicantsModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **skipRecommendedApplicant**
+> skipRecommendedApplicant(id)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = ApplicationsApi();
+final id = id_example; // String | 
+
+try {
+    api_instance.skipRecommendedApplicant(id);
+} catch (e) {
+    print('Exception when calling ApplicationsApi->skipRecommendedApplicant: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 

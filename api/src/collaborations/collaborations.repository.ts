@@ -218,6 +218,24 @@ export class CollaborationsRepository {
     });
   }
 
+  // 크리에이터별로 이 단계에 있는 협업의 수(지원자 추천의 "마친 협업"). 없는 크리에이터는 맵에 없다.
+  async countByCreators(
+    creatorIds: string[],
+    stages: CollaborationStage[],
+  ): Promise<Map<string, number>> {
+    if (creatorIds.length === 0) return new Map();
+    const rows = await this.prisma.collaboration.groupBy({
+      by: ['creatorId'],
+      where: {
+        creatorId: { in: creatorIds },
+        stage: { in: stages },
+        deletedAt: null,
+      },
+      _count: { _all: true },
+    });
+    return new Map(rows.map((r) => [r.creatorId, r._count._all]));
+  }
+
   // 크리에이터의 협업 가운데 정산 방식이 맞는 것(여럿 가능)의 종류와 단계. 인스타그램 연결 해제처럼
   // "보관 중인 돈이 있는가"를 단계 규칙(isMoneyHeld)으로 판단하는 쪽이 쓴다.
   listForCreator(

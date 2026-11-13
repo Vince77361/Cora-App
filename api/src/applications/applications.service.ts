@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, Store } from '@prisma/client';
+import { CollaborationsRepository } from '../collaborations/collaborations.repository';
+import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -9,6 +11,9 @@ import { ApplicationsRepository } from './applications.repository';
 import { ApplicantModel } from './dto/applicant.model';
 import { ApplyDto } from './dto/apply.dto';
 import { ApplicationModel } from './dto/application.model';
+import { RecommendedApplicantsModel } from './dto/recommended-applicants.model';
+import { pickRecommended, reasonsFor } from './recommendation';
+import type { Candidate } from './recommendation';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -34,6 +39,8 @@ export class ApplicationsService {
     private readonly stores: StoresService,
     private readonly creators: CreatorsService,
     private readonly notifications: NotificationsService,
+    private readonly collaborations: CollaborationsRepository,
+    private readonly clock: Clock,
   ) {}
 
   // 검사 순서: 역할 → 공개된 가게 → 내 가게 아님 → 프로필 → 중복. 화면이 가장 알맞은 안내를 고르게 한다.
@@ -131,6 +138,64 @@ export class ApplicationsService {
     });
     // Array.prototype.sort는 안정 정렬이라 같은 묶음에서는 최근 지원 순이 그대로 남는다.
     return items.sort((a, b) => a.tier - b.tier).map(({ item }) => item);
+  }
+
+  // 사장님 홈의 지원자 추천 3명. 점수는 서버가 계산한다(recommendation.ts). 넘긴 지원은 여기서만 빠지고 목록에는 남는다.
+  async listRecommended(userId: string): Promise<RecommendedApplicantsModel> {
+    await this.assertRole(userId, 'STORE', '가게 계정만 쓸 수 있어요.');
+    const store = await this.stores.requireMyStore(userId);
+    const rows = await this.applications.listApplied(store.id);
+    // 넘기지 않은 지원자만 읽는다. 프로필이 지워진 지원자는 보여 줄 것이 없어 뺀다.
+    const open = rows.filter((row) => row.skippedFromPicksAt === null);
+    const summaries = await Promise.all(
+      open.map((row) => this.creators.getSummary(row.creatorId)),
+    );
+    const found = open.flatMap((row, index) => {
+      const creator = summaries[index];
+      return creator ? [{ row, creator }] : [];
+    });
+    const finished = await this.collaborations.countByCreators(
+      found.map(({ creator }) => creator.userId),
+      ['SETTLED'],
+    );
+    const entries = found.map(({ row, creator }) => ({
+      id: row.id,
+      createdAt: row.createdAt,
+      skippedFromPicksAt: row.skippedFromPicksAt,
+      regionSido: creator.regionSido,
+      regionSigungu: creator.regionSigungu,
+      contentFocus: creator.contentFocus,
+      hasPitch: row.pitch !== null,
+      finishedCount: finished.get(creator.userId) ?? 0,
+      creator,
+      pitch: row.pitch,
+    }));
+    const picked = pickRecommended<Candidate & (typeof entries)[number]>(
+      entries,
+      store,
+    );
+    return {
+      // 새 지원 수는 넘긴 사람도 센다. 홈의 "새 지원"과 같다.
+      totalNew: rows.length,
+      items: picked.map((entry) => ({
+        applicationId: entry.id,
+        creator: entry.creator,
+        pitch: entry.pitch,
+        reasons: reasonsFor(entry, store),
+      })),
+    };
+  }
+
+  // 지원 상태는 바꾸지 않고 추천에서만 뺀다. 내 가게의 지원 중 지원이 아니면 404(남의 것과 없는 것을 가르지 않는다).
+  async skipRecommended(userId: string, applicationId: string): Promise<void> {
+    await this.assertRole(userId, 'STORE', '가게 계정만 쓸 수 있어요.');
+    const store = await this.stores.requireMyStore(userId);
+    // uuid 모양이 아닌 값은 DB에 보내지 않고 없는 지원으로 본다(500이 되지 않게).
+    const row = UUID.test(applicationId)
+      ? await this.applications.findAppliedOfStore(store.id, applicationId)
+      : null;
+    if (!row) throw this.notFound();
+    await this.applications.markSkipped(row.id, this.clock.now());
   }
 
   // 오퍼 모듈이 쓴다. 오퍼를 보낼 때 그 크리에이터의 지원 중 지원을 오퍼 받음으로 바꾼다.

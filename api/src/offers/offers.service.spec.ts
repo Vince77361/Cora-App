@@ -338,6 +338,8 @@ class FakeApplications extends ApplicationsService {
       null as never,
       null as never,
       null as never,
+      null as never,
+      null as never,
     );
   }
   markOffered(): Promise<string | null> {

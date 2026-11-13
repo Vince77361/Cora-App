@@ -36,5 +36,19 @@ void main() {
     test('test listMyStoreApplicants', () async {
       // TODO
     });
+
+    //
+    //
+    //Future<RecommendedApplicantsModel> listRecommendedApplicants() async
+    test('test listRecommendedApplicants', () async {
+      // TODO
+    });
+
+    //
+    //
+    //Future skipRecommendedApplicant(String id) async
+    test('test skipRecommendedApplicant', () async {
+      // TODO
+    });
   });
 }

@@ -135,6 +135,8 @@ part 'model/propose_version_dto.dart';
 part 'model/quiet_hours.dart';
 part 'model/received_offer_model.dart';
 part 'model/received_offer_tab.dart';
+part 'model/recommended_applicant_model.dart';
+part 'model/recommended_applicants_model.dart';
 part 'model/reward_config_model.dart';
 part 'model/reward_input_dto.dart';
 part 'model/reward_range_model.dart';

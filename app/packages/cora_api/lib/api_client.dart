@@ -376,6 +376,10 @@ class ApiClient {
           return ReceivedOfferModel.fromJson(value);
         case 'ReceivedOfferTab':
           return ReceivedOfferTabTypeTransformer().decode(value);
+        case 'RecommendedApplicantModel':
+          return RecommendedApplicantModel.fromJson(value);
+        case 'RecommendedApplicantsModel':
+          return RecommendedApplicantsModel.fromJson(value);
         case 'RewardConfigModel':
           return RewardConfigModel.fromJson(value);
         case 'RewardInputDto':

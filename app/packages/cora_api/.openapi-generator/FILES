@@ -100,6 +100,8 @@ doc/ProposeVersionDto.md
 doc/QuietHours.md
 doc/ReceivedOfferModel.md
 doc/ReceivedOfferTab.md
+doc/RecommendedApplicantModel.md
+doc/RecommendedApplicantsModel.md
 doc/RewardConfigModel.md
 doc/RewardInputDto.md
 doc/RewardRangeModel.md
@@ -263,6 +265,8 @@ lib/model/propose_version_dto.dart
 lib/model/quiet_hours.dart
 lib/model/received_offer_model.dart
 lib/model/received_offer_tab.dart
+lib/model/recommended_applicant_model.dart
+lib/model/recommended_applicants_model.dart
 lib/model/reward_config_model.dart
 lib/model/reward_input_dto.dart
 lib/model/reward_range_model.dart
@@ -404,6 +408,8 @@ test/propose_version_dto_test.dart
 test/quiet_hours_test.dart
 test/received_offer_model_test.dart
 test/received_offer_tab_test.dart
+test/recommended_applicant_model_test.dart
+test/recommended_applicants_model_test.dart
 test/reward_config_model_test.dart
 test/reward_input_dto_test.dart
 test/reward_range_model_test.dart

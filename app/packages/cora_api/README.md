@@ -62,6 +62,8 @@ Class | Method | HTTP request | Description
 *ApplicationsApi* | [**applyToStore**](doc//ApplicationsApi.md#applytostore) | **POST** /stores/{id}/applications | 
 *ApplicationsApi* | [**cancelMyApplication**](doc//ApplicationsApi.md#cancelmyapplication) | **DELETE** /stores/{id}/applications/mine | 
 *ApplicationsApi* | [**listMyStoreApplicants**](doc//ApplicationsApi.md#listmystoreapplicants) | **GET** /stores/me/applications | 
+*ApplicationsApi* | [**listRecommendedApplicants**](doc//ApplicationsApi.md#listrecommendedapplicants) | **GET** /stores/me/applications/recommended | 
+*ApplicationsApi* | [**skipRecommendedApplicant**](doc//ApplicationsApi.md#skiprecommendedapplicant) | **POST** /stores/me/applications/{id}/skip | 
 *CollaborationsApi* | [**acceptCollaborationCancel**](doc//CollaborationsApi.md#acceptcollaborationcancel) | **POST** /collaborations/{id}/cancel-requests/{requestId}/accept | 크리에이터가 사장님의 취소 요청에 동의한다(직접 그만두는 것과 같은 처리).
 *CollaborationsApi* | [**cancelCollaboration**](doc//CollaborationsApi.md#cancelcollaboration) | **POST** /collaborations/{id}/cancel | 크리에이터가 링크를 제출하기 전에 협업을 그만둔다(수수료까지 전액 환급).
 *CollaborationsApi* | [**getCollaboration**](doc//CollaborationsApi.md#getcollaboration) | **GET** /collaborations/{id} | 
@@ -214,6 +216,8 @@ Class | Method | HTTP request | Description
  - [QuietHours](doc//QuietHours.md)
  - [ReceivedOfferModel](doc//ReceivedOfferModel.md)
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)
+ - [RecommendedApplicantModel](doc//RecommendedApplicantModel.md)
+ - [RecommendedApplicantsModel](doc//RecommendedApplicantsModel.md)
  - [RewardConfigModel](doc//RewardConfigModel.md)
  - [RewardInputDto](doc//RewardInputDto.md)
  - [RewardRangeModel](doc//RewardRangeModel.md)

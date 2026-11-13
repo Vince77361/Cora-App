@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { Application, Store, UserRole } from '@prisma/client';
+import { FakeClock } from '../../test/support/fake-clock';
+import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
 import type {
@@ -109,6 +111,47 @@ class FakeApplicationsRepository extends ApplicationsRepository {
         .length,
     );
   }
+
+  findAppliedOfStore(
+    storeId: string,
+    applicationId: string,
+  ): Promise<Application | null> {
+    return Promise.resolve(
+      this.rows.find(
+        (r) =>
+          r.id === applicationId &&
+          r.storeId === storeId &&
+          r.status === 'APPLIED' &&
+          !r.deletedAt,
+      ) ?? null,
+    );
+  }
+
+  markSkipped(applicationId: string, at: Date): Promise<void> {
+    const row = this.rows.find((r) => r.id === applicationId);
+    if (row?.status === 'APPLIED' && row.skippedFromPicksAt === null) {
+      row.skippedFromPicksAt = at;
+    }
+    return Promise.resolve();
+  }
+}
+
+// 마친 협업 수만 손으로 정해 준다.
+class FakeCollaborations extends CollaborationsRepository {
+  readonly finished = new Map<string, number>();
+
+  constructor() {
+    super(null as never, null as never);
+  }
+
+  countByCreators(creatorIds: string[]): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    for (const id of creatorIds) {
+      const n = this.finished.get(id);
+      if (n) map.set(id, n);
+    }
+    return Promise.resolve(map);
+  }
 }
 
 class FakeUsersService extends UsersService {
@@ -157,11 +200,16 @@ class FakeCreatorsService extends CreatorsService {
     super(null as never, null as never, null as never, null as never);
   }
 
-  add(userId: string, regionSido: string, regionSigungu: string | null): void {
+  add(
+    userId: string,
+    regionSido: string,
+    regionSigungu: string | null,
+    contentFocus: string | null = null,
+  ): void {
     this.profiles.set(userId, {
       userId,
       displayName: `활동 ${userId.slice(0, 1)}`,
-      contentFocus: null,
+      contentFocus,
       photoUrl: null,
       regionSido,
       regionSigungu,
@@ -272,6 +320,8 @@ describe('ApplicationsService', () => {
   let stores: FakeStoresService;
   let creators: FakeCreatorsService;
   let push: FakeNotifications;
+  let collaborations: FakeCollaborations;
+  let clock: FakeClock;
   let service: ApplicationsService;
   let store: Store;
 
@@ -281,7 +331,17 @@ describe('ApplicationsService', () => {
     stores = new FakeStoresService();
     creators = new FakeCreatorsService();
     push = new FakeNotifications();
-    service = new ApplicationsService(repo, users, stores, creators, push);
+    collaborations = new FakeCollaborations();
+    clock = new FakeClock(new Date('2026-11-14T03:00:00.000Z'));
+    service = new ApplicationsService(
+      repo,
+      users,
+      stores,
+      creators,
+      push,
+      collaborations,
+      clock,
+    );
     store = makeStore();
     stores.store = store;
     creators.add(CREATOR, '서울특별시', '성동구');
@@ -465,6 +525,119 @@ describe('ApplicationsService', () => {
       await repo.create(store.id, CREATOR);
       creators.profiles.clear();
       expect(await service.listApplicants(OWNER)).toEqual([]);
+    });
+  });
+
+  describe('listRecommended', () => {
+    // 지원자 하나를 만들고 프로필과 마친 협업 수를 정한다.
+    async function applicant(
+      region: [string, string | null],
+      opts: { focus?: string; pitch?: string; finished?: number } = {},
+    ): Promise<string> {
+      const userId = randomUUID();
+      creators.add(userId, region[0], region[1], opts.focus ?? null);
+      if (opts.finished) collaborations.finished.set(userId, opts.finished);
+      const row = await repo.create(store.id, userId, opts.pitch ?? null);
+      return row!.id;
+    }
+
+    it('requires the STORE role and a store', async () => {
+      users.role = 'CREATOR';
+      expect(await codeOf(service.listRecommended(OWNER))).toBe('FORBIDDEN');
+      users.role = 'STORE';
+      stores.store = null;
+      expect(await codeOf(service.listRecommended(OWNER))).toBe('NOT_FOUND');
+    });
+
+    it('returns at most three applicants and the total of new applications', async () => {
+      users.role = 'STORE';
+      const far = ['부산광역시', '해운대구'] as [string, string];
+      const ids: string[] = [];
+      for (let i = 0; i < 5; i += 1) ids.push(await applicant(far));
+      const near = await applicant(['서울특별시', '성동구']);
+      const res = await service.listRecommended(OWNER);
+      expect(res.totalNew).toBe(6);
+      expect(res.items).toHaveLength(3);
+      expect(res.items[0].applicationId).toBe(near);
+      // 점수가 같은 나머지는 먼저 지원한 순이다.
+      expect(res.items.slice(1).map((i) => i.applicationId)).toEqual([
+        ids[0],
+        ids[1],
+      ]);
+    });
+
+    it('returns fewer than three when fewer applied', async () => {
+      users.role = 'STORE';
+      await applicant(['서울특별시', '성동구']);
+      const res = await service.listRecommended(OWNER);
+      expect(res.totalNew).toBe(1);
+      expect(res.items).toHaveLength(1);
+      expect(await service.listRecommended(OWNER)).toEqual(res);
+    });
+
+    it('builds the reasons and pitch from the facts used for the score', async () => {
+      users.role = 'STORE';
+      const id = await applicant(['서울특별시', '성동구'], {
+        focus: '카페 릴스',
+        pitch: '성수동 카페를 찍을게요',
+        finished: 1,
+      });
+      const [item] = (await service.listRecommended(OWNER)).items;
+      expect(item.applicationId).toBe(id);
+      expect(item.pitch).toBe('성수동 카페를 찍을게요');
+      expect(item.reasons).toEqual([
+        '같은 동네예요',
+        '맛집·카페 콘텐츠를 만들어요',
+        '지난 협업을 1번 마쳤어요',
+      ]);
+    });
+
+    it('leaves a skipped applicant out of the picks but in the applicant list', async () => {
+      users.role = 'STORE';
+      const near = await applicant(['서울특별시', '성동구']);
+      const far = await applicant(['부산광역시', '해운대구']);
+      await service.skipRecommended(OWNER, near);
+      const res = await service.listRecommended(OWNER);
+      expect(res.items.map((i) => i.applicationId)).toEqual([far]);
+      expect(res.totalNew).toBe(2);
+      expect(repo.rows.find((r) => r.id === near)?.status).toBe('APPLIED');
+      const list = await service.listApplicants(OWNER);
+      expect(list.map((a) => a.applicationId)).toContain(near);
+    });
+  });
+
+  describe('skipRecommended', () => {
+    it('keeps the first skip time when called twice', async () => {
+      users.role = 'STORE';
+      const row = (await repo.create(store.id, CREATOR))!;
+      await service.skipRecommended(OWNER, row.id);
+      const first = row.skippedFromPicksAt;
+      expect(first).toEqual(clock.now());
+      clock.set(new Date('2026-11-15T03:00:00.000Z'));
+      await service.skipRecommended(OWNER, row.id);
+      expect(row.skippedFromPicksAt).toEqual(first);
+    });
+
+    it('returns 404 for an application of another store, a missing one or a malformed id', async () => {
+      users.role = 'STORE';
+      const other = (await repo.create(randomUUID(), CREATOR))!;
+      expect(await codeOf(service.skipRecommended(OWNER, other.id))).toBe(
+        'NOT_FOUND',
+      );
+      expect(await codeOf(service.skipRecommended(OWNER, randomUUID()))).toBe(
+        'NOT_FOUND',
+      );
+      expect(await codeOf(service.skipRecommended(OWNER, 'nope'))).toBe(
+        'NOT_FOUND',
+      );
+      expect(other.skippedFromPicksAt).toBeNull();
+    });
+
+    it('requires the STORE role', async () => {
+      users.role = 'CREATOR';
+      expect(await codeOf(service.skipRecommended(OWNER, randomUUID()))).toBe(
+        'FORBIDDEN',
+      );
     });
   });
 

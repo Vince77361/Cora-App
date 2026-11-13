@@ -58,6 +58,24 @@ export class ApplicationsRepository {
     });
   }
 
+  // 내 가게의 지원 중(APPLIED) 지원 하나. 남의 가게 것이거나 없으면 null.
+  findAppliedOfStore(
+    storeId: string,
+    applicationId: string,
+  ): Promise<Application | null> {
+    return this.prisma.application.findFirst({
+      where: { id: applicationId, storeId, status: 'APPLIED', deletedAt: null },
+    });
+  }
+
+  // 추천에서만 뺀다. 이미 넘긴 지원은 처음 시각을 지키려고 건드리지 않는다(여러 번 불려도 안전하다).
+  async markSkipped(applicationId: string, at: Date): Promise<void> {
+    await this.prisma.application.updateMany({
+      where: { id: applicationId, status: 'APPLIED', skippedFromPicksAt: null },
+      data: { skippedFromPicksAt: at },
+    });
+  }
+
   // 살아 있는 APPLIED 지원은 많아야 하나(부분 유니크). 조건부 갱신이 1건일 때만 그 id를 돌려준다.
   async markOffered(
     storeId: string,
