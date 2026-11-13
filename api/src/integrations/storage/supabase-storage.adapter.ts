@@ -67,12 +67,21 @@ export class SupabaseStorageAdapter extends StoragePort {
     return this.storage().from(PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
   }
 
+  // 파일이 없으면 storage-js는 { data: false, error(404) }를 돌려준다. 그것은 오류가 아니라 "없음"이다.
+  // 그 밖의 오류(네트워크, 권한, 던져진 예외)만 INTERNAL이다.
   async exists(path: string, bucket: string): Promise<boolean> {
-    const { data, error } = await this.storage().from(bucket).exists(path);
-    if (error) {
+    let result: { data: boolean | null; error: unknown };
+    try {
+      result = await this.storage().from(bucket).exists(path);
+    } catch (error) {
+      if (error instanceof AppError) throw error;
       throw new AppError('INTERNAL', '파일이 있는지 확인하지 못했어요.');
     }
-    return data;
+    if (result.data === false) return false;
+    if (result.error || result.data !== true) {
+      throw new AppError('INTERNAL', '파일이 있는지 확인하지 못했어요.');
+    }
+    return true;
   }
 
   async signedReadUrl(path: string, ttlSeconds: number): Promise<string> {
