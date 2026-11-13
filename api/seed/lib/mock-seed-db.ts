@@ -222,14 +222,35 @@ export class PrismaMockSeedDb implements MockSeedDb {
 
   async resetStoreFlow(input: MockStoreFlowInput): Promise<void> {
     const { storeId, ownerId, mockCreatorIds, collaboration: c } = input;
+    // 이 시드가 전에 만든 협업만 지운다: 시드가 고정한 결제 표지(pgTransactionId)로 찾는다.
+    // 시연 중 앱으로 만든 협업이나 시험 계정의 협업은 이 범위가 아니라서, 그 돈 행(장부는 만들기만 하는 표)과 함께 남는다.
+    const previousSeedCollaborations = await this.prisma.payment.findMany({
+      where: { pgTransactionId: c.payment.pgTransactionId },
+      select: { collaborationId: true },
+    });
+    const seedCollaborationIds = previousSeedCollaborations.map(
+      (p) => p.collaborationId,
+    );
+    const ofSeed = { collaborationId: { in: seedCollaborationIds } };
+
     // 오퍼가 지원을 가리키므로 오퍼를 먼저 지운다. 부분 유니크 인덱스(살아 있는 지원·열린 오퍼는 하나)
     // 때문에 논리 삭제가 아니라 실제로 지운다. 목업 계정의 행만 지우는 시드라서 허용한다.
     const scope = {
       OR: [{ storeId }, { creatorId: { in: mockCreatorIds } }],
     };
-    // 지우는 협업은 지우는 오퍼에 붙은 것뿐이다(그 밖의 협업과 장부는 건드리지 않는다).
-    // 장부 줄은 만들기만 하는 표지만, 시드가 만든 협업을 통째로 다시 만들 때는 그 협업의 줄만 함께 지운다.
-    const ofScope = { collaboration: { offer: scope } };
+    // 지우는 오퍼는 협업이 안 붙은 것과 시드 협업의 오퍼뿐이다(남의 협업이 붙은 오퍼는 지울 수 없어 남긴다).
+    // 남은 오퍼가 열린 오퍼(수락됐고 협업이 안 끝남)라 새 제안과 부분 유니크 인덱스에 걸리면 시드는 실패한다(지우지 않는다).
+    const offerScope = {
+      AND: [
+        scope,
+        {
+          OR: [
+            { collaboration: { is: null } },
+            { collaboration: { is: { id: { in: seedCollaborationIds } } } },
+          ],
+        },
+      ],
+    };
 
     // 새 행의 id를 먼저 정해, 서로 가리키는 행을 한 번의 배치 트랜잭션으로 만든다(원격 DB라 왕복을 줄인다).
     const offerIds = new Map(input.offers.map((o) => [o.key, randomUUID()]));
@@ -257,18 +278,20 @@ export class PrismaMockSeedDb implements MockSeedDb {
     };
 
     await this.prisma.$transaction([
-      this.prisma.ledgerEntry.deleteMany({ where: ofScope }),
-      this.prisma.viewSnapshot.deleteMany({ where: ofScope }),
-      this.prisma.payout.deleteMany({ where: ofScope }),
-      this.prisma.refund.deleteMany({ where: ofScope }),
-      this.prisma.settlement.deleteMany({ where: ofScope }),
-      this.prisma.payment.deleteMany({ where: ofScope }),
-      this.prisma.cancelRequest.deleteMany({ where: ofScope }),
-      this.prisma.opsAuditLog.deleteMany({ where: ofScope }),
-      this.prisma.collaboration.deleteMany({ where: { offer: scope } }),
+      this.prisma.ledgerEntry.deleteMany({ where: ofSeed }),
+      this.prisma.viewSnapshot.deleteMany({ where: ofSeed }),
+      this.prisma.payout.deleteMany({ where: ofSeed }),
+      this.prisma.refund.deleteMany({ where: ofSeed }),
+      this.prisma.settlement.deleteMany({ where: ofSeed }),
+      this.prisma.payment.deleteMany({ where: ofSeed }),
+      this.prisma.cancelRequest.deleteMany({ where: ofSeed }),
+      this.prisma.opsAuditLog.deleteMany({ where: ofSeed }),
+      this.prisma.collaboration.deleteMany({
+        where: { id: { in: seedCollaborationIds } },
+      }),
       // 판본이 오퍼를 가리키므로 판본, 오퍼, 지원 순서로 지운다.
-      this.prisma.offerVersion.deleteMany({ where: { offer: scope } }),
-      this.prisma.offer.deleteMany({ where: scope }),
+      this.prisma.offerVersion.deleteMany({ where: { offer: offerScope } }),
+      this.prisma.offer.deleteMany({ where: offerScope }),
       this.prisma.application.deleteMany({ where: scope }),
       this.prisma.creatorSeries.deleteMany({
         where: { creatorId: { in: mockCreatorIds } },

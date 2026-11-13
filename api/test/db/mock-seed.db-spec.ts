@@ -192,4 +192,88 @@ describe('PrismaMockSeedDb', () => {
       }),
     ).toBe(1);
   });
+  it('keeps collaborations and ledger lines that the seed did not make, even on mock creators', async () => {
+    await run();
+    const store = await prisma.store.findFirstOrThrow();
+    const noodle = accountIds.get('010-0000-0006') as string;
+    const otherStore = await prisma.store.create({
+      data: { ownerId: OTHER_OWNER },
+    });
+    // 남의 가게(시험 계정)가 목업 크리에이터에게 보낸 오퍼에 붙은 협업, 0001이 시연 중 앱으로 만든 협업과 장부.
+    const foreign = [
+      { storeId: otherStore.id, commissionerId: OTHER_OWNER },
+      { storeId: store.id, commissionerId: store.ownerId },
+    ];
+    const foreignCollaborationIds: string[] = [];
+    for (const [i, f] of foreign.entries()) {
+      const offer = await prisma.offer.create({
+        data: {
+          storeId: f.storeId,
+          creatorId: noodle,
+          status: 'ACCEPTED',
+          turn: 'CREATOR',
+          initiatedBy: 'STORE',
+          expiresAt: new Date(),
+          closedAt: new Date(),
+        },
+      });
+      const collaboration = await prisma.collaboration.create({
+        data: {
+          kind: 'STORE_OFFER',
+          stage: 'SETTLED',
+          commissionerId: f.commissionerId,
+          creatorId: noodle,
+          offerId: offer.id,
+          storeId: f.storeId,
+          terms: {},
+          settlementMethod: 'PER_VIEW',
+        },
+      });
+      await prisma.ledgerEntry.create({
+        data: {
+          collaborationId: collaboration.id,
+          batchId: noodle,
+          debitAccount: 'PG_IN',
+          creditAccount: 'ESCROW',
+          amount: 1000 + i,
+          reason: 'PAYMENT_ESCROW',
+          idempotencyKey: `foreign-${i}`,
+        },
+      });
+      await prisma.payment.create({
+        data: {
+          collaborationId: collaboration.id,
+          amountEscrow: 1000 + i,
+          amountFee: 0,
+          feeRate: 10,
+          method: 'CARD',
+          status: 'APPROVED',
+          requestedAt: new Date(),
+        },
+      });
+      foreignCollaborationIds.push(collaboration.id);
+    }
+
+    await run();
+
+    // 시드 협업은 새로 만들어졌고(하나), 남의 협업 둘은 오퍼와 장부 줄, 결제와 함께 그대로다.
+    expect(await prisma.collaboration.count()).toBe(3);
+    expect(
+      await prisma.collaboration.count({
+        where: { id: { in: foreignCollaborationIds } },
+      }),
+    ).toBe(2);
+    expect(
+      await prisma.ledgerEntry.count({
+        where: { collaborationId: { in: foreignCollaborationIds } },
+      }),
+    ).toBe(2);
+    expect(
+      await prisma.payment.count({
+        where: { collaborationId: { in: foreignCollaborationIds } },
+      }),
+    ).toBe(2);
+    expect(await prisma.offer.count({ where: { creatorId: noodle } })).toBe(2);
+    expect(await prisma.ledgerEntry.count()).toBe(4 + 2);
+  });
 });
