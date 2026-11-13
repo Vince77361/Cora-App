@@ -234,7 +234,7 @@ void main() {
     expect(c.onStepPill, const Color(0xFF17181C));
     expect(c.stepPillShadow, const Color(0x0017181C));
     expect(c.progressTrack, const Color(0xFF2A2D33));
-    expect(c.progressFill, const Color(0xFF0F1012));
+    expect(c.progressFill, const Color(0xFFF2F3F5));
     // DarkNStoreHome 하단 메뉴 #26282D, 선택 #C6FF3D, 꺼짐 #A0A4AD, 그림자 rgba(23,24,28,0.28)
     expect(c.navSurface, const Color(0xFF26282D));
     expect(c.navActive, const Color(0xFFC6FF3D));

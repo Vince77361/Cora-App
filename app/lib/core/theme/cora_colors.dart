@@ -287,12 +287,14 @@ class CoraColors extends ThemeExtension<CoraColors> {
     subtleAction: Color(0xFF2A2D33),
     onSubtleAction: Color(0xFFF2F3F5),
     focusRing: Color(0xFF17181C),
-    // DarkNStoreLink 머리글 알약 #F2F3F5·#17181C·그림자 없음, 막대 #2A2D33/#0F1012
+    // DarkNStoreLink 머리글 알약 #F2F3F5·#17181C·그림자 없음, 막대 #2A2D33/#F2F3F5.
+    // 2026-11-12 캔버스 사본(DarkNStoreLink·DarkNOffer·DarkNBudget·DarkNReviewSend)은 채움이 모두 #F2F3F5다.
+    // 옛 값(#0F1012)은 다크 바탕과 같아 막대가 보이지 않았다.
     stepPill: Color(0xFFF2F3F5),
     onStepPill: Color(0xFF17181C),
     stepPillShadow: Color(0x0017181C),
     progressTrack: Color(0xFF2A2D33),
-    progressFill: Color(0xFF0F1012),
+    progressFill: Color(0xFFF2F3F5),
     // DarkNStoreHome 하단 메뉴 #26282D, 선택 #C6FF3D, 꺼짐 #A0A4AD, 그림자 rgba(23,24,28,0.28)
     navSurface: Color(0xFF26282D),
     navActive: Color(0xFFC6FF3D),

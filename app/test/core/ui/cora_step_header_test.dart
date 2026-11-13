@@ -120,7 +120,9 @@ void main() {
     );
   });
 
-  testWidgets('dark fill is darker than the track', (tester) async {
+  testWidgets('dark fill is the canvas light gray on the dark track', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       coraTestApp(
         const CoraStepHeader(pageLabel: '가게 등록', step: 1, total: 3),
@@ -129,7 +131,7 @@ void main() {
     );
     expect(
       find.byWidgetPredicate(
-        (w) => w is ColoredBox && w.color == const Color(0xFF0F1012),
+        (w) => w is ColoredBox && w.color == const Color(0xFFF2F3F5),
       ),
       findsOneWidget,
     );
