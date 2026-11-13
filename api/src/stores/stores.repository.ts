@@ -193,6 +193,30 @@ export class StoresRepository {
     });
   }
 
+  // 직접 입력으로 등록 중인 가게를 만들거나 덮어쓴다. 이미 저장된 링크는 건드리지 않는다.
+  // 공개된 가게면 아무것도 바꾸지 않고 null이다(replaceDraft와 같은 조건부 갱신).
+  async saveManualDraft(
+    ownerId: string,
+    fields: StoreFields,
+  ): Promise<StoreWithLinks | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const store = await tx.store.upsert({
+        where: { ownerId },
+        create: { ownerId },
+        update: {},
+      });
+      const { count } = await tx.store.updateMany({
+        where: { id: store.id, status: 'DRAFT' },
+        data: { ...fields, onboardingStep: 'PAGE', deletedAt: null },
+      });
+      if (count === 0) return null;
+      return tx.store.findUniqueOrThrow({
+        where: { id: store.id },
+        include: WITH_LINKS,
+      });
+    });
+  }
+
   // 주소 이름이 아직 없는 가게에만 만든다(WHERE slug IS NULL). 이미 있으면 바꾸지 않는다.
   // base가 쓰였으면 -2, -3…을 붙이고, 확인과 저장 사이에 다른 가게가 가져가 유일 제약에 걸리면 다시 고른다.
   async assignSlug(storeId: string, base: string): Promise<StoreWithLinks> {

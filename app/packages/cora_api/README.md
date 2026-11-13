@@ -105,6 +105,8 @@ Class | Method | HTTP request | Description
 *ProposalsApi* | [**listProposals**](doc//ProposalsApi.md#listproposals) | **GET** /offers/proposals | 
 *StoresApi* | [**advanceMyStoreOnboarding**](doc//StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
 *StoresApi* | [**analyzeMyStoreLinks**](doc//StoresApi.md#analyzemystorelinks) | **POST** /stores/me/analyze | 
+*StoresApi* | [**createMyStoreManually**](doc//StoresApi.md#createmystoremanually) | **POST** /stores/me/manual | 
+*StoresApi* | [**findMyStoreBranches**](doc//StoresApi.md#findmystorebranches) | **GET** /stores/me/branches | 
 *StoresApi* | [**getMyStore**](doc//StoresApi.md#getmystore) | **GET** /stores/me | 
 *StoresApi* | [**getPublishedStore**](doc//StoresApi.md#getpublishedstore) | **GET** /stores/{id} | 
 *StoresApi* | [**listPublishedStores**](doc//StoresApi.md#listpublishedstores) | **GET** /stores | 
@@ -162,6 +164,8 @@ Class | Method | HTTP request | Description
  - [IndustryCategory](doc//IndustryCategory.md)
  - [InstagramConnectUrlModel](doc//InstagramConnectUrlModel.md)
  - [InstagramConnectionModel](doc//InstagramConnectionModel.md)
+ - [ManualBranchDto](doc//ManualBranchDto.md)
+ - [ManualStoreDto](doc//ManualStoreDto.md)
  - [MeModel](doc//MeModel.md)
  - [MyApplicationStatus](doc//MyApplicationStatus.md)
  - [MyOpenOfferModel](doc//MyOpenOfferModel.md)
@@ -211,6 +215,7 @@ Class | Method | HTTP request | Description
  - [SettlementMethod](doc//SettlementMethod.md)
  - [SourceLinkInputDto](doc//SourceLinkInputDto.md)
  - [SourceLinkKind](doc//SourceLinkKind.md)
+ - [StoreBranchModel](doc//StoreBranchModel.md)
  - [StoreDetailModel](doc//StoreDetailModel.md)
  - [StoreHomeSummaryModel](doc//StoreHomeSummaryModel.md)
  - [StoreOnboardingStep](doc//StoreOnboardingStep.md)

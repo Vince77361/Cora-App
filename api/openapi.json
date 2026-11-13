@@ -953,6 +953,54 @@
         ],
         "type": "object"
       },
+      "ManualBranchDto": {
+        "properties": {
+          "label": {
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          },
+          "neighborhood": {
+            "maxLength": 50,
+            "type": "string"
+          },
+          "regionSido": {
+            "description": "시·도 고정 목록(SIDO_LIST) 중 하나.",
+            "type": "string"
+          },
+          "regionSigungu": {
+            "maxLength": 20,
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "type": "object"
+      },
+      "ManualStoreDto": {
+        "properties": {
+          "branch": {
+            "$ref": "#/components/schemas/ManualBranchDto"
+          },
+          "coverPhotoPath": {
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          },
+          "signatureMenu": {
+            "maxLength": 50,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
       "MeModel": {
         "properties": {
           "id": {
@@ -2379,6 +2427,37 @@
           "REVIEW_POST"
         ],
         "type": "string"
+      },
+      "StoreBranchModel": {
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "label": {
+            "description": "지점 이름(예: 성수점).",
+            "type": "string"
+          },
+          "neighborhood": {
+            "nullable": true,
+            "type": "string"
+          },
+          "regionSido": {
+            "nullable": true,
+            "type": "string"
+          },
+          "regionSigungu": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "address",
+          "neighborhood",
+          "regionSido",
+          "regionSigungu"
+        ],
+        "type": "object"
       },
       "StoreDetailModel": {
         "properties": {
@@ -4720,6 +4799,48 @@
         ]
       }
     },
+    "/stores/me/branches": {
+      "get": {
+        "operationId": "findMyStoreBranches",
+        "parameters": [
+          {
+            "description": "가게 이름.",
+            "in": "query",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "maxLength": 30,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StoreBranchModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
     "/stores/me/content-drafts": {
       "get": {
         "operationId": "listMyContentDrafts",
@@ -4795,6 +4916,43 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SetDefaultTermsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyStoreModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Stores"
+        ]
+      }
+    },
+    "/stores/me/manual": {
+      "post": {
+        "operationId": "createMyStoreManually",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualStoreDto"
               }
             }
           },

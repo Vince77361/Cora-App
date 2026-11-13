@@ -11,6 +11,8 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**advanceMyStoreOnboarding**](StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
 [**analyzeMyStoreLinks**](StoresApi.md#analyzemystorelinks) | **POST** /stores/me/analyze | 
+[**createMyStoreManually**](StoresApi.md#createmystoremanually) | **POST** /stores/me/manual | 
+[**findMyStoreBranches**](StoresApi.md#findmystorebranches) | **GET** /stores/me/branches | 
 [**getMyStore**](StoresApi.md#getmystore) | **GET** /stores/me | 
 [**getPublishedStore**](StoresApi.md#getpublishedstore) | **GET** /stores/{id} | 
 [**listPublishedStores**](StoresApi.md#listpublishedstores) | **GET** /stores | 
@@ -109,6 +111,100 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **createMyStoreManually**
+> MyStoreModel createMyStoreManually(manualStoreDto)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = StoresApi();
+final manualStoreDto = ManualStoreDto(); // ManualStoreDto | 
+
+try {
+    final result = api_instance.createMyStoreManually(manualStoreDto);
+    print(result);
+} catch (e) {
+    print('Exception when calling StoresApi->createMyStoreManually: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **manualStoreDto** | [**ManualStoreDto**](ManualStoreDto.md)|  | 
+
+### Return type
+
+[**MyStoreModel**](MyStoreModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **findMyStoreBranches**
+> List<StoreBranchModel> findMyStoreBranches(name)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = StoresApi();
+final name = name_example; // String | 가게 이름.
+
+try {
+    final result = api_instance.findMyStoreBranches(name);
+    print(result);
+} catch (e) {
+    print('Exception when calling StoresApi->findMyStoreBranches: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **name** | **String**| 가게 이름. | 
+
+### Return type
+
+[**List<StoreBranchModel>**](StoreBranchModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

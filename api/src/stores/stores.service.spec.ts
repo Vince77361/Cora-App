@@ -154,6 +154,21 @@ class FakeStoresRepository extends StoresRepository {
     return Promise.resolve(Object.assign(this.byId(storeId), data));
   }
 
+  saveManualDraft(
+    ownerId: string,
+    fields: StoreFields,
+  ): Promise<StoreWithLinks | null> {
+    let store = this.stores.find((s) => s.ownerId === ownerId);
+    if (store?.status === 'PUBLISHED') return Promise.resolve(null);
+    if (!store) {
+      store = makeStore({ ownerId });
+      this.stores.push(store);
+    }
+    // 링크는 건드리지 않는다.
+    Object.assign(store, fields, { onboardingStep: 'PAGE' });
+    return Promise.resolve(store);
+  }
+
   // 유일 제약 재시도는 DB 테스트가 확인한다. 여기서는 겹치면 번호를 붙이는 규칙만 흉내 낸다.
   assignSlug(storeId: string, base: string): Promise<StoreWithLinks> {
     const store = this.byId(storeId);
@@ -266,8 +281,10 @@ class FakeStoreLinkPort extends StoreLinkPort {
     ],
   };
 
+  branches: StoreBranch[] = [];
+
   findBranches(): Promise<StoreBranch[]> {
-    return Promise.resolve([]);
+    return Promise.resolve(this.branches);
   }
 
   analyze(): Promise<StoreLinkResult> {
@@ -454,6 +471,65 @@ describe('StoresService', () => {
       users.role = 'CREATOR';
       expect(await codeOf(service.analyze(OWNER, LINKS))).toBe('FORBIDDEN');
       expect(link.calls).toBe(0);
+    });
+  });
+
+  describe('manual input', () => {
+    it('fills the region of the chosen branch and gives the store a slug', async () => {
+      const store = await service.createManually(OWNER, {
+        name: ' 한그릇 라멘 ',
+        branch: {
+          label: '합정점',
+          neighborhood: '합정동',
+          regionSido: '서울특별시',
+          regionSigungu: '마포구',
+        },
+      });
+      expect(store).toMatchObject({
+        name: '한그릇 라멘',
+        neighborhood: '합정동',
+        regionSido: '서울특별시',
+        regionSigungu: '마포구',
+        slug: 'hangeureut-ramen',
+      });
+    });
+
+    it('keeps the links already saved', async () => {
+      await service.analyze(OWNER, LINKS);
+      const store = await service.createManually(OWNER, { name: '새 가게' });
+      expect(store.sourceLinks).toHaveLength(2);
+    });
+
+    it('refuses a published store and checks the cover path owner', async () => {
+      expect(
+        await codeOf(
+          service.createManually(OWNER, {
+            name: '가게',
+            coverPhotoPath: COVER.replace(OWNER, OTHER),
+          }),
+        ),
+      ).toBe('FORBIDDEN');
+      repo.stores.push(makeStore({ ownerId: OTHER, status: 'PUBLISHED' }));
+      expect(
+        await codeOf(service.createManually(OTHER, { name: '가게' })),
+      ).toBe('CONFLICT');
+    });
+
+    it('asks the link port for branches and needs the STORE role', async () => {
+      link.branches = [
+        {
+          label: '성수점',
+          address: '서울 성동구',
+          neighborhood: '성수동2가',
+          regionSido: '서울특별시',
+          regionSigungu: '성동구',
+        },
+      ];
+      expect(await service.findBranches(OWNER, '한그릇 라멘')).toHaveLength(1);
+      users.role = 'CREATOR';
+      expect(await codeOf(service.findBranches(OWNER, '한그릇 라멘'))).toBe(
+        'FORBIDDEN',
+      );
     });
   });
 

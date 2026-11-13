@@ -352,6 +352,153 @@ describe('stores', () => {
     });
   });
 
+  describe('manual input', () => {
+    const manual = (body: Record<string, unknown>) =>
+      request(server).post('/stores/me/manual').set(auth).send(body);
+    const SEONGSU = {
+      label: '성수점',
+      neighborhood: '성수동2가',
+      regionSido: '서울특별시',
+      regionSigungu: '성동구',
+    };
+
+    it('lists two branches for the sample store and none for another name', async () => {
+      const res = await request(server)
+        .get('/stores/me/branches')
+        .query({ name: '한그릇 라멘' })
+        .set(auth)
+        .expect(200);
+      expect(res.body).toEqual([
+        {
+          label: '성수점',
+          address: expect.any(String) as string,
+          neighborhood: '성수동2가',
+          regionSido: '서울특별시',
+          regionSigungu: '성동구',
+        },
+        {
+          label: '합정점',
+          address: expect.any(String) as string,
+          neighborhood: '합정동',
+          regionSido: '서울특별시',
+          regionSigungu: '마포구',
+        },
+      ]);
+      const none = await request(server)
+        .get('/stores/me/branches')
+        .query({ name: '없는 가게' })
+        .set(auth)
+        .expect(200);
+      expect(none.body).toEqual([]);
+    });
+
+    it('requires a name and the STORE role to look for branches', async () => {
+      await request(server).get('/stores/me/branches').expect(401);
+      await request(server).get('/stores/me/branches').set(auth).expect(400);
+      await setRole('CREATOR');
+      await request(server)
+        .get('/stores/me/branches')
+        .query({ name: '한그릇 라멘' })
+        .set(auth)
+        .expect(403);
+    });
+
+    it('creates a draft store from manual input and fills the region of the chosen branch', async () => {
+      const res = await manual({
+        name: ' 한그릇 라멘 ',
+        branch: SEONGSU,
+        signatureMenu: '돈코츠 라멘 11,000원',
+        coverPhotoPath: COVER,
+      }).expect(200);
+      expect(res.body).toMatchObject({
+        status: 'DRAFT',
+        onboardingStep: 'PAGE',
+        name: '한그릇 라멘',
+        neighborhood: '성수동2가',
+        regionSido: '서울특별시',
+        regionSigungu: '성동구',
+        signatureMenu: '돈코츠 라멘 11,000원',
+        coverPhotoUrl: `https://fake-storage.test/public/${COVER}`,
+        slug: 'hangeureut-ramen',
+        tags: [],
+        customerPhrases: [],
+        sourceLinks: [],
+      });
+      expect(await mine()).toEqual(res.body);
+    });
+
+    it('creates a store with only a name', async () => {
+      const res = await manual({ name: '이름만' }).expect(200);
+      expect(res.body).toMatchObject({
+        name: '이름만',
+        regionSido: null,
+        neighborhood: null,
+        coverPhotoUrl: null,
+      });
+    });
+
+    it('keeps the saved links when manual input follows a failed analysis', async () => {
+      const failed = [
+        { kind: 'INSTAGRAM', url: 'https://instagram.com/fail-case' },
+      ];
+      const first = storeOf(await analyze(failed).expect(200));
+      expect(first.name).toBeNull();
+      const res = await manual({ name: '직접 넣은 가게', branch: SEONGSU });
+      expect(res.status).toBe(200);
+      const body = res.body as StoreBody;
+      expect(body.name).toBe('직접 넣은 가게');
+      expect(body.sourceLinks).toEqual(first.sourceLinks);
+      expect(body.sourceLinks).toHaveLength(1);
+      expect(await prisma.store.count()).toBe(1);
+    });
+
+    it('overwrites the draft when sent again', async () => {
+      await analyze().expect(200);
+      const res = await manual({ name: '새 가게' }).expect(200);
+      expect(res.body).toMatchObject({
+        name: '새 가게',
+        regionSido: null,
+        tags: [],
+      });
+      // 이름이 처음 생긴 뒤의 주소 이름은 바뀌지 않는다.
+      expect((res.body as StoreBody).slug).toBe('hangeureut-ramen');
+    });
+
+    it('refuses manual input for a published store', async () => {
+      await publishMine();
+      const res = await manual({ name: '덮어쓰기' }).expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect((res.body as { error: { message: string } }).error.message).toBe(
+        '이미 공개한 가게는 다시 만들 수 없어요.',
+      );
+      expect((await mine()).name).toBe('한그릇 라멘');
+    });
+
+    it('rejects invalid input and a cover photo under another user', async () => {
+      await manual({}).expect(400);
+      await manual({ name: '   ' }).expect(400);
+      await manual({ name: 'a'.repeat(31) }).expect(400);
+      await manual({ name: '가게', branch: { neighborhood: '성수동' } }).expect(
+        400,
+      );
+      await manual({
+        name: '가게',
+        branch: { label: '성수점', regionSido: '서울' },
+      }).expect(400);
+      await manual({ name: '가게', ownerId: OTHER }).expect(400);
+      const res = await manual({
+        name: '가게',
+        coverPhotoPath: COVER.replace(USER_A, OTHER),
+      }).expect(403);
+      expect(codeOf(res)).toBe('FORBIDDEN');
+    });
+
+    it('requires the STORE role', async () => {
+      await setRole('CREATOR');
+      await manual({ name: '가게' }).expect(403);
+    });
+  });
+
   it('rejects analyze after publishing', async () => {
     await publishMine();
     const res = await analyze().expect(409);

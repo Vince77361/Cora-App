@@ -7,16 +7,19 @@ import {
   Patch,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { AdvanceOnboardingDto } from './dto/advance-onboarding.dto';
 import { AnalyzeLinksDto } from './dto/analyze-links.dto';
+import { FindBranchesQueryDto, ManualStoreDto } from './dto/manual-store.dto';
 import {
   AnalyzeStoreLinksResultModel,
   MyStoreModel,
 } from './dto/my-store.model';
+import { StoreBranchModel } from './dto/store-branch.model';
 import { SetDefaultTermsDto } from './dto/set-default-terms.dto';
 import { StoreDetailModel, StoreSummaryModel } from './dto/store-public.model';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -37,6 +40,27 @@ export class StoresController {
     @Body() dto: AnalyzeLinksDto,
   ): Promise<AnalyzeStoreLinksResultModel> {
     return this.stores.analyze(user.userId, dto.links);
+  }
+
+  @Post('me/manual')
+  @HttpCode(200)
+  @ApiOperation({ operationId: 'createMyStoreManually' })
+  @ApiOkResponse({ type: MyStoreModel })
+  createManually(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ManualStoreDto,
+  ): Promise<MyStoreModel> {
+    return this.stores.createManually(user.userId, dto);
+  }
+
+  @Get('me/branches')
+  @ApiOperation({ operationId: 'findMyStoreBranches' })
+  @ApiOkResponse({ type: [StoreBranchModel] })
+  findBranches(
+    @CurrentUser() user: AuthUser,
+    @Query() query: FindBranchesQueryDto,
+  ): Promise<StoreBranchModel[]> {
+    return this.stores.findBranches(user.userId, query.name);
   }
 
   @Get('me')

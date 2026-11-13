@@ -50,6 +50,8 @@ doc/IndustryCategory.md
 doc/InstagramApi.md
 doc/InstagramConnectUrlModel.md
 doc/InstagramConnectionModel.md
+doc/ManualBranchDto.md
+doc/ManualStoreDto.md
 doc/MeModel.md
 doc/MyApplicationStatus.md
 doc/MyOpenOfferModel.md
@@ -105,6 +107,7 @@ doc/SetDefaultTermsDto.md
 doc/SettlementMethod.md
 doc/SourceLinkInputDto.md
 doc/SourceLinkKind.md
+doc/StoreBranchModel.md
 doc/StoreDetailModel.md
 doc/StoreHomeSummaryModel.md
 doc/StoreOnboardingStep.md
@@ -203,6 +206,8 @@ lib/model/health_model.dart
 lib/model/industry_category.dart
 lib/model/instagram_connect_url_model.dart
 lib/model/instagram_connection_model.dart
+lib/model/manual_branch_dto.dart
+lib/model/manual_store_dto.dart
 lib/model/me_model.dart
 lib/model/my_application_status.dart
 lib/model/my_open_offer_model.dart
@@ -252,6 +257,7 @@ lib/model/set_default_terms_dto.dart
 lib/model/settlement_method.dart
 lib/model/source_link_input_dto.dart
 lib/model/source_link_kind.dart
+lib/model/store_branch_model.dart
 lib/model/store_detail_model.dart
 lib/model/store_home_summary_model.dart
 lib/model/store_onboarding_step.dart
@@ -326,6 +332,8 @@ test/industry_category_test.dart
 test/instagram_api_test.dart
 test/instagram_connect_url_model_test.dart
 test/instagram_connection_model_test.dart
+test/manual_branch_dto_test.dart
+test/manual_store_dto_test.dart
 test/me_model_test.dart
 test/my_application_status_test.dart
 test/my_open_offer_model_test.dart
@@ -381,6 +389,7 @@ test/set_default_terms_dto_test.dart
 test/settlement_method_test.dart
 test/source_link_input_dto_test.dart
 test/source_link_kind_test.dart
+test/store_branch_model_test.dart
 test/store_detail_model_test.dart
 test/store_home_summary_model_test.dart
 test/store_onboarding_step_test.dart

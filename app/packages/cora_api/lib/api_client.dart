@@ -288,6 +288,10 @@ class ApiClient {
           return InstagramConnectUrlModel.fromJson(value);
         case 'InstagramConnectionModel':
           return InstagramConnectionModel.fromJson(value);
+        case 'ManualBranchDto':
+          return ManualBranchDto.fromJson(value);
+        case 'ManualStoreDto':
+          return ManualStoreDto.fromJson(value);
         case 'MeModel':
           return MeModel.fromJson(value);
         case 'MyApplicationStatus':
@@ -386,6 +390,8 @@ class ApiClient {
           return SourceLinkInputDto.fromJson(value);
         case 'SourceLinkKind':
           return SourceLinkKindTypeTransformer().decode(value);
+        case 'StoreBranchModel':
+          return StoreBranchModel.fromJson(value);
         case 'StoreDetailModel':
           return StoreDetailModel.fromJson(value);
         case 'StoreHomeSummaryModel':

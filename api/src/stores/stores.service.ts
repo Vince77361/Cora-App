@@ -20,7 +20,9 @@ import {
   AnalyzeStoreLinksResultModel,
   MyStoreModel,
 } from './dto/my-store.model';
+import { ManualStoreDto } from './dto/manual-store.dto';
 import { OfferTermsModel } from './dto/offer-terms.model';
+import { StoreBranchModel } from './dto/store-branch.model';
 import { SetDefaultTermsDto } from './dto/set-default-terms.dto';
 import { StoreDetailModel, StoreSummaryModel } from './dto/store-public.model';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -113,6 +115,51 @@ export class StoresService {
       store: this.toMyStore(await this.ensureSlug(saved)),
       analysisFailed: result === null,
     };
+  }
+
+  // 가게 이름으로 같은 이름의 지점을 찾는다. 직접 입력 화면이 하나 이하면 지점 줄을 숨긴다.
+  async findBranches(
+    userId: string,
+    name: string,
+  ): Promise<StoreBranchModel[]> {
+    await this.assertStoreRole(userId);
+    return this.storeLink.findBranches(name);
+  }
+
+  // 링크 없이 직접 넣은 정보로 등록 중인 가게를 만들거나 덮어쓴다. 이미 저장된 링크는 남긴다.
+  async createManually(
+    userId: string,
+    input: ManualStoreDto,
+  ): Promise<MyStoreModel> {
+    await this.assertStoreRole(userId);
+    if (
+      (await this.stores.findActiveByOwnerId(userId))?.status === 'PUBLISHED'
+    ) {
+      throw this.alreadyPublished();
+    }
+    const path = blankToNull(input.coverPhotoPath);
+    // 남의 사진이나 임의 경로를 끼워 넣지 못하게 저장 전에 소유자를 확인한다.
+    if (path) this.uploads.assertOwnedPath(userId, path, 'STORE_COVER');
+    const branch = input.branch;
+    const saved = await this.stores.saveManualDraft(userId, {
+      name: blankToNull(input.name),
+      category: null,
+      industry: 'FOOD_CAFE',
+      // 지점을 골랐으면 그 지점의 동네와 지역을 채운다.
+      neighborhood: blankToNull(branch?.neighborhood),
+      regionSido: branch?.regionSido ?? null,
+      regionSigungu: blankToNull(branch?.regionSigungu),
+      coverPhotoPath: path,
+      signatureMenu: blankToNull(input.signatureMenu),
+      hours: null,
+      seats: null,
+      bestShootingTime: null,
+      intro: null,
+      tags: [],
+      customerPhrases: [],
+    });
+    if (!saved) throw this.alreadyPublished();
+    return this.toMyStore(await this.ensureSlug(saved));
   }
 
   // 읽기는 주인 여부만 본다. 역할을 바꿔도 내 가게는 그대로 읽힌다.

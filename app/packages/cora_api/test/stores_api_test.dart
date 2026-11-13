@@ -32,6 +32,20 @@ void main() {
 
     //
     //
+    //Future<MyStoreModel> createMyStoreManually(ManualStoreDto manualStoreDto) async
+    test('test createMyStoreManually', () async {
+      // TODO
+    });
+
+    //
+    //
+    //Future<List<StoreBranchModel>> findMyStoreBranches(String name) async
+    test('test findMyStoreBranches', () async {
+      // TODO
+    });
+
+    //
+    //
     //Future<MyStoreModel> getMyStore() async
     test('test getMyStore', () async {
       // TODO
