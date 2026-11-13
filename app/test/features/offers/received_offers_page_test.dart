@@ -152,6 +152,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(offers.accepted, ['o1']);
+      // 화면이 보고 있던 판본 번호를 수락에 실어 보낸다.
+      expect(offers.acceptedVersions, [1]);
       expect(find.text('수락했어요.'), findsOneWidget);
       expect(find.text('사장님이 결제하면 알려드릴게요.'), findsOneWidget);
       expect(find.text('확인'), findsOneWidget);

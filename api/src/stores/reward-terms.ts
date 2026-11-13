@@ -257,8 +257,13 @@ export function buildTerms(
 }
 
 // 협업에 저장하는 조건 사본. 계산 값(최대 현금 부담, 정산 방식)은 넣지 않고 읽을 때 계산한다.
-export function copyOfTerms(terms: OfferTermsModel): Prisma.InputJsonObject {
+// 오퍼에서 수락된 협업은 수락된 판본의 번호(version)를 함께 넣는다. 가게의 기본 조건처럼 판본이 없으면 넣지 않는다.
+export function copyOfTerms(
+  terms: OfferTermsModel,
+  version?: number,
+): Prisma.InputJsonObject {
   return {
+    ...(version === undefined ? {} : { version }),
     format: terms.format,
     pieces: terms.pieces,
     voucherName: terms.voucherName,

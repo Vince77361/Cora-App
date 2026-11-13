@@ -16,9 +16,11 @@ class SentOfferModel {
     required this.collaborationId,
     required this.creator,
     required this.id,
+    required this.myTurn,
     required this.paymentDaysLeft,
     required this.sentAt,
     required this.terms,
+    required this.version,
     required this.view,
   });
 
@@ -29,6 +31,9 @@ class SentOfferModel {
 
   String id;
 
+  /// 사장님가 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.
+  bool myTurn;
+
   /// 수락됐고 아직 결제 기한 전일 때 남은 날(올림). 아니면 null.
   int? paymentDaysLeft;
 
@@ -36,6 +41,9 @@ class SentOfferModel {
   DateTime sentAt;
 
   OfferTermsModel terms;
+
+  /// 최신 판본의 번호. 수락은 이 번호와 함께 보낸다.
+  int version;
 
   /// 사장님에게 보이는 상태. 거절은 30초가 지나야 DECLINED로 보이고 그전에는 WAITING이다.
   OfferView view;
@@ -47,9 +55,11 @@ class SentOfferModel {
           other.collaborationId == collaborationId &&
           other.creator == creator &&
           other.id == id &&
+          other.myTurn == myTurn &&
           other.paymentDaysLeft == paymentDaysLeft &&
           other.sentAt == sentAt &&
           other.terms == terms &&
+          other.version == version &&
           other.view == view;
 
   @override
@@ -58,14 +68,16 @@ class SentOfferModel {
       (collaborationId == null ? 0 : collaborationId!.hashCode) +
       (creator.hashCode) +
       (id.hashCode) +
+      (myTurn.hashCode) +
       (paymentDaysLeft == null ? 0 : paymentDaysLeft!.hashCode) +
       (sentAt.hashCode) +
       (terms.hashCode) +
+      (version.hashCode) +
       (view.hashCode);
 
   @override
   String toString() =>
-      'SentOfferModel[collaborationId=$collaborationId, creator=$creator, id=$id, paymentDaysLeft=$paymentDaysLeft, sentAt=$sentAt, terms=$terms, view=$view]';
+      'SentOfferModel[collaborationId=$collaborationId, creator=$creator, id=$id, myTurn=$myTurn, paymentDaysLeft=$paymentDaysLeft, sentAt=$sentAt, terms=$terms, version=$version, view=$view]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -76,6 +88,7 @@ class SentOfferModel {
     }
     json[r'creator'] = this.creator;
     json[r'id'] = this.id;
+    json[r'myTurn'] = this.myTurn;
     if (this.paymentDaysLeft != null) {
       json[r'paymentDaysLeft'] = this.paymentDaysLeft;
     } else {
@@ -83,6 +96,7 @@ class SentOfferModel {
     }
     json[r'sentAt'] = this.sentAt.toUtc().toIso8601String();
     json[r'terms'] = this.terms;
+    json[r'version'] = this.version;
     json[r'view'] = this.view;
     return json;
   }
@@ -108,6 +122,10 @@ class SentOfferModel {
             'Required key "SentOfferModel[id]" is missing from JSON.');
         assert(json[r'id'] != null,
             'Required key "SentOfferModel[id]" has a null value in JSON.');
+        assert(json.containsKey(r'myTurn'),
+            'Required key "SentOfferModel[myTurn]" is missing from JSON.');
+        assert(json[r'myTurn'] != null,
+            'Required key "SentOfferModel[myTurn]" has a null value in JSON.');
         assert(json.containsKey(r'paymentDaysLeft'),
             'Required key "SentOfferModel[paymentDaysLeft]" is missing from JSON.');
         assert(json.containsKey(r'sentAt'),
@@ -118,6 +136,10 @@ class SentOfferModel {
             'Required key "SentOfferModel[terms]" is missing from JSON.');
         assert(json[r'terms'] != null,
             'Required key "SentOfferModel[terms]" has a null value in JSON.');
+        assert(json.containsKey(r'version'),
+            'Required key "SentOfferModel[version]" is missing from JSON.');
+        assert(json[r'version'] != null,
+            'Required key "SentOfferModel[version]" has a null value in JSON.');
         assert(json.containsKey(r'view'),
             'Required key "SentOfferModel[view]" is missing from JSON.');
         assert(json[r'view'] != null,
@@ -129,9 +151,11 @@ class SentOfferModel {
         collaborationId: mapValueOfType<String>(json, r'collaborationId'),
         creator: CreatorSummaryModel.fromJson(json[r'creator'])!,
         id: mapValueOfType<String>(json, r'id')!,
+        myTurn: mapValueOfType<bool>(json, r'myTurn')!,
         paymentDaysLeft: mapValueOfType<int>(json, r'paymentDaysLeft'),
         sentAt: mapDateTime(json, r'sentAt', r'')!,
         terms: OfferTermsModel.fromJson(json[r'terms'])!,
+        version: mapValueOfType<int>(json, r'version')!,
         view: OfferView.fromJson(json[r'view'])!,
       );
     }
@@ -192,9 +216,11 @@ class SentOfferModel {
     'collaborationId',
     'creator',
     'id',
+    'myTurn',
     'paymentDaysLeft',
     'sentAt',
     'terms',
+    'version',
     'view',
   };
 }

@@ -32,6 +32,12 @@ void main() {
       // TODO
     });
 
+    // 사장님가 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.
+    // bool myTurn
+    test('to test the property `myTurn`', () async {
+      // TODO
+    });
+
     // 수락됐고 아직 결제 기한 전일 때 남은 날(올림). 아니면 null.
     // int paymentDaysLeft
     test('to test the property `paymentDaysLeft`', () async {
@@ -46,6 +52,12 @@ void main() {
 
     // OfferTermsModel terms
     test('to test the property `terms`', () async {
+      // TODO
+    });
+
+    // 최신 판본의 번호. 수락은 이 번호와 함께 보낸다.
+    // int version
+    test('to test the property `version`', () async {
       // TODO
     });
 

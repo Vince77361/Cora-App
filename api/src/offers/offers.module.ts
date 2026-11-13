@@ -10,6 +10,7 @@ import { StoresModule } from '../stores/stores.module';
 import { UsersModule } from '../users/users.module';
 import { DeclineNoticeHandler } from './jobs/decline-notice.handler';
 import { PaymentDueExpiryHandler } from './jobs/payment-due-expiry.handler';
+import { OfferVersionsRepository } from './offer-versions.repository';
 import { OffersController } from './offers.controller';
 import { OffersRepository } from './offers.repository';
 import { OffersService } from './offers.service';
@@ -29,6 +30,7 @@ import { OffersService } from './offers.service';
   providers: [
     OffersService,
     OffersRepository,
+    OfferVersionsRepository,
     DeclineNoticeHandler,
     PaymentDueExpiryHandler,
   ],

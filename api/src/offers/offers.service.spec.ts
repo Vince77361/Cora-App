@@ -37,7 +37,7 @@ class FakeOffersRepository extends OffersRepository {
   appStatus = new Map<string, 'OFFERED' | 'CLOSED'>();
 
   constructor() {
-    super(null as never);
+    super(null as never, null as never);
   }
 
   private withApp(row: OfferRow): OfferRow {
@@ -97,16 +97,49 @@ class FakeOffersRepository extends OffersRepository {
         (r.status === 'SENT' || r.status === 'ACCEPTED'),
     );
     if (open) return Promise.resolve(null);
+    const id = randomUUID();
+    const { terms, ...offer } = data;
     const row = {
-      id: randomUUID(),
-      ...data,
+      id,
+      ...offer,
       status: 'SENT',
+      latestVersion: 1,
+      turn: 'CREATOR',
+      initiatedBy: 'STORE',
+      endReason: null,
+      endedBy: null,
       acceptedAt: null,
       paymentDueAt: null,
       declinedAt: null,
       respondedAt: null,
+      closedAt: null,
       updatedAt: data.createdAt,
       deletedAt: null,
+      versions: [
+        {
+          id: randomUUID(),
+          offerId: id,
+          number: 1,
+          authorParty: 'STORE',
+          format: terms.format,
+          pieces: terms.pieces,
+          voucherName: terms.voucherName,
+          voucherValue: terms.voucherValue,
+          voucherPeople: terms.voucherPeople,
+          fixedCash: terms.fixedCash,
+          viewRatePerThousand: terms.viewRatePerThousand,
+          perViewCap: terms.perViewCap,
+          usageRights: terms.usageRights,
+          idea: null,
+          principles: [],
+          seriesName: null,
+          seriesFormat: null,
+          seriesNote: null,
+          createdAt: data.createdAt,
+          updatedAt: data.createdAt,
+          deletedAt: null,
+        },
+      ],
     } as unknown as OfferRow;
     this.rows.push(row);
     return Promise.resolve(this.withApp(row));
@@ -114,12 +147,15 @@ class FakeOffersRepository extends OffersRepository {
   async accept(
     id: string,
     creatorId: string,
+    version: number,
     now: Date,
     paymentDueAt: Date | null,
     alongWith?: InSameTransaction,
   ) {
     const row = this.rows.find((r) => r.id === id);
     if (row?.creatorId !== creatorId || row.status !== 'SENT') return false;
+    // 실제 저장소처럼 본 판본 번호가 최신일 때만 바꾼다.
+    if (row.latestVersion !== version) return false;
     if (row.expiresAt.getTime() <= now.getTime()) return false;
     Object.assign(row, { status: 'ACCEPTED', acceptedAt: now, paymentDueAt });
     // 메모리 저장소에는 트랜잭션이 없다. 같은 트랜잭션에서 할 일을 그냥 이어서 부른다.
@@ -493,7 +529,7 @@ describe('OffersService', () => {
       format: 'REELS',
       reward: { perView: {} },
     });
-    expect(repo.rows[0]).toMatchObject({
+    expect(repo.rows[0].versions[0]).toMatchObject({
       voucherName: null,
       fixedCash: 0,
       viewRatePerThousand: 3000,
@@ -509,7 +545,7 @@ describe('OffersService', () => {
       reward: { perView: { ratePerThousand: 1500, cap: 30000 } },
       usageRights: 'NONE',
     });
-    expect(repo.rows[0]).toMatchObject({
+    expect(repo.rows[0].versions[0]).toMatchObject({
       viewRatePerThousand: 1500,
       perViewCap: 30000,
       usageRights: 'NONE',
@@ -634,7 +670,7 @@ describe('OffersService', () => {
 
     it('notifies the owner with the creator as the actor, pointing at the collaboration', async () => {
       // 식사권만 있는 오퍼는 바로 FUNDED로 시작해 결제할 것이 없다.
-      await service.accept(CREATOR, id);
+      await service.accept(CREATOR, id, 1);
       expect(push.sent).toEqual([
         {
           userId: OWNER,
@@ -671,7 +707,7 @@ describe('OffersService', () => {
       const perView = await sendAs('REELS', 'PER_VIEW');
       const [card] = await service.listReceived(CREATOR);
       expect(card.needsInstagram).toBe(true);
-      await expect(service.accept(CREATOR, perView)).rejects.toMatchObject({
+      await expect(service.accept(CREATOR, perView, 1)).rejects.toMatchObject({
         code: 'CONFLICT',
         message: '인스타그램을 연동하면 수락할 수 있어요.',
       });
@@ -685,7 +721,7 @@ describe('OffersService', () => {
       instagram.connected = true;
       const [card] = await service.listReceived(CREATOR);
       expect(card.needsInstagram).toBe(false);
-      const accepted = await service.accept(CREATOR, perView);
+      const accepted = await service.accept(CREATOR, perView, 1);
       expect(accepted.view).toBe('ACCEPTED');
       expect(accepted.needsInstagram).toBe(false);
     });
@@ -693,7 +729,7 @@ describe('OffersService', () => {
     it('does not require instagram for a voucher-only offer or a shorts offer', async () => {
       const [voucher] = await service.listReceived(CREATOR);
       expect(voucher.needsInstagram).toBe(false);
-      await expect(service.accept(CREATOR, id)).resolves.toMatchObject({
+      await expect(service.accept(CREATOR, id, 1)).resolves.toMatchObject({
         view: 'ACCEPTED',
       });
     });
@@ -702,7 +738,7 @@ describe('OffersService', () => {
       const shorts = await sendAs('SHORTS', 'PER_VIEW');
       const [card] = await service.listReceived(CREATOR);
       expect(card.needsInstagram).toBe(false);
-      await expect(service.accept(CREATOR, shorts)).resolves.toMatchObject({
+      await expect(service.accept(CREATOR, shorts, 1)).resolves.toMatchObject({
         view: 'ACCEPTED',
       });
     });
@@ -718,7 +754,7 @@ describe('OffersService', () => {
       push.sent.length = 0;
       users.role = 'CREATOR';
       instagram.connected = true;
-      await service.accept(CREATOR, perView.id);
+      await service.accept(CREATOR, perView.id, 1);
       expect(collaborations.rows[0].stage).toBe('AWAITING_PAYMENT');
       expect(push.sent).toHaveLength(1);
       expect(push.sent[0].target).toEqual({
@@ -734,7 +770,7 @@ describe('OffersService', () => {
       jest
         .spyOn(creators, 'getActor')
         .mockRejectedValueOnce(new Error('actor read down'));
-      const accepted = await service.accept(CREATOR, id);
+      const accepted = await service.accept(CREATOR, id, 1);
       expect(accepted.view).toBe('ACCEPTED');
       expect(push.sent).toHaveLength(1);
       expect(push.sent[0].actor).toEqual({
@@ -747,7 +783,7 @@ describe('OffersService', () => {
     });
 
     it('creates the collaboration in the accept transaction with a copy of the terms', async () => {
-      await service.accept(CREATOR, id);
+      await service.accept(CREATOR, id, 1);
       expect(collaborations.rows).toHaveLength(1);
       expect(collaborations.rows[0]).toMatchObject({
         kind: 'STORE_OFFER',
@@ -766,6 +802,8 @@ describe('OffersService', () => {
           viewRatePerThousand: null,
           perViewCap: null,
           usageRights: 'STORE_REPOST_3M',
+          // 수락된 판본의 번호가 사본에 함께 남는다.
+          version: 1,
         },
       });
       // 계산 값은 사본에 넣지 않고 읽을 때 계산한다.
@@ -777,7 +815,7 @@ describe('OffersService', () => {
 
     it('creates no collaboration when the conditional update is lost', async () => {
       jest.spyOn(repo, 'accept').mockResolvedValueOnce(false);
-      await expect(service.accept(CREATOR, id)).rejects.toBeInstanceOf(
+      await expect(service.accept(CREATOR, id, 1)).rejects.toBeInstanceOf(
         AppError,
       );
       expect(collaborations.rows).toEqual([]);
@@ -786,10 +824,42 @@ describe('OffersService', () => {
     it('maps a lost conditional update to 409 CONFLICT', async () => {
       // 읽은 뒤 다른 요청이 먼저 바꾼 경우를 흉내 낸다.
       jest.spyOn(repo, 'accept').mockResolvedValueOnce(false);
-      await expect(service.accept(CREATOR, id)).rejects.toMatchObject({
+      await expect(service.accept(CREATOR, id, 1)).rejects.toMatchObject({
         code: 'CONFLICT',
         message: '이미 처리된 오퍼예요.',
       });
+    });
+
+    it('refuses an older version number with STALE_VERSION before touching the store', async () => {
+      repo.rows[0].latestVersion = 2;
+      await expect(service.accept(CREATOR, id, 1)).rejects.toMatchObject({
+        code: 'STALE_VERSION',
+        message: '이전 판본이라 수락할 수 없어요.',
+        details: { latestVersion: 2 },
+      });
+      expect(collaborations.rows).toEqual([]);
+      expect(repo.rows[0].status).toBe('SENT');
+    });
+
+    it('answers STALE_VERSION when a new version lands between the read and the conditional update', async () => {
+      // 읽을 때는 번호가 같았는데 갱신 직전에 새 판본이 나온 경우: 갱신이 0행이고 다시 읽으면 번호가 올라 있다.
+      jest.spyOn(repo, 'accept').mockImplementationOnce(() => {
+        repo.rows[0].latestVersion = 2;
+        return Promise.resolve(false);
+      });
+      await expect(service.accept(CREATOR, id, 1)).rejects.toMatchObject({
+        code: 'STALE_VERSION',
+        details: { latestVersion: 2 },
+      });
+      expect(collaborations.rows).toEqual([]);
+    });
+
+    it('refuses to accept when it is not the creator turn', async () => {
+      repo.rows[0].turn = 'STORE';
+      await expect(service.accept(CREATOR, id, 1)).rejects.toMatchObject({
+        code: 'CONFLICT',
+      });
+      expect(collaborations.rows).toEqual([]);
     });
 
     it('maps a refused undo to 409 CONFLICT', async () => {
@@ -802,7 +872,7 @@ describe('OffersService', () => {
 
     it('treats a non-uuid id as not found without reading', async () => {
       const find = jest.spyOn(repo, 'findForCreator');
-      await expect(service.accept(CREATOR, 'x')).rejects.toMatchObject({
+      await expect(service.accept(CREATOR, 'x', 1)).rejects.toMatchObject({
         code: 'NOT_FOUND',
       });
       expect(find).not.toHaveBeenCalled();
@@ -842,12 +912,12 @@ describe('OffersService', () => {
         reward: { perView: {} },
       });
       users.role = 'CREATOR';
-      await service.accept(CREATOR, perView.id);
+      await service.accept(CREATOR, perView.id, 1);
       return perView.id;
     }
 
     it('schedules the submission deadline jobs when a voucher-only offer is accepted', async () => {
-      await service.accept(CREATOR, id);
+      await service.accept(CREATOR, id, 1);
       const collaboration = collaborations.rows[0];
       expect(collaboration.stage).toBe('FUNDED');
       // 기한 2026-12-15 09:00 KST: 환급은 그 시각에, 알림은 3일 전(12-12)과 하루 전(12-14) 10:00 KST에.
@@ -887,7 +957,7 @@ describe('OffersService', () => {
       const warn = jest
         .spyOn(Logger.prototype, 'warn')
         .mockImplementation(() => undefined);
-      await expect(service.accept(CREATOR, id)).resolves.toMatchObject({
+      await expect(service.accept(CREATOR, id, 1)).resolves.toMatchObject({
         view: 'ACCEPTED',
       });
       expect(collaborations.rows).toHaveLength(1);
@@ -1072,7 +1142,7 @@ describe('OffersService', () => {
     });
 
     it('schedules no payment due expiry for a voucher-only offer', async () => {
-      await service.accept(CREATOR, id);
+      await service.accept(CREATOR, id, 1);
       // 낼 돈이 없으니 결제 기한 작업은 없다(제출 기한 작업은 따로 올라간다).
       expect(
         jobs.pending().filter((j) => j.name === 'payment-due-expiry'),
@@ -1092,7 +1162,9 @@ describe('OffersService', () => {
       const warn = jest
         .spyOn(Logger.prototype, 'warn')
         .mockImplementation(() => undefined);
-      await expect(service.accept(CREATOR, perView.id)).resolves.toMatchObject({
+      await expect(
+        service.accept(CREATOR, perView.id, 1),
+      ).resolves.toMatchObject({
         view: 'ACCEPTED',
       });
       expect(collaborations.rows[0].stage).toBe('AWAITING_PAYMENT');

@@ -21,6 +21,7 @@ import { FakeClock } from './support/fake-clock';
 import { FakeJobScheduler } from './support/fake-job-scheduler';
 import { FakePushPort } from './support/fake-push.port';
 import { USER_A } from './support/fake-token-verifier';
+import { createOffer } from './helpers/create-offer';
 
 const auth = { Authorization: 'Bearer user-a' };
 // 한국 시간 낮 12시: 방해 금지 시간이 아니라 푸시가 나간다.
@@ -143,17 +144,15 @@ describe('payments', () => {
       over.paymentDueAt === undefined
         ? new Date(T0.getTime() + 3 * DAY)
         : over.paymentDueAt;
-    const offer = await prisma.offer.create({
-      data: {
-        storeId: store.id,
-        creatorId,
-        ...COLUMNS,
-        status: 'ACCEPTED',
-        expiresAt: new Date(T0.getTime() + 7 * DAY),
-        createdAt: T0,
-        acceptedAt: T0,
-        paymentDueAt: due,
-      },
+    const offer = await createOffer(prisma, {
+      storeId: store.id,
+      creatorId,
+      ...COLUMNS,
+      status: 'ACCEPTED',
+      expiresAt: new Date(T0.getTime() + 7 * DAY),
+      createdAt: T0,
+      acceptedAt: T0,
+      paymentDueAt: due,
     });
     const collaboration = await prisma.collaboration.create({
       data: {

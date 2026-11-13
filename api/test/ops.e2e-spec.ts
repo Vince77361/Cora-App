@@ -25,6 +25,7 @@ import { FakeClock } from './support/fake-clock';
 import { FakeJobScheduler } from './support/fake-job-scheduler';
 import { FakePushPort } from './support/fake-push.port';
 import { USER_A } from './support/fake-token-verifier';
+import { createOffer } from './helpers/create-offer';
 
 const auth = { Authorization: 'Bearer user-a' };
 // 한국 시간 낮 12시(화): 방해 금지 시간이 아니다.
@@ -137,16 +138,14 @@ describe('ops commands', () => {
       usageRights: 'STORE_REPOST_3M' as const,
     };
     const terms = { ...columns, pieces: 1 };
-    const offer = await prisma.offer.create({
-      data: {
-        storeId: store.id,
-        creatorId: USER_A,
-        ...columns,
-        status: 'ACCEPTED',
-        expiresAt: new Date(T0.getTime() + 7 * DAY),
-        createdAt: T0,
-        acceptedAt: T0,
-      },
+    const offer = await createOffer(prisma, {
+      storeId: store.id,
+      creatorId: USER_A,
+      ...columns,
+      status: 'ACCEPTED',
+      expiresAt: new Date(T0.getTime() + 7 * DAY),
+      createdAt: T0,
+      acceptedAt: T0,
     });
     const counting = stage === 'COUNTING' || stage === 'HALTED';
     const collaboration = await prisma.collaboration.create({

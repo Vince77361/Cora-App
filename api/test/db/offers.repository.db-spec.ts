@@ -1,4 +1,7 @@
+import { OfferVersionsRepository } from '../../src/offers/offer-versions.repository';
 import { OffersRepository } from '../../src/offers/offers.repository';
+import { termsModelOf } from '../../src/stores/reward-terms';
+import { createOffer } from '../helpers/create-offer';
 import { prisma } from './setup-db';
 
 const OWNER = '55555555-5555-4555-8555-555555555551';
@@ -13,7 +16,10 @@ let storeId: string;
 let otherStoreId: string;
 
 describe('OffersRepository', () => {
-  const repo = new OffersRepository(prisma as never);
+  const repo = new OffersRepository(
+    prisma as never,
+    new OfferVersionsRepository(),
+  );
 
   beforeEach(async () => {
     await prisma.user.createMany({
@@ -33,14 +39,18 @@ describe('OffersRepository', () => {
     storeId: over.storeId ?? storeId,
     creatorId: CREATOR,
     applicationId: null,
-    format: 'REELS' as const,
-    voucherName: '식사권',
-    voucherValue: 40000,
-    voucherPeople: 2,
-    fixedCash: 0,
-    viewRatePerThousand: null,
-    perViewCap: null,
-    usageRights: 'STORE_REPOST_3M' as const,
+    terms: termsModelOf(
+      'REELS',
+      {
+        voucherName: '식사권',
+        voucherValue: 40000,
+        voucherPeople: 2,
+        fixedCash: 0,
+        viewRatePerThousand: null,
+        perViewCap: null,
+      },
+      'STORE_REPOST_3M',
+    ),
     createdAt: T0,
     expiresAt: at(7 * DAY),
   });
@@ -72,12 +82,12 @@ describe('OffersRepository', () => {
   it('accepts only once, and only before the deadline', async () => {
     const offer = (await repo.create(base()))!;
     expect(
-      await repo.accept(offer.id, CREATOR, at(7 * DAY), at(10 * DAY)),
+      await repo.accept(offer.id, CREATOR, 1, at(7 * DAY), at(10 * DAY)),
     ).toBe(false);
-    expect(await repo.accept(offer.id, CREATOR, at(DAY), at(4 * DAY))).toBe(
+    expect(await repo.accept(offer.id, CREATOR, 1, at(DAY), at(4 * DAY))).toBe(
       true,
     );
-    expect(await repo.accept(offer.id, CREATOR, at(DAY), at(4 * DAY))).toBe(
+    expect(await repo.accept(offer.id, CREATOR, 1, at(DAY), at(4 * DAY))).toBe(
       false,
     );
     expect(
@@ -89,9 +99,42 @@ describe('OffersRepository', () => {
     });
   });
 
+  it('refuses to accept a version number that is not the latest', async () => {
+    const offer = (await repo.create(base()))!;
+    expect(await repo.accept(offer.id, CREATOR, 2, T0, at(3 * DAY))).toBe(
+      false,
+    );
+    // 새 판본이 나오면(번호가 올라가면) 옛 번호의 수락은 0행이다. 읽은 뒤 판본이 나온 경쟁을 흉내 낸다.
+    await prisma.offer.update({
+      where: { id: offer.id },
+      data: { latestVersion: 2 },
+    });
+    expect(await repo.accept(offer.id, CREATOR, 1, T0, at(3 * DAY))).toBe(
+      false,
+    );
+    expect(await statusOf(offer.id)).toBe('SENT');
+    expect(await repo.accept(offer.id, CREATOR, 2, T0, at(3 * DAY))).toBe(true);
+  });
+
+  it('creates the offer and version 1 together', async () => {
+    const offer = (await repo.create(base()))!;
+    expect(offer).toMatchObject({
+      latestVersion: 1,
+      turn: 'CREATOR',
+      initiatedBy: 'STORE',
+    });
+    expect(offer.versions).toHaveLength(1);
+    expect(offer.versions[0]).toMatchObject({
+      number: 1,
+      authorParty: 'STORE',
+      voucherName: '식사권',
+      createdAt: T0,
+    });
+  });
+
   it('refuses a response from someone who is not the recipient', async () => {
     const offer = (await repo.create(base()))!;
-    expect(await repo.accept(offer.id, OWNER, T0, at(3 * DAY))).toBe(false);
+    expect(await repo.accept(offer.id, OWNER, 1, T0, at(3 * DAY))).toBe(false);
     expect(await repo.decline(offer.id, OWNER, T0)).toBe(false);
     expect(await statusOf(offer.id)).toBe('SENT');
   });
@@ -99,7 +142,7 @@ describe('OffersRepository', () => {
   it('lets exactly one of accept and decline win', async () => {
     const offer = (await repo.create(base()))!;
     const results = await Promise.all([
-      repo.accept(offer.id, CREATOR, T0, at(3 * DAY)),
+      repo.accept(offer.id, CREATOR, 1, T0, at(3 * DAY)),
       repo.decline(offer.id, CREATOR, T0),
     ]);
     expect(results.filter(Boolean)).toHaveLength(1);
@@ -123,8 +166,13 @@ describe('OffersRepository', () => {
     const first = (await repo.create(base()))!;
     await repo.decline(first.id, CREATOR, T0);
     // 이 저장소는 되돌리기 중인 거절을 열린 것으로 보지 않는 직접 삽입 경로(서비스 밖)도 막아야 한다.
-    await prisma.offer.create({
-      data: { ...base(), status: 'SENT', applicationId: undefined },
+    await createOffer(prisma, {
+      storeId,
+      creatorId: CREATOR,
+      format: 'REELS',
+      status: 'SENT',
+      createdAt: T0,
+      expiresAt: at(7 * DAY),
     });
     expect(await repo.undoDecline(first.id, CREATOR, at(SECOND))).toBe(false);
     expect(await statusOf(first.id)).toBe('DECLINED');
@@ -144,7 +192,7 @@ describe('OffersRepository', () => {
 
   it('cancels an accepted offer only before its payment deadline', async () => {
     const offer = (await repo.create(base()))!;
-    await repo.accept(offer.id, CREATOR, T0, at(3 * DAY));
+    await repo.accept(offer.id, CREATOR, 1, T0, at(3 * DAY));
     expect(await repo.cancel(offer.id, storeId, 'ACCEPTED', at(3 * DAY))).toBe(
       false,
     );

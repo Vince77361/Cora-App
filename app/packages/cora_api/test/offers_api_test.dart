@@ -18,7 +18,7 @@ void main() {
   group('tests for OffersApi', () {
     //
     //
-    //Future<ReceivedOfferModel> acceptOffer(String id) async
+    //Future<ReceivedOfferModel> acceptOffer(String id, AcceptOfferDto acceptOfferDto) async
     test('test acceptOffer', () async {
       // TODO
     });

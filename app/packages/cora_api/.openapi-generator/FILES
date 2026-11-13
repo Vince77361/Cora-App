@@ -1,6 +1,7 @@
 .gitignore
 README.md
 analysis_options.yaml
+doc/AcceptOfferDto.md
 doc/AdvanceOnboardingDto.md
 doc/AdvanceOnboardingStep.md
 doc/AnalyzeLinksDto.md
@@ -136,6 +137,7 @@ lib/auth/authentication.dart
 lib/auth/http_basic_auth.dart
 lib/auth/http_bearer_auth.dart
 lib/auth/oauth.dart
+lib/model/accept_offer_dto.dart
 lib/model/advance_onboarding_dto.dart
 lib/model/advance_onboarding_step.dart
 lib/model/analyze_links_dto.dart
@@ -229,6 +231,7 @@ lib/model/wallet_entry_model.dart
 lib/model/wallet_model.dart
 lib/model/wallet_next_payout_model.dart
 pubspec.yaml
+test/accept_offer_dto_test.dart
 test/advance_onboarding_dto_test.dart
 test/advance_onboarding_step_test.dart
 test/analyze_links_dto_test.dart

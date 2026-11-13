@@ -17,11 +17,13 @@ class ReceivedOfferModel {
     required this.canUndoDecline,
     required this.collaborationId,
     required this.id,
+    required this.myTurn,
     required this.needsInstagram,
     required this.receivedAt,
     required this.store,
     required this.storeIntro,
     required this.terms,
+    required this.version,
     required this.view,
   });
 
@@ -35,6 +37,9 @@ class ReceivedOfferModel {
 
   String id;
 
+  /// 크리에이터가 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.
+  bool myTurn;
+
   /// 릴스·카드뉴스의 조회수 보상을 받으려면 인스타그램 연동이 필요한데 아직 연동하지 않았으면 true. true인 오퍼는 수락할 수 없다. 기다리는 중(WAITING)이 아닌 오퍼는 항상 false.
   bool needsInstagram;
 
@@ -47,6 +52,9 @@ class ReceivedOfferModel {
 
   OfferTermsModel terms;
 
+  /// 최신 판본의 번호. 수락은 이 번호와 함께 보낸다.
+  int version;
+
   /// 크리에이터에게 보이는 상태. 거절은 바로 DECLINED로 보인다.
   OfferView view;
 
@@ -58,11 +66,13 @@ class ReceivedOfferModel {
           other.canUndoDecline == canUndoDecline &&
           other.collaborationId == collaborationId &&
           other.id == id &&
+          other.myTurn == myTurn &&
           other.needsInstagram == needsInstagram &&
           other.receivedAt == receivedAt &&
           other.store == store &&
           other.storeIntro == storeIntro &&
           other.terms == terms &&
+          other.version == version &&
           other.view == view;
 
   @override
@@ -72,16 +82,18 @@ class ReceivedOfferModel {
       (canUndoDecline.hashCode) +
       (collaborationId == null ? 0 : collaborationId!.hashCode) +
       (id.hashCode) +
+      (myTurn.hashCode) +
       (needsInstagram.hashCode) +
       (receivedAt.hashCode) +
       (store.hashCode) +
       (storeIntro == null ? 0 : storeIntro!.hashCode) +
       (terms.hashCode) +
+      (version.hashCode) +
       (view.hashCode);
 
   @override
   String toString() =>
-      'ReceivedOfferModel[bestShootingTime=$bestShootingTime, canUndoDecline=$canUndoDecline, collaborationId=$collaborationId, id=$id, needsInstagram=$needsInstagram, receivedAt=$receivedAt, store=$store, storeIntro=$storeIntro, terms=$terms, view=$view]';
+      'ReceivedOfferModel[bestShootingTime=$bestShootingTime, canUndoDecline=$canUndoDecline, collaborationId=$collaborationId, id=$id, myTurn=$myTurn, needsInstagram=$needsInstagram, receivedAt=$receivedAt, store=$store, storeIntro=$storeIntro, terms=$terms, version=$version, view=$view]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -97,6 +109,7 @@ class ReceivedOfferModel {
       json[r'collaborationId'] = null;
     }
     json[r'id'] = this.id;
+    json[r'myTurn'] = this.myTurn;
     json[r'needsInstagram'] = this.needsInstagram;
     json[r'receivedAt'] = this.receivedAt.toUtc().toIso8601String();
     json[r'store'] = this.store;
@@ -106,6 +119,7 @@ class ReceivedOfferModel {
       json[r'storeIntro'] = null;
     }
     json[r'terms'] = this.terms;
+    json[r'version'] = this.version;
     json[r'view'] = this.view;
     return json;
   }
@@ -133,6 +147,10 @@ class ReceivedOfferModel {
             'Required key "ReceivedOfferModel[id]" is missing from JSON.');
         assert(json[r'id'] != null,
             'Required key "ReceivedOfferModel[id]" has a null value in JSON.');
+        assert(json.containsKey(r'myTurn'),
+            'Required key "ReceivedOfferModel[myTurn]" is missing from JSON.');
+        assert(json[r'myTurn'] != null,
+            'Required key "ReceivedOfferModel[myTurn]" has a null value in JSON.');
         assert(json.containsKey(r'needsInstagram'),
             'Required key "ReceivedOfferModel[needsInstagram]" is missing from JSON.');
         assert(json[r'needsInstagram'] != null,
@@ -151,6 +169,10 @@ class ReceivedOfferModel {
             'Required key "ReceivedOfferModel[terms]" is missing from JSON.');
         assert(json[r'terms'] != null,
             'Required key "ReceivedOfferModel[terms]" has a null value in JSON.');
+        assert(json.containsKey(r'version'),
+            'Required key "ReceivedOfferModel[version]" is missing from JSON.');
+        assert(json[r'version'] != null,
+            'Required key "ReceivedOfferModel[version]" has a null value in JSON.');
         assert(json.containsKey(r'view'),
             'Required key "ReceivedOfferModel[view]" is missing from JSON.');
         assert(json[r'view'] != null,
@@ -163,11 +185,13 @@ class ReceivedOfferModel {
         canUndoDecline: mapValueOfType<bool>(json, r'canUndoDecline')!,
         collaborationId: mapValueOfType<String>(json, r'collaborationId'),
         id: mapValueOfType<String>(json, r'id')!,
+        myTurn: mapValueOfType<bool>(json, r'myTurn')!,
         needsInstagram: mapValueOfType<bool>(json, r'needsInstagram')!,
         receivedAt: mapDateTime(json, r'receivedAt', r'')!,
         store: StoreSummaryModel.fromJson(json[r'store'])!,
         storeIntro: mapValueOfType<String>(json, r'storeIntro'),
         terms: OfferTermsModel.fromJson(json[r'terms'])!,
+        version: mapValueOfType<int>(json, r'version')!,
         view: OfferView.fromJson(json[r'view'])!,
       );
     }
@@ -229,11 +253,13 @@ class ReceivedOfferModel {
     'canUndoDecline',
     'collaborationId',
     'id',
+    'myTurn',
     'needsInstagram',
     'receivedAt',
     'store',
     'storeIntro',
     'terms',
+    'version',
     'view',
   };
 }

@@ -26,7 +26,9 @@ class ApiReceivedOffersRepository implements ReceivedOffersRepository {
   });
 
   @override
-  Future<void> accept(String id) => _guard(() => _offers.acceptOffer(id));
+  Future<void> accept(String id, int version) => _guard(
+    () => _offers.acceptOffer(id, api.AcceptOfferDto(version: version)),
+  );
 
   @override
   Future<void> decline(String id) => _guard(() => _offers.declineOffer(id));
@@ -59,6 +61,7 @@ class ApiReceivedOffersRepository implements ReceivedOffersRepository {
       _ => OfferView.waiting,
     },
     receivedAt: m.receivedAt,
+    version: m.version,
     canUndoDecline: m.canUndoDecline,
     needsInstagram: m.needsInstagram,
   );

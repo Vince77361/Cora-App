@@ -38,6 +38,12 @@ void main() {
       // TODO
     });
 
+    // 크리에이터가 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.
+    // bool myTurn
+    test('to test the property `myTurn`', () async {
+      // TODO
+    });
+
     // 릴스·카드뉴스의 조회수 보상을 받으려면 인스타그램 연동이 필요한데 아직 연동하지 않았으면 true. true인 오퍼는 수락할 수 없다. 기다리는 중(WAITING)이 아닌 오퍼는 항상 false.
     // bool needsInstagram
     test('to test the property `needsInstagram`', () async {
@@ -62,6 +68,12 @@ void main() {
 
     // OfferTermsModel terms
     test('to test the property `terms`', () async {
+      // TODO
+    });
+
+    // 최신 판본의 번호. 수락은 이 번호와 함께 보낸다.
+    // int version
+    test('to test the property `version`', () async {
       // TODO
     });
 

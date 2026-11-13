@@ -113,6 +113,7 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [AcceptOfferDto](doc//AcceptOfferDto.md)
  - [AdvanceOnboardingDto](doc//AdvanceOnboardingDto.md)
  - [AdvanceOnboardingStep](doc//AdvanceOnboardingStep.md)
  - [AnalyzeLinksDto](doc//AnalyzeLinksDto.md)

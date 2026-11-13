@@ -13,6 +13,7 @@ abstract final class ApiErrorCode {
   static const forbidden = 'FORBIDDEN';
   static const notFound = 'NOT_FOUND';
   static const conflict = 'CONFLICT';
+  static const staleVersion = 'STALE_VERSION';
   static const rateLimited = 'RATE_LIMITED';
   static const internal = 'INTERNAL';
 
@@ -28,6 +29,7 @@ abstract final class ApiErrorCode {
     forbidden,
     notFound,
     conflict,
+    staleVersion,
     rateLimited,
     internal,
   };
@@ -59,6 +61,9 @@ class ApiError {
   final String? message;
 
   bool get isConflict => code == ApiErrorCode.conflict;
+
+  /// 수락하려는 판본이 최신이 아니다(409). 서버가 최신 번호를 details에 담지만 화면은 다시 불러오기만 한다.
+  bool get isStaleVersion => code == ApiErrorCode.staleVersion;
   bool get isRateLimited => code == ApiErrorCode.rateLimited;
   bool get isNotFound => code == ApiErrorCode.notFound;
   bool get isNetwork => code == ApiErrorCode.network;

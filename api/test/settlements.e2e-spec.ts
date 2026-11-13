@@ -31,6 +31,7 @@ import { FakeClock } from './support/fake-clock';
 import { FakeJobScheduler } from './support/fake-job-scheduler';
 import { FakePushPort } from './support/fake-push.port';
 import { USER_A } from './support/fake-token-verifier';
+import { createOffer } from './helpers/create-offer';
 
 const auth = { Authorization: 'Bearer user-a' };
 // 한국 시간 낮 12시(화): 방해 금지 시간이 아니라 푸시가 나간다.
@@ -216,16 +217,14 @@ describe('settlements', () => {
           perViewCap: columns.perViewCap,
         }
       : { ...columns, pieces: 1 };
-    const offer = await prisma.offer.create({
-      data: {
-        storeId: store.id,
-        creatorId: USER_A,
-        ...columns,
-        status: 'ACCEPTED',
-        expiresAt: new Date(T0.getTime() + 7 * DAY),
-        createdAt: T0,
-        acceptedAt: T0,
-      },
+    const offer = await createOffer(prisma, {
+      storeId: store.id,
+      creatorId: USER_A,
+      ...columns,
+      status: 'ACCEPTED',
+      expiresAt: new Date(T0.getTime() + 7 * DAY),
+      createdAt: T0,
+      acceptedAt: T0,
     });
     const collaboration = await prisma.collaboration.create({
       data: {
@@ -1075,7 +1074,8 @@ describe('settlements', () => {
           clock.set(T0);
         }
       }
-    });
+      // 시나리오 열여섯 개가 원격 DB에 줄지어 쓴다. 판본·오퍼 닫기 쿼리가 더해져 기본 30초로는 모자란다.
+    }, 120000);
   });
 
   describe('payout', () => {

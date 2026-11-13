@@ -15,6 +15,7 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
+import { AcceptOfferDto } from './dto/accept-offer.dto';
 import { ReceivedOffersQueryDto } from './dto/received-offers-query.dto';
 import { ReceivedOfferModel } from './dto/received-offer.model';
 import { SendOfferDto } from './dto/send-offer.dto';
@@ -76,8 +77,9 @@ export class OffersController {
   accept(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
+    @Body() dto: AcceptOfferDto,
   ): Promise<ReceivedOfferModel> {
-    return this.offers.accept(user.userId, id);
+    return this.offers.accept(user.userId, id, dto.version);
   }
 
   @Post('offers/:id/decline')

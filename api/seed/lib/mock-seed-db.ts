@@ -139,6 +139,8 @@ export class PrismaMockSeedDb implements MockSeedDb {
       OR: [{ storeId }, { creatorId: { in: mockCreatorIds } }],
     };
     await this.prisma.$transaction([
+      // 판본이 오퍼를 가리키므로 판본, 오퍼, 지원 순서로 지운다.
+      this.prisma.offerVersion.deleteMany({ where: { offer: scope } }),
       this.prisma.offer.deleteMany({ where: scope }),
       this.prisma.application.deleteMany({ where: scope }),
       this.prisma.application.createMany({
@@ -149,14 +151,38 @@ export class PrismaMockSeedDb implements MockSeedDb {
           createdAt: a.createdAt,
         })),
       }),
-      this.prisma.offer.createMany({
-        data: input.offers.map((o) => ({
-          ...o,
-          storeId,
-          status: 'DECLINED' as const,
-          respondedAt: o.declinedAt,
-        })),
-      }),
+      // createMany는 판본을 함께 만들 수 없어 오퍼마다 만든다. 오퍼의 조건은 판본 1에 있다.
+      ...input.offers.map((o) =>
+        this.prisma.offer.create({
+          data: {
+            storeId,
+            creatorId: o.creatorId,
+            status: 'DECLINED' as const,
+            latestVersion: 1,
+            turn: 'CREATOR' as const,
+            initiatedBy: 'STORE' as const,
+            createdAt: o.createdAt,
+            expiresAt: o.expiresAt,
+            declinedAt: o.declinedAt,
+            respondedAt: o.declinedAt,
+            versions: {
+              create: {
+                number: 1,
+                authorParty: 'STORE' as const,
+                format: o.format,
+                voucherName: o.voucherName,
+                voucherValue: o.voucherValue,
+                voucherPeople: o.voucherPeople,
+                fixedCash: o.fixedCash,
+                viewRatePerThousand: o.viewRatePerThousand,
+                perViewCap: o.perViewCap,
+                usageRights: o.usageRights,
+                createdAt: o.createdAt,
+              },
+            },
+          },
+        }),
+      ),
     ]);
   }
 }

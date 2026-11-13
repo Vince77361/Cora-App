@@ -46,6 +46,7 @@ part 'api/uploads_api.dart';
 part 'api/users_api.dart';
 part 'api/wallet_api.dart';
 
+part 'model/accept_offer_dto.dart';
 part 'model/advance_onboarding_dto.dart';
 part 'model/advance_onboarding_step.dart';
 part 'model/analyze_links_dto.dart';

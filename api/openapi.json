@@ -1,6 +1,19 @@
 {
   "components": {
     "schemas": {
+      "AcceptOfferDto": {
+        "properties": {
+          "version": {
+            "description": "수락하려는 판본 번호. 최신이 아니면 409 STALE_VERSION.",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "type": "object"
+      },
       "AdvanceOnboardingDto": {
         "properties": {
           "step": {
@@ -1453,6 +1466,10 @@
             "format": "uuid",
             "type": "string"
           },
+          "myTurn": {
+            "description": "크리에이터가 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.",
+            "type": "boolean"
+          },
           "needsInstagram": {
             "description": "릴스·카드뉴스의 조회수 보상을 받으려면 인스타그램 연동이 필요한데 아직 연동하지 않았으면 true. true인 오퍼는 수락할 수 없다. 기다리는 중(WAITING)이 아닌 오퍼는 항상 false.",
             "type": "boolean"
@@ -1472,6 +1489,10 @@
           "terms": {
             "$ref": "#/components/schemas/OfferTermsModel"
           },
+          "version": {
+            "description": "최신 판본의 번호. 수락은 이 번호와 함께 보낸다.",
+            "type": "integer"
+          },
           "view": {
             "allOf": [
               {
@@ -1488,6 +1509,8 @@
           "storeIntro",
           "bestShootingTime",
           "terms",
+          "version",
+          "myTurn",
           "view",
           "receivedAt",
           "canUndoDecline",
@@ -1645,6 +1668,10 @@
             "format": "uuid",
             "type": "string"
           },
+          "myTurn": {
+            "description": "사장님가 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.",
+            "type": "boolean"
+          },
           "paymentDaysLeft": {
             "description": "수락됐고 아직 결제 기한 전일 때 남은 날(올림). 아니면 null.",
             "nullable": true,
@@ -1657,6 +1684,10 @@
           },
           "terms": {
             "$ref": "#/components/schemas/OfferTermsModel"
+          },
+          "version": {
+            "description": "최신 판본의 번호. 수락은 이 번호와 함께 보낸다.",
+            "type": "integer"
           },
           "view": {
             "allOf": [
@@ -1672,6 +1703,8 @@
           "collaborationId",
           "creator",
           "terms",
+          "version",
+          "myTurn",
           "view",
           "paymentDaysLeft",
           "sentAt"
@@ -3317,6 +3350,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptOfferDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

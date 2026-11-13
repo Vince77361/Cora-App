@@ -21,6 +21,7 @@ import { FakeClock } from './support/fake-clock';
 import { FakeJobScheduler } from './support/fake-job-scheduler';
 import { FakePushPort } from './support/fake-push.port';
 import { OTHER, USER_A } from './support/fake-token-verifier';
+import { createOffer } from './helpers/create-offer';
 
 // user-a는 크리에이터, user-b는 사장님이다.
 const creatorAuth = { Authorization: 'Bearer user-a' };
@@ -212,17 +213,15 @@ describe('collaborations', () => {
       usageRights: 'STORE_REPOST_3M' as const,
     };
     const terms = { ...columns, pieces: 1 };
-    const offer = await prisma.offer.create({
-      data: {
-        storeId: store.id,
-        creatorId: USER_A,
-        ...columns,
-        status: 'ACCEPTED',
-        expiresAt: new Date(T0.getTime() + 7 * DAY),
-        createdAt: T0,
-        acceptedAt: T0,
-        paymentDueAt: over.paymentDueAt ?? null,
-      },
+    const offer = await createOffer(prisma, {
+      storeId: store.id,
+      creatorId: USER_A,
+      ...columns,
+      status: 'ACCEPTED',
+      expiresAt: new Date(T0.getTime() + 7 * DAY),
+      createdAt: T0,
+      acceptedAt: T0,
+      paymentDueAt: over.paymentDueAt ?? null,
     });
     const collaboration = await prisma.collaboration.create({
       data: {

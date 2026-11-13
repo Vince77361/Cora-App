@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { prisma } from './setup-db';
+import { createOffer } from '../helpers/create-offer';
 
 const OWNER = '55555555-5555-4555-8555-555555555551';
 const CREATOR = '55555555-5555-4555-8555-555555555552';
@@ -17,14 +18,12 @@ beforeEach(async () => {
   });
   const store = await prisma.store.create({ data: { ownerId: OWNER } });
   storeId = store.id;
-  const offer = await prisma.offer.create({
-    data: {
-      storeId,
-      creatorId: CREATOR,
-      format: 'REELS',
-      status: 'ACCEPTED',
-      expiresAt: new Date('2026-12-01T00:00:00Z'),
-    },
+  const offer = await createOffer(prisma, {
+    storeId,
+    creatorId: CREATOR,
+    format: 'REELS',
+    status: 'ACCEPTED',
+    expiresAt: new Date('2026-12-01T00:00:00Z'),
   });
   offerId = offer.id;
 });

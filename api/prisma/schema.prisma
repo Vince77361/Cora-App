@@ -250,43 +250,91 @@ model Application {
   @@map("applications")
 }
 
+enum OfferParty {
+  STORE
+  CREATOR
+
+  @@map("offer_party")
+}
+
+// 오퍼가 끝난 까닭. 응답하지 않은 쪽이 아니라 끝낸 쪽이 고른다(Task 6).
+enum OfferEndReason {
+  SCHEDULE
+  TERMS
+  OTHER_PARTNER
+  NO_REASON
+
+  @@map("offer_end_reason")
+}
+
 // 같은 가게·크리에이터의 열린 오퍼(SENT, 또는 협업이 끝나지 않은 ACCEPTED)는 하나뿐이다. 부분 유니크 인덱스는 마이그레이션의 직접 SQL에 있다.
+// 조건(형식, 보상, 사용권, 아이디어)은 오퍼가 아니라 판본(offer_versions)에 있다. 오퍼는 흐름만 가진다.
 model Offer {
-  id                  String        @id @default(uuid()) @db.Uuid
-  storeId             String        @map("store_id") @db.Uuid
-  creatorId           String        @map("creator_id") @db.Uuid
-  applicationId       String?       @map("application_id") @db.Uuid
-  format              ContentFormat
-  voucherName         String?       @map("voucher_name")
-  voucherValue        Int?          @map("voucher_value")
-  voucherPeople       Int?          @map("voucher_people")
-  fixedCash           Int           @default(0) @map("fixed_cash")
-  // 단가는 "1,000회당 원"이다. 조회수 수당이 없으면 단가와 상한이 모두 null이다.
-  viewRatePerThousand Int?          @map("view_rate_per_thousand")
-  perViewCap          Int?          @map("per_view_cap")
-  // 옛 오퍼에는 사용권 합의가 없어 NONE이고, 새 오퍼는 보낼 때 정한다.
-  usageRights         UsageRights   @default(NONE) @map("usage_rights")
-  status              OfferStatus
-  expiresAt           DateTime      @map("expires_at") @db.Timestamptz(3)
-  acceptedAt          DateTime?     @map("accepted_at") @db.Timestamptz(3)
-  paymentDueAt        DateTime?     @map("payment_due_at") @db.Timestamptz(3)
-  declinedAt          DateTime?     @map("declined_at") @db.Timestamptz(3)
-  respondedAt         DateTime?     @map("responded_at") @db.Timestamptz(3)
+  id            String          @id @default(uuid()) @db.Uuid
+  storeId       String          @map("store_id") @db.Uuid
+  creatorId     String          @map("creator_id") @db.Uuid
+  applicationId String?         @map("application_id") @db.Uuid
+  status        OfferStatus
+  // 가장 새 판본의 번호. 판본을 만드는 트랜잭션이 함께 올리고, 수락은 이 번호를 조건부 갱신에 건다.
+  latestVersion Int             @default(1) @map("latest_version")
+  // 지금 응답할 차례. 최신 판본을 쓰지 않은 쪽이다.
+  turn          OfferParty
+  initiatedBy   OfferParty      @map("initiated_by")
+  endReason     OfferEndReason? @map("end_reason")
+  endedBy       OfferParty?     @map("ended_by")
+  expiresAt     DateTime        @map("expires_at") @db.Timestamptz(3)
+  acceptedAt    DateTime?       @map("accepted_at") @db.Timestamptz(3)
+  paymentDueAt  DateTime?       @map("payment_due_at") @db.Timestamptz(3)
+  declinedAt    DateTime?       @map("declined_at") @db.Timestamptz(3)
+  respondedAt   DateTime?       @map("responded_at") @db.Timestamptz(3)
   // 연결된 협업이 끝난(SETTLED, REFUNDED, CANCELLED) 시각. 차면 ACCEPTED여도 열린 오퍼로 세지 않아 같은 가게가 다시 오퍼할 수 있다.
-  closedAt            DateTime?     @map("closed_at") @db.Timestamptz(3)
-  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt           DateTime?     @map("deleted_at") @db.Timestamptz(3)
+  closedAt      DateTime?       @map("closed_at") @db.Timestamptz(3)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt     DateTime?       @map("deleted_at") @db.Timestamptz(3)
 
   store         Store          @relation(fields: [storeId], references: [id])
   creator       User           @relation(fields: [creatorId], references: [id])
   application   Application?   @relation(fields: [applicationId], references: [id])
   collaboration Collaboration?
+  versions      OfferVersion[]
 
   @@index([storeId, status])
   @@index([creatorId, status])
   @@index([expiresAt])
   @@map("offers")
+}
+
+// 오퍼 조건의 한 판본. 만들기만 하고 고치거나 지우지 않는다(열은 공통 규칙대로 둔다).
+// 단가는 "1,000회당 원"이다. 조회수 수당이 없으면 단가와 상한이 모두 null이다.
+model OfferVersion {
+  id                  String         @id @default(uuid()) @db.Uuid
+  offerId             String         @map("offer_id") @db.Uuid
+  number              Int
+  authorParty         OfferParty     @map("author_party")
+  format              ContentFormat
+  pieces              Int            @default(1)
+  voucherName         String?        @map("voucher_name")
+  voucherValue        Int?           @map("voucher_value")
+  voucherPeople       Int?           @map("voucher_people")
+  fixedCash           Int            @map("fixed_cash")
+  viewRatePerThousand Int?           @map("view_rate_per_thousand")
+  perViewCap          Int?           @map("per_view_cap")
+  usageRights         UsageRights    @map("usage_rights")
+  idea                String?
+  principles          String[]
+  seriesName          String?        @map("series_name")
+  seriesFormat        ContentFormat? @map("series_format")
+  seriesNote          String?        @map("series_note")
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?      @map("deleted_at") @db.Timestamptz(3)
+
+  offer Offer @relation(fields: [offerId], references: [id])
+
+  @@unique([offerId, number])
+  @@index([offerId])
+  @@map("offer_versions")
 }
 
 // ---- 협업·결제·장부 (3번 계획) ----

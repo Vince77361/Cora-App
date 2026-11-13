@@ -10,6 +10,7 @@ class ReceivedOffer {
     required this.terms,
     required this.view,
     required this.receivedAt,
+    required this.version,
     this.storeIntro,
     this.bestShootingTime,
     this.canUndoDecline = false,
@@ -23,6 +24,9 @@ class ReceivedOffer {
   final OfferTerms terms;
   final OfferView view;
   final DateTime receivedAt;
+
+  /// 지금 보고 있는 판본의 번호. 수락은 이 번호와 함께 보내, 그사이 새 판본이 나왔으면 서버가 거절한다.
+  final int version;
 
   /// 방금 거절해 30초 안에 되돌릴 수 있다.
   final bool canUndoDecline;
@@ -40,6 +44,7 @@ class ReceivedOffer {
         terms: terms,
         view: view ?? this.view,
         receivedAt: receivedAt,
+        version: version,
         canUndoDecline: canUndoDecline ?? this.canUndoDecline,
         needsInstagram: needsInstagram,
       );

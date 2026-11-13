@@ -30,6 +30,18 @@ export class ReceivedOfferModel {
   terms!: OfferTermsModel;
 
   @ApiProperty({
+    type: 'integer',
+    description: '최신 판본의 번호. 수락은 이 번호와 함께 보낸다.',
+  })
+  version!: number;
+
+  @ApiProperty({
+    description:
+      '크리에이터가 응답할 차례이면 true. 답을 기다리는 오퍼에만 해당한다.',
+  })
+  myTurn!: boolean;
+
+  @ApiProperty({
     enum: OFFER_VIEWS,
     enumName: 'OfferView',
     description: '크리에이터에게 보이는 상태. 거절은 바로 DECLINED로 보인다.',

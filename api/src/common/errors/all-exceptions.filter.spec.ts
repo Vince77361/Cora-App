@@ -152,6 +152,7 @@ describe('AllExceptionsFilter', () => {
       FORBIDDEN: 403,
       NOT_FOUND: 404,
       CONFLICT: 409,
+      STALE_VERSION: 409,
       RATE_LIMITED: 429,
       INTERNAL: 500,
     };

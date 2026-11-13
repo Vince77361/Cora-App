@@ -1,11 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
-import { CollaborationStage, Prisma, PrismaClient } from '@prisma/client';
+import { CollaborationStage, PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
 import { JobScheduler } from '../src/jobs/job-scheduler';
 import { OffersRepository } from '../src/offers/offers.repository';
+import {
+  addVersion,
+  createOffer,
+  type TestOfferInput,
+} from './helpers/create-offer';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
@@ -95,8 +100,11 @@ describe('offers', () => {
     request(server).post(`/offers/${id}/cancel`).set(auth).send();
   const received = (tab: string) =>
     request(server).get(`/offers/received?tab=${tab}`).set(auth);
-  const accept = (id: string) =>
-    request(server).post(`/offers/${id}/accept`).set(auth).send();
+  const accept = (id: string, version: number | null = 1) =>
+    request(server)
+      .post(`/offers/${id}/accept`)
+      .set(auth)
+      .send(version === null ? {} : { version });
   const decline = (id: string) =>
     request(server).post(`/offers/${id}/decline`).set(auth).send();
   const undo = (id: string) =>
@@ -188,21 +196,19 @@ describe('offers', () => {
   function seedOffer(
     storeId: string,
     creatorId: string,
-    over: Partial<Prisma.OfferUncheckedCreateInput> = {},
+    over: Partial<TestOfferInput> = {},
   ) {
-    return prisma.offer.create({
-      data: {
-        storeId,
-        creatorId,
-        format: 'REELS',
-        voucherName: '식사권',
-        voucherValue: 40000,
-        voucherPeople: 2,
-        status: 'SENT',
-        expiresAt: new Date(clock.now().getTime() + 7 * DAY),
-        createdAt: clock.now(),
-        ...over,
-      },
+    return createOffer(prisma, {
+      storeId,
+      creatorId,
+      format: 'REELS',
+      voucherName: '식사권',
+      voucherValue: 40000,
+      voucherPeople: 2,
+      status: 'SENT',
+      expiresAt: new Date(clock.now().getTime() + 7 * DAY),
+      createdAt: clock.now(),
+      ...over,
     });
   }
 
@@ -313,6 +319,43 @@ describe('offers', () => {
       expect(application.status).toBe('OFFERED');
     });
 
+    it('creates version 1 written by the store when an offer is sent', async () => {
+      const creatorId = await seedCreator();
+      const res = await send({ creatorId, ...REELS_VOUCHER }).expect(201);
+      const body = res.body as SentBody & { version: number; myTurn: boolean };
+      // 처음 보낸 사장님은 답을 기다리는 쪽이라 내 차례가 아니다.
+      expect(body).toMatchObject({ version: 1, myTurn: false });
+      const offer = await prisma.offer.findUniqueOrThrow({
+        where: { id: body.id },
+        include: { versions: true },
+      });
+      expect(offer).toMatchObject({
+        latestVersion: 1,
+        turn: 'CREATOR',
+        initiatedBy: 'STORE',
+        endReason: null,
+        endedBy: null,
+      });
+      expect(offer.versions).toHaveLength(1);
+      expect(offer.versions[0]).toMatchObject({
+        number: 1,
+        authorParty: 'STORE',
+        format: 'REELS',
+        pieces: 1,
+        voucherName: '식사권',
+        voucherValue: 40000,
+        voucherPeople: 2,
+        fixedCash: 0,
+        viewRatePerThousand: null,
+        perViewCap: null,
+        usageRights: 'STORE_REPOST_3M',
+        idea: null,
+        principles: [],
+        seriesName: null,
+        createdAt: T0,
+      });
+    });
+
     it('sends an offer to a creator who never applied', async () => {
       const creatorId = await seedCreator();
       const res = await send({ creatorId, ...REELS_VOUCHER }).expect(201);
@@ -404,7 +447,9 @@ describe('offers', () => {
         settlementMethod: 'FIXED_AND_PER_VIEW',
       });
       expect(
-        await prisma.offer.findUniqueOrThrow({ where: { id: body.id } }),
+        await prisma.offerVersion.findFirstOrThrow({
+          where: { offerId: body.id, number: 1 },
+        }),
       ).toMatchObject({ fixedCash: 30000, perViewCap: 60000 });
     });
 
@@ -1286,6 +1331,8 @@ describe('offers', () => {
         viewRatePerThousand: 2000,
         perViewCap: 60000,
         usageRights: 'NONE',
+        // 수락된 판본의 번호가 조건 사본에 함께 남는다.
+        version: 1,
       });
       expect((res.body as ReceivedBody).collaborationId).toBe(collaboration.id);
     });
@@ -1339,6 +1386,108 @@ describe('offers', () => {
       expect(
         await prisma.collaboration.count({ where: { offerId: offer.id } }),
       ).toBe(1);
+    });
+
+    it('accepts the latest version and copies its terms and number to the collaboration', async () => {
+      const offer = await seedOffer(store.id, USER_A);
+      // 사장님이 한 번 고친 판본 2를 크리에이터가 수락한다(고친 판본을 내는 길은 Task 6).
+      await addVersion(prisma, offer.id, 'STORE', { fixedCash: 30000 });
+      await prisma.offer.update({
+        where: { id: offer.id },
+        data: { turn: 'CREATOR' },
+      });
+      const res = await accept(offer.id, 2).expect(200);
+      expect(res.body as ReceivedBody).toMatchObject({ view: 'ACCEPTED' });
+      const collaboration = await prisma.collaboration.findUniqueOrThrow({
+        where: { offerId: offer.id },
+      });
+      expect(collaboration.terms).toMatchObject({
+        version: 2,
+        fixedCash: 30000,
+        voucherName: '식사권',
+      });
+      expect(collaboration).toMatchObject({
+        stage: 'AWAITING_PAYMENT',
+        settlementMethod: 'FIXED',
+      });
+    });
+
+    it('rejects an older version number with STALE_VERSION and the latest number', async () => {
+      const offer = await seedOffer(store.id, USER_A);
+      await addVersion(prisma, offer.id, 'STORE', { fixedCash: 30000 });
+      const res = await accept(offer.id, 1).expect(409);
+      expect(res.body).toEqual({
+        error: {
+          code: 'STALE_VERSION',
+          message: '이전 판본이라 수락할 수 없어요.',
+          details: { latestVersion: 2 },
+        },
+      });
+      expect(
+        (await prisma.offer.findUniqueOrThrow({ where: { id: offer.id } }))
+          .status,
+      ).toBe('SENT');
+    });
+
+    it('rejects a version number that does not exist', async () => {
+      const offer = await seedOffer(store.id, USER_A);
+      const res = await accept(offer.id, 7).expect(409);
+      expect(codeOf(res)).toBe('STALE_VERSION');
+      expect(
+        (res.body as { error: { details: unknown } }).error.details,
+      ).toEqual({ latestVersion: 1 });
+    });
+
+    it('creates no collaboration when the accept is stale', async () => {
+      const offer = await seedOffer(store.id, USER_A);
+      await addVersion(prisma, offer.id, 'STORE', { fixedCash: 30000 });
+      await accept(offer.id, 1).expect(409);
+      expect(await prisma.collaboration.count()).toBe(0);
+      expect(scheduler.pending()).toEqual([]);
+    });
+
+    it('rejects an accept without a version number', async () => {
+      const offer = await seedOffer(store.id, USER_A);
+      await accept(offer.id, null).expect(400);
+      await request(server)
+        .post(`/offers/${offer.id}/accept`)
+        .set(auth)
+        .send({ version: 0 })
+        .expect(400);
+      expect(await prisma.collaboration.count()).toBe(0);
+    });
+
+    it('checks the version before the turn and the turn before instagram', async () => {
+      await connectInstagram();
+      const offer = await seedOffer(store.id, USER_A, {
+        ...PER_VIEW_TERMS,
+        turn: 'STORE',
+      });
+      // 차례가 아닌 쪽의 수락은 409 CONFLICT, 낡은 번호는 그보다 먼저 STALE_VERSION이다.
+      expect(codeOf(await accept(offer.id, 1).expect(409))).toBe('CONFLICT');
+      expect(codeOf(await accept(offer.id, 3).expect(409))).toBe(
+        'STALE_VERSION',
+      );
+    });
+
+    it('shows the latest terms, the version and whose turn it is on the received list', async () => {
+      const offer = await seedOffer(store.id, USER_A);
+      await addVersion(prisma, offer.id, 'STORE', { fixedCash: 30000 });
+      await prisma.offer.update({
+        where: { id: offer.id },
+        data: { turn: 'CREATOR' },
+      });
+      const rows = (await received('new').expect(200)).body as (ReceivedBody & {
+        version: number;
+        myTurn: boolean;
+      })[];
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ id: offer.id, version: 2, myTurn: true });
+      expect(rows[0].terms).toMatchObject({
+        fixedCash: 30000,
+        maxCashBurden: 30000,
+        settlementMethod: 'FIXED',
+      });
     });
 
     it('notifies the store owner on accept', async () => {

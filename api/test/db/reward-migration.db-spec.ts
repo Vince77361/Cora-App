@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fromLegacyTerms, readTerms } from '../../src/stores/reward-terms';
+import { createOffer } from '../helpers/create-offer';
 import { prisma } from './setup-db';
 
 const OWNER = '66666666-6666-4666-8666-666666666661';
@@ -220,23 +221,36 @@ describe('legacy reward backfill', () => {
 });
 
 describe('reward columns', () => {
-  it('stores three reward elements on an offer and defaults the new ones', async () => {
-    const offer = await prisma.offer.create({
+  // 오퍼의 조건은 판본으로 옮겨졌다(5번 항목 Task 5). 보상 세 요소는 판본에 있다.
+  it('stores three reward elements on an offer version and leaves the optional ones empty', async () => {
+    const offer = await createOffer(prisma, {
+      storeId,
+      creatorId: CREATOR,
+      format: 'REELS',
+      status: 'SENT',
+      expiresAt: new Date('2026-12-01T00:00:00Z'),
+    });
+    const version = await prisma.offerVersion.create({
       data: {
-        storeId,
-        creatorId: CREATOR,
+        offerId: offer.id,
+        number: 2,
+        authorParty: 'CREATOR',
         format: 'REELS',
-        status: 'SENT',
-        expiresAt: new Date('2026-12-01T00:00:00Z'),
+        fixedCash: 0,
+        usageRights: 'NONE',
       },
     });
-    expect(offer).toMatchObject({
+    expect(version).toMatchObject({
+      pieces: 1,
       voucherName: null,
       voucherPeople: null,
       fixedCash: 0,
       viewRatePerThousand: null,
       perViewCap: null,
       usageRights: 'NONE',
+      idea: null,
+      principles: [],
+      seriesName: null,
     });
   });
 

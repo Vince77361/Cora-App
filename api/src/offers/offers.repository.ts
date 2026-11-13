@@ -1,29 +1,34 @@
 import { Injectable } from '@nestjs/common';
-import { Offer, OfferStatus, Prisma } from '@prisma/client';
+import { OfferStatus, OfferVersion, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { OfferTermsModel } from '../stores/dto/offer-terms.model';
 import { DECLINE_UNDO_SECONDS } from './offer-rules';
+import { OfferVersionsRepository } from './offer-versions.repository';
 
 // 연결된 지원의 상태를 함께 읽어, 이미 닫힌 지원에 닫기를 다시 부르지 않게 한다.
+// 조건은 판본에 있어서 가장 새 판본 하나를 함께 읽는다(오퍼를 만드는 트랜잭션이 번호와 판본을 같이 올린다).
 const WITH_APPLICATION = {
   application: { select: { status: true } },
+  versions: { orderBy: { number: 'desc' }, take: 1 },
 } satisfies Prisma.OfferInclude;
 
 export type OfferRow = Prisma.OfferGetPayload<{
   include: typeof WITH_APPLICATION;
 }>;
 
+// 오퍼의 가장 새 판본. 판본 없는 오퍼는 마이그레이션이 지켜 주는 불변식을 깬 것이라 던진다.
+export function latestVersionOf(row: OfferRow): OfferVersion {
+  const latest = row.versions[0];
+  if (!latest) throw new Error('오퍼에 판본이 없어요.');
+  return latest;
+}
+
+// 오퍼와 판본 1을 한 번에 만든다. 처음 보내는 쪽은 사장님이다.
 export interface NewOffer {
   storeId: string;
   creatorId: string;
   applicationId: string | null;
-  format: Offer['format'];
-  voucherName: string | null;
-  voucherValue: number | null;
-  voucherPeople: number | null;
-  fixedCash: number;
-  viewRatePerThousand: number | null;
-  perViewCap: number | null;
-  usageRights: Offer['usageRights'];
+  terms: OfferTermsModel;
   createdAt: Date;
   expiresAt: Date;
 }
@@ -39,7 +44,10 @@ class Rollback extends Error {}
 // 동시에 와도 한 번만 바뀌고, 바뀐 행이 0이면 false를 돌려 서비스가 409로 바꾸게 한다.
 @Injectable()
 export class OffersRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly versions: OfferVersionsRepository,
+  ) {}
 
   findById(id: string): Promise<OfferRow | null> {
     return this.prisma.offer.findFirst({
@@ -104,11 +112,35 @@ export class OffersRepository {
   }
 
   // 열린 오퍼는 부분 유니크 인덱스가 하나로 막는다. 읽은 뒤 동시에 만들어 위반(P2002)이 나면 null.
+  // 오퍼와 판본 1은 한 트랜잭션이다: 판본 없는 오퍼가 남으면 읽는 곳이 모두 깨진다.
   async create(data: NewOffer): Promise<OfferRow | null> {
     try {
-      return await this.prisma.offer.create({
-        data: { ...data, status: 'SENT' },
-        include: WITH_APPLICATION,
+      return await this.prisma.$transaction(async (tx) => {
+        const offer = await tx.offer.create({
+          data: {
+            storeId: data.storeId,
+            creatorId: data.creatorId,
+            applicationId: data.applicationId,
+            status: 'SENT',
+            latestVersion: 1,
+            // 처음 보낸 쪽은 사장님이고 크리에이터가 답할 차례다.
+            turn: 'CREATOR',
+            initiatedBy: 'STORE',
+            createdAt: data.createdAt,
+            expiresAt: data.expiresAt,
+          },
+        });
+        await this.versions.insert(tx, {
+          offerId: offer.id,
+          number: 1,
+          authorParty: 'STORE',
+          terms: data.terms,
+          createdAt: data.createdAt,
+        });
+        return tx.offer.findUniqueOrThrow({
+          where: { id: offer.id },
+          include: WITH_APPLICATION,
+        });
       });
     } catch (error) {
       if (isUniqueViolation(error)) return null;
@@ -117,10 +149,12 @@ export class OffersRepository {
   }
 
   // 수락은 기한 전(expiresAt > now)일 때만. 기한과 갱신 사이에 시간이 지나도 늦게 수락되지 않는다.
+  // 본 판본 번호(version)가 latest_version과 같을 때만이라, 읽은 뒤 새 판본이 나왔으면 0행이 된다.
   // paymentDueAt이 null이면 낼 돈이 없는 오퍼다. 협업 만들기는 같은 트랜잭션에서 한다.
   accept(
     id: string,
     creatorId: string,
+    version: number,
     now: Date,
     paymentDueAt: Date | null,
     alongWith?: InSameTransaction,
@@ -132,6 +166,7 @@ export class OffersRepository {
             id,
             creatorId,
             status: 'SENT',
+            latestVersion: version,
             expiresAt: { gt: now },
             deletedAt: null,
           },

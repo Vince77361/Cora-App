@@ -21,7 +21,6 @@ import {
   buildTerms,
   copyOfTerms,
   defaultsOfStore,
-  termsModelOf,
 } from '../stores/reward-terms';
 import { UsersService } from '../users/users.service';
 import { ReceivedOfferModel } from './dto/received-offer.model';
@@ -38,8 +37,10 @@ import {
   viewForCreator,
   viewForStore,
 } from './offer-rules';
+import { termsOfVersion } from './proposal-rules';
 import {
   InSameTransaction,
+  latestVersionOf,
   OfferRow,
   OffersRepository,
 } from './offers.repository';
@@ -105,14 +106,7 @@ export class OffersService {
         storeId: store.id,
         creatorId: creator.userId,
         applicationId,
-        format: terms.format,
-        voucherName: terms.voucherName,
-        voucherValue: terms.voucherValue,
-        voucherPeople: terms.voucherPeople,
-        fixedCash: terms.fixedCash,
-        viewRatePerThousand: terms.viewRatePerThousand,
-        perViewCap: terms.perViewCap,
-        usageRights: terms.usageRights,
+        terms,
         // 보낸 시각을 DB 기본값이 아니라 Clock으로 정해, 만료 기한과 같은 기준을 쓴다.
         createdAt: now,
         expiresAt: new Date(now.getTime() + OFFER_RESPONSE_DAYS * DAY_MS),
@@ -133,7 +127,7 @@ export class OffersService {
       role: 'CREATOR',
       kind: 'OFFER_RECEIVED',
       // 오퍼는 지금 한 편짜리다(편 수를 고르는 화면이 없다).
-      params: { format: created.format, pieceCount: 1 },
+      params: { format: terms.format, pieceCount: 1 },
       actor: {
         userId,
         name: store.name ?? '가게',
@@ -256,7 +250,13 @@ export class OffersService {
     return items;
   }
 
-  async accept(userId: string, id: string): Promise<ReceivedOfferModel> {
+  // 검사 순서: 역할 → 내 오퍼(아니면 404) → 기한 → 상태 → 판본 번호 → 차례 → 인스타그램.
+  // 판본 번호는 읽은 값과 갱신 조건에 모두 걸어, 읽은 뒤 새 판본이 나오면 수락이 0행이 되게 한다.
+  async accept(
+    userId: string,
+    id: string,
+    version: number,
+  ): Promise<ReceivedOfferModel> {
     await this.assertRole(userId, 'CREATOR', '크리에이터 계정만 쓸 수 있어요.');
     const row = await this.requireReceived(userId, id);
     const now = this.clock.now();
@@ -266,18 +266,25 @@ export class OffersService {
       throw this.expired();
     }
     if (stored !== 'SENT') throw this.alreadyHandled();
+    if (version !== row.latestVersion)
+      throw this.staleVersion(row.latestVersion);
+    // 응답할 차례가 아니면(내가 쓴 판본이 최신이면) 수락할 수 없다. Task 6부터 크리에이터가 판본을 낼 수 있다.
+    if (row.turn !== 'CREATOR') {
+      throw new AppError('CONFLICT', '지금은 상대가 답할 차례예요.');
+    }
+    const terms = this.termsOf(row);
     // 조회수 보상은 인스타그램 연결이 있어야 정산이 조회수를 읽을 수 있다. 수락 뒤에 알게 되지 않게 여기서 막는다.
     const connected = (await this.instagram.getConnection(userId)) !== null;
-    if (needsInstagram(row, connected)) {
+    if (needsInstagram(terms, connected)) {
       throw new AppError('CONFLICT', '인스타그램을 연동하면 수락할 수 있어요.');
     }
     const card = await this.requireCard(row.storeId);
     // 수락과 협업 만들기는 한 트랜잭션이다. 식사권만 있는 오퍼는 낼 돈이 없어 결제 기한 없이 바로 FUNDED로 시작한다.
-    const terms = this.termsOf(row);
     const initial = initialStoreOfferState(terms, now);
     const accepted = await this.offers.accept(
       row.id,
       userId,
+      version,
       now,
       initial.paymentDueAt,
       async (tx) => {
@@ -289,7 +296,8 @@ export class OffersService {
             creatorId: userId,
             offerId: row.id,
             storeId: row.storeId,
-            terms: copyOfTerms(terms),
+            // 수락된 판본의 조건과 번호를 그대로 사본으로 남긴다.
+            terms: copyOfTerms(terms, version),
             settlementMethod: initial.settlementMethod,
             fundedAt: initial.fundedAt,
             submitDueAt: initial.submitDueAt,
@@ -302,6 +310,11 @@ export class OffersService {
     );
     if (!accepted) {
       await this.settleLatest(row.id, now);
+      // 읽은 뒤 새 판본이 나와 진 경우는 다시 읽어 STALE_VERSION으로 답한다. 그 밖(기한, 다른 요청)은 이미 처리된 오퍼다.
+      const fresh = await this.offers.findById(row.id);
+      if (fresh?.status === 'SENT' && fresh.latestVersion !== version) {
+        throw this.staleVersion(fresh.latestVersion);
+      }
       throw this.alreadyHandled();
     }
 
@@ -654,19 +667,9 @@ export class OffersService {
     }
   }
 
+  // 오퍼의 조건은 가장 새 판본의 것이다.
   private termsOf(row: OfferRow) {
-    return termsModelOf(
-      row.format,
-      {
-        voucherName: row.voucherName,
-        voucherValue: row.voucherValue,
-        voucherPeople: row.voucherPeople,
-        fixedCash: row.fixedCash,
-        viewRatePerThousand: row.viewRatePerThousand,
-        perViewCap: row.perViewCap,
-      },
-      row.usageRights,
-    );
+    return termsOfVersion(latestVersionOf(row));
   }
 
   private toSent(
@@ -680,6 +683,8 @@ export class OffersService {
       collaborationId,
       creator,
       terms: this.termsOf(row),
+      version: row.latestVersion,
+      myTurn: storedStatusAt(row, now) === 'SENT' && row.turn === 'STORE',
       view: viewForStore(row, now),
       paymentDaysLeft: paymentDaysLeft(row, now),
       sentAt: row.createdAt.toISOString(),
@@ -694,19 +699,22 @@ export class OffersService {
     instagramConnected: boolean,
   ): ReceivedOfferModel {
     const view = viewForCreator(row, now);
+    const terms = this.termsOf(row);
     return {
       id: row.id,
       collaborationId,
       store: card.summary,
       storeIntro: card.intro,
       bestShootingTime: card.bestShootingTime,
-      terms: this.termsOf(row),
+      terms,
+      version: row.latestVersion,
+      myTurn: view === 'WAITING' && row.turn === 'CREATOR',
       view,
       receivedAt: row.createdAt.toISOString(),
       canUndoDecline: canUndoDecline(row, now),
       // 수락할 수 있는 오퍼(기다리는 중)에만 알린다. 이미 처리된 오퍼에는 해당이 없다.
       needsInstagram:
-        view === 'WAITING' && needsInstagram(row, instagramConnected),
+        view === 'WAITING' && needsInstagram(terms, instagramConnected),
     };
   }
 
@@ -722,6 +730,13 @@ export class OffersService {
 
   private alreadySent(): AppError {
     return new AppError('CONFLICT', '이미 보낸 오퍼가 있어요.');
+  }
+
+  // 앱이 "이전 판본이라 수락할 수 없어요"를 보여 주고 최신 판본을 다시 불러오게 번호를 함께 준다.
+  private staleVersion(latestVersion: number): AppError {
+    return new AppError('STALE_VERSION', '이전 판본이라 수락할 수 없어요.', {
+      latestVersion,
+    });
   }
 
   private alreadyHandled(): AppError {

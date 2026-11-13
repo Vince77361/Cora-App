@@ -37,6 +37,21 @@ void main() {
       expect(error.isRateLimited, isTrue);
     });
 
+    test(
+      'reads STALE_VERSION from a 409 body and keeps it apart from CONFLICT',
+      () {
+        final error = ApiError.from(
+          ApiException(409, _body('STALE_VERSION', '이전 판본이라 수락할 수 없어요.')),
+        );
+
+        expect(error.status, 409);
+        expect(error.code, ApiErrorCode.staleVersion);
+        expect(error.message, '이전 판본이라 수락할 수 없어요.');
+        expect(error.isStaleVersion, isTrue);
+        expect(error.isConflict, isFalse);
+      },
+    );
+
     test('reads every server error code', () {
       const expected = {
         'VALIDATION_FAILED': (400, ApiErrorCode.validationFailed),

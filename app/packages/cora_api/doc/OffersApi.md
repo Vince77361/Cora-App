@@ -20,7 +20,7 @@ Method | HTTP request | Description
 
 
 # **acceptOffer**
-> ReceivedOfferModel acceptOffer(id)
+> ReceivedOfferModel acceptOffer(id, acceptOfferDto)
 
 
 
@@ -36,9 +36,10 @@ import 'package:cora_api/api.dart';
 
 final api_instance = OffersApi();
 final id = id_example; // String | 
+final acceptOfferDto = AcceptOfferDto(); // AcceptOfferDto | 
 
 try {
-    final result = api_instance.acceptOffer(id);
+    final result = api_instance.acceptOffer(id, acceptOfferDto);
     print(result);
 } catch (e) {
     print('Exception when calling OffersApi->acceptOffer: $e\n');
@@ -50,6 +51,7 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**|  | 
+ **acceptOfferDto** | [**AcceptOfferDto**](AcceptOfferDto.md)|  | 
 
 ### Return type
 
@@ -61,7 +63,7 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

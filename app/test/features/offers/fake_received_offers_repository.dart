@@ -15,6 +15,7 @@ ReceivedOffer receivedOffer({
   String? bestShootingTime = '오후 3시',
   bool canUndoDecline = false,
   bool needsInstagram = false,
+  int version = 1,
   OfferTerms? terms,
 }) => ReceivedOffer(
   id: id,
@@ -24,6 +25,7 @@ ReceivedOffer receivedOffer({
   terms: terms ?? ramenStore().defaultTerms,
   view: view,
   receivedAt: receivedAt ?? DateTime.utc(2026, 11, 11, 3),
+  version: version,
   canUndoDecline: canUndoDecline,
   needsInstagram: needsInstagram,
 );
@@ -43,6 +45,9 @@ class FakeReceivedOffersRepository implements ReceivedOffersRepository {
 
   int fetchNewCalls = 0;
   final List<String> accepted = [];
+
+  /// [accepted]와 같은 순서로, 수락에 실려 온 판본 번호.
+  final List<int> acceptedVersions = [];
   final List<String> declined = [];
   final List<String> undone = [];
 
@@ -64,9 +69,10 @@ class FakeReceivedOffersRepository implements ReceivedOffersRepository {
       newOffers = [for (final o in newOffers) o.id == id ? next : o];
 
   @override
-  Future<void> accept(String id) async {
+  Future<void> accept(String id, int version) async {
     _check();
     accepted.add(id);
+    acceptedVersions.add(version);
     newOffers = newOffers.where((o) => o.id != id).toList();
   }
 

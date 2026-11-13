@@ -145,7 +145,7 @@ class ReceivedOffersViewModel extends AsyncNotifier<ReceivedOffersState> {
   });
 
   Future<void> accept() => _answer((repo, offer) async {
-    await repo.accept(offer.id);
+    await repo.accept(offer.id, offer.version);
     return (ReceivedOffersState s) =>
         s.copyWith(newOffers: s.newOffers.skip(1).toList(), accepted: true);
   });

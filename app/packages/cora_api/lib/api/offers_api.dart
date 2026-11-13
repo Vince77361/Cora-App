@@ -22,21 +22,24 @@ class OffersApi {
   /// Parameters:
   ///
   /// * [String] id (required):
+  ///
+  /// * [AcceptOfferDto] acceptOfferDto (required):
   Future<Response> acceptOfferWithHttpInfo(
-    String id, {
+    String id,
+    AcceptOfferDto acceptOfferDto, {
     Future<void>? abortTrigger,
   }) async {
     // ignore: prefer_const_declarations
     final path = r'/offers/{id}/accept'.replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
-    Object? postBody;
+    Object? postBody = acceptOfferDto;
 
     final queryParams = <QueryParam>[];
     final headerParams = <String, String>{};
     final formParams = <String, String>{};
 
-    const contentTypes = <String>[];
+    const contentTypes = <String>['application/json'];
 
     return apiClient.invokeAPI(
       path,
@@ -55,12 +58,16 @@ class OffersApi {
   /// Parameters:
   ///
   /// * [String] id (required):
+  ///
+  /// * [AcceptOfferDto] acceptOfferDto (required):
   Future<ReceivedOfferModel?> acceptOffer(
-    String id, {
+    String id,
+    AcceptOfferDto acceptOfferDto, {
     Future<void>? abortTrigger,
   }) async {
     final response = await acceptOfferWithHttpInfo(
       id,
+      acceptOfferDto,
       abortTrigger: abortTrigger,
     );
     if (response.statusCode >= HttpStatus.badRequest) {
