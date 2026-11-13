@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/ui/cora_secondary_button.dart';
+import 'package:cora/core/ui/cora_coming_soon_page.dart';
+import 'package:cora/features/store_home/presentation/pages/store_home_page.dart';
+import 'package:cora/features/store_home/presentation/viewmodels/store_home_view_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cora/features/store_onboarding/domain/content_draft.dart';
 import 'package:cora/features/store_onboarding/domain/my_store.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/content_drafts_page.dart';
@@ -30,9 +34,25 @@ _pumpDrafts(
   return (stores: stores, drafts: repo);
 }
 
-VoidCallback? _regenerateAction(WidgetTester tester) => tester
-    .widget<CoraSecondaryButton>(find.byType(CoraSecondaryButton))
-    .onPressed;
+/// 설명 끝의 `다시 만들기` 구간.
+FinderBase<TextRangeContext> _regenerate() =>
+    find.textRange.ofSubstring('다시 만들기');
+
+Future<void> _tapRegenerate(WidgetTester tester) =>
+    tester.tapOnText(_regenerate());
+
+/// `다시 만들기`는 글 안의 한 구간이라, 누를 수 있는지는 그 구간의 눌림 처리기로 본다.
+bool _canRegenerate(WidgetTester tester) {
+  final rich = tester.widget<RichText>(
+    find.textContaining('다시 만들기', findRichText: true),
+  );
+  TextSpan? action;
+  rich.text.visitChildren((span) {
+    if (span is TextSpan && span.text == '다시 만들기') action = span;
+    return true;
+  });
+  return action!.recognizer != null;
+}
 
 Color? _tabColor(WidgetTester tester, String label) =>
     (tester
@@ -78,7 +98,7 @@ void main() {
       stores: FakeStoreRepository(store: sampleStore()),
     );
 
-    await tester.tap(find.text('이대로 다음'));
+    await tester.tap(find.text('AI로 직접 제작'));
     await tester.pumpAndSettle();
 
     expect(topPath(tester), AppRoutes.storeOnboardingDrafts);
@@ -96,7 +116,10 @@ void main() {
     expect(find.text('3 / 3'), findsOneWidget);
     expect(find.text('가게 계정에 올릴\n초안도 만들었어요.'), findsOneWidget);
     expect(
-      find.text('가게 페이지 정보로 AI가 썼어요. 그대로 올려도, 고쳐서 올려도 돼요.'),
+      find.textContaining(
+        '가게 페이지 정보로 AI가 썼어요. 그대로 올려도, 고쳐서 올려도 돼요. 다시 만들기',
+        findRichText: true,
+      ),
       findsOneWidget,
     );
     expect(find.text('카드뉴스'), findsOneWidget);
@@ -106,8 +129,11 @@ void main() {
     expect(find.text('본문'), findsOneWidget);
     expect(find.textContaining('성수동 골목 안'), findsOneWidget);
     expect(find.text('복사'), findsOneWidget);
-    expect(find.text('다시 만들기'), findsOneWidget);
-    expect(find.text('저장하고 오퍼 만들기'), findsOneWidget);
+    expect(find.text('가게 계정에 올리기'), findsOneWidget);
+    expect(find.text('오퍼 만들기'), findsOneWidget);
+    // 옛 `저장하고 오퍼 만들기`와 아래 `다시 만들기` 버튼은 없다.
+    expect(find.text('저장하고 오퍼 만들기'), findsNothing);
+    expect(find.byType(CoraSecondaryButton), findsOneWidget);
   });
 
   testWidgets('switches the slides and body with the tab', (tester) async {
@@ -126,7 +152,7 @@ void main() {
 
     await tester.tap(find.text('릴스 대본'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('다시 만들기'));
+    await _tapRegenerate(tester);
     await tester.pumpAndSettle();
 
     expect(env.drafts.regenerated, [ContentDraftKind.reelsScript]);
@@ -145,7 +171,7 @@ void main() {
     );
 
     expect(find.text('오늘은 더 만들 수 없어요.'), findsOneWidget);
-    expect(_regenerateAction(tester), isNull);
+    expect(_canRegenerate(tester), isFalse);
   });
 
   testWidgets('locks regenerate when the server says the limit is reached', (
@@ -157,12 +183,12 @@ void main() {
     );
     expect(find.text('오늘은 더 만들 수 없어요.'), findsNothing);
 
-    await tester.tap(find.text('다시 만들기'));
+    await _tapRegenerate(tester);
     await tester.pumpAndSettle();
 
     expect(env.drafts.regenerated, [ContentDraftKind.cardNews]);
     expect(find.text('오늘은 더 만들 수 없어요.'), findsOneWidget);
-    expect(_regenerateAction(tester), isNull);
+    expect(_canRegenerate(tester), isFalse);
   });
 
   testWidgets('keeps the draft and says so when regenerating fails', (
@@ -173,12 +199,12 @@ void main() {
       drafts: FakeContentDraftRepository()..failRegenerate = true,
     );
 
-    await tester.tap(find.text('다시 만들기'));
+    await _tapRegenerate(tester);
     await tester.pumpAndSettle();
 
     expect(find.text('다시 만들지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
     expect(find.textContaining('성수동 골목 안'), findsOneWidget);
-    expect(_regenerateAction(tester), isNotNull);
+    expect(_canRegenerate(tester), isTrue);
   });
 
   testWidgets('copies the body text', (tester) async {
@@ -210,12 +236,10 @@ void main() {
     expect(find.text('복사'), findsOneWidget);
   });
 
-  testWidgets('"저장하고 오퍼 만들기" moves the step to terms and opens it', (
-    tester,
-  ) async {
+  testWidgets('"오퍼 만들기" moves the step to terms and opens it', (tester) async {
     final env = await _pumpDrafts(tester);
 
-    await tester.tap(find.text('저장하고 오퍼 만들기'));
+    await tester.tap(find.text('오퍼 만들기'));
     await tester.pumpAndSettle();
 
     expect(env.stores.advanced, [StoreOnboardingStep.terms]);
@@ -226,7 +250,7 @@ void main() {
     final env = await _pumpDrafts(tester);
     env.stores.failAdvance = true;
 
-    await tester.tap(find.text('저장하고 오퍼 만들기'));
+    await tester.tap(find.text('오퍼 만들기'));
     await tester.pumpAndSettle();
 
     expect(find.byType(ContentDraftsPage), findsOneWidget);
@@ -255,9 +279,9 @@ void main() {
 
       expect(find.text('초안을 불러오지 못했어요.'), findsOneWidget);
       expect(find.text('다시 시도'), findsOneWidget);
-      expect(find.text('저장하고 오퍼 만들기'), findsOneWidget);
+      expect(find.text('오퍼 만들기'), findsOneWidget);
 
-      await tester.tap(find.text('저장하고 오퍼 만들기'));
+      await tester.tap(find.text('오퍼 만들기'));
       await tester.pumpAndSettle();
 
       expect(env.stores.advanced, [StoreOnboardingStep.terms]);
@@ -265,25 +289,37 @@ void main() {
     },
   );
 
-  testWidgets('the home-opened drafts have no next button when they fail', (
-    tester,
-  ) async {
-    await pumpStoreApp(
-      tester,
-      stores: FakeStoreRepository(
-        store: sampleStore(
-          status: StoreStatus.published,
-          step: StoreOnboardingStep.done,
-        ),
-      ),
-      drafts: FakeContentDraftRepository()..failFetch = true,
-    );
-    routerOf(tester).push(AppRoutes.storeDrafts);
+  testWidgets('"가게 계정에 올리기" opens the coming-soon page', (tester) async {
+    await _pumpDrafts(tester);
+
+    await tester.tap(find.text('가게 계정에 올리기'));
     await tester.pumpAndSettle();
 
-    expect(find.text('초안을 불러오지 못했어요.'), findsOneWidget);
-    expect(find.text('저장하고 오퍼 만들기'), findsNothing);
+    expect(find.byType(CoraComingSoonPage), findsOneWidget);
+    expect(find.text('가게 계정에 올리기'), findsOneWidget);
+    expect(find.text('준비 중이에요.'), findsOneWidget);
   });
+
+  testWidgets(
+    'the home-opened drafts have the offer button even when they fail',
+    (tester) async {
+      await pumpStoreApp(
+        tester,
+        stores: FakeStoreRepository(
+          store: sampleStore(
+            status: StoreStatus.published,
+            step: StoreOnboardingStep.done,
+          ),
+        ),
+        drafts: FakeContentDraftRepository()..failFetch = true,
+      );
+      routerOf(tester).push(AppRoutes.storeDrafts);
+      await tester.pumpAndSettle();
+
+      expect(find.text('초안을 불러오지 못했어요.'), findsOneWidget);
+      expect(find.text('오퍼 만들기'), findsOneWidget);
+    },
+  );
 
   testWidgets('shows a waiting line while the drafts are written', (
     tester,
@@ -297,7 +333,7 @@ void main() {
     expect(find.text('카드뉴스'), findsOneWidget);
   });
 
-  testWidgets('the drafts opened from the owner home drop the step and CTA', (
+  testWidgets('the drafts opened from the owner home drop the step', (
     tester,
   ) async {
     await pumpStoreApp(
@@ -314,9 +350,38 @@ void main() {
 
     expect(find.byType(ContentDraftsPage), findsOneWidget);
     expect(find.text('3 / 3'), findsNothing);
-    expect(find.text('저장하고 오퍼 만들기'), findsNothing);
-    expect(find.text('다시 만들기'), findsOneWidget);
+    expect(find.text('오퍼 만들기'), findsOneWidget);
+    expect(find.textContaining('다시 만들기', findRichText: true), findsOneWidget);
     expect(find.text('카드뉴스'), findsOneWidget);
+  });
+
+  testWidgets('"오퍼 만들기" on the owner home drafts opens the applicants tab', (
+    tester,
+  ) async {
+    final stores = FakeStoreRepository(
+      store: sampleStore(
+        status: StoreStatus.published,
+        step: StoreOnboardingStep.done,
+      ),
+    );
+    await pumpStoreApp(tester, stores: stores);
+    routerOf(tester).push(AppRoutes.storeDrafts);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('오퍼 만들기'));
+    await tester.pumpAndSettle();
+
+    // 공개된 가게는 등록 단계를 다시 올리지 않고 사장님 홈의 지원자 탭으로 간다.
+    expect(stores.advanced, isEmpty);
+    expect(find.byType(StoreHomePage), findsOneWidget);
+    expect(find.byType(ContentDraftsPage), findsNothing);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(StoreHomePage)),
+    );
+    expect(
+      container.read(storeHomeViewModelProvider).value?.tab,
+      StoreHomeTab.applicants,
+    );
   });
 
   // 캔버스: 사진 없는 슬라이드의 톤은 (장면 번호 + 다시 만든 횟수) % 2로 고른다.
@@ -347,9 +412,13 @@ void main() {
       tester.renderObject<RenderParagraph>(find.text('카드뉴스')).text.style?.color,
       const Color(0xFFF2F3F5),
     );
-    expect(_fill(tester, find.text(menu)), const Color(0xFFF2F3F5));
+    expect(_fill(tester, find.text(menu)), const Color(0xFF1C1E22));
+    expect(
+      tester.renderObject<RenderParagraph>(find.text(menu)).text.style?.color,
+      const Color(0xFFF2F3F5),
+    );
     expect(_fill(tester, find.text(quiet)), const Color(0xFFF3FFD6));
-    // 사진 장면의 글자는 다크에서 #0F1012다(캔버스 그대로).
+    // 사진 장면의 글자는 다크에서 #2A2D33이다(캔버스 그대로).
     await tester.drag(
       find.byKey(const ValueKey('drafts.slides.cardNews')),
       const Offset(300, 0),
@@ -361,7 +430,7 @@ void main() {
           .text
           .style
           ?.color,
-      const Color(0xFF0F1012),
+      const Color(0xFF2A2D33),
     );
   });
 
@@ -372,7 +441,7 @@ void main() {
     await _pumpDrafts(tester);
     expect(_fill(tester, find.text(menu)), const Color(0xFFF8F9FA));
 
-    await tester.tap(find.text('다시 만들기'));
+    await _tapRegenerate(tester);
     await tester.pumpAndSettle();
 
     expect(_fill(tester, find.text(menu)), const Color(0xFFF3FFD6));

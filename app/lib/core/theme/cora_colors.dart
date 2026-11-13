@@ -146,7 +146,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
   final Color softAction;
   final Color onSoftAction;
 
-  /// A4 사진 없는 슬라이드의 두 톤(NStoreAI `tones`). 첫 톤은 라이트·다크가 같고, 둘째 톤은 라이트가 연한 회색, 다크가 밝은 회색이다. 사진 위 글자(`onSlidePhoto`)는 다크에서 #0F1012다(캔버스 그대로).
+  /// A4 사진 없는 슬라이드의 두 톤(NStoreAI `tones`). 첫 톤은 라이트·다크가 같고, 둘째 톤은 라이트가 연한 회색(#F8F9FA, 글자 #17181C), 다크가 `surface`(#1C1E22, 글자 #F2F3F5)다(2026-11-12 캔버스). 사진 위 글자(`onSlidePhoto`)는 다크에서 #2A2D33이다(캔버스 그대로).
   final Color slideTint;
   final Color onSlideTint;
   final Color slideNeutral;
@@ -318,9 +318,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
     onSoftAction: Color(0xFFE4FFB0),
     slideTint: Color(0xFFF3FFD6),
     onSlideTint: Color(0xFF1F2A00),
-    slideNeutral: Color(0xFFF2F3F5),
-    onSlideNeutral: Color(0xFF0F1012),
-    onSlidePhoto: Color(0xFF0F1012),
+    slideNeutral: Color(0xFF1C1E22),
+    onSlideNeutral: Color(0xFFF2F3F5),
+    onSlidePhoto: Color(0xFF2A2D33),
     stepDotDone: Color(0xFFF2F3F5),
     onStepDotDone: Color(0xFFC6FF3D),
     stepDotNow: Color(0xFFF2F3F5),

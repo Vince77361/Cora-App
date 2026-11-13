@@ -21,13 +21,16 @@ import '../../domain/content_draft.dart';
 import '../../domain/my_store.dart';
 import '../../domain/store_repository.dart';
 import '../viewmodels/content_drafts_view_model.dart';
+import '../../../notifications/presentation/notification_routes.dart';
 import '../viewmodels/my_store_view_model.dart';
+import '../widgets/inline_action_text.dart';
 
 /// A4 AI 콘텐츠 초안(NStoreAI / DarkNStoreAI), 등록 3/3.
 ///
-/// 탭 세 개(카드뉴스, 릴스 대본, 블로그 글)마다 장면 세 장과 본문 글이 있다. `다시 만들기`는 지금
-/// 보고 있는 탭만 다시 만든다. [onboarding]이 false이면 등록이 끝난 뒤 사장님 홈에서 다시 연
-/// 화면이라 머리글의 `3 / 3`·진행 막대와 `저장하고 오퍼 만들기`가 없다.
+/// 탭 세 개(카드뉴스, 릴스 대본, 블로그 글)마다 장면 세 장과 본문 글이 있다. 설명 끝의 `다시 만들기`는
+/// 지금 보고 있는 탭만 다시 만든다. 아래 버튼은 `가게 계정에 올리기`(준비 중 화면)와 `오퍼 만들기`다.
+/// [onboarding]이 false이면 등록이 끝난 뒤 사장님 홈에서 다시 연 화면이라 머리글의 `3 / 3`·진행
+/// 막대가 없고, `오퍼 만들기`는 사장님 홈의 지원자 탭으로 간다(받는 사람을 골라야 오퍼 작성이 열린다).
 class ContentDraftsPage extends ConsumerStatefulWidget {
   const ContentDraftsPage({super.key, this.onboarding = true});
 
@@ -36,7 +39,8 @@ class ContentDraftsPage extends ConsumerStatefulWidget {
   static const title = '가게 계정에 올릴\n초안도 만들었어요.';
   static const subtitle = '가게 페이지 정보로 AI가 썼어요. 그대로 올려도, 고쳐서 올려도 돼요.';
   static const regenerate = '다시 만들기';
-  static const saveAndOffer = '저장하고 오퍼 만들기';
+  static const uploadToAccount = '가게 계정에 올리기';
+  static const makeOffer = '오퍼 만들기';
   static const copy = '복사';
   static const copied = '복사했어요.';
   static const limitReached = '오늘은 더 만들 수 없어요.';
@@ -86,7 +90,21 @@ class _ContentDraftsPageState extends ConsumerState<ContentDraftsPage> {
     });
   }
 
-  Future<void> _saveAndOffer() async {
+  void _uploadToAccount() {
+    context.push(
+      AppRoutes.storeComingSoon(ContentDraftsPage.uploadToAccount),
+      extra: AppRoutes.stacked,
+    );
+  }
+
+  Future<void> _makeOffer() async {
+    // 공개된 가게는 받는 사람을 골라야 오퍼를 쓸 수 있어서 지원자 탭으로 간다.
+    if (!widget.onboarding) {
+      context.go(
+        '${AppRoutes.store}?${NotificationRoutes.tabParam}=${NotificationRoutes.applicantsTab}',
+      );
+      return;
+    }
     setState(() {
       _advancing = true;
       _saveFailed = false;
@@ -150,32 +168,31 @@ class _ContentDraftsPageState extends ConsumerState<ContentDraftsPage> {
             onRetry: () => ref.invalidate(contentDraftsViewModelProvider),
           ),
         ),
-        if (widget.onboarding)
-          Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, bottom),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_saveFailed)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        ContentDraftsPage.saveFailed,
-                        textAlign: TextAlign.center,
-                        style: CoraTextStyles.meta.copyWith(color: c.text),
-                      ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, bottom),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_saveFailed)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      ContentDraftsPage.saveFailed,
+                      textAlign: TextAlign.center,
+                      style: CoraTextStyles.meta.copyWith(color: c.text),
                     ),
                   ),
-                CoraPrimaryButton(
-                  label: ContentDraftsPage.saveAndOffer,
-                  look: CoraPrimaryButtonLook.accent,
-                  onPressed: _advancing ? null : _saveAndOffer,
                 ),
-              ],
-            ),
+              CoraPrimaryButton(
+                label: ContentDraftsPage.makeOffer,
+                look: CoraPrimaryButtonLook.accent,
+                onPressed: _advancing ? null : _makeOffer,
+              ),
+            ],
           ),
+        ),
       ],
     );
   }
@@ -185,6 +202,10 @@ class _ContentDraftsPageState extends ConsumerState<ContentDraftsPage> {
     final vm = ref.read(contentDraftsViewModelProvider.notifier);
     final cover = ref.watch(myStoreViewModelProvider).value?.coverPhotoUrl;
     final draft = state.current;
+    final subtitleStyle = CoraTextStyles.bodySmall.copyWith(
+      height: 1.6,
+      color: c.textSecondary,
+    );
     final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
     final note = _saveFailed
         ? ContentDraftsPage.saveFailed
@@ -193,11 +214,6 @@ class _ContentDraftsPageState extends ConsumerState<ContentDraftsPage> {
         : state.limitReached
         ? ContentDraftsPage.limitReached
         : null;
-    final again = CoraSecondaryButton(
-      label: ContentDraftsPage.regenerate,
-      tone: CoraSecondaryTone.muted,
-      onPressed: state.canRegenerate ? vm.regenerate : null,
-    );
     return Column(
       children: [
         Expanded(
@@ -219,12 +235,17 @@ class _ContentDraftsPageState extends ConsumerState<ContentDraftsPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        ContentDraftsPage.subtitle,
-                        style: CoraTextStyles.bodySmall.copyWith(
-                          height: 1.6,
-                          color: c.textSecondary,
+                      InlineActionText(
+                        text: '${ContentDraftsPage.subtitle} ',
+                        style: subtitleStyle,
+                        action: ContentDraftsPage.regenerate,
+                        // 캔버스: 설명 끝의 밑줄 버튼. 색은 본문색이다.
+                        actionStyle: subtitleStyle.copyWith(
+                          color: c.text,
+                          decoration: TextDecoration.underline,
+                          decorationColor: c.text,
                         ),
+                        onTap: state.canRegenerate ? vm.regenerate : null,
                       ),
                     ],
                   ),
@@ -285,23 +306,29 @@ class _ContentDraftsPageState extends ConsumerState<ContentDraftsPage> {
                     ),
                   ),
                 ),
-              if (widget.onboarding)
-                Row(
-                  spacing: 8,
-                  children: [
-                    Expanded(flex: 10, child: again),
-                    Expanded(
-                      flex: 16,
-                      child: CoraPrimaryButton(
-                        label: ContentDraftsPage.saveAndOffer,
-                        look: CoraPrimaryButtonLook.accent,
-                        onPressed: _advancing ? null : _saveAndOffer,
-                      ),
+              Row(
+                spacing: 8,
+                children: [
+                  Expanded(
+                    flex: 10,
+                    child: CoraSecondaryButton(
+                      label: ContentDraftsPage.uploadToAccount,
+                      tone: CoraSecondaryTone.subtle,
+                      fitLabel: true,
+                      horizontalPadding: 0,
+                      onPressed: _uploadToAccount,
                     ),
-                  ],
-                )
-              else
-                again,
+                  ),
+                  Expanded(
+                    flex: 16,
+                    child: CoraPrimaryButton(
+                      label: ContentDraftsPage.makeOffer,
+                      look: CoraPrimaryButtonLook.accent,
+                      onPressed: _advancing ? null : _makeOffer,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

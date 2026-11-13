@@ -1,5 +1,6 @@
 import 'package:cora/core/media/photo_picker.dart';
 import 'package:cora/core/network/photo_uploader.dart';
+import 'package:cora/core/share/share_launcher.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/server_config/domain/server_config_repository.dart';
 import 'package:cora/features/store_onboarding/domain/content_draft_repository_provider.dart';
@@ -7,6 +8,7 @@ import 'package:cora/features/store_onboarding/domain/store_repository_provider.
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_photos.dart';
+import '../../support/fake_share_launcher.dart';
 import '../../support/pump_cora_app.dart';
 import '../auth/fake_auth_repository.dart';
 import '../server_config/fake_server_config_repository.dart';
@@ -23,6 +25,7 @@ Future<void> pumpStoreApp(
   FakeServerConfigRepository? config,
   FakePhotoPicker? picker,
   FakePhotoUploader? uploader,
+  FakeShareLauncher? share,
 }) async {
   usePhone(tester);
   await pumpCoraApp(
@@ -40,6 +43,7 @@ Future<void> pumpStoreApp(
         serverConfigRepositoryProvider.overrideWithValue(config),
       photoPickerProvider.overrideWithValue(picker ?? FakePhotoPicker()),
       photoUploaderProvider.overrideWithValue(uploader ?? FakePhotoUploader()),
+      shareLauncherProvider.overrideWithValue(share ?? FakeShareLauncher()),
     ],
   );
 }

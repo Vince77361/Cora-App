@@ -343,21 +343,24 @@ void main() {
       expect(currentPath(tester), AppRoutes.login);
     });
 
-    testWidgets('the store page link opens the page with one edit button', (
-      tester,
-    ) async {
-      await pumpStoreHome(tester);
+    testWidgets(
+      'the store page link opens the page with the two next buttons',
+      (tester) async {
+        await pumpStoreHome(tester);
 
-      await tester.tap(find.text('가게 페이지'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('가게 페이지'));
+        await tester.pumpAndSettle();
 
-      expect(topPath(tester), AppRoutes.storePage);
-      expect(find.byType(StorePagePreviewPage), findsOneWidget);
-      expect(find.text('정보 고치기'), findsOneWidget);
-      expect(find.text('이대로 다음'), findsNothing);
-      // 단계 머리글(`2 / 3`)이 없다.
-      expect(find.text('2 / 3'), findsNothing);
-    });
+        expect(topPath(tester), AppRoutes.storePage);
+        expect(find.byType(StorePagePreviewPage), findsOneWidget);
+        expect(find.text('AI로 직접 제작'), findsOneWidget);
+        expect(find.text('크리에이터 모집'), findsOneWidget);
+        expect(find.text('정보 고치기'), findsNothing);
+        expect(find.text('이대로 다음'), findsNothing);
+        // 단계 머리글(`2 / 3`)이 없다.
+        expect(find.text('2 / 3'), findsNothing);
+      },
+    );
   });
 
   testWidgets('uses the dark tokens in dark mode', (tester) async {

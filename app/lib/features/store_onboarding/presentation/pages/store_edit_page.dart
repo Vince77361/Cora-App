@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/regions.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shadows.dart';
@@ -14,24 +13,21 @@ import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
-import '../../../../core/ui/cora_step_header.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../domain/my_store.dart';
 import '../viewmodels/my_store_view_model.dart';
 import '../viewmodels/store_edit_view_model.dart';
 import '../widgets/option_sheet.dart';
 import '../widgets/store_icons.dart';
+import '../widgets/store_sheet_header.dart';
 import '../widgets/store_text_box.dart';
 
 /// 가게 정보 고치기 화면을 열 때 넘기는 값(`extra`).
 class StoreEditArgs {
-  const StoreEditArgs({this.focusIntro = false, this.thenOpenPreview = false});
+  const StoreEditArgs({this.focusField});
 
-  /// A3의 `고치기`로 들어왔다. 소개 입력란에 커서를 둔다.
-  final bool focusIntro;
-
-  /// A2에서 `직접 입력하기`로 들어왔다. 저장하면 닫는 대신 가게 페이지(A3)를 연다.
-  final bool thenOpenPreview;
+  /// A3에서 항목(대표 메뉴, 영업시간 …)을 눌러 들어왔다. 그 입력란에 커서를 둔다.
+  final StoreTextField? focusField;
 }
 
 /// 가게 정보 고치기(캔버스에 없는 화면). 입력 칸 모양은 NEditProfile / DarkNEditProfile을 따른다.
@@ -88,15 +84,18 @@ class _EditFormState extends ConsumerState<_EditForm> {
     for (final field in StoreTextField.values)
       field: TextEditingController(text: widget.initial.valueOf(field)),
   };
-  final _introFocus = FocusNode();
+  final _focus = {
+    for (final field in StoreTextField.values) field: FocusNode(),
+  };
 
   @override
   void initState() {
     super.initState();
-    if (widget.args.focusIntro) {
+    final target = widget.args.focusField;
+    if (target != null) {
       // 시트가 올라온 뒤에 커서를 둔다. 첫 프레임에 요청하면 올라오는 동안 키보드가 먼저 뜬다.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _introFocus.requestFocus();
+        if (mounted) _focus[target]!.requestFocus();
       });
     }
   }
@@ -106,7 +105,9 @@ class _EditFormState extends ConsumerState<_EditForm> {
     for (final c in _controllers.values) {
       c.dispose();
     }
-    _introFocus.dispose();
+    for (final f in _focus.values) {
+      f.dispose();
+    }
     super.dispose();
   }
 
@@ -114,15 +115,7 @@ class _EditFormState extends ConsumerState<_EditForm> {
     FocusManager.instance.primaryFocus?.unfocus();
     final saved = await ref.read(storeEditViewModelProvider.notifier).save();
     if (!saved || !mounted) return;
-    if (widget.args.thenOpenPreview) {
-      // A2에서 직접 입력하러 왔다. 가게 페이지를 A2 위에 쌓고 이 시트는 치운다.
-      context.pushReplacement(
-        AppRoutes.storeOnboardingPage,
-        extra: AppRoutes.stacked,
-      );
-    } else {
-      context.pop();
-    }
+    context.pop();
   }
 
   Future<void> _chooseIndustry(IndustryCategory current) async {
@@ -173,7 +166,7 @@ class _EditFormState extends ConsumerState<_EditForm> {
       fieldKey: ValueKey('storeEdit.${field.name}'),
       label: label,
       controller: _controllers[field]!,
-      focusNode: field == StoreTextField.intro ? _introFocus : null,
+      focusNode: _focus[field],
       maxLength: maxLength,
       multiline: multiline,
       onChanged: (text) => vm.setText(field, text),
@@ -193,36 +186,7 @@ class _EditFormState extends ConsumerState<_EditForm> {
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Column(
         children: [
-          // NEditProfile 머리글: 뒤로 가기, 가운데 제목 16/500.
-          SizedBox(
-            height: CoraStepHeader.rowHeight,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 60,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: CoraBackButton(
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      StoreEditPage.title,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: CoraTextStyles.bodyLarge.copyWith(color: c.text),
-                    ),
-                  ),
-                  const SizedBox(width: 60),
-                ],
-              ),
-            ),
-          ),
+          const StoreSheetHeader(title: StoreEditPage.title),
           Expanded(
             child: SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,

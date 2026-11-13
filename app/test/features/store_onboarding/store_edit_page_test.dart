@@ -33,7 +33,8 @@ Future<void> _openEdit(
     picker: picker,
     uploader: uploader,
   );
-  await tester.tap(find.text('정보 고치기'));
+  // A3의 항목 칸을 눌러 연다(옛 `정보 고치기` 버튼은 없다).
+  await tester.tap(find.text('대표 메뉴'));
   await tester.pumpAndSettle();
 }
 

@@ -27,6 +27,7 @@ class CoraSecondaryButton extends StatelessWidget {
     required this.onPressed,
     this.tone = CoraSecondaryTone.surface,
     this.fitLabel = false,
+    this.horizontalPadding,
   });
 
   final String label;
@@ -35,6 +36,10 @@ class CoraSecondaryButton extends StatelessWidget {
 
   /// 좁은 칸이나 큰 글자에서 라벨을 자르지 않고 한 줄로 줄여 맞춘다(기본 버튼은 `…`으로 자른다).
   final bool fitLabel;
+
+  /// 글자 좌우 여백. 비우면 [fitLabel]이면 12, 아니면 24다. 캔버스가 여백 없이 칸 안에 글자를 맞춘 좁은
+  /// 버튼(A3·A4의 왼쪽 버튼)이 0을 준다.
+  final double? horizontalPadding;
 
   static const double height = 58;
 
@@ -71,7 +76,9 @@ class CoraSecondaryButton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(CoraRadius.pill),
               ),
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: fitLabel ? 12 : 24),
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding ?? (fitLabel ? 12 : 24),
+                ),
                 child: Center(
                   child: fitLabel
                       ? FittedBox(

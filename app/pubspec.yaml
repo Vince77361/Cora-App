@@ -46,6 +46,8 @@ dependencies:
   flutter_svg: ^2.3.3
   image_picker: ^1.2.4
   url_launcher: ^6.3.3
+  # A3의 공개 주소 공유(공유 창). 화면은 포트(core/share)만 쓴다.
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:
