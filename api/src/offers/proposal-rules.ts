@@ -2,6 +2,7 @@ import { ContentFormat, OfferParty, OfferVersion } from '@prisma/client';
 import { OfferTermsModel } from '../stores/dto/offer-terms.model';
 import { RewardDefaults, termsModelOf } from '../stores/reward-terms';
 import { OfferVersionModel } from './dto/offer-version.model';
+import { canUndoDecline, OfferTimes, storedStatusAt } from './offer-rules';
 
 // 판본을 주고받는 규칙은 모두 순수 함수다. 시각과 DB를 모른다.
 
@@ -153,4 +154,62 @@ export function proposalExtras(
     principles: input.principles ?? [],
     series,
   };
+}
+
+// 제안함의 묶음. 차례가 나인 것, 상대가 답할 차례인 것, 끝난 것.
+export const PROPOSAL_GROUPS = ['MY_TURN', 'WAITING', 'ENDED'] as const;
+export type ProposalGroup = (typeof PROPOSAL_GROUPS)[number];
+
+// 끝난 까닭의 갈래. 합의(수락), 사유를 골라 끝냄(거절·취소), 기한이 지나 끝남.
+export const END_KINDS = ['AGREED', 'ENDED', 'EXPIRED'] as const;
+export type EndKind = (typeof END_KINDS)[number];
+
+export interface ProposalOfferState extends OfferTimes {
+  turn: OfferParty;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// 제안함에서 이 오퍼가 어느 묶음인가. 저장된 상태가 아니라 지금 시각의 상태로 본다(만료는 저장이 뒤처질 수 있어서).
+// 크리에이터가 방금 거절해 30초 안에 되돌릴 수 있는 오퍼는 사장님에게 아직 거절로 보이지 않아 기다리는 중이다.
+export function proposalGroup(
+  offer: ProposalOfferState,
+  me: OfferParty,
+  now: Date,
+): ProposalGroup {
+  const status = storedStatusAt(offer, now);
+  if (status === 'SENT') return offer.turn === me ? 'MY_TURN' : 'WAITING';
+  if (status === 'DECLINED' && me === 'STORE' && canUndoDecline(offer, now)) {
+    return 'WAITING';
+  }
+  return 'ENDED';
+}
+
+// 끝난 오퍼가 어떻게 끝났는가. 수락은 "합의 완료"(AGREED)다. 끝나지 않았으면 null.
+export function endKind(offer: OfferTimes, now: Date): EndKind | null {
+  switch (storedStatusAt(offer, now)) {
+    case 'ACCEPTED':
+      return 'AGREED';
+    case 'EXPIRED':
+      return 'EXPIRED';
+    case 'CANCELLED':
+    case 'DECLINED':
+      return 'ENDED';
+    default:
+      return null;
+  }
+}
+
+// 남은 응답 기한(일, 올림). 하루가 안 남았으면 0이다("오늘 안에 답이 와요").
+export function daysLeftToAnswer(expiresAt: Date, now: Date): number {
+  const left = expiresAt.getTime() - now.getTime();
+  return left < DAY_MS ? 0 : Math.ceil(left / DAY_MS);
+}
+
+// 상대가 쓴 판본이 최신이고 번호가 2 이상이면 역제안(고쳐서 다시 온 제안)이다. 번호 1은 처음 제안이다.
+export function isCounter(
+  latest: Pick<OfferVersionModel, 'number' | 'authorParty'>,
+  me: OfferParty,
+): boolean {
+  return latest.number >= 2 && latest.authorParty !== me;
 }

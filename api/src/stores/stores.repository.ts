@@ -11,6 +11,7 @@ import {
   StoreSourceLink,
   UsageRights,
 } from '@prisma/client';
+import { PROPOSAL_POLICY } from '../common/collaboration-policy';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type StoreWithLinks = Store & { sourceLinks: StoreSourceLink[] };
@@ -92,12 +93,16 @@ export class StoresRepository {
   }
 
   // 지원 모듈을 import하면 모듈이 순환하므로, 내 지원 상태는 관계로 함께 읽는다.
-  // 열린 오퍼: 기한 전의 SENT, 또는 협업이 끝나지 않은(closedAt 없는) ACCEPTED. 결제 기한이 지난 ACCEPTED는 곧 만료로 저장되므로 뺀다.
+  // 열린 오퍼: 기한 전의 SENT, 협업이 끝나지 않은(closedAt 없는) ACCEPTED, 방금 거절해 아직 되돌릴 수 있는 DECLINED.
+  // 결제 기한이 지난 ACCEPTED는 곧 만료로 저장되므로 뺀다. 마지막 것은 제안(proposeToStore)이 열린 오퍼로 보아 409를 내는 것과 같은 기준이다.
   findPublishedDetail(
     storeId: string,
     viewerId: string,
     now: Date,
   ): Promise<PublishedStoreDetail | null> {
+    const undoSince = new Date(
+      now.getTime() - PROPOSAL_POLICY.declineUndoSeconds * 1000,
+    );
     return this.prisma.store.findFirst({
       where: { id: storeId, ...PUBLISHED },
       include: {
@@ -121,6 +126,7 @@ export class StoresRepository {
                 status: 'ACCEPTED',
                 OR: [{ paymentDueAt: null }, { paymentDueAt: { gt: now } }],
               },
+              { status: 'DECLINED', declinedAt: { gt: undoSince } },
             ],
           },
           select: { id: true, latestVersion: true, status: true, turn: true },

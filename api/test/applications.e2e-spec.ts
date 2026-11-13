@@ -186,13 +186,21 @@ describe('applications', () => {
     });
 
     it('saves a blank pitch as null and no body as no pitch', async () => {
-      const store = await seedStore();
+      const blank = await seedStore();
       await request(server)
-        .post(`/stores/${store.id}/applications`)
+        .post(`/stores/${blank.id}/applications`)
         .set(auth)
         .send({ pitch: '   ' })
         .expect(201);
-      expect((await prisma.application.findFirstOrThrow()).pitch).toBeNull();
+      const bare = await seedStore();
+      await request(server)
+        .post(`/stores/${bare.id}/applications`)
+        .set(auth)
+        .send()
+        .expect(201);
+      const rows = await prisma.application.findMany();
+      expect(rows).toHaveLength(2);
+      expect(rows.map((row) => row.pitch)).toEqual([null, null]);
     });
 
     it('rejects a pitch longer than 100 characters', async () => {

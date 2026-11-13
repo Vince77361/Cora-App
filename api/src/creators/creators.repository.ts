@@ -105,7 +105,7 @@ export class CreatorsRepository {
   }
 
   // 개수를 세고 넣는 사이에 다른 요청이 끼어 한도를 넘지 않게, 크리에이터 행을 잠그고 센다.
-  // KEY SHARE를 막지 않는 잠금이라 같은 사용자의 다른 쓰기는 기다리지 않는다. 한도에 닿았으면 null.
+  // KEY SHARE를 막지 않는 잠금이라 이 사용자를 참조하는 다른 행의 insert(오퍼, 지원 등)는 기다리지 않는다. 한도에 닿았으면 null.
   createSeries(
     creatorId: string,
     data: CreatorSeriesData,

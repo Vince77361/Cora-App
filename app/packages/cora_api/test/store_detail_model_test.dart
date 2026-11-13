@@ -62,7 +62,7 @@ void main() {
       // TODO
     });
 
-    // 내가 이 가게와 주고받는 열린 오퍼. 없으면 null.
+    // 내가 이 가게와 주고받는 열린 오퍼(방금 거절해 되돌릴 수 있는 것 포함, 이때 myTurn은 false). 없으면 null.
     // MyOpenOfferModel myOpenOffer
     test('to test the property `myOpenOffer`', () async {
       // TODO

@@ -2,15 +2,21 @@ import { OfferVersion } from '@prisma/client';
 import { OfferVersionModel } from './dto/offer-version.model';
 import {
   changedFields,
+  daysLeftToAnswer,
   defaultsOfVersion,
+  endKind,
   endStatusOf,
+  isCounter,
   partyOf,
   proposalExtras,
+  proposalGroup,
   turnAfter,
   versionModelOf,
 } from './proposal-rules';
+import type { ProposalOfferState } from './proposal-rules';
 
 const T0 = new Date('2026-12-01T00:00:00.000Z');
+const DAY = 24 * 60 * 60 * 1000;
 
 function version(over: Partial<OfferVersionModel> = {}): OfferVersionModel {
   return {
@@ -246,5 +252,121 @@ describe('defaultsOfVersion', () => {
       perViewCap: 90000,
       usageRights: 'STORE_REPOST_6M',
     });
+  });
+});
+
+describe('proposalGroup', () => {
+  const offer = (
+    over: Partial<ProposalOfferState> = {},
+  ): ProposalOfferState => ({
+    status: 'SENT',
+    turn: 'CREATOR',
+    expiresAt: new Date(T0.getTime() + 3 * DAY),
+    paymentDueAt: null,
+    declinedAt: null,
+    ...over,
+  });
+
+  it('groups an offer by whose turn it is', () => {
+    expect(proposalGroup(offer({ turn: 'CREATOR' }), 'CREATOR', T0)).toBe(
+      'MY_TURN',
+    );
+    expect(proposalGroup(offer({ turn: 'CREATOR' }), 'STORE', T0)).toBe(
+      'WAITING',
+    );
+    expect(proposalGroup(offer({ turn: 'STORE' }), 'STORE', T0)).toBe(
+      'MY_TURN',
+    );
+  });
+
+  it('puts accepted, declined, cancelled and expired offers in the ended group', () => {
+    for (const status of ['ACCEPTED', 'DECLINED', 'CANCELLED'] as const) {
+      expect(proposalGroup(offer({ status }), 'CREATOR', T0)).toBe('ENDED');
+      expect(proposalGroup(offer({ status }), 'STORE', T0)).toBe('ENDED');
+    }
+    expect(proposalGroup(offer({ status: 'EXPIRED' }), 'STORE', T0)).toBe(
+      'ENDED',
+    );
+  });
+
+  it('treats an unanswered offer past its deadline as ended even before it is stored', () => {
+    const late = offer({ expiresAt: new Date(T0.getTime() - 1) });
+    expect(proposalGroup(late, 'CREATOR', T0)).toBe('ENDED');
+    expect(endKind(late, T0)).toBe('EXPIRED');
+  });
+
+  it('keeps a decline waiting for the store until the creator can no longer undo it', () => {
+    const declined = offer({
+      status: 'DECLINED',
+      declinedAt: new Date(T0.getTime() - 10 * 1000),
+    });
+    expect(proposalGroup(declined, 'STORE', T0)).toBe('WAITING');
+    expect(proposalGroup(declined, 'CREATOR', T0)).toBe('ENDED');
+    const later = new Date(T0.getTime() + 25 * 1000);
+    expect(proposalGroup(declined, 'STORE', later)).toBe('ENDED');
+  });
+});
+
+describe('endKind', () => {
+  const base = {
+    turn: 'CREATOR' as const,
+    expiresAt: new Date(T0.getTime() + DAY),
+    paymentDueAt: null,
+    declinedAt: null,
+  };
+
+  it('calls an accepted offer agreed and a chosen end ended', () => {
+    expect(endKind({ ...base, status: 'ACCEPTED' }, T0)).toBe('AGREED');
+    expect(endKind({ ...base, status: 'DECLINED' }, T0)).toBe('ENDED');
+    expect(endKind({ ...base, status: 'CANCELLED' }, T0)).toBe('ENDED');
+    expect(endKind({ ...base, status: 'EXPIRED' }, T0)).toBe('EXPIRED');
+  });
+
+  it('is null while the offer is still open', () => {
+    expect(endKind({ ...base, status: 'SENT' }, T0)).toBeNull();
+  });
+
+  it('calls an accepted offer whose payment time ran out expired', () => {
+    const unpaid = {
+      ...base,
+      status: 'ACCEPTED' as const,
+      paymentDueAt: new Date(T0.getTime() - 1),
+    };
+    expect(endKind(unpaid, T0)).toBe('EXPIRED');
+  });
+});
+
+describe('daysLeftToAnswer', () => {
+  it('counts the days left, rounding up', () => {
+    expect(daysLeftToAnswer(new Date(T0.getTime() + 2 * DAY), T0)).toBe(2);
+    expect(daysLeftToAnswer(new Date(T0.getTime() + 2 * DAY + 1000), T0)).toBe(
+      3,
+    );
+    expect(daysLeftToAnswer(new Date(T0.getTime() + DAY), T0)).toBe(1);
+  });
+
+  it('is zero for less than a day and for a deadline already passed', () => {
+    expect(daysLeftToAnswer(new Date(T0.getTime() + DAY - 1), T0)).toBe(0);
+    expect(daysLeftToAnswer(new Date(T0.getTime() - DAY), T0)).toBe(0);
+  });
+});
+
+describe('isCounter', () => {
+  it('is a counter proposal when the other party wrote version 2 or later', () => {
+    expect(isCounter({ number: 2, authorParty: 'CREATOR' }, 'STORE')).toBe(
+      true,
+    );
+    expect(isCounter({ number: 3, authorParty: 'STORE' }, 'CREATOR')).toBe(
+      true,
+    );
+  });
+
+  it('is not one for my own version or the first version', () => {
+    expect(isCounter({ number: 2, authorParty: 'CREATOR' }, 'CREATOR')).toBe(
+      false,
+    );
+    expect(isCounter({ number: 1, authorParty: 'STORE' }, 'CREATOR')).toBe(
+      false,
+    );
   });
 });

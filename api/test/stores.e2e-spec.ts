@@ -827,6 +827,23 @@ describe('stores', () => {
         expect(await openOffer(store)).toBeNull();
       });
 
+      it('keeps an offer I just declined as open until the undo time passes, as a proposal would', async () => {
+        const store = await seedStore();
+        const offer = await seedOffer(store, { status: 'DECLINED' });
+        await prisma.offer.update({
+          where: { id: offer.id },
+          data: { declinedAt: new Date(clock.now().getTime() - 10 * 1000) },
+        });
+        // 이때 제안하면 409이므로 상세도 열린 오퍼로 보여 준다(내 차례는 아니다).
+        expect(await openOffer(store)).toEqual({
+          id: offer.id,
+          latestVersion: 1,
+          myTurn: false,
+        });
+        clock.set(new Date(clock.now().getTime() + 25 * 1000));
+        expect(await openOffer(store)).toBeNull();
+      });
+
       it('hides an offer past its deadline and offers of other stores or people', async () => {
         const store = await seedStore();
         const elsewhere = await seedStore({ name: '다른 가게' });

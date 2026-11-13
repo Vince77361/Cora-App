@@ -50,7 +50,7 @@ class StoreDetailModel {
   /// 내가 이 가게에 낸 지금 살아 있는 지원의 상태. 없으면 NONE.
   MyApplicationStatus myApplicationStatus;
 
-  /// 내가 이 가게와 주고받는 열린 오퍼. 없으면 null.
+  /// 내가 이 가게와 주고받는 열린 오퍼(방금 거절해 되돌릴 수 있는 것 포함, 이때 myTurn은 false). 없으면 null.
   MyOpenOfferModel? myOpenOffer;
 
   String name;

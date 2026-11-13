@@ -1,10 +1,11 @@
 import { ContentFormat, OfferStatus } from '@prisma/client';
 import { PAYMENT_DUE_DAYS } from '../collaborations/collaboration-stage';
+import { PROPOSAL_POLICY } from '../common/collaboration-policy';
 
 // 오퍼 상태 규칙은 모두 순수 함수다. 시각은 인자로 받는다(Clock은 서비스가 쥔다).
 // 결제 기한은 협업의 첫 상태를 정하는 collaboration-stage가 원본이다. 읽는 쪽이 이 파일에서 그대로 쓰도록 다시 내보낸다.
 export { PAYMENT_DUE_DAYS };
-export const DECLINE_UNDO_SECONDS = 30;
+export const DECLINE_UNDO_SECONDS = PROPOSAL_POLICY.declineUndoSeconds;
 
 const SECOND_MS = 1000;
 const DAY_MS = 24 * 60 * 60 * SECOND_MS;

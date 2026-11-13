@@ -15,6 +15,8 @@ import { OfferVersionsRepository } from './offer-versions.repository';
 import { OffersController } from './offers.controller';
 import { OffersRepository } from './offers.repository';
 import { OffersService } from './offers.service';
+import { ProposalsController } from './proposals.controller';
+import { ProposalsService } from './proposals.service';
 
 @Module({
   imports: [
@@ -27,9 +29,11 @@ import { OffersService } from './offers.service';
     CollaborationsModule,
     InstagramModule,
   ],
-  controllers: [OffersController],
+  // OffersController가 먼저다: offers/sent·offers/received가 offers/:id보다 앞서 등록돼야 한다.
+  controllers: [OffersController, ProposalsController],
   providers: [
     OffersService,
+    ProposalsService,
     OffersRepository,
     OfferVersionsRepository,
     DeclineNoticeHandler,

@@ -1687,6 +1687,283 @@
         ],
         "type": "object"
       },
+      "ProposalCounterpartModel": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "photoUrl"
+        ],
+        "type": "object"
+      },
+      "ProposalDetailModel": {
+        "properties": {
+          "changed": {
+            "description": "앞 판본과 달라진 항목(FORMAT, VOUCHER, FIXED_CASH, VIEW_PAY, USAGE_RIGHTS, IDEA, PRINCIPLES, SERIES). 화면이 보여 주는 순서다.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "collaborationId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "counterpart": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProposalPersonModel"
+              }
+            ],
+            "description": "상대. 사장님에게는 크리에이터, 크리에이터에게는 가게의 사장님이다(이름과 사진은 가게의 것)."
+          },
+          "endKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProposalEndKind"
+              }
+            ],
+            "nullable": true
+          },
+          "endReason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferEndReason"
+              }
+            ],
+            "nullable": true
+          },
+          "expiresAt": {
+            "description": "응답 기한(ISO 8601).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "feeRate": {
+            "description": "결제 때 더해지는 수수료율(%).",
+            "type": "integer"
+          },
+          "group": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProposalGroup"
+              }
+            ]
+          },
+          "latest": {
+            "$ref": "#/components/schemas/OfferVersionModel"
+          },
+          "myParty": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferParty"
+              }
+            ],
+            "description": "이 제안에서 나는 어느 쪽인가."
+          },
+          "needsInstagram": {
+            "description": "답을 기다리는 제안이고 조회수 수당이 켜져 있는데 크리에이터가 인스타그램을 연동하지 않았으면 true.",
+            "type": "boolean"
+          },
+          "offerId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "previous": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferVersionModel"
+              }
+            ],
+            "description": "바로 앞 판본. 첫 판본이면 null.",
+            "nullable": true,
+            "type": "object"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferView"
+              }
+            ],
+            "description": "내가 보는 상태. 크리에이터가 방금 거절해 되돌릴 수 있는 동안 사장님에게는 WAITING이다."
+          },
+          "store": {
+            "$ref": "#/components/schemas/ProposalStoreModel"
+          }
+        },
+        "required": [
+          "offerId",
+          "status",
+          "myParty",
+          "group",
+          "latest",
+          "previous",
+          "changed",
+          "store",
+          "counterpart",
+          "feeRate",
+          "needsInstagram",
+          "expiresAt",
+          "endKind",
+          "endReason",
+          "collaborationId"
+        ],
+        "type": "object"
+      },
+      "ProposalEndKind": {
+        "description": "끝난 제안(ENDED)의 갈래. AGREED: 합의 완료, ENDED: 사유를 골라 끝냄, EXPIRED: 기한이 지나 끝남. 그 밖에는 null.",
+        "enum": [
+          "AGREED",
+          "ENDED",
+          "EXPIRED"
+        ],
+        "type": "string"
+      },
+      "ProposalGroup": {
+        "description": "MY_TURN: 내가 응답할 차례. WAITING: 상대 대기. ENDED: 끝난 제안.",
+        "enum": [
+          "MY_TURN",
+          "WAITING",
+          "ENDED"
+        ],
+        "type": "string"
+      },
+      "ProposalPersonModel": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "photoUrl"
+        ],
+        "type": "object"
+      },
+      "ProposalRowModel": {
+        "properties": {
+          "collaborationId": {
+            "description": "합의해 만들어진 협업의 id. 합의 전이면 null.",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "counter": {
+            "description": "상대가 쓴 최신 판본이 번호 2 이상이면 true(역제안).",
+            "type": "boolean"
+          },
+          "counterpart": {
+            "$ref": "#/components/schemas/ProposalCounterpartModel"
+          },
+          "daysLeft": {
+            "description": "상대 대기(WAITING)일 때 남은 응답 기한(올림). 하루가 안 남았으면 0. 그 밖에는 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "endKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProposalEndKind"
+              }
+            ],
+            "description": "끝난 제안(ENDED)의 갈래. AGREED: 합의 완료, ENDED: 사유를 골라 끝냄, EXPIRED: 기한이 지나 끝남. 그 밖에는 null.",
+            "nullable": true
+          },
+          "endReason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferEndReason"
+              }
+            ],
+            "description": "끝낸 쪽이 고른 사유. 사유 없이 끝났으면 null.",
+            "nullable": true
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "group": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProposalGroup"
+              }
+            ],
+            "description": "MY_TURN: 내가 응답할 차례. WAITING: 상대 대기. ENDED: 끝난 제안."
+          },
+          "offerId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "pieces": {
+            "type": "integer"
+          },
+          "version": {
+            "description": "최신 판본의 번호.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "offerId",
+          "counterpart",
+          "group",
+          "version",
+          "counter",
+          "format",
+          "pieces",
+          "daysLeft",
+          "endKind",
+          "endReason",
+          "collaborationId"
+        ],
+        "type": "object"
+      },
+      "ProposalStoreModel": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "recruitLine": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "recruitLine"
+        ],
+        "type": "object"
+      },
+      "ProposalTab": {
+        "enum": [
+          "active",
+          "ended"
+        ],
+        "type": "string"
+      },
       "ProposeVersionDto": {
         "properties": {
           "format": {
@@ -2119,7 +2396,7 @@
                 "$ref": "#/components/schemas/MyOpenOfferModel"
               }
             ],
-            "description": "내가 이 가게와 주고받는 열린 오퍼. 없으면 null.",
+            "description": "내가 이 가게와 주고받는 열린 오퍼(방금 거절해 되돌릴 수 있는 것 포함, 이때 myTurn은 false). 없으면 null.",
             "nullable": true,
             "type": "object"
           },
@@ -3707,6 +3984,47 @@
         ]
       }
     },
+    "/offers/proposals": {
+      "get": {
+        "description": "제안함(F3). 사장님은 내 가게의 오퍼, 크리에이터는 내가 받은·보낸 오퍼. 내가 응답할 차례 → 상대 대기 순, 같은 묶음에서는 최근 판본 순.",
+        "operationId": "listProposals",
+        "parameters": [
+          {
+            "description": "active: 내가 응답할 차례와 상대를 기다리는 제안. ended: 합의, 종료, 기한이 지난 제안.",
+            "in": "query",
+            "name": "tab",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ProposalTab"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProposalRowModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Proposals"
+        ]
+      }
+    },
     "/offers/received": {
       "get": {
         "operationId": "listReceivedOffers",
@@ -3774,6 +4092,43 @@
         "summary": "",
         "tags": [
           "Offers"
+        ]
+      }
+    },
+    "/offers/{id}": {
+      "get": {
+        "description": "제안 상세. 당사자만 볼 수 있고 남의 제안은 404다.",
+        "operationId": "getProposal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalDetailModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Proposals"
         ]
       }
     },

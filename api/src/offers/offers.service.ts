@@ -497,9 +497,9 @@ export class OffersService {
     return versionModelOf(created);
   }
 
-  // 크리에이터가 가게 페이지에서 "내 방식으로 제안"을 보낸다. 검사 순서: 역할 → 공개된 가게 → 내 가게 아님 → 프로필 → 조건 → 시리즈 → 인스타그램 → 열린 오퍼.
-  // 열린 오퍼가 없으면 오퍼를 새로 만든다: 판본 1은 가게의 모집 조건, 판본 2가 이 제안이고 응답할 차례는 사장님이다.
-  // 열린 오퍼가 있고 내 차례면 판본 내기와 같은 길로 다음 판본을 낸다. 사장님 차례거나 이미 수락됐으면 409다.
+  // 크리에이터가 가게 페이지에서 "내 방식으로 제안"을 보낸다. 검사 순서: 역할 → 공개된 가게 → 내 가게 아님 → 프로필 → 열린 오퍼 → 조건 → 시리즈 → 인스타그램.
+  // 열린 오퍼가 있고 내 차례면 판본 내기와 같은 길로 다음 판본을 낸다(조건·시리즈·인스타그램 검사는 그 길이 앞 판본을 기준으로 한다).
+  // 사장님 차례거나 이미 수락됐으면 409다. 열린 오퍼가 없으면 오퍼를 새로 만든다: 판본 1은 가게의 모집 조건, 판본 2가 이 제안이고 응답할 차례는 사장님이다.
   async proposeToStore(
     userId: string,
     storeId: string,
@@ -512,16 +512,6 @@ export class OffersService {
       throw new AppError('CONFLICT', '내 가게에는 제안할 수 없어요.');
     }
     await this.creators.requireProfile(userId);
-    // 비운 값은 가게의 모집 조건(판본 1)으로 채운다.
-    const storeTerms = card.summary.defaultTerms;
-    const terms = buildTerms(input, storeTerms);
-    const series = input.seriesId
-      ? await this.creators.requireMySeries(userId, input.seriesId)
-      : null;
-    const connected = (await this.instagram.getConnection(userId)) !== null;
-    if (needsInstagram(terms, connected)) {
-      throw new AppError('CONFLICT', '인스타그램을 연동하면 수락할 수 있어요.');
-    }
 
     const now = this.clock.now();
     // 기한이 지난 오퍼가 막지 않도록, 열린 오퍼를 보기 전에 만료를 저장한다.
@@ -541,6 +531,17 @@ export class OffersService {
       }
       const created = await this.proposeVersion(userId, open.id, input);
       return { offerId: open.id, version: created.number };
+    }
+
+    // 새 오퍼: 비운 값은 가게의 모집 조건(판본 1)으로 채운다.
+    const storeTerms = card.summary.defaultTerms;
+    const terms = buildTerms(input, storeTerms);
+    const series = input.seriesId
+      ? await this.creators.requireMySeries(userId, input.seriesId)
+      : null;
+    const connected = (await this.instagram.getConnection(userId)) !== null;
+    if (needsInstagram(terms, connected)) {
+      throw new AppError('CONFLICT', '인스타그램을 연동하면 수락할 수 있어요.');
     }
 
     const expiresAt = new Date(
@@ -801,7 +802,8 @@ export class OffersService {
     return current;
   }
 
-  private async settleAll(rows: OfferRow[], now: Date): Promise<OfferRow[]> {
+  // 제안함도 읽을 때 만료를 먼저 저장한다(같은 정리 길을 쓴다).
+  async settleAll(rows: OfferRow[], now: Date): Promise<OfferRow[]> {
     const settled = await Promise.all(rows.map((row) => this.settle(row, now)));
     return settled.filter((row): row is OfferRow => row !== null);
   }

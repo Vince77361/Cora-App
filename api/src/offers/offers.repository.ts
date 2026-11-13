@@ -129,6 +129,27 @@ export class OffersRepository {
     });
   }
 
+  // 제안함이 읽는 오퍼. 상태를 가리지 않는다(합의·종료·만료도 제안함의 종료 탭에 보인다). 소유 조건이 곧 당사자 조건이다.
+  listForProposals(party: OfferParty, ownerKey: string): Promise<OfferRow[]> {
+    return this.prisma.offer.findMany({
+      where: {
+        deletedAt: null,
+        ...(party === 'STORE'
+          ? { storeId: ownerKey }
+          : { creatorId: ownerKey }),
+      },
+      include: WITH_APPLICATION,
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    });
+  }
+
+  // 판본 하나. 제안 상세가 바로 앞 판본을 읽을 때 쓴다. 판본은 오퍼의 것이라 오퍼 저장소가 읽는다(판본 저장소는 만들기만 한다).
+  findVersion(offerId: string, number: number): Promise<OfferVersion | null> {
+    return this.prisma.offerVersion.findUnique({
+      where: { offerId_number: { offerId, number } },
+    });
+  }
+
   // 같은 가게·크리에이터의 열린 오퍼. 방금 거절해 아직 되돌릴 수 있는 것도 사장님에게는 "답을 기다려요"라 함께 본다.
   // 협업이 끝나 닫힌(closedAt) 오퍼는 열린 것이 아니다. 부분 유니크 인덱스도 같은 기준이다.
   findOpen(storeId: string, creatorId: string, now: Date): Promise<OfferRow[]> {

@@ -31,6 +31,8 @@ export const REWARD_POLICY = {
 export const PROPOSAL_POLICY = {
   responseDays: 7,
   maxVersions: 10,
+  // 거절한 뒤 되돌릴 수 있는 시간. 오퍼의 "열림" 판정과 가게 상세의 열린 오퍼가 같은 값을 쓴다.
+  declineUndoSeconds: 30,
   ideaMax: 200,
   principlesMax: 3,
   principleLength: 10,

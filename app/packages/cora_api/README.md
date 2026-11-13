@@ -101,6 +101,8 @@ Class | Method | HTTP request | Description
 *PayoutAccountsApi* | [**getPayoutAccount**](doc//PayoutAccountsApi.md#getpayoutaccount) | **GET** /payout-account | 
 *PayoutAccountsApi* | [**listBanks**](doc//PayoutAccountsApi.md#listbanks) | **GET** /payout-account/banks | 
 *PayoutAccountsApi* | [**upsertPayoutAccount**](doc//PayoutAccountsApi.md#upsertpayoutaccount) | **PUT** /payout-account | 
+*ProposalsApi* | [**getProposal**](doc//ProposalsApi.md#getproposal) | **GET** /offers/{id} | 
+*ProposalsApi* | [**listProposals**](doc//ProposalsApi.md#listproposals) | **GET** /offers/proposals | 
 *StoresApi* | [**advanceMyStoreOnboarding**](doc//StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
 *StoresApi* | [**analyzeMyStoreLinks**](doc//StoresApi.md#analyzemystorelinks) | **POST** /stores/me/analyze | 
 *StoresApi* | [**getMyStore**](doc//StoresApi.md#getmystore) | **GET** /stores/me | 
@@ -188,6 +190,14 @@ Class | Method | HTTP request | Description
  - [PayoutStatus](doc//PayoutStatus.md)
  - [PerViewInputDto](doc//PerViewInputDto.md)
  - [PhotoUploadModel](doc//PhotoUploadModel.md)
+ - [ProposalCounterpartModel](doc//ProposalCounterpartModel.md)
+ - [ProposalDetailModel](doc//ProposalDetailModel.md)
+ - [ProposalEndKind](doc//ProposalEndKind.md)
+ - [ProposalGroup](doc//ProposalGroup.md)
+ - [ProposalPersonModel](doc//ProposalPersonModel.md)
+ - [ProposalRowModel](doc//ProposalRowModel.md)
+ - [ProposalStoreModel](doc//ProposalStoreModel.md)
+ - [ProposalTab](doc//ProposalTab.md)
  - [ProposeVersionDto](doc//ProposeVersionDto.md)
  - [QuietHours](doc//QuietHours.md)
  - [ReceivedOfferModel](doc//ReceivedOfferModel.md)

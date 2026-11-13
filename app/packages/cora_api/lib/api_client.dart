@@ -344,6 +344,22 @@ class ApiClient {
           return PerViewInputDto.fromJson(value);
         case 'PhotoUploadModel':
           return PhotoUploadModel.fromJson(value);
+        case 'ProposalCounterpartModel':
+          return ProposalCounterpartModel.fromJson(value);
+        case 'ProposalDetailModel':
+          return ProposalDetailModel.fromJson(value);
+        case 'ProposalEndKind':
+          return ProposalEndKindTypeTransformer().decode(value);
+        case 'ProposalGroup':
+          return ProposalGroupTypeTransformer().decode(value);
+        case 'ProposalPersonModel':
+          return ProposalPersonModel.fromJson(value);
+        case 'ProposalRowModel':
+          return ProposalRowModel.fromJson(value);
+        case 'ProposalStoreModel':
+          return ProposalStoreModel.fromJson(value);
+        case 'ProposalTab':
+          return ProposalTabTypeTransformer().decode(value);
         case 'ProposeVersionDto':
           return ProposeVersionDto.fromJson(value);
         case 'QuietHours':

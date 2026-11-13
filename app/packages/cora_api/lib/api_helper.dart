@@ -131,6 +131,15 @@ String parameterToString(dynamic value) {
   if (value is PayoutStatus) {
     return PayoutStatusTypeTransformer().encode(value).toString();
   }
+  if (value is ProposalEndKind) {
+    return ProposalEndKindTypeTransformer().encode(value).toString();
+  }
+  if (value is ProposalGroup) {
+    return ProposalGroupTypeTransformer().encode(value).toString();
+  }
+  if (value is ProposalTab) {
+    return ProposalTabTypeTransformer().encode(value).toString();
+  }
   if (value is QuietHours) {
     return QuietHoursTypeTransformer().encode(value).toString();
   }

@@ -2729,12 +2729,11 @@ describe('offers', () => {
     });
 
     it('refuses a proposal while an accepted offer is still running', async () => {
-      const offer = await seedOffer(storeId, OTHER, { status: 'ACCEPTED' });
+      await seedOffer(storeId, OTHER, { status: 'ACCEPTED' });
       const res = await proposeTo(storeId).expect(409);
       expect((res.body as { error: { message: string } }).error.message).toBe(
         '이미 진행 중인 제안이 있어요.',
       );
-      expect(await prisma.offer.count({ where: { id: offer.id } })).toBe(1);
       expect(await prisma.offer.count()).toBe(1);
     });
 
