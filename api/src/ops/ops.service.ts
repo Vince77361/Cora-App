@@ -15,12 +15,15 @@ import {
 import { LedgerService } from '../ledger/ledger.service';
 import { PaymentsService } from '../payments/payments.service';
 import {
+  autoConfirmJobKey,
+  evidenceHaltJobKey,
   forcePayoutKey,
   forcePayoutRefundKey,
   forceRefundKey,
   lateRefundKey,
   payoutJobKey,
   paymentLedgerKey,
+  SETTLEMENT_DISPUTED_HALT_REASON,
   settleJobKey,
   SNAPSHOT_DAYS,
   snapshotJobKey,
@@ -30,6 +33,7 @@ import { PayoutsService } from '../settlements/payouts.service';
 import { RefundsService } from '../settlements/refunds.service';
 import { SettlementsRepository } from '../settlements/settlements.repository';
 import { SettlementsService } from '../settlements/settlements.service';
+import { ViewReportService } from '../settlements/view-report.service';
 import { hasViewPay, readTerms } from '../stores/reward-terms';
 import { OpsError } from './ops-error';
 import { formatSnapshot } from './ops-format';
@@ -78,6 +82,7 @@ export class OpsService {
     private readonly payouts: PayoutsService,
     private readonly refunds: RefundsService,
     private readonly clock: Clock,
+    private readonly viewReport: ViewReportService,
   ) {}
 
   // 돈을 보관 중인 협업을 멈춘다. 등록된 정산·집계·제출 기한 작업을 취소한다.
@@ -87,6 +92,14 @@ export class OpsService {
       if (!canTransition(c.kind, c.stage, 'HALTED')) {
         throw new OpsError(
           `${c.stage} 단계는 멈출 수 없어요. 돈을 보관 중인 단계만 멈출 수 있어요.`,
+        );
+      }
+      // 확인 전인 계산이 있는 협업을 멈추면 확인·재개·강제 끝내기가 모두 막혀 갇힌다. 그 협업은 이의 제기(자동으로 멈춤)나
+      // 확인(사장님·자동·confirm-evidence)으로만 움직인다. 돈은 확인 전에는 나가지 않는다.
+      const open = await this.settlementsRepository.findSettlement(c.id, tx);
+      if (open && open.status !== 'CONFIRMED') {
+        throw new OpsError(
+          `조회 자료 확인이 끝나지 않은 정산이 있어 멈출 수 없어요. (${open.status}) 돈은 확인 전에는 나가지 않아요. 이의가 걸렸다면 resolve-dispute, 캡처 자료라면 confirm-evidence로 처리해 주세요.`,
         );
       }
       await this.advanceOrConflict(c, c.stage, 'HALTED', tx, {
@@ -357,6 +370,148 @@ export class OpsService {
       ],
       warnings,
     };
+  }
+
+  // 크리에이터가 낸 조회수 캡처로 만든 계산을 운영자가 확인 완료로 확정한다. 캡처 자료는 사장님의 확인으로도 48시간으로도
+  // 확정되지 않으므로 이 명령만 확정한다. 장부·지급·환급은 사장님 확인과 같은 길(ViewReportService.settleCalculation)이다.
+  async confirmEvidence(
+    collaborationId: string,
+    actor: OpsActor,
+  ): Promise<OpsResult> {
+    this.assertActor(actor);
+    const settled = await this.inCollaboration(
+      collaborationId,
+      async (tx, c) => {
+        const settlement = await this.settlementsRepository.findSettlement(
+          c.id,
+          tx,
+        );
+        if (
+          !settlement ||
+          settlement.status !== 'UNCONFIRMED' ||
+          settlement.evidenceSource !== 'CAPTURE'
+        ) {
+          throw new OpsError(
+            '캡처로 만든, 확인 전(UNCONFIRMED)인 계산이 있는 협업만 확인할 수 있어요.',
+          );
+        }
+        if (c.stage !== 'COUNTING') {
+          throw new OpsError(
+            `집계 중(COUNTING)인 협업만 확인할 수 있어요. (지금 단계: ${c.stage})`,
+          );
+        }
+        const ok = await this.viewReport.settleCalculation(tx, c.id, {
+          by: 'OPERATOR',
+          key: settleJobKey(c.id),
+          fromStatus: 'UNCONFIRMED',
+          fromStage: 'COUNTING',
+          onlySource: 'CAPTURE',
+        });
+        if (!ok) throw this.conflict();
+        await this.settlementsRepository.confirmEvidence(
+          c.id,
+          actor.operator.trim(),
+          this.clock.now(),
+          tx,
+        );
+        await this.finish(tx, 'confirm-evidence', c.id, actor, {
+          views: settlement.finalViews,
+          payout: settlement.payoutAmount,
+          refund: settlement.refundAmount,
+        });
+        return settlement;
+      },
+    );
+    return this.afterConfirmation(collaborationId, {
+      line: `캡처 조회수 ${count(settled.finalViews ?? 0)}으로 확정했어요. 지급 ${won(settled.payoutAmount)}원, 환급 ${won(settled.refundAmount)}원.`,
+    });
+  }
+
+  // 이의가 걸려 멈춘 협업(DISPUTED 정산)을 처리한다. views를 주면 그 조회수로 다시 계산해 확정하고(VIEWS_CORRECTED),
+  // 주지 않으면 계산 그대로 확정한다(UPHELD_AS_IS). 협업은 HALTED → SETTLED로 끝난다.
+  async resolveDispute(
+    collaborationId: string,
+    views: number | undefined,
+    actor: OpsActor,
+  ): Promise<OpsResult> {
+    this.assertActor(actor);
+    if (views !== undefined) this.assertWhole(views, '조회수');
+    const result = await this.inCollaboration(
+      collaborationId,
+      async (tx, c) => {
+        const settlement = await this.settlementsRepository.findSettlement(
+          c.id,
+          tx,
+        );
+        if (
+          !settlement ||
+          settlement.status !== 'DISPUTED' ||
+          c.stage !== 'HALTED' ||
+          c.haltedReason !== SETTLEMENT_DISPUTED_HALT_REASON
+        ) {
+          throw new OpsError(
+            '이의가 걸려 멈춘 협업(DISPUTED 정산, HALTED)만 처리할 수 있어요.',
+          );
+        }
+        const ok = await this.viewReport.settleCalculation(tx, c.id, {
+          by: 'OPERATOR',
+          key: settleJobKey(c.id),
+          fromStatus: 'DISPUTED',
+          fromStage: 'HALTED',
+          patch: { haltedReason: null, stageBeforeHalt: null },
+          correctedViews: views,
+        });
+        if (!ok) throw this.conflict();
+        const after = await this.settlementsRepository.findSettlement(c.id, tx);
+        if (!after) throw this.conflict();
+        await this.settlementsRepository.resolveDisputes(
+          c.id,
+          {
+            resolution:
+              views === undefined ? 'UPHELD_AS_IS' : 'VIEWS_CORRECTED',
+            resolvedViews: views ?? null,
+            at: this.clock.now(),
+          },
+          tx,
+        );
+        if (settlement.evidenceSource === 'CAPTURE') {
+          await this.settlementsRepository.confirmEvidence(
+            c.id,
+            actor.operator.trim(),
+            this.clock.now(),
+            tx,
+          );
+        }
+        await this.finish(tx, 'resolve-dispute', c.id, actor, {
+          resolution: views === undefined ? 'UPHELD_AS_IS' : 'VIEWS_CORRECTED',
+          views: views ?? null,
+          payout: after.payoutAmount,
+          refund: after.refundAmount,
+        });
+        return after;
+      },
+    );
+    return this.afterConfirmation(collaborationId, {
+      line:
+        views === undefined
+          ? `계산 그대로 확정했어요. 지급 ${won(result.payoutAmount)}원, 환급 ${won(result.refundAmount)}원.`
+          : `조회수 ${count(views)}으로 다시 계산해 확정했어요. 지급 ${won(result.payoutAmount)}원, 환급 ${won(result.refundAmount)}원.`,
+    });
+  }
+
+  // 확정이 커밋된 뒤의 단계(지급 작업·알림·PG 환급)와 남은 작업 정리. 실패하면 경고로 알린다.
+  private async afterConfirmation(
+    collaborationId: string,
+    p: { line: string },
+  ): Promise<OpsResult> {
+    const warnings: string[] = [];
+    await this.afterCommit(warnings, '정산 뒷단계(지급 작업·알림·환급)', () =>
+      this.settlements.finishSettlementOf(collaborationId),
+    );
+    await this.afterCommit(warnings, '작업 취소', () =>
+      this.cancelJobs(collaborationId),
+    );
+    return { lines: [p.line], warnings };
   }
 
   // 송금이 FAILED인 지급, 또는 지급일이 지났는데 송금 작업이 시도를 다 써서 PENDING으로 남은 지급을 같은 중복 방지 키로 다시 보낸다.
@@ -658,6 +813,8 @@ export class OpsService {
   private async cancelJobs(collaborationId: string): Promise<void> {
     const keys = [
       settleJobKey(collaborationId),
+      autoConfirmJobKey(collaborationId),
+      evidenceHaltJobKey(collaborationId),
       ...Array.from({ length: SNAPSHOT_DAYS + 1 }, (_, day) =>
         snapshotJobKey(collaborationId, day),
       ),

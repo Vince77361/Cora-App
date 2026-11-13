@@ -1037,6 +1037,47 @@ describe('ops commands', () => {
           .exitCode,
       ).toBe(1);
     });
+    it('prints the settlement status, evidence source, capture and dispute reason', async () => {
+      const s = await seed('COUNTING');
+      await prisma.settlement.create({
+        data: {
+          collaborationId: s.collaborationId,
+          finalViews: 10000,
+          payoutAmount: 100000,
+          refundAmount: 0,
+          status: 'DISPUTED',
+          evidenceSource: 'CAPTURE',
+          settledAt: null,
+          confirmDueAt: null,
+        },
+      });
+      await prisma.viewEvidence.create({
+        data: {
+          collaborationId: s.collaborationId,
+          filePath: `evidence/${USER_A}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jpg`,
+          statedViews: 10000,
+          submittedById: USER_A,
+        },
+      });
+      await prisma.settlementDispute.create({
+        data: {
+          collaborationId: s.collaborationId,
+          raisedById: USER_A,
+          reason: '캡처 조회수가 달라요',
+        },
+      });
+      const out = text(await ops('show', '--collaboration', s.collaborationId));
+      expect(out).toContain('DISPUTED');
+      expect(out).toContain('자료 출처 CAPTURE');
+      expect(out).toContain('조회수 캡처 1건');
+      expect(out).toContain('조회수 10000');
+      expect(out).toContain('운영자 확인 전');
+      expect(out).toContain('이의 1건');
+      expect(out).toContain('사유: 캡처 조회수가 달라요');
+      expect(out).toContain('처리 전');
+      // 비공개 파일의 경로는 출력하지 않는다.
+      expect(out).not.toContain('evidence/');
+    });
   });
 
   describe('ledger check', () => {

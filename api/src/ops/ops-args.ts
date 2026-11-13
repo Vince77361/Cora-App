@@ -59,6 +59,7 @@ export function parseOpsArgs(argv: string[]): ParseResult {
   for (const flag of spec.flags) {
     const value = raw.get(flag.name);
     if (value === undefined) {
+      if (flag.optional) continue;
       return { ok: false, error: `--${flag.name}(${flag.help})가 필요해요.` };
     }
     if (flag.kind === 'uuid' && !UUID.test(value)) {
@@ -102,7 +103,9 @@ export function usageLines(): string[] {
     '',
     ...COMMAND_SPECS.flatMap((s) => [
       `  ${s.name} ${[
-        ...s.flags.map((f) => `--${f.name} <${f.help}>`),
+        ...s.flags.map((f) =>
+          f.optional ? `[--${f.name} <${f.help}>]` : `--${f.name} <${f.help}>`,
+        ),
         ...(s.readOnly ? [] : ['--operator <이름> --reason <사유>']),
       ].join(' ')}`,
       `      ${s.summary}`,

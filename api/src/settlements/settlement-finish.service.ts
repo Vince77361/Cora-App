@@ -31,7 +31,8 @@ export class SettlementFinishService {
     private readonly clock: Clock,
   ) {}
 
-  // 협업 id로 이어서 한다. 협업이나 정산 행이 없으면 아무 일도 하지 않는다.
+  // 협업 id로 이어서 한다. 협업이나 정산 행이 없거나 정산이 확인 완료(CONFIRMED)가 아니면 아무 일도 하지 않는다
+  // (확인 전에 "정산 완료" 알림이나 지급·환급이 나가지 않게 하는 마지막 방어선이다).
   // 강제 지급은 지급·환급 행의 키가 일반 정산과 달라 keys로 알려 준다.
   async finishOf(
     collaborationId: string,
@@ -42,7 +43,7 @@ export class SettlementFinishService {
     const settlement = collaboration
       ? await this.repository.findSettlement(collaborationId)
       : null;
-    if (collaboration && settlement) {
+    if (collaboration && settlement?.status === 'CONFIRMED') {
       await this.finish(collaboration, settlement, context, keys);
     }
   }

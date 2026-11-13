@@ -69,7 +69,7 @@ yarn ops halt --collaboration <협업 id> --operator 김운영 --reason "신고 
 
 | 명령 | 하는 일 |
 |---|---|
-| `halt --collaboration <id>` | 돈을 보관 중인 단계를 `HALTED`로 멈추고(멈추기 전 단계를 저장) 등록된 정산·집계·제출 기한 작업을 취소한다 |
+| `halt --collaboration <id>` | 돈을 보관 중인 단계를 `HALTED`로 멈추고(멈추기 전 단계를 저장) 등록된 정산·집계·제출 기한 작업을 취소한다. 조회 자료 확인이 끝나지 않은 계산(`UNCONFIRMED`·`DISPUTED`)이 있는 협업은 멈추지 않는다(갇히지 않게. 돈은 확인 전에는 나가지 않는다) |
 | `resume --collaboration <id>` | `HALTED`를 멈추기 전 단계로 되돌린다(신고로 멈춘 협업 포함). `COUNTING`이면 일찍 정산하지 않고 남은 날을 이어서 센다(기록되지 않은 날의 조회수 작업을 원래 시각으로 다시 올리고, 정산은 원래 정산 시각에 — 이미 지났으면 바로 — 올린다. 바로 정산하려면 `resume-settlement` 또는 `force-payout`), `FUNDED`면 미제출 환급·기한 알림을 다시 올린다(기한이 지났으면 미제출 환급이 바로 돈다) |
 | `resume-settlement --collaboration <id> --views <n>` | 조회수를 읽지 못해 멈춘 협업을 주어진 조회수로 정산한다 |
 | `force-refund --collaboration <id>` | 보관 중인 전액과 수수료를 사장님에게 환급하고 `REFUNDED`로 끝낸다 |
@@ -77,7 +77,9 @@ yarn ops halt --collaboration <협업 id> --operator 김운영 --reason "신고 
 | `retry-payout --payout <id>` | `FAILED`·지급일이 지난 `PENDING` 지급을 같은 중복 방지 키로 다시 보낸다 |
 | `retry-refund --refund <id>` | `PENDING`·`FAILED` 환급을 같은 중복 방지 키로 다시 PG에 보낸다 |
 | `refund-payment --payment <id>` | 협업에 반영되지 못한 승인 결제(끝난 뒤 늦게 승인됐거나 두 번째 결제)를 전액 환불한다. 장부에 결제 승인 묶음과 전액 환급 묶음을 남긴다 |
-| `show --collaboration <id>` | 단계, 장부 계정별 잔액, 결제·지급·환급 상태를 보여 준다(읽기 전용, 감사 기록 없음, 계좌번호는 출력하지 않음) |
+| `confirm-evidence --collaboration <id>` | 크리에이터가 낸 조회수 캡처로 만든 계산(캡처 출처의 `UNCONFIRMED` 정산)을 운영자가 확인 완료로 확정하고, 캡처 행에 확인 표시를 한다. 장부·지급·환급은 사장님 확인과 같은 길이다. 캡처 자료는 사장님의 "자료 확인했어요"나 48시간으로는 확정되지 않고 이 명령만 확정한다 |
+| `resolve-dispute --collaboration <id> [--views <n>]` | 조회 자료에 이의가 걸려 멈춘 협업(`DISPUTED` 정산, `HALTED`)을 처리한다. `--views`가 있으면 그 조회수로 다시 계산해, 없으면 계산 그대로 확정하고 협업을 `SETTLED`로 끝낸다. 이의 행에 결과(`VIEWS_CORRECTED`·`UPHELD_AS_IS`)를 남긴다 |
+| `show --collaboration <id>` | 단계, 장부 계정별 잔액, 결제·지급·환급 상태, 정산 상태·자료 출처·캡처·이의 사유를 보여 준다(읽기 전용, 감사 기록 없음, 계좌번호는 출력하지 않음) |
 
 - 커밋된 뒤의 단계(작업 취소·등록, PG 호출)가 실패하면 "경고"로 알리고 종료 코드 1을 돌려준다. 돈의 상태는 이미 커밋됐으니 `show`로 확인하고 `retry-*` 명령으로 이어 간다.
 - `yarn ops`는 작업을 올리기만 하고 실행하지 않는다(작업 큐의 작업자는 서버 프로세스에서만 돈다). 서버와 같은 환경변수 검증을 거치고, 운영에서 가짜 연동이 켜져 있으면 실행을 거부한다.

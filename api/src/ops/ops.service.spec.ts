@@ -20,6 +20,7 @@ const service = new OpsService(
   trap as never,
   trap as never,
   trap as never,
+  trap as never,
 );
 
 describe('OpsService input checks', () => {
@@ -65,5 +66,21 @@ describe('OpsService input checks', () => {
     await expect(service.resumeSettlement(ID, -5, actor)).rejects.toThrow(
       /정수/,
     );
+    await expect(service.resolveDispute(ID, -1, actor)).rejects.toThrow(/정수/);
+    await expect(service.resolveDispute(ID, 1.5, actor)).rejects.toThrow(
+      /정수/,
+    );
+  });
+
+  it('refuses the evidence and dispute commands without operator and reason', async () => {
+    await expect(
+      service.confirmEvidence(ID, { operator: '', reason: '확인' }),
+    ).rejects.toBeInstanceOf(OpsError);
+    await expect(
+      service.resolveDispute(ID, undefined, {
+        operator: '김운영',
+        reason: ' ',
+      }),
+    ).rejects.toBeInstanceOf(OpsError);
   });
 });

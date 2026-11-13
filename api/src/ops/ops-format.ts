@@ -56,6 +56,22 @@ export function formatSnapshot(
     snapshot.settlement
       ? `정산 조회수 ${snapshot.settlement.finalViews ?? '-'} / 지급 ${won(snapshot.settlement.payoutAmount)}원 / 환급 ${won(snapshot.settlement.refundAmount)}원 / ${snapshot.settlement.status} (${snapshot.settlement.settledAt ? kst(snapshot.settlement.settledAt) : '확정 전'})`
       : '정산 없음',
+    ...(snapshot.settlement
+      ? [
+          `  자료 출처 ${snapshot.settlement.evidenceSource} / 확인한 쪽 ${snapshot.settlement.confirmedBy ?? '-'} / 자동 확인 ${snapshot.settlement.status === 'UNCONFIRMED' ? kst(snapshot.settlement.confirmDueAt) : '-'}`,
+        ]
+      : []),
+    `조회수 캡처 ${snapshot.evidences.length}건`,
+    // 캡처 파일의 경로나 주소는 싣지 않는다(비공개 파일이라 서버가 당사자에게만 서명해서 준다).
+    ...snapshot.evidences.map(
+      (e) =>
+        `  조회수 ${e.statedViews} / 제출 ${kst(e.createdAt)} / ${e.confirmedAt ? `운영자 확인 ${kst(e.confirmedAt)} ${e.confirmedBy ?? ''}`.trim() : '운영자 확인 전'}`,
+    ),
+    `이의 ${snapshot.disputes.length}건`,
+    ...snapshot.disputes.map(
+      (d) =>
+        `  ${kst(d.createdAt)} 사유: ${d.reason} / ${d.resolvedAt ? `처리 ${kst(d.resolvedAt)} ${d.resolution ?? ''}${d.resolvedViews === null ? '' : ` (조회수 ${d.resolvedViews})`}` : '처리 전'}`,
+    ),
     `운영 기록 최근 ${snapshot.audits.length}건`,
     ...snapshot.audits.map(
       (a) => `  ${kst(a.createdAt)} ${a.command} ${a.operator}: ${a.reason}`,

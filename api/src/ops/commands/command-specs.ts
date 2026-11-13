@@ -4,6 +4,8 @@ export interface FlagSpec {
   name: string;
   kind: FlagKind;
   help: string;
+  // true이면 빼도 된다(주면 형식을 검사한다).
+  optional?: boolean;
 }
 
 export interface CommandSpec {
@@ -68,9 +70,29 @@ export const COMMAND_SPECS: CommandSpec[] = [
     flags: [{ name: 'payment', kind: 'uuid', help: '결제 id' }],
   },
   {
+    name: 'confirm-evidence',
+    summary:
+      '크리에이터가 낸 조회수 캡처로 만든 계산(캡처 출처의 UNCONFIRMED 정산)을 운영자가 확인 완료로 확정한다. 장부·지급·환급은 사장님 확인과 같은 길이다. 캡처 자료는 사장님의 확인이나 48시간으로는 확정되지 않는다.',
+    flags: [{ name: 'collaboration', kind: 'uuid', help: '협업 id' }],
+  },
+  {
+    name: 'resolve-dispute',
+    summary:
+      '조회 자료에 이의가 걸려 멈춘 협업(DISPUTED 정산)을 처리한다. --views가 있으면 그 조회수로 다시 계산해, 없으면 계산 그대로 확정하고 협업을 SETTLED로 끝낸다.',
+    flags: [
+      { name: 'collaboration', kind: 'uuid', help: '협업 id' },
+      {
+        name: 'views',
+        kind: 'int',
+        help: '고친 조회수(없으면 계산 그대로)',
+        optional: true,
+      },
+    ],
+  },
+  {
     name: 'show',
     summary:
-      '협업의 단계, 장부 계정별 잔액, 결제·지급·환급 상태를 보여 준다(읽기 전용).',
+      '협업의 단계, 장부 계정별 잔액, 결제·지급·환급 상태, 정산 상태·자료 출처·캡처·이의 사유를 보여 준다(읽기 전용).',
     readOnly: true,
     flags: [{ name: 'collaboration', kind: 'uuid', help: '협업 id' }],
   },

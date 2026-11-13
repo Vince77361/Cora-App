@@ -7,6 +7,8 @@ import {
   Prisma,
   Refund,
   Settlement,
+  SettlementDispute,
+  ViewEvidence,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -25,6 +27,8 @@ export interface CollaborationSnapshot {
   payouts: Payout[];
   refunds: Refund[];
   settlement: Settlement | null;
+  evidences: ViewEvidence[];
+  disputes: SettlementDispute[];
   audits: OpsAuditLog[];
 }
 
@@ -73,6 +77,11 @@ export class OpsRepository {
         payouts: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' } },
         refunds: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' } },
         settlement: true,
+        viewEvidences: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'asc' },
+        },
+        disputes: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' } },
         opsAuditLogs: {
           where: { deletedAt: null },
           orderBy: { createdAt: 'desc' },
@@ -86,6 +95,8 @@ export class OpsRepository {
       payouts,
       refunds,
       settlement,
+      viewEvidences: evidences,
+      disputes,
       opsAuditLogs: audits,
       ...collaboration
     } = row;
@@ -95,6 +106,8 @@ export class OpsRepository {
       payouts,
       refunds,
       settlement: settlement?.deletedAt ? null : settlement,
+      evidences,
+      disputes,
       audits,
     };
   }

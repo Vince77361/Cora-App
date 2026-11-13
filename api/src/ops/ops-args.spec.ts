@@ -1,4 +1,4 @@
-import { parseOpsArgs } from './ops-args';
+import { parseOpsArgs, usageLines } from './ops-args';
 
 const ID = '11111111-1111-4111-8111-111111111111';
 const who = ['--operator', '김운영', '--reason', '확인 후 처리'];
@@ -121,6 +121,60 @@ describe('parseOpsArgs', () => {
         ...who,
       ]).ok,
     ).toBe(true);
+  });
+
+  it('takes confirm-evidence with a collaboration only', () => {
+    expect(
+      parseOpsArgs(['confirm-evidence', '--collaboration', ID, ...who]).ok,
+    ).toBe(true);
+    expect(parseOpsArgs(['confirm-evidence', ...who]).ok).toBe(false);
+    expect(
+      parseOpsArgs([
+        'confirm-evidence',
+        '--collaboration',
+        ID,
+        '--views',
+        '10',
+        ...who,
+      ]).ok,
+    ).toBe(false);
+  });
+
+  it('takes resolve-dispute with an optional views value that must be a whole number', () => {
+    const plain = parseOpsArgs([
+      'resolve-dispute',
+      '--collaboration',
+      ID,
+      ...who,
+    ]);
+    expect(plain.ok).toBe(true);
+    if (plain.ok) expect(plain.command.values.views).toBeUndefined();
+    const corrected = parseOpsArgs([
+      'resolve-dispute',
+      '--collaboration',
+      ID,
+      '--views',
+      '10000',
+      ...who,
+    ]);
+    expect(corrected.ok).toBe(true);
+    if (corrected.ok) expect(corrected.command.values.views).toBe(10000);
+    for (const views of ['-1', '1.5', 'abc', '']) {
+      expect(
+        parseOpsArgs([
+          'resolve-dispute',
+          '--collaboration',
+          ID,
+          '--views',
+          views,
+          ...who,
+        ]).ok,
+      ).toBe(false);
+    }
+  });
+
+  it('shows the optional flag in brackets in the usage lines', () => {
+    expect(usageLines().join('\n')).toMatch(/\[--views </);
   });
 
   it('knows every command of the plan', () => {

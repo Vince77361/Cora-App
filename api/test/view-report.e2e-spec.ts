@@ -1305,6 +1305,18 @@ describe('view report', () => {
       expect(await prisma.payout.count()).toBe(0);
     });
 
+    it('refuses to halt a collaboration that has a calculation waiting for confirmation', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      const r = await ops('halt', '--collaboration', s.collaborationId);
+      expect(r.exitCode).toBe(1);
+      expect(text(r)).toContain('resolve-dispute');
+      expect(text(r)).toContain('confirm-evidence');
+      expect((await collaborationRow(s.collaborationId)).stage).toBe(
+        'COUNTING',
+      );
+    });
+
     it('settles in one step with the operator as the confirmer when no calculation exists', async () => {
       const s = await seed({ stage: 'HALTED' });
       await prisma.collaboration.update({
@@ -1329,6 +1341,218 @@ describe('view report', () => {
         payoutAmount: 25000,
         viewPayAmount: 25000,
         fixedCashAmount: 0,
+      });
+    });
+    it('confirms a capture with the ops command and settles', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 7);
+      await sendEvidence(s.collaborationId, await evidenceUpload()).expect(200);
+      const r = await ops(
+        'confirm-evidence',
+        '--collaboration',
+        s.collaborationId,
+      );
+      expect(r.exitCode).toBe(0);
+      expect(r.output.join('\n')).toContain('10,000');
+      expect(await collaborationRow(s.collaborationId)).toMatchObject({
+        stage: 'SETTLED',
+      });
+      expect(await settlementOf(s.collaborationId)).toMatchObject({
+        status: 'CONFIRMED',
+        confirmedBy: 'OPERATOR',
+        evidenceSource: 'CAPTURE',
+        payoutAmount: 20000,
+        refundAmount: 40000,
+      });
+      expect(
+        await prisma.viewEvidence.findFirstOrThrow({
+          where: { collaborationId: s.collaborationId },
+        }),
+      ).toMatchObject({ confirmedBy: '김운영' });
+      expect(await settleLines(s.collaborationId)).toHaveLength(2);
+      expect(await balanceOf(s.collaborationId, 'ESCROW')).toBe(0);
+      expect(await prisma.payout.count()).toBe(1);
+      expect(await prisma.refund.count()).toBe(1);
+      expect(await notificationCount('SETTLEMENT_CONFIRMED')).toBe(1);
+      expect((await reportBody(s.collaborationId)).source).toBe(
+        'CAPTURE_CONFIRMED',
+      );
+      expect(
+        await prisma.opsAuditLog.count({
+          where: { command: 'confirm-evidence' },
+        }),
+      ).toBe(1);
+      assertBalanced(await ledgerOf(s.collaborationId));
+      // 같은 명령을 다시 실행해도 두 번 움직이지 않는다.
+      const again = await ops(
+        'confirm-evidence',
+        '--collaboration',
+        s.collaborationId,
+      );
+      expect(again.exitCode).toBe(1);
+      expect(await settleLines(s.collaborationId)).toHaveLength(2);
+    });
+
+    it('refuses confirm-evidence for a calculation read from the connected account or without a calculation', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      const r = await ops(
+        'confirm-evidence',
+        '--collaboration',
+        s.collaborationId,
+      );
+      expect(r.exitCode).toBe(1);
+      expect((await settlementOf(s.collaborationId)).status).toBe(
+        'UNCONFIRMED',
+      );
+      const none = await seed({
+        ownerId: '33333333-3333-4333-8333-333333333333',
+        creatorId: '44444444-4444-4444-8444-444444444444',
+      });
+      expect(
+        (await ops('confirm-evidence', '--collaboration', none.collaborationId))
+          .exitCode,
+      ).toBe(1);
+    });
+
+    it('resolves a dispute with corrected views and settles with the new amounts', async () => {
+      const s = await seed();
+      await submitAndCalculate(s, 12500);
+      expect((await settlementOf(s.collaborationId)).payoutAmount).toBe(25000);
+      await dispute(s.collaborationId).expect(200);
+      const r = await ops(
+        'resolve-dispute',
+        '--collaboration',
+        s.collaborationId,
+        '--views',
+        '10000',
+      );
+      expect(r.exitCode).toBe(0);
+      expect(await collaborationRow(s.collaborationId)).toMatchObject({
+        stage: 'SETTLED',
+        haltedReason: null,
+        stageBeforeHalt: null,
+      });
+      expect(await settlementOf(s.collaborationId)).toMatchObject({
+        status: 'CONFIRMED',
+        confirmedBy: 'OPERATOR',
+        finalViews: 10000,
+        viewPayAmount: 20000,
+        payoutAmount: 20000,
+        refundAmount: 40000,
+      });
+      expect(
+        await prisma.settlementDispute.findFirstOrThrow({
+          where: { collaborationId: s.collaborationId },
+        }),
+      ).toMatchObject({
+        resolution: 'VIEWS_CORRECTED',
+        resolvedViews: 10000,
+      });
+      expect(
+        (await prisma.settlementDispute.findFirstOrThrow()).resolvedAt,
+      ).not.toBeNull();
+      expect(await prisma.payout.findMany()).toMatchObject([{ amount: 20000 }]);
+      expect(await prisma.refund.findMany()).toMatchObject([{ amount: 40000 }]);
+      expect(await balanceOf(s.collaborationId, 'ESCROW')).toBe(0);
+      expect(await notificationCount('SETTLEMENT_CONFIRMED')).toBe(1);
+      assertBalanced(await ledgerOf(s.collaborationId));
+    });
+
+    it('resolves a dispute as it stands when no views are given', async () => {
+      const s = await seed();
+      await submitAndCalculate(s, 12500);
+      await dispute(s.collaborationId, '다시 봐 주세요', creator).expect(200);
+      const r = await ops(
+        'resolve-dispute',
+        '--collaboration',
+        s.collaborationId,
+      );
+      expect(r.exitCode).toBe(0);
+      expect(await settlementOf(s.collaborationId)).toMatchObject({
+        status: 'CONFIRMED',
+        confirmedBy: 'OPERATOR',
+        finalViews: 12500,
+        payoutAmount: 25000,
+        refundAmount: 35000,
+      });
+      expect(await prisma.settlementDispute.findFirstOrThrow()).toMatchObject({
+        resolution: 'UPHELD_AS_IS',
+        resolvedViews: null,
+      });
+      expect((await collaborationRow(s.collaborationId)).stage).toBe('SETTLED');
+      expect(await balanceOf(s.collaborationId, 'ESCROW')).toBe(0);
+    });
+
+    it('resolves a dispute raised over a capture calculation and marks the capture confirmed', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 7);
+      await sendEvidence(
+        s.collaborationId,
+        await evidenceUpload(),
+        90000,
+      ).expect(200);
+      await dispute(s.collaborationId, '캡처 조회수가 이상해요').expect(200);
+      const r = await ops(
+        'resolve-dispute',
+        '--collaboration',
+        s.collaborationId,
+        '--views',
+        '30000',
+      );
+      expect(r.exitCode).toBe(0);
+      expect(await settlementOf(s.collaborationId)).toMatchObject({
+        status: 'CONFIRMED',
+        evidenceSource: 'CAPTURE',
+        finalViews: 30000,
+        payoutAmount: 60000,
+        refundAmount: 0,
+      });
+      expect(
+        (await prisma.viewEvidence.findFirstOrThrow()).confirmedAt,
+      ).not.toBeNull();
+    });
+
+    it('refuses resolve-dispute when nothing is disputed and leaves everything as it was', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      const r = await ops(
+        'resolve-dispute',
+        '--collaboration',
+        s.collaborationId,
+      );
+      expect(r.exitCode).toBe(1);
+      expect((await settlementOf(s.collaborationId)).status).toBe(
+        'UNCONFIRMED',
+      );
+      expect(await settleLines(s.collaborationId)).toHaveLength(0);
+    });
+
+    it('rolls the whole resolution back when the corrected views would break the ledger', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      await dispute(s.collaborationId).expect(200);
+      // 에스크로를 건드려 검산이 어긋나게 한다: 명령은 거절되고 정산 행·협업이 그대로여야 한다.
+      await prisma.ledgerEntry.updateMany({
+        where: { collaborationId: s.collaborationId, creditAccount: 'ESCROW' },
+        data: { amount: 50000 },
+      });
+      await expect(
+        ops(
+          'resolve-dispute',
+          '--collaboration',
+          s.collaborationId,
+          '--views',
+          '1000',
+        ),
+      ).rejects.toThrow();
+      expect((await settlementOf(s.collaborationId)).status).toBe('DISPUTED');
+      expect((await collaborationRow(s.collaborationId)).stage).toBe('HALTED');
+      expect(await prisma.payout.count()).toBe(0);
+      // 안 맞는 장부는 afterEach 검산에 걸리므로 되돌려 둔다.
+      await prisma.ledgerEntry.updateMany({
+        where: { collaborationId: s.collaborationId, creditAccount: 'ESCROW' },
+        data: { amount: 60000 },
       });
     });
   });

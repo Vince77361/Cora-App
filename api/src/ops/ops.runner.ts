@@ -74,6 +74,14 @@ export class OpsRunner {
         return this.service.retryRefund(v.refund as string, actor);
       case 'refund-payment':
         return this.service.refundPayment(v.payment as string, actor);
+      case 'confirm-evidence':
+        return this.service.confirmEvidence(v.collaboration as string, actor);
+      case 'resolve-dispute':
+        return this.service.resolveDispute(
+          v.collaboration as string,
+          v.views as number | undefined,
+          actor,
+        );
       case 'show':
         return this.service.show(v.collaboration as string);
       default:
