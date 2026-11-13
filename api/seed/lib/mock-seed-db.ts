@@ -277,6 +277,21 @@ export class PrismaMockSeedDb implements MockSeedDb {
         }));
     };
 
+    // 남기는 오퍼(남의 협업이 붙은 오퍼)가 가리키는 지원은 지우지 않는다. 지우면 DB가 그 오퍼의 지원 칸을 비워 남의 오퍼를 바꾸게 된다.
+    const keptOffers = await this.prisma.offer.findMany({
+      where: {
+        AND: [
+          scope,
+          { applicationId: { not: null } },
+          { collaboration: { is: { id: { notIn: seedCollaborationIds } } } },
+        ],
+      },
+      select: { applicationId: true },
+    });
+    const keptApplicationIds = keptOffers.flatMap((o) =>
+      o.applicationId ? [o.applicationId] : [],
+    );
+
     await this.prisma.$transaction([
       this.prisma.ledgerEntry.deleteMany({ where: ofSeed }),
       this.prisma.viewSnapshot.deleteMany({ where: ofSeed }),
@@ -292,7 +307,9 @@ export class PrismaMockSeedDb implements MockSeedDb {
       // 판본이 오퍼를 가리키므로 판본, 오퍼, 지원 순서로 지운다.
       this.prisma.offerVersion.deleteMany({ where: { offer: offerScope } }),
       this.prisma.offer.deleteMany({ where: offerScope }),
-      this.prisma.application.deleteMany({ where: scope }),
+      this.prisma.application.deleteMany({
+        where: { AND: [scope, { id: { notIn: keptApplicationIds } }] },
+      }),
       this.prisma.creatorSeries.deleteMany({
         where: { creatorId: { in: mockCreatorIds } },
       }),

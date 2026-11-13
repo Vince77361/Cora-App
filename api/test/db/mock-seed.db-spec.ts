@@ -276,4 +276,50 @@ describe('PrismaMockSeedDb', () => {
     expect(await prisma.offer.count({ where: { creatorId: noodle } })).toBe(2);
     expect(await prisma.ledgerEntry.count()).toBe(4 + 2);
   });
+  it('keeps an application that a kept offer with a foreign collaboration points to', async () => {
+    await run();
+    const store = await prisma.store.findFirstOrThrow();
+    const noodle = accountIds.get('010-0000-0006') as string;
+    // 끝난 지원(살아 있지 않아 새 지원과 부딪히지 않는다)이 남의 협업이 붙은 오퍼에 이어져 있다.
+    const application = await prisma.application.create({
+      data: { storeId: store.id, creatorId: noodle, status: 'CLOSED' },
+    });
+    const offer = await prisma.offer.create({
+      data: {
+        storeId: store.id,
+        creatorId: noodle,
+        applicationId: application.id,
+        status: 'ACCEPTED',
+        turn: 'CREATOR',
+        initiatedBy: 'STORE',
+        expiresAt: new Date(),
+        closedAt: new Date(),
+      },
+    });
+    const collaboration = await prisma.collaboration.create({
+      data: {
+        kind: 'STORE_OFFER',
+        stage: 'SETTLED',
+        commissionerId: store.ownerId,
+        creatorId: noodle,
+        offerId: offer.id,
+        storeId: store.id,
+        terms: {},
+        settlementMethod: 'PER_VIEW',
+      },
+    });
+
+    await expect(run()).resolves.toBeUndefined();
+
+    expect(
+      await prisma.application.count({ where: { id: application.id } }),
+    ).toBe(1);
+    expect(
+      (await prisma.offer.findUniqueOrThrow({ where: { id: offer.id } }))
+        .applicationId,
+    ).toBe(application.id);
+    expect(
+      await prisma.collaboration.count({ where: { id: collaboration.id } }),
+    ).toBe(1);
+  });
 });
