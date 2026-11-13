@@ -44,7 +44,14 @@ interface RowBody {
 interface VersionBody {
   number: number;
   authorParty: string;
-  terms: { fixedCash: number; voucherValue: number | null };
+  terms: {
+    fixedCash: number;
+    voucherValue: number | null;
+    format: string;
+    viewRatePerThousand: number | null;
+    perViewCap: number | null;
+    maxCashBurden: number;
+  };
   idea: string | null;
 }
 interface DetailBody {
@@ -545,6 +552,16 @@ describe('proposals', () => {
         store: { id: store, name: '성수 카페' },
         // 조회수 수당이 있는데 인스타그램 연동이 없다.
         needsInstagram: true,
+      });
+      // 역제안(F6)은 받은 오퍼의 최신 판본 조건에서 시작하므로 크리에이터도 그 조건을 읽는다.
+      expect(body.latest).toMatchObject({
+        number: 1,
+        terms: {
+          format: 'REELS',
+          viewRatePerThousand: 2000,
+          perViewCap: 60000,
+          maxCashBurden: 60000,
+        },
       });
     });
 
