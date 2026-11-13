@@ -10,6 +10,8 @@ import 'core/network/api_client_provider.dart';
 import 'core/network/photo_uploader.dart';
 import 'core/network/timeout_http_client.dart';
 import 'package:cora_api/api.dart' as api;
+import 'features/applicant_picks/data/api_applicant_picks_repository.dart';
+import 'features/applicant_picks/domain/applicant_picks_repository.dart';
 import 'features/auth/data/secure_key_value_store.dart';
 import 'features/auth/data/fake_sign_in_adapter.dart';
 import 'features/auth/data/secure_session_storage.dart';
@@ -120,6 +122,9 @@ Future<void> main() async {
         ),
         storeHomeRepositoryProvider.overrideWith(
           (ref) => ApiStoreHomeRepository(ref.watch(apiClientProvider)),
+        ),
+        applicantPicksRepositoryProvider.overrideWith(
+          (ref) => ApiApplicantPicksRepository(ref.watch(apiClientProvider)),
         ),
         storeResultRepositoryProvider.overrideWith(
           (ref) => ApiStoreResultRepository(ref.watch(apiClientProvider)),

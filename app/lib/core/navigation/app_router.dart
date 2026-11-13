@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/applicant_picks/presentation/pages/applicant_picks_page.dart';
 import '../../features/auth/domain/auth_session.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/phone_verify_page.dart';
@@ -224,6 +225,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StorePaymentPage(
             collaborationId: state.pathParameters['collaborationId']!,
           ),
+          key: state.pageKey,
+        ),
+      ),
+      // 지원자 추천(G2). 사장님 홈 위로 밀려 들어온다.
+      GoRoute(
+        path: AppRoutes.storeApplicantPicks,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const ApplicantPicksPage(),
           key: state.pageKey,
         ),
       ),
