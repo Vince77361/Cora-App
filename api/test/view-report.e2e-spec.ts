@@ -15,6 +15,7 @@ import { PushPort } from '../src/integrations/push/push.port';
 import { JobScheduler } from '../src/jobs/job-scheduler';
 import { assertBalanced } from '../src/ledger/ledger-postings';
 import { OpsRunner } from '../src/ops/ops.runner';
+import { SettlementFinishService } from '../src/settlements/settlement-finish.service';
 import { ViewReportService } from '../src/settlements/view-report.service';
 import { createOffer } from './helpers/create-offer';
 import { createTestApp, httpOf } from './helpers/create-test-app';
@@ -581,6 +582,30 @@ describe('view report', () => {
       expect(await notificationCount('SETTLEMENT_REFUNDED')).toBe(1);
     });
 
+    it('retries soon when the steps after the owner confirmation failed', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      clock.set(afterDays(7, 5));
+      const finish = jest
+        .spyOn(app.get(SettlementFinishService), 'finishOf')
+        .mockRejectedValueOnce(new Error('push down'));
+      try {
+        // 확인은 이미 커밋됐으므로 응답은 성공이고, 48시간 자동 확인을 기다리지 않게 지금 다시 올린다.
+        await confirm(s.collaborationId).expect(200);
+        expect(jobKeys()).toContain(`finish:${s.collaborationId}`);
+        expect(await prisma.payout.count()).toBe(1);
+        expect(await notificationCount('SETTLEMENT_CONFIRMED')).toBe(0);
+        await scheduler.runDue(clock.now());
+        expect(await notificationCount('SETTLEMENT_CONFIRMED')).toBe(1);
+        expect(await notificationCount('SETTLEMENT_REFUNDED')).toBe(1);
+        expect(await prisma.payout.count()).toBe(1);
+        expect(await prisma.refund.count()).toBe(1);
+        expect(pg.refunds).toHaveLength(1);
+      } finally {
+        finish.mockRestore();
+      }
+    });
+
     it('does nothing when the confirm job runs after the owner confirmed', async () => {
       const s = await seed();
       await submitAndCalculate(s);
@@ -1054,6 +1079,60 @@ describe('view report', () => {
       });
       expect(view.evidence?.imageUrl).toContain(path);
     });
+
+    // 서버를 다시 켜면 때가 지난 작업이 한꺼번에(동시성 4) 올라온다. 캡처가 있으면 어떤 순서로 돌아도 멈추지 않고 캡처 계산이 생긴다.
+    it.each([
+      ['in due order', ['view-snapshot', 'settle', 'evidence-missing-halt']],
+      ['halt job first', ['evidence-missing-halt', 'settle', 'view-snapshot']],
+      ['settle first', ['settle', 'evidence-missing-halt', 'view-snapshot']],
+      [
+        'snapshots in the middle',
+        ['evidence-missing-halt', 'view-snapshot', 'settle'],
+      ],
+      ['all at once', null],
+    ] as [string, string[] | null][])(
+      'never halts a collaboration that has a capture when the due jobs run %s',
+      async (_label, order) => {
+        const s = await seed();
+        await submitUnreadableUntil(s, 4);
+        await sendEvidence(
+          s.collaborationId,
+          await evidenceUpload(),
+          10000,
+        ).expect(200);
+        clock.set(afterDays(9));
+        // 기한 작업은 정산 작업이 올리지만, 먼저 도는 순서도 확인하려고 미리 올려 둔다.
+        await scheduler.schedule(
+          'evidence-missing-halt',
+          { collaborationId: s.collaborationId },
+          clock.now(),
+          `evidence-halt:${s.collaborationId}`,
+        );
+        const due = scheduler.pending().filter((j) => j.runAt <= clock.now());
+        const run = (j: (typeof due)[number]) =>
+          scheduler.registry.run(j.name, j.payload);
+        if (order === null) {
+          await Promise.all(due.map(run));
+        } else {
+          const sorted = [...due].sort(
+            (a, b) => order.indexOf(a.name) - order.indexOf(b.name),
+          );
+          for (const j of sorted) await run(j);
+        }
+        // 정산 작업이 그사이 올린 기한 작업이 남았다면 마저 돌려도 같다.
+        await scheduler.runDue(clock.now());
+        expect(await collaborationRow(s.collaborationId)).toMatchObject({
+          stage: 'COUNTING',
+          haltedReason: null,
+        });
+        expect(await settlementOf(s.collaborationId)).toMatchObject({
+          status: 'UNCONFIRMED',
+          evidenceSource: 'CAPTURE',
+          finalViews: 10000,
+        });
+        expect(await prisma.settlement.count()).toBe(1);
+      },
+    );
 
     it('calculates right away when the capture arrives after the period ended', async () => {
       const s = await seed();

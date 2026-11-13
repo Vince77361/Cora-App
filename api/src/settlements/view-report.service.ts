@@ -30,6 +30,7 @@ import {
   disputeDedupeKey,
   evidenceHaltJobKey,
   evidenceRequestDedupeKey,
+  finishJobKey,
   SETTLEMENT_DISPUTED_HALT_REASON,
   settleJobKey,
   settlePayoutKey,
@@ -136,6 +137,10 @@ export class ViewReportService {
         }
         const fresh = await this.collaborations.findById(collaborationId, tx);
         if (fresh?.stage !== 'COUNTING') return rollback('gone');
+        // 작업이 겹쳐 돈 두 번째 실행은 잠금을 잡은 채 INSERT로 가지 않는다: 첫 계산 행을 이의·확인이 갱신 중이면 서로 기다려 교착이 난다.
+        if (await this.repository.findSettlement(collaborationId, tx)) {
+          return rollback('exists');
+        }
         const created = await this.repository.createSettlement(row, tx);
         return created ? 'created' : rollback('exists');
       },
@@ -318,13 +323,15 @@ export class ViewReportService {
       { onlySource: 'CONNECTED_ACCOUNT' },
     );
     if (outcome === 'confirmed') {
-      // 돈은 이미 옮겨졌다: 커밋 뒤 단계가 실패해도 확인은 유효하고, 자동 확인 작업이 때가 되면 이어서 한다.
+      // 돈은 이미 옮겨졌다: 커밋 뒤 단계가 실패해도 확인은 유효하다. 48시간 뒤 자동 확인 작업을 기다리면 수요일 송금 묶음을 놓칠 수 있어
+      // 지금 시각에 다시 올린다(처리기는 확인 완료 정산이면 단계만 이어서 한다. 키는 지연 작업의 auto-confirm 키와 달라야 한다).
       try {
         await this.finisher.finishOf(collaborationId);
       } catch (error) {
         this.logger.error(
-          `확인 뒤 정산 단계를 마치지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+          `확인 뒤 정산 단계를 마치지 못했어요. 다시 올려요: ${error instanceof Error ? error.name : 'unknown'}`,
         );
+        await this.retryFinish(collaborationId);
       }
     }
     const view = await this.get(userId, collaborationId);
@@ -333,6 +340,21 @@ export class ViewReportService {
       throw this.cannotConfirm();
     }
     return view;
+  }
+
+  private async retryFinish(collaborationId: string): Promise<void> {
+    try {
+      await this.jobs.schedule(
+        'settlement-auto-confirm',
+        { collaborationId },
+        this.clock.now(),
+        finishJobKey(collaborationId),
+      );
+    } catch (error) {
+      this.logger.error(
+        `정산 단계를 다시 올리지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
   }
 
   // GET /collaborations/:id/view-report. 당사자만 읽는다(아니면 404).

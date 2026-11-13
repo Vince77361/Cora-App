@@ -224,6 +224,13 @@ describe('ViewReportService', () => {
       });
     });
 
+    it('does nothing when a calculation already exists once the lock is held', async () => {
+      // 겹쳐 돈 두 번째 실행은 잠금을 잡은 채 INSERT로 가지 않고 되돌린다(이의·확인과의 교착 방지).
+      repository.settlement = settlement();
+      await expect(service.createCalculation(COLLAB)).resolves.toBe('exists');
+      expect(repository.created).toEqual([]);
+    });
+
     it('does nothing when the collaboration is no longer counting', async () => {
       collaborations.row = collaboration({ stage: 'HALTED' });
       await expect(service.createCalculation(COLLAB)).resolves.toBe('gone');

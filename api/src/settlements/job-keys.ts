@@ -13,6 +13,10 @@ export const settleJobKey = (collaborationId: string): string =>
 export const autoConfirmJobKey = (collaborationId: string): string =>
   `auto-confirm:${collaborationId}`;
 
+// 사장님이 확인한 직후 뒷단계(지급 작업 등록, 알림, 환급)가 실패했을 때 바로 다시 올리는 작업의 키. 48시간 지연 작업(auto-confirm 키)과 달라야 한다.
+export const finishJobKey = (collaborationId: string): string =>
+  `finish:${collaborationId}`;
+
 // 캡처를 기다리다 기한(측정 기간이 끝난 뒤 3일)이 지나면 협업을 멈추는 작업.
 export const evidenceHaltJobKey = (collaborationId: string): string =>
   `evidence-halt:${collaborationId}`;
