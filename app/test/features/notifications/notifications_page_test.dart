@@ -574,6 +574,57 @@ void main() {
     expect(repo.fetched.map((f) => f.cursor), [null, '30']);
   });
 
+  testWidgets('pulling down reads new notifications while the list is open', (
+    tester,
+  ) async {
+    final repo = FakeNotificationRepository(items: [_note('a', read: true)]);
+    await pumpStoreNotifications(tester, repo: repo);
+    expect(find.text('b 문구'), findsNothing);
+
+    // 목록을 연 채로 서버에 새 알림이 생겼다.
+    repo.items.insert(0, _note('b'));
+    await tester.drag(find.text('a 문구'), const Offset(0, 400));
+    await tester.pumpAndSettle();
+
+    expect(find.text('b 문구'), findsOneWidget);
+    expect(find.text('a 문구'), findsOneWidget);
+    expect(repo.fetched.length, 2);
+  });
+
+  testWidgets('pulling down on the empty state reads the first notification', (
+    tester,
+  ) async {
+    final repo = FakeNotificationRepository();
+    await pumpStoreNotifications(tester, repo: repo);
+    expect(find.text('아직 알림이 없어요.'), findsOneWidget);
+
+    repo.items.add(_note('first'));
+    await tester.drag(find.text('아직 알림이 없어요.'), const Offset(0, 400));
+    await tester.pumpAndSettle();
+
+    expect(find.text('first 문구'), findsOneWidget);
+    expect(find.text('아직 알림이 없어요.'), findsNothing);
+  });
+
+  testWidgets('keeps the rows and says so when the pull to refresh fails', (
+    tester,
+  ) async {
+    final repo = FakeNotificationRepository(items: [_note('a', read: true)]);
+    await pumpStoreNotifications(tester, repo: repo);
+
+    repo.failFetch = true;
+    await tester.drag(find.text('a 문구'), const Offset(0, 400));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('a 문구'), findsOneWidget);
+    expect(find.text('알림을 불러오지 못했어요.'), findsOneWidget);
+    // 안내는 잠깐 보이고 사라진다(타이머를 비워 둔다).
+    await tester.pump(NotificationsPage.noticeFor);
+    await tester.pumpAndSettle();
+    expect(find.text('알림을 불러오지 못했어요.'), findsNothing);
+  });
+
   testWidgets('goes back to the screen it came from', (tester) async {
     await pumpStoreNotifications(tester, repo: FakeNotificationRepository());
 

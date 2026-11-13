@@ -80,6 +80,29 @@ class NotificationsViewModel extends AsyncNotifier<NotificationsState> {
   void selectTab(NotificationTabFilter tab) =>
       ref.read(notificationTabProvider.notifier).select(tab);
 
+  /// 아래로 당겨 첫 쪽부터 다시 읽는다. 목록을 연 채로 서버에 새 알림이 생겨도 이것으로 가져온다.
+  /// 실패하면 보던 줄을 그대로 두고 안내만 띄운다(화면이 빈 오류로 바뀌지 않게).
+  Future<void> refresh() async {
+    final current = state.value;
+    if (current == null) return;
+    final tab = ref.read(notificationTabProvider);
+    try {
+      final page = await _repo.fetch(tab);
+      // 기다리는 사이 탭이 바뀌었으면 이 쪽은 이전 탭의 것이라 버린다(탭이 바뀌면 build가 새로 읽는다).
+      if (!ref.mounted || ref.read(notificationTabProvider) != tab) return;
+      state = AsyncData(
+        NotificationsState(items: page.items, nextCursor: page.nextCursor),
+      );
+    } on NotificationFailure {
+      if (!ref.mounted || ref.read(notificationTabProvider) != tab) return;
+      state = AsyncData(
+        (state.value ?? current).copyWith(notice: NotificationTexts.loadFailed),
+      );
+    }
+    // 종의 점과 숫자도 서버 값으로 다시 맞춘다.
+    if (ref.mounted) ref.invalidate(unreadCountViewModelProvider);
+  }
+
   /// 다음 쪽을 이어 붙인다. 이미 불러오는 중이거나 마지막 쪽이면 아무것도 하지 않는다.
   Future<void> loadMore() async {
     final current = state.value;

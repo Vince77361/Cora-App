@@ -140,13 +140,30 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                 Expanded(
                   child: switch (async) {
                     // 탭을 바꿔 다시 읽는 동안에는 이전 탭의 줄을 보이지 않는다.
-                    AsyncData(:final value, isLoading: false) =>
-                      value.items.isEmpty
-                          ? const _Empty()
+                    AsyncData(:final value, isLoading: false) => RefreshIndicator(
+                      onRefresh: ref
+                          .read(notificationsViewModelProvider.notifier)
+                          .refresh,
+                      color: context.colors.text,
+                      backgroundColor: context.colors.background,
+                      child: value.items.isEmpty
+                          // 비어 있어도 당길 수 있게 화면 높이의 목록 하나로 감싼다.
+                          ? LayoutBuilder(
+                              builder: (context, box) => ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                children: [
+                                  SizedBox(
+                                    height: box.maxHeight,
+                                    child: const _Empty(),
+                                  ),
+                                ],
+                              ),
+                            )
                           : NotificationListener<ScrollNotification>(
                               onNotification: _onScroll,
                               child: ListView.builder(
                                 controller: _scroll,
+                                physics: const AlwaysScrollableScrollPhysics(),
                                 // 위 12, 좌우 8(NNotify `ul`). 아래는 고정 버튼 높이만큼 비운다.
                                 padding: EdgeInsets.fromLTRB(
                                   8,
@@ -165,6 +182,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                                 },
                               ),
                             ),
+                    ),
                     AsyncError(isLoading: false) => CoraStateView.loadFailed(
                       title: NotificationTexts.loadFailed,
                       onRetry: () =>
