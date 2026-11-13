@@ -18,7 +18,7 @@ abstract class StoreRepository {
   /// 등록 단계를 [step]으로 올린다. 같거나 앞 단계면 그대로다.
   Future<MyStore> advance(StoreOnboardingStep step);
 
-  Future<MyStore> setDefaultTerms(OfferTermsInput input);
+  Future<MyStore> setDefaultTerms(OfferTerms terms);
 
   Future<MyStore> publish();
 }

@@ -72,8 +72,13 @@ void main() {
     expect(c.steps.map((s) => s.key), StepKey.values);
     expect(c.steps.last.state, StepState.now);
     expect(c.steps.first.at, DateTime.utc(2026, 11, 10, 3));
-    expect(c.terms.rewardType, RewardType.both);
-    expect(c.terms.voucherName, '식사권');
+    expect(
+      c.terms.reward,
+      const Reward(
+        voucher: Voucher(name: '식사권', value: 40000, people: 2),
+        viewPay: ViewPay(ratePerThousand: 10000, cap: 100000),
+      ),
+    );
     expect(c.payoutStatus, PayoutStatus.none);
   });
 

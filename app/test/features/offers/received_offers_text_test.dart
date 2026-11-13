@@ -15,17 +15,16 @@ void main() {
   test('joins the reward summary and the store intro', () {
     const both = OfferTerms(
       format: ContentFormat.reels,
-      rewardType: RewardType.both,
-      voucherName: '2인 식사권',
-      voucherValue: 40000,
-      perViewAmount: 10,
-      perViewCap: 100000,
+      reward: Reward(
+        voucher: Voucher(name: '2인 식사권', value: 40000),
+        viewPay: ViewPay(ratePerThousand: 2000, cap: 100000),
+      ),
     );
     expect(
       offerDescription(both, '김이 오르는 첫 숟가락 장면을 원해요.'),
-      '조회 1회당 10원, 최대 10만 원. 김이 오르는 첫 숟가락 장면을 원해요.',
+      '1,000회당 2,000원, 최대 100,000원. 김이 오르는 첫 숟가락 장면을 원해요.',
     );
-    expect(offerDescription(both, '  '), '조회 1회당 10원, 최대 10만 원');
+    expect(offerDescription(both, '  '), '1,000회당 2,000원, 최대 100,000원');
   });
 
   test('builds tags without spaces in the shooting time', () {

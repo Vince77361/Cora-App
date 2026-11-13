@@ -6,6 +6,7 @@ import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../offer_terms/domain/offer_terms.dart';
 import '../../../offer_terms/presentation/widgets/offer_terms_wizard.dart';
+import '../../../server_config/presentation/viewmodels/server_config_view_model.dart';
 import '../../../store_home/domain/applicant.dart';
 import '../../../store_home/domain/store_home_repository.dart';
 import '../../../store_home/presentation/viewmodels/store_home_view_model.dart';
@@ -50,11 +51,11 @@ class _SendOfferPageState extends ConsumerState<SendOfferPage> {
     }
   }
 
-  Future<void> _send(OfferTermsInput input) async {
+  Future<void> _send(OfferTerms terms) async {
     try {
       await ref
           .read(storeHomeViewModelProvider.notifier)
-          .sendOffer(widget.creatorId, input);
+          .sendOffer(widget.creatorId, terms);
     } on StoreHomeFailure catch (failure) {
       if (mounted) {
         setState(() {
@@ -75,19 +76,26 @@ class _SendOfferPageState extends ConsumerState<SendOfferPage> {
     _applicant ??= ref.watch(sendOfferApplicantProvider(widget.creatorId));
     final applicant = _applicant;
     final store = ref.watch(myStoreViewModelProvider).value;
+    final config = ref.watch(serverConfigViewModelProvider);
     final Widget body;
-    if (applicant == null || store == null) {
-      final loading = ref.watch(storeHomeViewModelProvider).isLoading;
+    if (applicant == null || store == null || config.value == null) {
+      final loading =
+          ref.watch(storeHomeViewModelProvider).isLoading || config.isLoading;
       body = loading
           ? const CoraStateView.loading()
           : CoraStateView.loadFailed(
               title: SendOfferPage.notFound,
-              onRetry: () => ref.invalidate(storeHomeViewModelProvider),
+              onRetry: () {
+                ref.invalidate(storeHomeViewModelProvider);
+                ref.invalidate(serverConfigViewModelProvider);
+              },
             );
     } else {
+      final defaults = config.value!.defaultTerms;
       body = OfferTermsWizard(
         pageLabel: SendOfferPage.pageLabel(applicant.creator.displayName),
-        initial: initialTermsOf(store.defaultTerms),
+        initial: store.defaultTerms ?? defaults,
+        defaults: defaults,
         storeName: store.name ?? '',
         confirmTitle: SendOfferPage.confirmTitle,
         confirmDescription: SendOfferPage.confirmDescription,

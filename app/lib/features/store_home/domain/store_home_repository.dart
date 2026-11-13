@@ -12,7 +12,7 @@ abstract class StoreHomeRepository {
   Future<List<SentOffer>> fetchSentOffers();
 
   /// 이미 열린 오퍼가 있으면 [StoreHomeFailure.conflict].
-  Future<void> sendOffer(String creatorId, OfferTermsInput terms);
+  Future<void> sendOffer(String creatorId, OfferTerms terms);
 
   /// 답을 기다리거나 수락한 오퍼를 취소한다. 그사이 상태가 바뀌었으면 [StoreHomeFailure.conflict].
   Future<void> cancelOffer(String offerId);

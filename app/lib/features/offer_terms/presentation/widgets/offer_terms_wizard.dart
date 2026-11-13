@@ -25,7 +25,8 @@ class OfferTermsWizard extends ConsumerStatefulWidget {
   const OfferTermsWizard({
     super.key,
     required this.pageLabel,
-    this.initial,
+    required this.initial,
+    required this.defaults,
     required this.storeName,
     required this.confirmTitle,
     required this.confirmDescription,
@@ -36,13 +37,16 @@ class OfferTermsWizard extends ConsumerStatefulWidget {
 
   final String pageLabel;
 
-  /// 처음 고를 값. 없으면 릴스, 식사권 + 조회수다.
-  final OfferTermsInput? initial;
+  /// 처음 고를 값. 가게의 모집 조건, 없으면 서버 설정의 기본값이다.
+  final OfferTerms initial;
+
+  /// 없던 보상 요소를 켤 때 쓰는 서버 설정의 기본값.
+  final OfferTerms defaults;
   final String storeName;
   final String confirmTitle;
   final String confirmDescription;
   final String submitLabel;
-  final Future<void> Function(OfferTermsInput) onSubmit;
+  final Future<void> Function(OfferTerms) onSubmit;
   final String failureMessage;
 
   static const nextLabel = '다음';
@@ -55,7 +59,7 @@ class OfferTermsWizard extends ConsumerStatefulWidget {
 
 class _OfferTermsWizardState extends ConsumerState<OfferTermsWizard> {
   // 한 번만 만든다. 부모가 다시 그려져 `initial`이 바뀌어도 고르던 상태는 그대로다.
-  late final _seed = OfferTermsWizardSeed(widget.initial);
+  late final _seed = OfferTermsWizardSeed(widget.initial, widget.defaults);
 
   OfferTermsWizardViewModel get _vm =>
       ref.read(offerTermsWizardViewModelProvider(_seed).notifier);
@@ -63,8 +67,8 @@ class _OfferTermsWizardState extends ConsumerState<OfferTermsWizard> {
   Future<void> _editVoucher(OfferTermsWizardState state) async {
     final edited = await showVoucherEditSheet(
       context,
-      name: state.voucherName,
-      value: state.voucherValue,
+      name: state.voucher.name,
+      value: state.voucher.value,
     );
     if (edited == null || !mounted) return;
     _vm.setVoucher(name: edited.name, value: edited.value);
@@ -78,12 +82,12 @@ class _OfferTermsWizardState extends ConsumerState<OfferTermsWizard> {
     final duration = CoraMotion.resolve(context, CoraMotion.fadeDuration);
 
     final Widget content = switch (state.step) {
-      0 => FormatStep(selected: state.format, onPick: _vm.pickFormat),
+      0 => FormatStep(selected: state.terms.format, onPick: _vm.pickFormat),
       1 => RewardStep(
-        rewardType: state.rewardType,
-        voucherName: state.voucherName,
-        voucherValue: state.voucherValue,
-        perViewAllowed: state.perViewAllowed,
+        choice: state.choice,
+        voucher: state.voucher,
+        viewPay: state.viewPay,
+        viewPayAllowed: state.viewPayAllowed,
         onPick: _vm.pickReward,
         onEditVoucher: () => _editVoucher(state),
       ),
@@ -91,7 +95,7 @@ class _OfferTermsWizardState extends ConsumerState<OfferTermsWizard> {
         title: widget.confirmTitle,
         description: widget.confirmDescription,
         storeName: widget.storeName,
-        input: state.toInput(),
+        terms: state.terms,
       ),
     };
 

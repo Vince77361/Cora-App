@@ -29,7 +29,7 @@ void main() {
       expect(find.text('공개된 가게'), findsOneWidget);
       expect(find.text('한그릇 라멘'), findsOneWidget);
       expect(find.text('라멘집, 성수동'), findsOneWidget);
-      expect(find.text('2인 식사권 + 조회수당'), findsOneWidget);
+      expect(find.text('2인 식사권 40,000원 + 조회수 수당'), findsOneWidget);
       // 같은 시·도라서 시·도 표지는 없다.
       expect(find.text('서울특별시'), findsNothing);
     });
@@ -114,8 +114,8 @@ void main() {
       expect(find.text('소상공인'), findsOneWidget);
       expect(find.text('릴스 1편을 만들어 줄\n크리에이터를 찾아요'), findsOneWidget);
       expect(find.text('보상'), findsOneWidget);
-      expect(find.text('2인 식사권 + 조회 1회당 10원'), findsOneWidget);
-      expect(find.text('조회수당은 최대 10만 원'), findsOneWidget);
+      expect(find.text('2인 식사권 40,000원 + 조회수 수당'), findsOneWidget);
+      expect(find.text('조회수 수당은 최대 100,000원'), findsOneWidget);
       expect(find.text('찍기 좋은 시간'), findsOneWidget);
       expect(find.text('오후 3시 – 5시'), findsOneWidget);
       expect(find.text('지원 조건'), findsOneWidget);

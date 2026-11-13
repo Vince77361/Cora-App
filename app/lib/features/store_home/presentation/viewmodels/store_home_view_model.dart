@@ -120,7 +120,7 @@ class StoreHomeViewModel extends AsyncNotifier<StoreHomeState> {
 
   /// [creatorId]에게 [terms]로 오퍼를 보낸다. 성공하면 보낸 오퍼 탭을 열고 목록을 새로 읽는다.
   /// 실패하면 [StoreHomeFailure]를 던진다.
-  Future<void> sendOffer(String creatorId, OfferTermsInput terms) async {
+  Future<void> sendOffer(String creatorId, OfferTerms terms) async {
     await _repo.sendOffer(creatorId, terms);
     await _reloadOn(StoreHomeTab.sentOffers);
   }

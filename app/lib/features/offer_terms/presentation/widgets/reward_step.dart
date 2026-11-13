@@ -6,6 +6,7 @@ import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../domain/offer_terms.dart';
 import '../offer_terms_text.dart';
+import '../viewmodels/offer_terms_wizard_view_model.dart';
 import 'choice_surface.dart';
 import 'step_intro.dart';
 
@@ -16,19 +17,19 @@ import 'step_intro.dart';
 class RewardStep extends StatelessWidget {
   const RewardStep({
     super.key,
-    required this.rewardType,
-    required this.voucherName,
-    required this.voucherValue,
-    required this.perViewAllowed,
+    required this.choice,
+    required this.voucher,
+    required this.viewPay,
+    required this.viewPayAllowed,
     required this.onPick,
     required this.onEditVoucher,
   });
 
-  final RewardType rewardType;
-  final String voucherName;
-  final int voucherValue;
-  final bool perViewAllowed;
-  final ValueChanged<RewardType> onPick;
+  final RewardChoice? choice;
+  final Voucher voucher;
+  final ViewPay viewPay;
+  final bool viewPayAllowed;
+  final ValueChanged<RewardChoice> onPick;
   final VoidCallback onEditVoucher;
 
   static const title = '어떻게\n보상할까요?';
@@ -36,26 +37,29 @@ class RewardStep extends StatelessWidget {
   static const editVoucherLabel = '식사권 고치기';
   static const blogNote = '블로그 글은 조회수를 셀 수 없어요.';
 
-  bool get _hasVoucher => rewardType != RewardType.perView;
+  bool get _hasVoucher =>
+      choice == RewardChoice.voucher || choice == RewardChoice.both;
+
+  static String _title(RewardChoice c) => switch (c) {
+    RewardChoice.voucher => '식사권 제공',
+    RewardChoice.viewPay => '조회수당 지급',
+    RewardChoice.both => '식사권 + 조회수',
+  };
+
+  String _subtitle(RewardChoice c) => switch (c) {
+    RewardChoice.voucher => benefitLine(voucher),
+    RewardChoice.viewPay => viewPayLineComma(viewPay),
+    RewardChoice.both => '식사 후 올리고, 조회수만큼 더 받아요',
+  };
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final voucherInput = OfferTermsInput(
-      format: ContentFormat.reels,
-      rewardType: RewardType.voucher,
-      voucherName: voucherName,
-      voucherValue: voucherValue,
-    );
-    Widget card(RewardType type) => _RewardCard(
-      title: rewardTitle(type),
-      subtitle: rewardSubtitle(
-        type == RewardType.voucher
-            ? voucherInput
-            : OfferTermsInput(format: ContentFormat.reels, rewardType: type),
-      ),
-      selected: type == rewardType,
-      onTap: type == RewardType.voucher || perViewAllowed
+    Widget card(RewardChoice type) => _RewardCard(
+      title: _title(type),
+      subtitle: _subtitle(type),
+      selected: type == choice,
+      onTap: type == RewardChoice.voucher || viewPayAllowed
           ? () => onPick(type)
           : null,
     );
@@ -69,8 +73,8 @@ class RewardStep extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 10,
             children: [
-              for (final type in RewardType.values) card(type),
-              if (!perViewAllowed)
+              for (final type in RewardChoice.values) card(type),
+              if (!viewPayAllowed)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 2, 8, 0),
                   child: Text(

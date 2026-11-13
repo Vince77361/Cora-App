@@ -4,44 +4,77 @@ import '../domain/offer_terms.dart';
 
 /// 서버가 보낸 확정 조건을 앱의 타입으로 바꾼다. 생성된 타입은 data 계층 밖으로 새지 않게 여기서 끊는다.
 ///
-/// 서버는 보상을 세 요소(식사권, 고정 현금, 조회수 수당)로 보낸다. 앱 도메인(Task 7이 바꾼다)이 아직 옛 모양이라
-/// 보상 종류는 식사권·조회수 수당이 있는지로 가르고, 단가는 1,000회당 금액을 건당 금액으로 환산한다.
-OfferTerms offerTermsFromWire(api.OfferTermsModel t) => OfferTerms(
-  format: switch (t.format) {
-    api.ContentFormat.SHORTS => ContentFormat.shorts,
-    api.ContentFormat.REELS => ContentFormat.reels,
-    api.ContentFormat.CARD_NEWS => ContentFormat.cardNews,
-    _ => ContentFormat.blog,
-  },
-  rewardType: switch ((t.voucherName != null, t.perViewCap != null)) {
-    (true, false) => RewardType.voucher,
-    (false, true) => RewardType.perView,
-    _ => RewardType.both,
-  },
-  voucherName: t.voucherName,
-  voucherValue: t.voucherValue,
-  perViewAmount: t.viewRatePerThousand == null
-      ? null
-      : t.viewRatePerThousand! ~/ 1000,
-  perViewCap: t.perViewCap,
-);
+/// 서버는 보상을 세 요소로 보낸다. 식사권은 이름과 금액이 모두 있을 때만, 조회수 수당은 단가와
+/// 상한이 모두 있을 때만 있는 것으로 본다. 읽을 때는 범위를 검사하지 않는다(옛 협업의 값도 그대로 읽는다).
+OfferTerms offerTermsFromWire(api.OfferTermsModel t) {
+  final voucherName = t.voucherName;
+  final voucherValue = t.voucherValue;
+  final rate = t.viewRatePerThousand;
+  final cap = t.perViewCap;
+  return OfferTerms(
+    format: formatFromWire(t.format),
+    pieces: t.pieces,
+    reward: Reward(
+      voucher: voucherName == null || voucherValue == null
+          ? null
+          : Voucher(
+              name: voucherName,
+              value: voucherValue,
+              people: t.voucherPeople,
+            ),
+      fixedCash: t.fixedCash,
+      viewPay: rate == null || cap == null
+          ? null
+          : ViewPay(ratePerThousand: rate, cap: cap),
+    ),
+    usageRights: usageRightsFromWire(t.usageRights),
+  );
+}
 
-/// 사장님이 고른 조건을 서버의 보상 입력으로 바꾼다. 조회수 단가와 상한은 비워 보내
-/// 서버가 가게의 모집 조건(없으면 기본값)으로 채우게 한다.
-api.RewardInputDto rewardInputToWire(OfferTermsInput input) {
-  final hasVoucher =
-      input.rewardType == RewardType.voucher ||
-      input.rewardType == RewardType.both;
-  final hasPerView =
-      input.rewardType == RewardType.perView ||
-      input.rewardType == RewardType.both;
+ContentFormat formatFromWire(api.ContentFormat f) => switch (f) {
+  api.ContentFormat.SHORTS => ContentFormat.shorts,
+  api.ContentFormat.REELS => ContentFormat.reels,
+  api.ContentFormat.CARD_NEWS => ContentFormat.cardNews,
+  _ => ContentFormat.blog,
+};
+
+api.ContentFormat formatToWire(ContentFormat f) => switch (f) {
+  ContentFormat.shorts => api.ContentFormat.SHORTS,
+  ContentFormat.reels => api.ContentFormat.REELS,
+  ContentFormat.cardNews => api.ContentFormat.CARD_NEWS,
+  ContentFormat.blog => api.ContentFormat.BLOG,
+};
+
+UsageRights usageRightsFromWire(api.UsageRights u) => switch (u) {
+  api.UsageRights.STORE_REPOST_3M => UsageRights.storeRepost3m,
+  api.UsageRights.STORE_REPOST_6M => UsageRights.storeRepost6m,
+  _ => UsageRights.none,
+};
+
+api.UsageRights usageRightsToWire(UsageRights u) => switch (u) {
+  UsageRights.storeRepost3m => api.UsageRights.STORE_REPOST_3M,
+  UsageRights.storeRepost6m => api.UsageRights.STORE_REPOST_6M,
+  UsageRights.none => api.UsageRights.NONE,
+};
+
+/// 사장님이 고른 보상을 서버의 보상 입력으로 바꾼다. 없는 요소는 담지 않는다.
+api.RewardInputDto rewardToWire(Reward reward) {
+  final voucher = reward.voucher;
+  final viewPay = reward.viewPay;
   return api.RewardInputDto(
-    voucher: hasVoucher
-        ? api.VoucherInputDto(
-            name: input.voucherName,
-            value: input.voucherValue,
-          )
-        : null,
-    perView: hasPerView ? api.PerViewInputDto() : null,
+    voucher: voucher == null
+        ? null
+        : api.VoucherInputDto(
+            name: voucher.name,
+            value: voucher.value,
+            people: voucher.people,
+          ),
+    fixedCash: reward.fixedCash,
+    perView: viewPay == null
+        ? null
+        : api.PerViewInputDto(
+            ratePerThousand: viewPay.ratePerThousand,
+            cap: viewPay.cap,
+          ),
   );
 }

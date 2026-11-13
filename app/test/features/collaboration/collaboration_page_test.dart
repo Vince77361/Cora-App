@@ -166,9 +166,7 @@ void main() {
     final c = collaboration(
       terms: const OfferTerms(
         format: ContentFormat.reels,
-        rewardType: RewardType.perView,
-        perViewAmount: 10,
-        perViewCap: 100000,
+        reward: Reward(viewPay: ViewPay(ratePerThousand: 2000, cap: 100000)),
       ),
     );
     await pumpCollaboration(tester, repo: _repo(c));
@@ -184,9 +182,7 @@ void main() {
       escrowAmount: 0,
       terms: const OfferTerms(
         format: ContentFormat.shorts,
-        rewardType: RewardType.voucher,
-        voucherName: '빵 세트',
-        voucherValue: 30000,
+        reward: Reward(voucher: Voucher(name: '빵 세트', value: 30000)),
       ),
     );
     await pumpCollaboration(tester, repo: _repo(c));
@@ -361,9 +357,7 @@ void main() {
         now: StepKey.paid,
         terms: const OfferTerms(
           format: ContentFormat.reels,
-          rewardType: RewardType.perView,
-          perViewAmount: 10,
-          perViewCap: 100000,
+          reward: Reward(viewPay: ViewPay(ratePerThousand: 2000, cap: 100000)),
         ),
       );
       await pumpCollaboration(tester, repo: _repo(awaiting));

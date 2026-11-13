@@ -117,10 +117,10 @@ class Collaboration {
   /// 협업 번호의 앞 8자리. 식사권 화면과 문의 메일 제목에 쓴다.
   String get shortId => id.length <= 8 ? id : id.substring(0, 8);
 
-  bool get hasVoucher => terms.voucherName != null;
+  bool get hasVoucher => terms.reward.voucher != null;
 
   /// 조건에 조회수당 지급이 있다. 결제 전에도 참이다(보관액 `escrowAmount`는 결제 전에 0이다).
-  bool get hasPerView => terms.rewardType != RewardType.voucher;
+  bool get hasPerView => terms.reward.viewPay != null;
 
   /// 돈이 지금 실제로 보관돼 있다(결제 뒤이고 조회수당 지급이 있는 협업). 조건이 아니라 서버가 준
   /// `escrowAmount`로 따진다: 결제 전과 식사권만 있는 협업은 0이다.

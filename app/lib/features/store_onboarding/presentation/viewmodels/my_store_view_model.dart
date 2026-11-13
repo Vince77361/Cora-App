@@ -42,8 +42,8 @@ class MyStoreViewModel extends AsyncNotifier<MyStore?> {
 
   Future<void> advance(StoreOnboardingStep step) => _apply(_repo.advance(step));
 
-  Future<void> setDefaultTerms(OfferTermsInput input) =>
-      _apply(_repo.setDefaultTerms(input));
+  Future<void> setDefaultTerms(OfferTerms terms) =>
+      _apply(_repo.setDefaultTerms(terms));
 
   Future<void> publish() => _apply(_repo.publish());
 

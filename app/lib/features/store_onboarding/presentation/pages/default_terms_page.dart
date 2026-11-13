@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/navigation/app_routes.dart';
 import '../../../offer_terms/domain/offer_terms.dart';
 import '../../../offer_terms/presentation/widgets/offer_terms_wizard.dart';
+import '../../../server_config/presentation/viewmodels/server_config_view_model.dart';
 import '../viewmodels/my_store_view_model.dart';
 
 /// 기본 오퍼 조건(등록 마지막 단계). 오퍼 조건 3단계를 그대로 쓰고, 마지막에 조건을 저장한 뒤
@@ -22,21 +23,23 @@ class DefaultTermsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final store = ref.watch(myStoreViewModelProvider).value;
+    final config = ref.watch(serverConfigViewModelProvider).value;
     return Scaffold(
       body: SafeArea(
         bottom: false,
         // 진입 규칙이 가게를 이미 읽어 두었다. 읽는 동안은 배경만 둔다.
-        child: store == null
+        child: store == null || config == null
             ? const SizedBox.expand()
             : OfferTermsWizard(
                 pageLabel: pageLabel,
-                initial: _inputOf(store.defaultTerms),
+                initial: store.defaultTerms ?? config.defaultTerms,
+                defaults: config.defaultTerms,
                 storeName: store.name ?? '',
                 confirmTitle: confirmTitle,
                 confirmDescription: confirmDescription,
                 submitLabel: submitLabel,
                 failureMessage: publishFailed,
-                onSubmit: (input) => _publish(context, ref, input),
+                onSubmit: (terms) => _publish(context, ref, terms),
               ),
       ),
     );
@@ -47,21 +50,11 @@ class DefaultTermsPage extends ConsumerWidget {
   Future<void> _publish(
     BuildContext context,
     WidgetRef ref,
-    OfferTermsInput input,
+    OfferTerms terms,
   ) async {
     final store = ref.read(myStoreViewModelProvider.notifier);
-    await store.setDefaultTerms(input);
+    await store.setDefaultTerms(terms);
     await store.publish();
     if (context.mounted) context.go(AppRoutes.store);
   }
-
-  /// 이미 저장한 기본 조건이 있으면 그 값에서 시작한다(DONE에서 다시 열었을 때).
-  static OfferTermsInput? _inputOf(OfferTerms? terms) => terms == null
-      ? null
-      : OfferTermsInput(
-          format: terms.format,
-          rewardType: terms.rewardType,
-          voucherName: terms.voucherName,
-          voucherValue: terms.voucherValue,
-        );
 }

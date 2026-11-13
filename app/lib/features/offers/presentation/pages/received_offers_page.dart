@@ -403,7 +403,7 @@ class _OfferCard extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    rewardHeadline(offer.terms),
+                    rewardHeadline(offer.terms.reward),
                     style: CoraTextStyles.bodyLarge.copyWith(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,

@@ -13,13 +13,13 @@ class ConfirmStep extends StatelessWidget {
     required this.title,
     required this.description,
     required this.storeName,
-    required this.input,
+    required this.terms,
   });
 
   final String title;
   final String description;
   final String storeName;
-  final OfferTermsInput input;
+  final OfferTerms terms;
 
   static const escrowNote = '결제한 금액은 Cora가 보관하고, 콘텐츠가 올라온 뒤 크리에이터에게 지급해요.';
 
@@ -47,7 +47,7 @@ class ConfirmStep extends StatelessWidget {
                     Expanded(
                       child: _SummaryTile(
                         label: '콘텐츠',
-                        value: contentLine(input.format),
+                        value: contentLine(terms.format),
                       ),
                     ),
                   ],
@@ -55,7 +55,7 @@ class ConfirmStep extends StatelessWidget {
               ),
               _SummaryTile(
                 label: '보상',
-                value: rewardSummaryOfInput(input),
+                value: rewardSummary(terms),
                 emphasized: true,
               ),
             ],

@@ -18,7 +18,7 @@ class _PublishingStores extends FakeStoreRepository {
   final calls = <String>[];
 
   @override
-  Future<MyStore> setDefaultTerms(OfferTermsInput input) {
+  Future<MyStore> setDefaultTerms(OfferTerms input) {
     calls.add('terms');
     return super.setDefaultTerms(input);
   }
@@ -78,7 +78,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(stores.terms.single.format, ContentFormat.reels);
-    expect(stores.terms.single.rewardType, RewardType.both);
+    expect(stores.terms.single.reward.maxCashBurden, 60000);
     // 조건을 먼저 저장하고 그다음에 공개한다.
     expect(stores.calls, ['terms', 'publish']);
     expect(currentPath(tester), AppRoutes.store);
@@ -121,18 +121,16 @@ void main() {
         name: '한그릇 라멘',
         defaultTerms: const OfferTerms(
           format: ContentFormat.cardNews,
-          rewardType: RewardType.voucher,
-          voucherName: '커트 이용권',
-          voucherValue: 30000,
+          reward: Reward(voucher: Voucher(name: '커트 이용권', value: 30000)),
         ),
       ),
     );
     await pumpStoreApp(tester, stores: stores);
 
     await _next(tester);
-    expect(find.text('커트 이용권, 약 3만 원 상당'), findsOneWidget);
+    expect(find.text('커트 이용권 30,000원'), findsOneWidget);
     await _next(tester);
     expect(find.text('카드뉴스 1편'), findsOneWidget);
-    expect(find.text('커트 이용권 (약 3만 원)'), findsOneWidget);
+    expect(find.text('커트 이용권 30,000원'), findsOneWidget);
   });
 }

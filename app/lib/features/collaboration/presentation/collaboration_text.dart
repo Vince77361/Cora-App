@@ -22,18 +22,16 @@ String? stepSubtitle(Collaboration c, StepKey key) => switch (key) {
   StepKey.submit => c.submitDueAt == null ? null : dueLabel(c.submitDueAt!),
   // 상한은 조건에서 읽는다: 결제 전에는 보관액이 0이다.
   StepKey.settle =>
-    c.hasPerView && c.terms.perViewCap != null
-        ? '최대 ${won(c.terms.perViewCap!)}'
-        : null,
+    c.hasPerView ? '최대 ${won(c.terms.reward.viewPay!.cap)}' : null,
 };
 
 /// 보관 상자의 큰 글씨. 돈이 보관 중이면 그 금액, 결제 전이면 조회수당 상한, 식사권만이면 식사권
 /// 이름이다.
 String heldLabel(Collaboration c) {
   if (c.hasEscrow) return wonExact(c.escrowAmount);
-  final cap = c.terms.perViewCap;
-  if (c.hasPerView && cap != null) return wonExact(cap);
-  return c.terms.voucherName ?? '';
+  final viewPay = c.terms.reward.viewPay;
+  if (viewPay != null) return wonExact(viewPay.cap);
+  return c.terms.reward.voucher?.name ?? '';
 }
 
 /// `11월 23일까지`.

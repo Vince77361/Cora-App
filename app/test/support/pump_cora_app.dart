@@ -7,6 +7,7 @@ import 'package:cora/features/collaboration/domain/collaboration_repository.dart
 import 'package:cora/features/notification_settings/domain/notification_settings_repository.dart';
 import 'package:cora/features/notifications/domain/notification_repository.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
+import 'package:cora/features/server_config/domain/server_config_repository.dart';
 import 'package:cora/features/store_home/domain/store_home_repository.dart';
 import 'package:cora/features/wallet/domain/wallet_repository.dart';
 import 'package:cora/features/store_onboarding/domain/content_draft_repository_provider.dart';
@@ -23,6 +24,7 @@ import '../features/collaboration/fake_collaboration_repository.dart';
 import '../features/notification_settings/fake_notification_settings_repository.dart';
 import '../features/notifications/fake_notification_repository.dart';
 import '../features/onboarding/fake_me_repository.dart';
+import '../features/server_config/fake_server_config_repository.dart';
 import '../features/store_home/fake_store_home_repository.dart';
 import '../features/store_onboarding/fake_content_draft_repository.dart';
 import '../features/store_onboarding/fake_store_repository.dart';
@@ -84,6 +86,11 @@ Widget coraAppWith(
       // 알림함의 정산 줄이 정산(E7)을 연다.
       if (!_overrides(overrides, walletRepositoryProvider))
         walletRepositoryProvider.overrideWithValue(FakeWalletRepository()),
+      // 보상·예산 설정(F1)과 오퍼 보내기가 서버 설정(범위, 수수료율)을 읽는다.
+      if (!_overrides(overrides, serverConfigRepositoryProvider))
+        serverConfigRepositoryProvider.overrideWithValue(
+          FakeServerConfigRepository(),
+        ),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(
           FakeContentDraftRepository(),

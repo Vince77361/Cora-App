@@ -345,7 +345,7 @@ class _HeldBox extends StatelessWidget {
       label: headline,
       big: big,
       note: co.hasPerView && co.hasVoucher && !settled
-          ? CollaborationPage.heldVoucher(co.terms.voucherName!)
+          ? CollaborationPage.heldVoucher(co.terms.reward.voucher!.name)
           : null,
       lower: lower,
     );

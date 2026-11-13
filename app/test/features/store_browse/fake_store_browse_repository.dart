@@ -23,11 +23,10 @@ StoreSummary ramenStore({
       terms ??
       const OfferTerms(
         format: ContentFormat.reels,
-        rewardType: RewardType.both,
-        voucherName: '2인 식사권',
-        voucherValue: 40000,
-        perViewAmount: 10,
-        perViewCap: 100000,
+        reward: Reward(
+          voucher: Voucher(name: '2인 식사권', value: 40000),
+          viewPay: ViewPay(ratePerThousand: 2000, cap: 100000),
+        ),
       ),
 );
 

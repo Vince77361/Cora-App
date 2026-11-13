@@ -36,6 +36,8 @@ import 'features/offers/data/api_received_offers_repository.dart';
 import 'features/offers/domain/received_offers_repository.dart';
 import 'features/payment/data/api_payment_repository.dart';
 import 'features/payment/domain/payment_repository.dart';
+import 'features/server_config/data/api_server_config_repository.dart';
+import 'features/server_config/domain/server_config_repository.dart';
 import 'features/store_browse/data/api_store_browse_repository.dart';
 import 'features/store_browse/domain/store_browse_repository.dart';
 import 'features/store_home/data/api_store_home_repository.dart';
@@ -88,6 +90,9 @@ Future<void> main() async {
         appConfigProvider.overrideWithValue(config),
         meRepositoryProvider.overrideWith(
           (ref) => ApiMeRepository(ref.watch(apiClientProvider)),
+        ),
+        serverConfigRepositoryProvider.overrideWith(
+          (ref) => ApiServerConfigRepository(ref.watch(apiClientProvider)),
         ),
         storeRepositoryProvider.overrideWith(
           (ref) => ApiStoreRepository(ref.watch(apiClientProvider)),

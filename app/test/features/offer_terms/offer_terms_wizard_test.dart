@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
+import '../server_config/fake_server_config_repository.dart';
 
 /// 서버에 닿지 않은 실패를 흉내 낸다. 화면은 예외의 종류가 아니라 실패했다는 사실만 본다.
 class _Failure implements Exception {
@@ -20,11 +21,11 @@ void _usePhone(WidgetTester tester) {
 }
 
 class _Harness {
-  final submitted = <OfferTermsInput>[];
+  final submitted = <OfferTerms>[];
   bool fail = false;
 
-  Future<void> onSubmit(OfferTermsInput input) async {
-    submitted.add(input);
+  Future<void> onSubmit(OfferTerms terms) async {
+    submitted.add(terms);
     if (fail) throw const _Failure();
   }
 }
@@ -32,7 +33,7 @@ class _Harness {
 Future<void> _pump(
   WidgetTester tester,
   _Harness h, {
-  OfferTermsInput? initial,
+  OfferTerms? initial,
   ThemeData? theme,
   double textScale = 1,
 }) async {
@@ -52,7 +53,8 @@ Future<void> _pump(
             bottom: false,
             child: OfferTermsWizard(
               pageLabel: '기본 오퍼 조건',
-              initial: initial,
+              initial: initial ?? sampleServerConfig.defaultTerms,
+              defaults: sampleServerConfig.defaultTerms,
               storeName: '한그릇 라멘',
               confirmTitle: '이 조건으로 가게를\n공개할까요?',
               confirmDescription: '크리에이터가 가게 페이지에서 이 조건을 봐요.',
@@ -100,9 +102,9 @@ void main() {
     expect(find.text('어떻게\n보상할까요?'), findsOneWidget);
     expect(find.text('식사권만, 조회수만, 또는 둘 다 고를 수 있어요.'), findsOneWidget);
     expect(find.text('식사권 제공'), findsOneWidget);
-    expect(find.text('2인 식사권, 약 4만 원 상당'), findsOneWidget);
+    expect(find.text('식사권 40,000원 · 2인'), findsOneWidget);
     expect(find.text('조회수당 지급'), findsOneWidget);
-    expect(find.text('조회 1회당 10원, 최대 10만 원'), findsOneWidget);
+    expect(find.text('1,000회당 2,000원, 최대 60,000원'), findsOneWidget);
     expect(find.text('식사권 + 조회수'), findsOneWidget);
     expect(find.text('식사 후 올리고, 조회수만큼 더 받아요'), findsOneWidget);
     expect(find.text('식사권 고치기'), findsOneWidget);
@@ -110,8 +112,8 @@ void main() {
     await _next(tester);
     await tester.tap(find.text('가게 공개하기'));
     await tester.pumpAndSettle();
+    expect(h.submitted.single, sampleServerConfig.defaultTerms);
     expect(h.submitted.single.format, ContentFormat.reels);
-    expect(h.submitted.single.rewardType, RewardType.both);
   });
 
   testWidgets('walks three steps and submits the chosen terms', (tester) async {
@@ -133,7 +135,7 @@ void main() {
     expect(find.text('콘텐츠'), findsOneWidget);
     expect(find.text('쇼츠 1편'), findsOneWidget);
     expect(find.text('보상'), findsOneWidget);
-    expect(find.text('2인 식사권 (약 4만 원)'), findsOneWidget);
+    expect(find.text('식사권 40,000원 · 2인'), findsOneWidget);
     expect(
       find.text('결제한 금액은 Cora가 보관하고, 콘텐츠가 올라온 뒤 크리에이터에게 지급해요.'),
       findsOneWidget,
@@ -143,11 +145,9 @@ void main() {
     await tester.tap(find.text('가게 공개하기'));
     await tester.pumpAndSettle();
     expect(h.submitted, [
-      const OfferTermsInput(
+      const OfferTerms(
         format: ContentFormat.shorts,
-        rewardType: RewardType.voucher,
-        voucherName: '2인 식사권',
-        voucherValue: 40000,
+        reward: Reward(voucher: Voucher(name: '식사권', value: 40000, people: 2)),
       ),
     ]);
   });
@@ -159,7 +159,10 @@ void main() {
     await _next(tester);
     await _next(tester);
 
-    expect(find.text('2인 식사권\n+ 조회 1회당 10원, 최대 10만 원'), findsOneWidget);
+    expect(
+      find.text('식사권 40,000원 · 2인\n조회수 수당 1,000회당 2,000원, 최대 60,000원'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('back on step 1 is dimmed and does nothing', (tester) async {
@@ -201,18 +204,16 @@ void main() {
     await _pump(
       tester,
       _Harness(),
-      initial: const OfferTermsInput(
+      initial: const OfferTerms(
         format: ContentFormat.cardNews,
-        rewardType: RewardType.voucher,
-        voucherName: '커트 이용권',
-        voucherValue: 30000,
+        reward: Reward(voucher: Voucher(name: '커트 이용권', value: 30000)),
       ),
     );
     await _next(tester);
-    expect(find.text('커트 이용권, 약 3만 원 상당'), findsOneWidget);
+    expect(find.text('커트 이용권 30,000원'), findsOneWidget);
     await _next(tester);
     expect(find.text('카드뉴스 1편'), findsOneWidget);
-    expect(find.text('커트 이용권 (약 3만 원)'), findsOneWidget);
+    expect(find.text('커트 이용권 30,000원'), findsOneWidget);
   });
 
   testWidgets('edits the voucher name and value', (tester) async {
@@ -237,12 +238,15 @@ void main() {
     await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
 
-    expect(find.text('커트 이용권, 약 3만 원 상당'), findsOneWidget);
+    // 인원은 고치지 않았으니 그대로다.
+    expect(find.text('커트 이용권 30,000원 · 2인'), findsOneWidget);
     await _next(tester);
     await tester.tap(find.text('가게 공개하기'));
     await tester.pumpAndSettle();
-    expect(h.submitted.single.voucherName, '커트 이용권');
-    expect(h.submitted.single.voucherValue, 30000);
+    expect(
+      h.submitted.single.reward.voucher,
+      const Voucher(name: '커트 이용권', value: 30000, people: 2),
+    );
   });
 
   testWidgets('rejects a voucher value below 1000 won', (tester) async {
@@ -324,15 +328,15 @@ void main() {
     await tester.tap(find.text('조회수당 지급'));
     await tester.pumpAndSettle();
     await _next(tester);
-    expect(find.text('조회 1회당 10원, 최대 10만 원'), findsOneWidget);
+    expect(find.text('조회수 수당 1,000회당 2,000원, 최대 60,000원'), findsOneWidget);
     await tester.tap(find.text('가게 공개하기'));
     await tester.pumpAndSettle();
 
     expect(
       h.submitted.single,
-      const OfferTermsInput(
+      const OfferTerms(
         format: ContentFormat.reels,
-        rewardType: RewardType.perView,
+        reward: Reward(viewPay: ViewPay(ratePerThousand: 2000, cap: 60000)),
       ),
     );
   });
@@ -354,10 +358,13 @@ void main() {
 
     await _next(tester);
     expect(find.text('블로그 글 1편'), findsOneWidget);
-    expect(find.text('2인 식사권 (약 4만 원)'), findsOneWidget);
+    expect(find.text('식사권 40,000원 · 2인'), findsOneWidget);
     await tester.tap(find.text('가게 공개하기'));
     await tester.pumpAndSettle();
-    expect(h.submitted.single.rewardType, RewardType.voucher);
+    expect(
+      h.submitted.single.reward,
+      const Reward(voucher: Voucher(name: '식사권', value: 40000, people: 2)),
+    );
   });
 
   testWidgets('shows the blog note only for a blog post', (tester) async {

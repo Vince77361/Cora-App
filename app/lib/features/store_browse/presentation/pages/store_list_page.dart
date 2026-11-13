@@ -120,7 +120,7 @@ class _StoreCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final line = store.categoryAndNeighborhood;
-    final reward = rewardHeadline(store.defaultTerms);
+    final reward = rewardHeadline(store.defaultTerms.reward);
     return Semantics(
       container: true,
       button: true,

@@ -21,11 +21,10 @@ List<CollaborationStep> stepsAt(StepKey now, {DateTime? acceptedAt}) {
 
 const _bothTerms = OfferTerms(
   format: ContentFormat.reels,
-  rewardType: RewardType.both,
-  voucherName: '2인 식사권',
-  voucherValue: 40000,
-  perViewAmount: 10,
-  perViewCap: 100000,
+  reward: Reward(
+    voucher: Voucher(name: '2인 식사권', value: 40000),
+    viewPay: ViewPay(ratePerThousand: 2000, cap: 100000),
+  ),
 );
 
 /// 캔버스 A7의 견본 협업: 한그릇 라멘, 보관 100,000원 + 2인 식사권, 방문·촬영 단계, 11월 23일까지 제출.
@@ -60,7 +59,7 @@ Collaboration collaboration({
   escrowAmount:
       escrowAmount ??
       (stage == CollaborationStage.awaitingPayment ||
-              terms.rewardType == RewardType.voucher
+              terms.reward.viewPay == null
           ? 0
           : 100000),
   steps:

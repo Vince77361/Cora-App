@@ -125,9 +125,7 @@ void main() {
         escrowAmount: 0,
         terms: const OfferTerms(
           format: ContentFormat.shorts,
-          rewardType: RewardType.voucher,
-          voucherName: '빵 세트',
-          voucherValue: 30000,
+          reward: Reward(voucher: Voucher(name: '빵 세트', value: 30000)),
         ),
       );
       await pumpStoreCollaboration(tester, repo: _repo(c));

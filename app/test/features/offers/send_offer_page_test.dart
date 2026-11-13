@@ -23,9 +23,7 @@ FakeStoreRepository _storeWithDefaults() => FakeStoreRepository(
     regionSido: '서울특별시',
     defaultTerms: const OfferTerms(
       format: ContentFormat.shorts,
-      rewardType: RewardType.voucher,
-      voucherName: '빵 세트',
-      voucherValue: 30000,
+      reward: Reward(voucher: Voucher(name: '빵 세트', value: 30000)),
     ),
   ),
 );
@@ -81,7 +79,7 @@ void main() {
     expect(find.text('이 오퍼를\n보낼까요?'), findsOneWidget);
     expect(find.text('상대가 수락하면 그때 결제해요.'), findsOneWidget);
     expect(find.text('쇼츠 1편'), findsOneWidget);
-    expect(find.text('빵 세트 (약 3만 원)'), findsOneWidget);
+    expect(find.text('빵 세트 30,000원'), findsOneWidget);
     expect(find.text('한그릇 라멘'), findsWidgets);
   });
 
@@ -110,11 +108,9 @@ void main() {
     expect(home.sent.single.creatorId, 'c1');
     expect(
       home.sent.single.terms,
-      const OfferTermsInput(
+      const OfferTerms(
         format: ContentFormat.shorts,
-        rewardType: RewardType.voucher,
-        voucherName: '빵 세트',
-        voucherValue: 30000,
+        reward: Reward(voucher: Voucher(name: '빵 세트', value: 30000)),
       ),
     );
     expect(currentPath(tester), AppRoutes.store);

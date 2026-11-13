@@ -39,9 +39,7 @@ FakeReceivedOffersRepository _twoOffers() => FakeReceivedOffersRepository(
       receivedAt: DateTime.utc(2026, 11, 10, 3),
       terms: const OfferTerms(
         format: ContentFormat.shorts,
-        rewardType: RewardType.voucher,
-        voucherName: '빵 세트',
-        voucherValue: 30000,
+        reward: Reward(voucher: Voucher(name: '빵 세트', value: 30000)),
       ),
     ),
   ],
@@ -62,9 +60,9 @@ void main() {
       expect(find.text('소상공인 · 오늘 도착'), findsOneWidget);
       expect(find.text('한그릇 라멘, 성수동'), findsOneWidget);
       expect(find.text('릴스 1편을\n부탁했어요'), findsOneWidget);
-      expect(find.text('2인 식사권 + 조회수당'), findsOneWidget);
+      expect(find.text('2인 식사권 40,000원 + 조회수 수당'), findsOneWidget);
       expect(
-        find.text('조회 1회당 10원, 최대 10만 원. 김이 오르는 첫 숟가락 장면을 원해요.'),
+        find.text('1,000회당 2,000원, 최대 100,000원. 김이 오르는 첫 숟가락 장면을 원해요.'),
         findsOneWidget,
       );
       expect(find.text('#팔로워무관'), findsOneWidget);
@@ -117,10 +115,10 @@ void main() {
       expect(find.text('소상공인 · 어제 도착'), findsOneWidget);
       expect(find.text('달빛 베이커리, 성수동'), findsOneWidget);
       expect(find.text('쇼츠 1편을\n부탁했어요'), findsOneWidget);
-      // 식사권만이면 보상 줄은 식사권 이름이고, 설명은 식사권 요약으로 시작한다.
-      expect(find.text('빵 세트'), findsOneWidget);
+      // 식사권만이면 보상 줄과 설명이 모두 혜택 한 줄로 시작한다.
+      expect(find.text('빵 세트 30,000원'), findsOneWidget);
       expect(
-        find.text('빵 세트 (약 3만 원). 갓 구운 빵 향이 나는 동네 빵집이에요.'),
+        find.text('빵 세트 30,000원. 갓 구운 빵 향이 나는 동네 빵집이에요.'),
         findsOneWidget,
       );
       expect(find.text('#팔로워무관'), findsOneWidget);

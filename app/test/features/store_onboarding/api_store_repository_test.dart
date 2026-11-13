@@ -87,11 +87,10 @@ void main() {
         store.defaultTerms,
         const OfferTerms(
           format: ContentFormat.cardNews,
-          rewardType: RewardType.both,
-          voucherName: '식사권',
-          voucherValue: 40000,
-          perViewAmount: 10,
-          perViewCap: 100000,
+          reward: Reward(
+            voucher: Voucher(name: '식사권', value: 40000, people: 2),
+            viewPay: ViewPay(ratePerThousand: 10000, cap: 100000),
+          ),
         ),
       );
       expect(store.sourceLinks, const [
@@ -214,19 +213,23 @@ void main() {
       final fake = FakeHttpClient()..body = _storeJson();
 
       await _stores(fake).setDefaultTerms(
-        const OfferTermsInput(
+        const OfferTerms(
           format: ContentFormat.reels,
-          rewardType: RewardType.voucher,
-          voucherName: '2인 식사권',
-          voucherValue: 40000,
+          reward: Reward(
+            voucher: Voucher(name: '식사권', value: 40000, people: 2),
+            fixedCash: 30000,
+          ),
+          usageRights: UsageRights.storeRepost6m,
         ),
       );
 
       final body = _bodyOf(fake.requests.single);
       expect(body['format'], 'REELS');
-      // 보상은 세 요소로 보낸다: 식사권만 고르면 voucher만 있고 조회수 수당은 없다.
+      expect(body['usageRights'], 'STORE_REPOST_6M');
+      // 보상은 세 요소로 보낸다: 식사권과 고정 현금만 고르면 조회수 수당은 없다.
       final reward = body['reward'] as Map<String, dynamic>;
-      expect((reward['voucher'] as Map<String, dynamic>)['value'], 40000);
+      expect(reward['voucher'], {'name': '식사권', 'value': 40000, 'people': 2});
+      expect(reward['fixedCash'], 30000);
       expect(reward['perView'], isNull);
     });
   });

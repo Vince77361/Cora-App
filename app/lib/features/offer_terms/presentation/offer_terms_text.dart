@@ -1,16 +1,7 @@
 import '../domain/offer_terms.dart';
 
-// 오퍼 조건을 화면에 보이는 문구로 바꾸는 순수 함수들. 기본 조건 화면, 오퍼 보내기(A5),
-// 오퍼 목록이 같은 문구를 쓰도록 한곳에 둔다.
-
-/// 식사권을 따로 정하지 않았을 때의 이름과 금액(서버 기본값과 같다).
-const defaultVoucherName = '2인 식사권';
-const defaultVoucherValue = 40000;
-
-/// 조회수당 지급의 단가와 상한(원). 서버가 정하는 값이고, 아직 서버 값을 받기 전 화면
-/// (고르는 중인 조건)이 같은 문구를 보이도록 같은 값을 둔다.
-const perViewAmountWon = 10;
-const perViewCapWon = 100000;
+// 오퍼 조건을 화면에 보이는 문구로 바꾸는 순수 함수들. 모집 조건·오퍼 보내기, 보상·예산 설정(F1),
+// 보내기 전 검토(F2), 오퍼 목록이 같은 문구를 쓰도록 한곳에 둔다.
 
 /// 식사권 금액으로 받을 수 있는 범위(서버 검증과 같다).
 const voucherValueMin = 1000;
@@ -52,74 +43,94 @@ String formatSubtitle(ContentFormat format) => switch (format) {
   ContentFormat.blog => '사진 포함 후기',
 };
 
-/// 확인 단계의 콘텐츠 줄. 오퍼 하나에 콘텐츠는 한 편이다.
+/// 콘텐츠 줄. 오퍼 하나에 콘텐츠는 한 편이다.
 String contentLine(ContentFormat format) => '${formatLabel(format)} 1편';
 
-String rewardTitle(RewardType type) => switch (type) {
-  RewardType.voucher => '식사권 제공',
-  RewardType.perView => '조회수당 지급',
-  RewardType.both => '식사권 + 조회수',
-};
-
-/// 조회수당 지급 한 줄. `조회 1회당 10원, 최대 10만 원`.
-String _perViewLine(int amount, int cap) =>
-    '조회 1회당 ${won(amount)}, 최대 ${won(cap)}';
-
-/// 보상 카드 아래 설명. 식사권이 들어간 카드는 지금 고른 식사권 이름과 금액을 보인다.
-String rewardSubtitle(OfferTermsInput input) => switch (input.rewardType) {
-  RewardType.voucher =>
-    '${input.voucherName ?? defaultVoucherName}, '
-        '약 ${won(input.voucherValue ?? defaultVoucherValue)} 상당',
-  RewardType.perView => _perViewLine(perViewAmountWon, perViewCapWon),
-  RewardType.both => '식사 후 올리고, 조회수만큼 더 받아요',
-};
-
-String _summary(
-  RewardType type,
-  String? voucherName,
-  int? voucherValue,
-  int? perViewAmount,
-  int? perViewCap,
-) {
-  final voucher =
-      '${voucherName ?? defaultVoucherName} '
-      '(약 ${won(voucherValue ?? defaultVoucherValue)})';
-  final perView = _perViewLine(
-    perViewAmount ?? perViewAmountWon,
-    perViewCap ?? perViewCapWon,
-  );
-  return switch (type) {
-    RewardType.voucher => voucher,
-    RewardType.perView => perView,
-    // 둘 다일 때는 식사권 이름만 윗줄에 두고 그 아래 줄에 조회수당을 잇는다.
-    RewardType.both => '${voucherName ?? defaultVoucherName}\n+ $perView',
+/// F2 `결과물` 줄. `릴스 1편 · 30초 안팎`.
+String deliverableLine(ContentFormat format, int pieces) {
+  final detail = switch (format) {
+    ContentFormat.shorts => '60초 안팎',
+    ContentFormat.reels => '30초 안팎',
+    ContentFormat.cardNews => '3–5장',
+    ContentFormat.blog => '사진 포함 후기',
   };
+  return '${formatLabel(format)} $pieces편 · $detail';
 }
 
-/// 서버가 확정한 조건의 보상 요약(확인 단계, 오퍼 상세). 둘 다면 두 줄이다.
-String rewardSummary(OfferTerms terms) => _summary(
-  terms.rewardType,
-  terms.voucherName,
-  terms.voucherValue,
-  terms.perViewAmount,
-  terms.perViewCap,
-);
+/// 제공 혜택 한 줄. `식사권 40,000원 · 2인`(인원을 모르면 `식사권 40,000원`).
+String benefitLine(Voucher voucher) {
+  final people = voucher.people;
+  final base = '${voucher.name} ${wonExact(voucher.value)}';
+  return people == null ? base : '$base · $people인';
+}
 
-/// 아직 보내기 전 고른 값의 보상 요약. [rewardSummary]와 같은 문구다.
-String rewardSummaryOfInput(OfferTermsInput input) => _summary(
-  input.rewardType,
-  input.voucherName,
-  input.voucherValue,
-  null,
-  null,
-);
+/// 받은 오퍼 제목에 쓰는 짧은 혜택. `식사권 2인`(인원을 모르면 이름만).
+String benefitShort(Voucher voucher) {
+  final people = voucher.people;
+  return people == null ? voucher.name : '${voucher.name} $people인';
+}
 
-/// 목록 카드의 한 줄 요약. `2인 식사권 + 조회수당`.
-String rewardHeadline(OfferTerms terms) {
-  final name = terms.voucherName ?? defaultVoucherName;
-  return switch (terms.rewardType) {
-    RewardType.voucher => name,
-    RewardType.perView => '조회수당',
-    RewardType.both => '$name + 조회수당',
-  };
+/// 고정 현금 값. `없음` / `30,000원`.
+String fixedCashLabel(int amount) => amount == 0 ? '없음' : wonExact(amount);
+
+/// 고정 현금 알약. `없음` / `3만 원`.
+String fixedCashChip(int amount) => amount == 0 ? '없음' : won(amount);
+
+/// 조회수 수당 단가. `1,000회당 2,000원`.
+String rateLabel(int ratePerThousand) => '1,000회당 ${wonExact(ratePerThousand)}';
+
+/// 조회수 수당 상한. `최대 60,000원`.
+String capLabel(int cap) => '최대 ${wonExact(cap)}';
+
+/// 조회수 수당 한 줄. `1,000회당 2,000원 · 1인 최대 60,000원`.
+String viewPayLine(ViewPay viewPay) =>
+    '${rateLabel(viewPay.ratePerThousand)} · 1인 ${capLabel(viewPay.cap)}';
+
+/// 쉼표로 이은 조회수 수당. `1,000회당 2,000원, 최대 60,000원`.
+String viewPayLineComma(ViewPay viewPay) =>
+    '${rateLabel(viewPay.ratePerThousand)}, ${capLabel(viewPay.cap)}';
+
+String usageRightsLabel(UsageRights rights) => switch (rights) {
+  UsageRights.storeRepost3m => '가게 계정 재게시 3개월',
+  UsageRights.storeRepost6m => '가게 계정 재게시 6개월',
+  UsageRights.none => '사용 안 함',
+};
+
+/// 목록 카드의 한 줄 요약. 있는 요소를 ` + `로 잇는다.
+/// `식사권 40,000원 · 2인 + 고정 현금 30,000원 + 조회수 수당`. 요소가 하나도 없으면 `없음`.
+String rewardHeadline(Reward reward) {
+  final parts = [
+    if (reward.voucher != null) benefitLine(reward.voucher!),
+    if (reward.fixedCash > 0) '고정 현금 ${wonExact(reward.fixedCash)}',
+    if (reward.viewPay != null) '조회수 수당',
+  ];
+  return parts.isEmpty ? '없음' : parts.join(' + ');
+}
+
+/// 확정된 조건의 보상 요약(오퍼 상세, 취소 확인). 있는 요소마다 한 줄이다.
+String rewardSummary(OfferTerms terms) {
+  final reward = terms.reward;
+  final lines = [
+    if (reward.voucher != null) benefitLine(reward.voucher!),
+    if (reward.fixedCash > 0) '고정 현금 ${wonExact(reward.fixedCash)}',
+    if (reward.viewPay != null) '조회수 수당 ${viewPayLineComma(reward.viewPay!)}',
+  ];
+  return lines.isEmpty ? '없음' : lines.join('\n');
+}
+
+/// 이용료 금액만. `6,000원`. 최대 현금 부담이 0원이면 이용료가 없어 빈 글자다.
+String feeAmountLabel(int maxCashBurden, int feeRate) =>
+    maxCashBurden == 0 ? '' : wonExact(feeAmount(maxCashBurden, feeRate));
+
+/// 이용료 안내 한 문장. `이용료 6,000원은 별도예요.` 최대 현금 부담이 0원이면 빈 글자다.
+String feeNote(int maxCashBurden, int feeRate) => maxCashBurden == 0
+    ? ''
+    : '이용료 ${feeAmountLabel(maxCashBurden, feeRate)}은 별도예요.';
+
+/// `판본 1로`, `판본 3으로`. 번호를 한글로 읽은 마지막 소리가 받침 없음이나 ㄹ이면 `로`, 그 밖이면 `으로`다.
+/// 공용 조사 도우미에 `로/으로` 짝이 없어(ㄹ 받침이 예외다) 여기서 정한다. 판본은 열 개까지다.
+String versionWithRo(int number) {
+  const roDigits = {1, 2, 4, 5, 7, 8, 9};
+  final particle = roDigits.contains(number % 10) ? '로' : '으로';
+  return '판본 $number$particle';
 }

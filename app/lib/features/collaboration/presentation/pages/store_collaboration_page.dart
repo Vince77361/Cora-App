@@ -303,7 +303,7 @@ class _HeldBox extends StatelessWidget {
       case CollaborationStage.funded:
       case CollaborationStage.counting:
       case CollaborationStage.halted:
-        final voucher = co.terms.voucherName;
+        final voucher = co.terms.reward.voucher?.name;
         if (!co.hasEscrow) {
           // 식사권만 있는 협업: 맡긴 돈이 없다.
           return CollaborationBox(

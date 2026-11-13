@@ -40,7 +40,8 @@ class VoucherPage extends ConsumerWidget {
               child: switch (async) {
                 AsyncData(:final value) => _Ticket(
                   storeName: value.collaboration.counterpartName,
-                  voucherName: value.collaboration.terms.voucherName ?? '',
+                  voucherName:
+                      value.collaboration.terms.reward.voucher?.name ?? '',
                   shortId: value.collaboration.shortId,
                 ),
                 AsyncError() => CoraStateView.loadFailed(

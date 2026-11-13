@@ -57,11 +57,10 @@ SentOffer sentOffer({
       terms ??
       const OfferTerms(
         format: ContentFormat.reels,
-        rewardType: RewardType.both,
-        voucherName: '2인 식사권',
-        voucherValue: 40000,
-        perViewAmount: 10,
-        perViewCap: 100000,
+        reward: Reward(
+          voucher: Voucher(name: '2인 식사권', value: 40000),
+          viewPay: ViewPay(ratePerThousand: 2000, cap: 100000),
+        ),
       ),
   view: view,
   paymentDaysLeft: paymentDaysLeft,
@@ -90,7 +89,7 @@ class FakeStoreHomeRepository implements StoreHomeRepository {
   Completer<void>? holdFetch;
 
   int fetchCalls = 0;
-  final sent = <({String creatorId, OfferTermsInput terms})>[];
+  final sent = <({String creatorId, OfferTerms terms})>[];
   final cancelled = <String>[];
 
   @override
@@ -118,7 +117,7 @@ class FakeStoreHomeRepository implements StoreHomeRepository {
   }
 
   @override
-  Future<void> sendOffer(String creatorId, OfferTermsInput terms) async {
+  Future<void> sendOffer(String creatorId, OfferTerms terms) async {
     await holdSend?.future;
     if (conflictOnSend) throw const StoreHomeFailure(conflict: true);
     if (failSend) throw const StoreHomeFailure();

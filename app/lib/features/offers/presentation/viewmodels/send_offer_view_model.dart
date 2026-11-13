@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../offer_terms/domain/offer_terms.dart';
 import '../../../store_home/domain/applicant.dart';
 import '../../../store_home/presentation/viewmodels/store_home_view_model.dart';
 
@@ -17,14 +16,3 @@ final sendOfferApplicantProvider = Provider.autoDispose
       }
       return null;
     });
-
-/// 가게에 저장된 기본 조건에서 시작한 처음 값. 기본 조건이 없으면 null이라 3단계가 릴스,
-/// 식사권 + 조회수로 시작한다.
-OfferTermsInput? initialTermsOf(OfferTerms? defaults) => defaults == null
-    ? null
-    : OfferTermsInput(
-        format: defaults.format,
-        rewardType: defaults.rewardType,
-        voucherName: defaults.voucherName,
-        voucherValue: defaults.voucherValue,
-      );

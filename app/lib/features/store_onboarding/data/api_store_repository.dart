@@ -67,11 +67,12 @@ class ApiStoreRepository implements StoreRepository {
   );
 
   @override
-  Future<MyStore> setDefaultTerms(OfferTermsInput input) => _guardStore(
+  Future<MyStore> setDefaultTerms(OfferTerms terms) => _guardStore(
     () => _stores.setMyStoreDefaultTerms(
       api.SetDefaultTermsDto(
-        format: _formatToWire(input.format),
-        reward: rewardInputToWire(input),
+        format: formatToWire(terms.format),
+        reward: rewardToWire(terms.reward),
+        usageRights: usageRightsToWire(terms.usageRights),
       ),
     ),
   );
@@ -183,13 +184,6 @@ SourceLinkKind _linkKindFromWire(api.SourceLinkKind kind) => switch (kind) {
   api.SourceLinkKind.NAVER_MAP => SourceLinkKind.naverMap,
   api.SourceLinkKind.CATCHTABLE => SourceLinkKind.catchtable,
   _ => SourceLinkKind.instagram,
-};
-
-api.ContentFormat _formatToWire(ContentFormat f) => switch (f) {
-  ContentFormat.shorts => api.ContentFormat.SHORTS,
-  ContentFormat.reels => api.ContentFormat.REELS,
-  ContentFormat.cardNews => api.ContentFormat.CARD_NEWS,
-  ContentFormat.blog => api.ContentFormat.BLOG,
 };
 
 const _industries = <IndustryCategory, api.IndustryCategory>{

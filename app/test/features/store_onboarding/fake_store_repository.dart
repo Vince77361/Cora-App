@@ -77,7 +77,7 @@ class FakeStoreRepository implements StoreRepository {
   final analyzed = <List<SourceLink>>[];
   final edits = <StoreEdit>[];
   final advanced = <StoreOnboardingStep>[];
-  final terms = <OfferTermsInput>[];
+  final terms = <OfferTerms>[];
   int publishCalls = 0;
 
   @override
@@ -167,7 +167,7 @@ class FakeStoreRepository implements StoreRepository {
   }
 
   @override
-  Future<MyStore> setDefaultTerms(OfferTermsInput input) async {
+  Future<MyStore> setDefaultTerms(OfferTerms input) async {
     terms.add(input);
     return store!;
   }

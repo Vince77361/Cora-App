@@ -52,13 +52,14 @@ class ApiStoreHomeRepository implements StoreHomeRepository {
   });
 
   @override
-  Future<void> sendOffer(String creatorId, OfferTermsInput terms) =>
+  Future<void> sendOffer(String creatorId, OfferTerms terms) =>
       _guard(() async {
         await _offers.sendOffer(
           api.SendOfferDto(
             creatorId: creatorId,
-            format: _formatToWire(terms.format),
-            reward: rewardInputToWire(terms),
+            format: formatToWire(terms.format),
+            reward: rewardToWire(terms.reward),
+            usageRights: usageRightsToWire(terms.usageRights),
           ),
         );
       });
@@ -101,10 +102,3 @@ class ApiStoreHomeRepository implements StoreHomeRepository {
     collaborationId: m.collaborationId,
   );
 }
-
-api.ContentFormat _formatToWire(ContentFormat f) => switch (f) {
-  ContentFormat.shorts => api.ContentFormat.SHORTS,
-  ContentFormat.reels => api.ContentFormat.REELS,
-  ContentFormat.cardNews => api.ContentFormat.CARD_NEWS,
-  ContentFormat.blog => api.ContentFormat.BLOG,
-};
