@@ -14,14 +14,17 @@ import { UsersModule } from '../users/users.module';
 import { PayoutSendHandler } from './jobs/payout-send.handler';
 import { RefundUnsubmittedHandler } from './jobs/refund-unsubmitted.handler';
 import { SettleHandler } from './jobs/settle.handler';
+import { SettlementAutoConfirmHandler } from './jobs/settlement-auto-confirm.handler';
 import { SubmitReminderHandler } from './jobs/submit-reminder.handler';
 import { ViewSnapshotHandler } from './jobs/view-snapshot.handler';
 import { DeadlinesService } from './deadlines.service';
 import { PayoutsService } from './payouts.service';
 import { RefundsService } from './refunds.service';
+import { SettlementFinishService } from './settlement-finish.service';
 import { SettlementsRepository } from './settlements.repository';
 import { SettlementsService } from './settlements.service';
 import { SubmissionsService } from './submissions.service';
+import { ViewReportService } from './view-report.service';
 
 // 링크 제출, 조회수 집계, 정산, 지급, 환급. 이 모듈의 작업 처리기는 여기서 작업 큐의 표에 올린다.
 // 링크 제출의 컨트롤러는 협업 모델을 돌려줘야 해서 협업 조회·취소 모듈(CollaborationsApiModule)에 있다.
@@ -42,12 +45,15 @@ import { SubmissionsService } from './submissions.service';
   providers: [
     SettlementsRepository,
     SettlementsService,
+    SettlementFinishService,
+    ViewReportService,
     SubmissionsService,
     PayoutsService,
     RefundsService,
     DeadlinesService,
     ViewSnapshotHandler,
     SettleHandler,
+    SettlementAutoConfirmHandler,
     PayoutSendHandler,
     RefundUnsubmittedHandler,
     SubmitReminderHandler,
@@ -57,6 +63,7 @@ import { SubmissionsService } from './submissions.service';
   exports: [
     SettlementsService,
     SettlementsRepository,
+    ViewReportService,
     RefundsService,
     PayoutsService,
     SubmissionsService,
@@ -67,6 +74,7 @@ export class SettlementsModule implements OnModuleInit {
     private readonly registry: JobHandlerRegistry,
     private readonly viewSnapshot: ViewSnapshotHandler,
     private readonly settle: SettleHandler,
+    private readonly autoConfirm: SettlementAutoConfirmHandler,
     private readonly payoutSend: PayoutSendHandler,
     private readonly refundUnsubmitted: RefundUnsubmittedHandler,
     private readonly submitReminder: SubmitReminderHandler,
@@ -78,6 +86,9 @@ export class SettlementsModule implements OnModuleInit {
     );
     this.registry.register('settle', (p, context) =>
       this.settle.run(p, context),
+    );
+    this.registry.register('settlement-auto-confirm', (p, context) =>
+      this.autoConfirm.run(p, context),
     );
     this.registry.register('payout-send', (p) => this.payoutSend.run(p));
     this.registry.register('refund-unsubmitted', (p, context) =>

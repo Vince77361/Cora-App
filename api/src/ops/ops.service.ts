@@ -117,6 +117,7 @@ export class OpsService {
         if (c.stage !== 'HALTED') {
           throw new OpsError(`멈춘 협업이 아니에요. (지금 단계: ${c.stage})`);
         }
+        await this.assertNoOpenSettlement(c, tx);
         const to = c.stageBeforeHalt;
         if (!to) {
           throw new OpsError(
@@ -222,6 +223,7 @@ export class OpsService {
             '조회수를 읽지 못해 멈춘 협업만 조회수로 정산할 수 있어요.',
           );
         }
+        await this.assertNoOpenSettlement(c, tx);
         const settled = await this.settlements.settleHaltedWithViews(
           tx,
           c,
@@ -260,6 +262,7 @@ export class OpsService {
       collaborationId,
       async (tx, c) => {
         this.assertForceable(c);
+        await this.assertNoOpenSettlement(c, tx);
         const balances = await this.ledger.accountBalances(c.id, tx);
         const escrow = balances.ESCROW;
         const fee = balances.FEE_REVENUE;
@@ -321,6 +324,7 @@ export class OpsService {
       collaborationId,
       async (tx, c) => {
         this.assertForceable(c);
+        await this.assertNoOpenSettlement(c, tx);
         const escrow = await this.ledger.escrowBalance(c.id, tx);
         if (amount > escrow) {
           throw new OpsError(
@@ -587,6 +591,24 @@ export class OpsService {
       ))
     ) {
       throw this.conflict();
+    }
+  }
+
+  // 조회 자료 확인 전(UNCONFIRMED)이나 이의 중(DISPUTED)인 정산이 있으면 돈이 나가는 명령을 거절한다.
+  // 이 정산은 확인 완료(사장님·자동·운영 확정)나 이의 처리로만 끝난다: 다른 길로 끝내면 계산이 남은 채 협업이 어긋난다.
+  // 정산 행은 inCollaboration이 이미 잠갔으니 여기서 읽은 값이 그대로 유지된다.
+  private async assertNoOpenSettlement(
+    c: Collaboration,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    const settlement = await this.settlementsRepository.findSettlement(
+      c.id,
+      tx,
+    );
+    if (settlement && settlement.status !== 'CONFIRMED') {
+      throw new OpsError(
+        `조회 자료 확인이 끝나지 않은 정산이 있어요. (${settlement.status}) 이의가 걸렸다면 resolve-dispute, 캡처 자료라면 confirm-evidence로 처리해 주세요.`,
+      );
     }
   }
 

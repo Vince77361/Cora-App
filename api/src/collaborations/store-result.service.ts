@@ -38,7 +38,10 @@ export class StoreResultService {
       throw this.notFound();
     }
     const settlement = await this.settlements.findSettlement(collaboration.id);
-    if (!settlement) throw this.notFound();
+    // 확인 완료된 정산만 결과로 보인다(끝난 협업이면 늘 그렇지만, 어긋난 행이 결과로 새지 않게 한다).
+    if (!settlement || settlement.status !== 'CONFIRMED') {
+      throw this.notFound();
+    }
 
     const terms = readTerms(collaboration.terms);
     const creator = await this.creators.getSummary(collaboration.creatorId);

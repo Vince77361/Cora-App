@@ -2,6 +2,7 @@ import {
   feeFor,
   MAX_MULTIPLIER_TENTHS,
   multiplierTenthsOf,
+  pickFinalViews,
   settleReward,
 } from './settlement-math';
 
@@ -162,5 +163,49 @@ describe('multiplierTenthsOf', () => {
     expect(multiplierTenthsOf(999_900, 1000)).toBe(9999);
     expect(multiplierTenthsOf(999_800, 1000)).toBe(9998);
     expect(multiplierTenthsOf(1_000_000, 1000)).toBe(9999);
+  });
+});
+
+describe('pickFinalViews', () => {
+  it('takes the last day value when it was read', () => {
+    expect(
+      pickFinalViews(
+        [
+          { dayIndex: 6, views: 100 },
+          { dayIndex: 7, views: 200 },
+        ],
+        7,
+      ),
+    ).toBe(200);
+  });
+
+  it('falls back to the latest readable day when the last day was not read', () => {
+    expect(
+      pickFinalViews(
+        [
+          { dayIndex: 4, views: 100 },
+          { dayIndex: 6, views: 300 },
+          { dayIndex: 7, views: null },
+        ],
+        7,
+      ),
+    ).toBe(300);
+  });
+
+  it('returns null when nothing was read', () => {
+    expect(pickFinalViews([{ dayIndex: 7, views: null }], 7)).toBeNull();
+    expect(pickFinalViews([], 7)).toBeNull();
+  });
+
+  it('follows a longer counting period', () => {
+    expect(
+      pickFinalViews(
+        [
+          { dayIndex: 7, views: 200 },
+          { dayIndex: 14, views: 900 },
+        ],
+        14,
+      ),
+    ).toBe(900);
   });
 });

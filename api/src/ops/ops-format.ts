@@ -54,7 +54,7 @@ export function formatSnapshot(
     `환급 ${snapshot.refunds.length}건`,
     ...snapshot.refunds.map((r) => `  ${r.id} ${r.status} ${won(r.amount)}원`),
     snapshot.settlement
-      ? `정산 조회수 ${snapshot.settlement.finalViews ?? '-'} / 지급 ${won(snapshot.settlement.payoutAmount)}원 / 환급 ${won(snapshot.settlement.refundAmount)}원 (${kst(snapshot.settlement.settledAt)})`
+      ? `정산 조회수 ${snapshot.settlement.finalViews ?? '-'} / 지급 ${won(snapshot.settlement.payoutAmount)}원 / 환급 ${won(snapshot.settlement.refundAmount)}원 / ${snapshot.settlement.status} (${snapshot.settlement.settledAt ? kst(snapshot.settlement.settledAt) : '확정 전'})`
       : '정산 없음',
     `운영 기록 최근 ${snapshot.audits.length}건`,
     ...snapshot.audits.map(

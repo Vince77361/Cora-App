@@ -15,6 +15,7 @@ import { PaymentPort } from '../src/integrations/payment/payment.port';
 import { PushPort } from '../src/integrations/push/push.port';
 import { JobScheduler } from '../src/jobs/job-scheduler';
 import { assertBalanced } from '../src/ledger/ledger-postings';
+import { ViewReportService } from '../src/settlements/view-report.service';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
@@ -620,11 +621,19 @@ describe('collaborations', () => {
   });
 
   describe('payout status', () => {
-    // 제출하고 7일을 지나 정산까지 돌린다(조회수 4,320회 → 지급 43,200원, 환급 56,800원).
+    // 사장님이 "자료 확인했어요"를 누른 것과 같다(서비스를 바로 부른다. HTTP 쪽은 view-report e2e가 본다).
+    const confirmAsOwner = (collaborationId: string) =>
+      app
+        .get(ViewReportService)
+        .confirm(collaborationId, 'COMMISSIONER', `settle:${collaborationId}`, {
+          onlySource: 'CONNECTED_ACCOUNT',
+        });
+    // 제출하고 7일을 지나 정산까지 돌린다(조회수 4,320회 → 지급 43,200원, 환급 56,800원). 7일째에 계산이 만들어지고 사장님이 확인한다.
     async function submitAndSettle(s: Seeded): Promise<void> {
       await submit(s.collaborationId, `${REELS_URL}?views=4320`).expect(200);
       clock.set(new Date(T0.getTime() + 7 * DAY));
       await scheduler.runDue(clock.now());
+      await confirmAsOwner(s.collaborationId);
     }
 
     it('reports NEEDS_ACCOUNT when settled without a payout account', async () => {
@@ -684,6 +693,7 @@ describe('collaborations', () => {
       await submit(s.collaborationId, `${REELS_URL}?views=0`).expect(200);
       clock.set(new Date(T0.getTime() + 7 * DAY));
       await scheduler.runDue(clock.now());
+      await confirmAsOwner(s.collaborationId);
       expect(bodyOf(await get(s.collaborationId).expect(200))).toMatchObject({
         stage: 'SETTLED',
         settlement: { finalViews: 0, payoutAmount: 0, refundAmount: 100000 },

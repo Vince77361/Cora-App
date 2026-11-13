@@ -304,3 +304,29 @@ describe('NOTIFICATION_CATALOG', () => {
     });
   });
 });
+
+describe('view report notifications', () => {
+  it('renders the canvas text without any value', () => {
+    expect(render('VIEW_REPORT_REQUESTED', null)).toBe(
+      '조회수 집계가 끝났어요. 자료를 확인해 주세요.',
+    );
+    expect(render('VIEW_REPORT_READY', null)).toBe(
+      '조회수 집계가 끝났어요. 계산을 확인해 보세요.',
+    );
+  });
+
+  it('puts both on the settlement tab, cannot be turned off, with the won glyph', () => {
+    for (const kind of [
+      'VIEW_REPORT_REQUESTED',
+      'VIEW_REPORT_READY',
+    ] as const) {
+      expect(NOTIFICATION_CATALOG[kind]).toMatchObject({
+        tab: 'SETTLEMENT',
+        switch: 'ESSENTIAL',
+        glyph: 'WON',
+        needsActor: false,
+      });
+      expect(missingNotifyInputs(kind, {}, null)).toEqual([]);
+    }
+  });
+});

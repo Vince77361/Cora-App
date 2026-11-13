@@ -322,6 +322,10 @@ describe('runMockSeed', () => {
       finalViews: 12500,
       payoutAmount: 25000,
       refundAmount: 35000,
+      status: 'CONFIRMED',
+      fixedCashAmount: 0,
+      viewPayAmount: 25000,
+      confirmedBy: 'AUTO',
       usualViews: 4000,
       multiplierTenths: 31,
     });

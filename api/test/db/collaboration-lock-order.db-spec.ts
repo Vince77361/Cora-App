@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { CancelRequestsRepository } from '../../src/collaborations/cancel-requests.repository';
 import { OpsRepository } from '../../src/ops/ops.repository';
+import { SettlementsRepository } from '../../src/settlements/settlements.repository';
 import { createOffer } from '../helpers/create-offer';
 import { prisma } from './setup-db';
 
@@ -110,6 +111,117 @@ describe('collaboration lock order', () => {
     const repo = new OpsRepository(prisma as never);
     await prisma.$transaction(async (tx) => {
       await expect(repo.lockCollaboration(MISSING, tx)).resolves.toBe(false);
+    });
+  });
+
+  describe('settlement rows', () => {
+    const tryLockSettlement = () =>
+      other.$queryRaw`SELECT id FROM settlements WHERE collaboration_id = ${collaborationId}::uuid FOR UPDATE NOWAIT`;
+    const createUnconfirmed = () =>
+      prisma.settlement.create({
+        data: {
+          collaborationId,
+          finalViews: 12500,
+          payoutAmount: 25000,
+          refundAmount: 35000,
+          status: 'UNCONFIRMED',
+          settledAt: null,
+        },
+      });
+
+    it('locks the settlement row first for ops commands when there is one', async () => {
+      await createUnconfirmed();
+      const repo = new OpsRepository(prisma as never);
+      await prisma.$transaction(async (tx) => {
+        await expect(repo.lockCollaboration(collaborationId, tx)).resolves.toBe(
+          true,
+        );
+        await expect(tryLockSettlement()).rejects.toThrow();
+        await expect(tryLockOffer()).rejects.toThrow();
+        await expect(tryLockCollaboration()).rejects.toThrow();
+      });
+      await expect(tryLockSettlement()).resolves.toHaveLength(1);
+    });
+
+    it('locks the offer and the collaboration before creating a calculation', async () => {
+      const repo = new SettlementsRepository(prisma as never);
+      await prisma.$transaction(async (tx) => {
+        await expect(repo.lockCollaboration(collaborationId, tx)).resolves.toBe(
+          true,
+        );
+        await expect(tryLockOffer()).rejects.toThrow();
+        await expect(tryLockCollaboration()).rejects.toThrow();
+      });
+      await expect(tryLockCollaboration()).resolves.toHaveLength(1);
+    });
+
+    it('holds the settlement row after confirming it and refuses a second confirmation', async () => {
+      await createUnconfirmed();
+      const repo = new SettlementsRepository(prisma as never);
+      const now = new Date('2026-12-10T00:00:00.000Z');
+      await prisma.$transaction(async (tx) => {
+        await expect(
+          repo.confirmCalculation(collaborationId, 'AUTO', now, null, tx),
+        ).resolves.toBe(true);
+        await expect(tryLockSettlement()).rejects.toThrow();
+        await expect(
+          repo.confirmCalculation(collaborationId, 'AUTO', now, null, tx),
+        ).resolves.toBe(false);
+      });
+      expect(
+        await prisma.settlement.findUniqueOrThrow({
+          where: { collaborationId },
+        }),
+      ).toMatchObject({
+        status: 'CONFIRMED',
+        confirmedBy: 'AUTO',
+        settledAt: now,
+        confirmedAt: now,
+      });
+    });
+
+    it('confirms only a calculation read from the asked source', async () => {
+      await createUnconfirmed();
+      await prisma.settlement.update({
+        where: { collaborationId },
+        data: { evidenceSource: 'CAPTURE' },
+      });
+      const repo = new SettlementsRepository(prisma as never);
+      const now = new Date('2026-12-10T00:00:00.000Z');
+      await prisma.$transaction(async (tx) => {
+        await expect(
+          repo.confirmCalculation(
+            collaborationId,
+            'AUTO',
+            now,
+            'CONNECTED_ACCOUNT',
+            tx,
+          ),
+        ).resolves.toBe(false);
+        await expect(
+          repo.confirmCalculation(collaborationId, 'OPERATOR', now, null, tx),
+        ).resolves.toBe(true);
+      });
+    });
+
+    it('never confirms a disputed calculation', async () => {
+      await createUnconfirmed();
+      await prisma.settlement.update({
+        where: { collaborationId },
+        data: { status: 'DISPUTED' },
+      });
+      const repo = new SettlementsRepository(prisma as never);
+      await prisma.$transaction(async (tx) => {
+        await expect(
+          repo.confirmCalculation(
+            collaborationId,
+            'AUTO',
+            new Date(),
+            null,
+            tx,
+          ),
+        ).resolves.toBe(false);
+      });
     });
   });
 });

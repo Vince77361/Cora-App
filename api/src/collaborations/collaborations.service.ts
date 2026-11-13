@@ -500,6 +500,8 @@ export class CollaborationsService {
     const role = row.creatorId === userId ? 'CREATOR' : 'COMMISSIONER';
     const terms = readTerms(row.terms);
     const settlement = c.settlements.get(row.id) ?? null;
+    // 확인 전의 계산은 "정산"으로 보이지 않게 한다(돈은 아직 보관 중이다).
+    const confirmed = settlement?.status === 'CONFIRMED' ? settlement : null;
     const payout = c.payouts.get(row.id) ?? null;
     const escrowAmount = c.funded.get(row.id)?.escrow ?? 0;
     const currentViews = c.views.get(row.id) ?? null;
@@ -549,7 +551,7 @@ export class CollaborationsService {
         acceptedAt: row.createdAt,
         fundedAt: row.fundedAt,
         submittedAt: row.submittedAt,
-        settledAt: settlement?.settledAt ?? null,
+        settledAt: confirmed?.settledAt ?? null,
       }).map((step) => ({
         key: step.key,
         state: step.state,
@@ -562,11 +564,11 @@ export class CollaborationsService {
       currentViews,
       earnedSoFar: role === 'CREATOR' ? (live?.earned ?? null) : null,
       expectedRefund: role === 'COMMISSIONER' ? (live?.refund ?? null) : null,
-      settlement: settlement
+      settlement: confirmed
         ? {
-            finalViews: settlement.finalViews,
-            payoutAmount: settlement.payoutAmount,
-            refundAmount: settlement.refundAmount,
+            finalViews: confirmed.finalViews,
+            payoutAmount: confirmed.payoutAmount,
+            refundAmount: confirmed.refundAmount,
           }
         : null,
       payoutStatus: payoutView.status,

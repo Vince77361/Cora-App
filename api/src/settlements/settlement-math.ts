@@ -50,3 +50,17 @@ function assertWholeWon(value: number, label: string): void {
     throw new Error(`${label}은(는) 0 이상의 정수여야 해요: ${value}`);
   }
 }
+
+// 최종 조회수: 마지막 날의 값, 읽지 못했다면 가장 최근에 읽은 값. 하나도 없으면 null이다.
+// 마지막 날 번호는 호출한 쪽이 준다(측정 기간은 협업마다 다를 수 있다).
+export function pickFinalViews(
+  snapshots: { dayIndex: number; views: number | null }[],
+  lastDay: number,
+): number | null {
+  const last = snapshots.find((s) => s.dayIndex === lastDay);
+  if (last?.views != null) return last.views;
+  const readable = snapshots
+    .filter((s) => s.views !== null)
+    .sort((a, b) => b.dayIndex - a.dayIndex);
+  return readable[0]?.views ?? null;
+}

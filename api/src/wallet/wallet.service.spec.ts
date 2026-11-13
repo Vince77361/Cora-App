@@ -62,6 +62,7 @@ class FakeSettlements extends SettlementsService {
       null as never,
       null as never,
       null as never,
+      null as never,
     );
   }
   payoutsOfCreator(creatorId: string) {
@@ -197,6 +198,14 @@ function settlement(
     payoutAmount: 43200,
     refundAmount: 56800,
     settledAt,
+    status: 'CONFIRMED',
+    calculatedAt: settledAt,
+    confirmDueAt: null,
+    confirmedAt: settledAt,
+    confirmedBy: 'AUTO',
+    evidenceSource: 'CONNECTED_ACCOUNT',
+    fixedCashAmount: 0,
+    viewPayAmount: 43200,
     usualViews: null,
     multiplierTenths: null,
     usualReadAt: null,
@@ -322,6 +331,33 @@ describe('WalletService', () => {
     expect(wallet.heldAmount).toBe(130000);
     // 돈이 보관 중이 아닌 협업의 잔액은 읽지도 않는다.
     expect(ledger.asked).toEqual([[counting.id, halted.id]]);
+  });
+
+  it('keeps an unconfirmed calculation as a held amount and never as a settlement', async () => {
+    const counting = collaboration({
+      stage: 'COUNTING',
+      submittedAt: new Date('2026-11-02T03:00:00.000Z'),
+    });
+    fakeCollaborations.rows = [counting];
+    ledger.balances = new Map([[counting.id, 60000]]);
+    // 계산은 만들어졌지만 아직 확인 전이라 정산 시각도 지급 행도 없다.
+    settlements.settlementRows = [
+      {
+        ...settlement(counting.id, new Date('2026-11-09T03:00:00.000Z')),
+        status: 'UNCONFIRMED',
+        settledAt: null,
+        confirmedAt: null,
+        confirmedBy: null,
+      },
+    ];
+
+    const wallet = await service.get(CREATOR);
+
+    expect(wallet.heldAmount).toBe(60000);
+    expect(wallet.nextPayout).toBeNull();
+    expect(wallet.entries.map((e) => [e.kind, e.amount])).toEqual([
+      ['HELD', 60000],
+    ]);
   });
 
   it('lists scheduled, done, held and voucher rows in canvas order', async () => {

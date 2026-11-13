@@ -79,6 +79,10 @@ describe('PrismaMockSeedDb', () => {
       finalViews: 12500,
       payoutAmount: 25000,
       refundAmount: 35000,
+      status: 'CONFIRMED',
+      viewPayAmount: 25000,
+      fixedCashAmount: 0,
+      confirmedBy: 'AUTO',
       usualViews: 4000,
       multiplierTenths: 31,
     });

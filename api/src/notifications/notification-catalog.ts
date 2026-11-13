@@ -18,7 +18,9 @@ export type NotificationTarget = {
     // 제안 상세(id = 오퍼 id). 판본을 주고받는 알림이 간다.
     | 'PROPOSAL'
     // 7일 결과(G1, id = 협업 id). 사장님의 정산 완료 알림이 간다.
-    | 'STORE_RESULT';
+    | 'STORE_RESULT'
+    // 조회 자료 확인(F4, id = 협업 id). 집계가 끝난 알림이 간다.
+    | 'VIEW_REPORT';
   id: string | null;
 };
 
@@ -222,6 +224,24 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
         ? `조회수 집계가 끝났어요. ${josa(won(params.amount), '을/를')} 돌려드려요.`
         : '조회수 집계가 끝났어요.';
     },
+  },
+  // 조회수 집계가 끝나 계산이 만들어졌다: 맡기는 쪽이 자료를 확인한다. 정산 / 끌 수 없음 / WON. 가는 곳은 조회 자료 확인(F4).
+  VIEW_REPORT_REQUESTED: {
+    tab: 'SETTLEMENT',
+    switch: 'ESSENTIAL',
+    glyph: 'WON',
+    requiredParams: {},
+    needsActor: false,
+    render: () => '조회수 집계가 끝났어요. 자료를 확인해 주세요.',
+  },
+  // 같은 때 크리에이터가 받는다(확인되면 정산이 이어진다).
+  VIEW_REPORT_READY: {
+    tab: 'SETTLEMENT',
+    switch: 'ESSENTIAL',
+    glyph: 'WON',
+    requiredParams: {},
+    needsActor: false,
+    render: () => '조회수 집계가 끝났어요. 계산을 확인해 보세요.',
   },
   // 표 "역제안·다시 보냄·수락·종료": 매칭 / 새 오퍼와 제안 / 사진. 가는 곳은 모두 제안 상세다.
   // 크리에이터가 조건을 바꿔 제안: 사장님이 받는다.

@@ -9,6 +9,14 @@ export const snapshotJobKey = (
 export const settleJobKey = (collaborationId: string): string =>
   `settle:${collaborationId}`;
 
+// 조회 자료 확인 기한이 되면 자동으로 확인하는 작업. 정산 장부의 키('settle:' + 협업 id)와는 다른 키다(작업 큐의 키).
+export const autoConfirmJobKey = (collaborationId: string): string =>
+  `auto-confirm:${collaborationId}`;
+
+// 계산이 만들어졌다는 알림의 중복 방지 키(사장님·크리에이터 각자 한 건).
+export const viewReportDedupeKey = (collaborationId: string): string =>
+  `view-report:${collaborationId}`;
+
 export const payoutJobKey = (payoutId: string): string => `payout:${payoutId}`;
 
 // 조회수를 읽지 못해 멈춘 협업의 사유. 운영 명령(10번 작업)이 이 값으로 조회수 정산 대상을 가린다.

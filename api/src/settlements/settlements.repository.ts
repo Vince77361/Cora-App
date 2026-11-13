@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import {
   Collaboration,
+  EvidenceSource,
   Payout,
   Prisma,
   Refund,
   Settlement,
+  SettlementConfirmer,
+  SettlementStatus,
   ViewSnapshot,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,12 +26,20 @@ class Rollback<R> extends Error {
   }
 }
 
+// 정산 행. 확인 전(UNCONFIRMED)에는 settledAt·confirmedAt·confirmedBy가 비어 있고, 확인 완료 행은 모두 채운다.
 export interface NewSettlement {
   collaborationId: string;
   finalViews: number | null;
   payoutAmount: number;
   refundAmount: number;
-  settledAt: Date;
+  fixedCashAmount: number;
+  viewPayAmount: number;
+  status: SettlementStatus;
+  calculatedAt: Date;
+  confirmDueAt: Date | null;
+  settledAt: Date | null;
+  confirmedAt: Date | null;
+  confirmedBy: SettlementConfirmer | null;
 }
 
 export interface NewPayout {
@@ -158,8 +169,11 @@ export class SettlementsRepository {
     });
   }
 
-  findSettlement(collaborationId: string): Promise<Settlement | null> {
-    return this.prisma.settlement.findFirst({
+  findSettlement(
+    collaborationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Settlement | null> {
+    return (tx ?? this.prisma).settlement.findFirst({
       where: { collaborationId, deletedAt: null },
     });
   }
@@ -193,6 +207,8 @@ export class SettlementsRepository {
     return this.prisma.settlement.findMany({
       where: {
         deletedAt: null,
+        // 확인 완료된 정산만이다(확인 전 계산은 아직 쓴 돈이 아니다).
+        status: 'CONFIRMED',
         settledAt: { gte: since },
         collaboration: {
           storeId,
@@ -204,6 +220,48 @@ export class SettlementsRepository {
       include: { collaboration: true },
       orderBy: { settledAt: 'asc' },
     });
+  }
+
+  // 조회 자료 확인 전 계산을 확인 완료로 바꾼다. UNCONFIRMED일 때만 바뀌어, 사장님 확인과 자동 확인이 겹쳐도 하나만 이긴다.
+  // 이 갱신이 정산 행을 잠근다: 정산 행을 건드리는 길은 "정산 행 → 협업" 순서로 잠근다(원장 판단 P3).
+  // onlySource를 주면 그 자료 출처인 계산만 바꾼다(사장님·자동 확인은 연결 계정 자료만 확인한다).
+  async confirmCalculation(
+    collaborationId: string,
+    by: SettlementConfirmer,
+    at: Date,
+    onlySource: EvidenceSource | null,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const { count } = await tx.settlement.updateMany({
+      where: {
+        collaborationId,
+        status: 'UNCONFIRMED',
+        deletedAt: null,
+        ...(onlySource ? { evidenceSource: onlySource } : {}),
+      },
+      data: {
+        status: 'CONFIRMED',
+        confirmedAt: at,
+        settledAt: at,
+        confirmedBy: by,
+      },
+    });
+    return count === 1;
+  }
+
+  // 계산을 만들기 전에 오퍼 → 협업 순으로 행을 잠근다(운영 명령·결제·오퍼와 같은 순서). 협업이 없으면 false다.
+  // 정산 행이 아직 없을 때만 부르므로 "정산 행 → 협업" 순서와 부딪치지 않는다.
+  async lockCollaboration(
+    collaborationId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    await tx.$queryRaw`
+      SELECT o.id FROM offers o
+      JOIN collaborations c ON c.offer_id = o.id
+      WHERE c.id = ${collaborationId}::uuid FOR UPDATE OF o`;
+    const rows = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM collaborations WHERE id = ${collaborationId}::uuid FOR UPDATE`;
+    return rows.length > 0;
   }
 
   // 협업당 한 줄(유일 제약). 이미 있으면 예외 없이 false다(호출한 쪽 트랜잭션이 중단되지 않는다).

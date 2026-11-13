@@ -64,7 +64,10 @@ export function buildWalletEntries(input: WalletInput): WalletEntryModel[] {
     const terms = readWalletTerms(collaboration.terms);
     if (!terms) continue;
 
-    const settlement = input.settlements.get(collaboration.id) ?? null;
+    // 확인 전의 계산(UNCONFIRMED·DISPUTED)은 아직 정산이 아니다: 돈은 협업이 끝날 때까지 "보관 중"으로만 보인다.
+    const settlementRow = input.settlements.get(collaboration.id) ?? null;
+    const settlement =
+      settlementRow?.status === 'CONFIRMED' ? settlementRow : null;
     const base = {
       collaborationId: collaboration.id,
       counterpartName:

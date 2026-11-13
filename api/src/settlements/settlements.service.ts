@@ -5,6 +5,7 @@ import {
   Payout,
   Prisma,
   Settlement,
+  SettlementConfirmer,
 } from '@prisma/client';
 import {
   CollaborationPatch,
@@ -18,7 +19,7 @@ import {
 } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
 import { Clock } from '../common/clock';
-import { hasViewPay, maxCashBurden, readTerms } from '../stores/reward-terms';
+import { hasViewPay, readTerms } from '../stores/reward-terms';
 import { InstagramService } from '../instagram/instagram.service';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import {
@@ -27,7 +28,6 @@ import {
 } from '../integrations/view-count/view-count.port';
 import { JobRunContext, JobScheduler } from '../jobs/job-scheduler';
 import { NotificationsService } from '../notifications/notifications.service';
-import { StoresService } from '../stores/stores.service';
 import {
   forcePayoutKey,
   forcePayoutRefundKey,
@@ -39,10 +39,13 @@ import {
   snapshotJobKey,
   VIEW_COUNT_HALT_REASON,
 } from './job-keys';
+import { assertEscrowMatches } from './escrow-check';
 import { PayoutsService } from './payouts.service';
 import { RefundsService } from './refunds.service';
-import { multiplierTenthsOf, settleReward } from './settlement-math';
+import { SettlementFinishService } from './settlement-finish.service';
+import { pickFinalViews, settleReward } from './settlement-math';
 import { SettlementsRepository } from './settlements.repository';
+import { ViewReportService } from './view-report.service';
 
 @Injectable()
 export class SettlementsService {
@@ -59,7 +62,8 @@ export class SettlementsService {
     private readonly ledger: LedgerService,
     private readonly payouts: PayoutsService,
     private readonly refunds: RefundsService,
-    private readonly stores: StoresService,
+    private readonly finisher: SettlementFinishService,
+    private readonly viewReport: ViewReportService,
     private readonly clock: Clock,
   ) {}
 
@@ -90,14 +94,18 @@ export class SettlementsService {
     if (collaboration.stage !== 'COUNTING') return;
     // 조회수 수당이 없는 협업은 조회수를 세지 않는다(운영 재개가 남긴 작업이 돌아도 아무 일 없다).
     if (!hasViewPay(readTerms(collaboration.terms))) return;
+    // 계산이 이미 만들어졌다면(확인 전) 측정은 끝난 것이다: 늦게 도는 마지막 날 작업이 확인을 기다리는 협업을 멈추지 않게 한다.
+    if (await this.repository.findSettlement(collaboration.id)) return;
 
     await this.ensureSnapshot(collaboration, dayIndex, context);
     await this.haltIfUnreadable(collaboration);
   }
 
-  // settle 작업: 7일 집계가 끝난 협업을 정산한다. 같은 작업이 몇 번 돌아도 지급·환급·알림은 한 번씩만 일어난다.
-  // key는 장부의 중복 방지 키다('settle:' + 협업 id).
-  // 커밋(정산 행, 장부, 단계, 지급·환급 행)은 한 트랜잭션이고, 그 뒤 단계(작업 등록, PG 환급, 알림)는 정산 행을 보고 이어서 한다.
+  // settle 작업: 7일 집계가 끝난 협업의 정산을 "계산 만들기"와 "확인 완료"로 나눈다.
+  // - 조회수 수당이 없는 협업(고정 현금만)은 확인할 자료가 없어 한 걸음에 확정한다(NOT_NEEDED).
+  // - 조회수 수당이 있는 협업은 계산(정산 행 UNCONFIRMED)만 만들고 알린다. 장부·단계·지급·환급은 확인 완료(ViewReportService.confirm)가 한다.
+  // 같은 작업이 몇 번 돌아도 지급·환급·알림은 한 번씩만 일어난다. key는 장부의 중복 방지 키다('settle:' + 협업 id).
+  // 커밋(정산 행, 장부, 단계, 지급·환급 행)은 한 트랜잭션이고, 그 뒤 단계는 정산 행을 보고 이어서 한다.
   // 그래서 커밋 뒤에 죽어 다시 돌 때는 단계가 이미 SETTLED여도 남은 단계를 마친다.
   async settle(
     collaborationId: string,
@@ -112,17 +120,24 @@ export class SettlementsService {
       return;
     }
     if (collaboration.stage === 'COUNTING') {
-      if (
-        (await this.settleCounting(collaboration, key, context)) !== 'settled'
-      ) {
+      // 계산이 이미 있으면(확인 전) 다시 만들지 않고 알림 단계만 이어서 한다.
+      const existing = await this.repository.findSettlement(collaborationId);
+      if (existing && existing.status !== 'CONFIRMED') {
+        await this.viewReport.announceCalculation(collaborationId);
         return;
       }
+      const outcome = await this.settleCounting(collaboration, key, context);
+      if (outcome === 'calculated') {
+        await this.viewReport.announceCalculation(collaborationId);
+        return;
+      }
+      if (outcome !== 'settled') return;
     } else if (collaboration.stage !== 'SETTLED') {
       return;
     }
     const settlement = await this.repository.findSettlement(collaborationId);
-    if (settlement) {
-      await this.finishSettlement(collaboration, settlement, context);
+    if (settlement && settlement.status === 'CONFIRMED') {
+      await this.finisher.finish(collaboration, settlement, context);
     }
   }
 
@@ -130,7 +145,7 @@ export class SettlementsService {
     collaboration: Collaboration,
     key: string,
     context?: JobRunContext,
-  ): Promise<'settled' | 'halted' | 'gone'> {
+  ): Promise<'settled' | 'calculated' | 'halted' | 'gone'> {
     // 조회수 수당이 없는 협업(고정 현금만)은 조회수를 읽지 않고 측정 기간이 끝나는 날 고정 현금으로 정산한다.
     // 스냅샷이 없어 아래의 3일 실패 규칙을 보면 안 된다(거짓으로 멈춘다).
     if (!hasViewPay(readTerms(collaboration.terms))) {
@@ -142,6 +157,7 @@ export class SettlementsService {
             'COUNTING',
             (escrow) => planFixed(collaboration, escrow),
             key,
+            { confirmedBy: 'NOT_NEEDED' },
           );
           return committed ? 'settled' : rollback('gone');
         },
@@ -157,25 +173,15 @@ export class SettlementsService {
       return 'halted';
     }
     const snapshots = await this.repository.listSnapshots(collaboration.id);
-    const finalViews = pickFinalViews(snapshots);
+    const finalViews = pickFinalViews(snapshots, SNAPSHOT_DAYS);
     // 읽은 값이 하나도 없다(위 판정에 걸리기 전의 경우): 0으로 정산하지 않고 멈춘다.
     if (finalViews === null) {
       await this.halt(collaboration);
       return 'halted';
     }
-    const outcome = await this.repository.transaction<'settled', 'gone'>(
-      async (tx, rollback) => {
-        const committed = await this.commitSettlement(
-          tx,
-          collaboration,
-          'COUNTING',
-          (escrow) => planByViews(collaboration, finalViews, escrow),
-          key,
-        );
-        return committed ? 'settled' : rollback('gone');
-      },
-    );
-    return outcome === 'settled' ? 'settled' : 'gone';
+    // 계산만 만든다. 돈은 확인 완료 때 움직인다.
+    const created = await this.viewReport.createCalculation(collaboration.id);
+    return created === 'gone' ? 'gone' : 'calculated';
   }
 
   // 정산의 커밋 부분(단계, 정산 행, 장부, 지급·환급 행)을 호출한 쪽의 트랜잭션 안에서 한다.
@@ -190,15 +196,19 @@ export class SettlementsService {
       finalViews: number | null;
       payout: number;
       refund: number;
+      fixedCash: number;
+      viewPay: number;
     },
     key: string,
     options: {
+      // 확인 완료를 한 쪽. 이 길(한 걸음 정산)은 확인할 자료가 없거나 운영자가 정한 것이라 NOT_NEEDED·OPERATOR다.
+      confirmedBy: SettlementConfirmer;
       patch?: CollaborationPatch;
       payoutKey?: string;
       refundKey?: string;
       // 지급·환급이 정산이 아니라 운영 명령의 몫일 때의 장부 줄. 기본은 일반 정산의 줄이다.
       postings?: (p: { payout: number; refund: number }) => Posting[];
-    } = {},
+    },
   ): Promise<{ payout: number; refund: number } | null> {
     const now = this.clock.now();
     if (
@@ -213,14 +223,21 @@ export class SettlementsService {
       return null;
     }
     const escrow = await this.ledger.escrowBalance(collaboration.id, tx);
-    const { finalViews, payout, refund } = plan(escrow);
+    const { finalViews, payout, refund, fixedCash, viewPay } = plan(escrow);
     const created = await this.repository.createSettlement(
       {
         collaborationId: collaboration.id,
         finalViews,
         payoutAmount: payout,
         refundAmount: refund,
+        fixedCashAmount: fixedCash,
+        viewPayAmount: viewPay,
+        status: 'CONFIRMED',
+        calculatedAt: now,
+        confirmDueAt: null,
         settledAt: now,
+        confirmedAt: now,
+        confirmedBy: options.confirmedBy,
       },
       tx,
     );
@@ -264,7 +281,10 @@ export class SettlementsService {
       'HALTED',
       (escrow) => planByViews(collaboration, views, escrow),
       settleJobKey(collaboration.id),
-      { patch: { haltedReason: null, stageBeforeHalt: null } },
+      {
+        confirmedBy: 'OPERATOR',
+        patch: { haltedReason: null, stageBeforeHalt: null },
+      },
     );
   }
 
@@ -285,10 +305,18 @@ export class SettlementsService {
             `강제 지급액(${amount})이 보관액(${escrow})을 넘거나 올바르지 않아요.`,
           );
         }
-        return { finalViews: null, payout: amount, refund: escrow - amount };
+        // 운영자가 정한 금액이라 고정 현금과 조회수 수당으로 나누지 않고 전부 수당 칸에 둔다(옛 정산 행 이전과 같다).
+        return {
+          finalViews: null,
+          payout: amount,
+          refund: escrow - amount,
+          fixedCash: 0,
+          viewPay: amount,
+        };
       },
       forcePayoutKey(collaboration.id),
       {
+        confirmedBy: 'OPERATOR',
         patch: { haltedReason: null, stageBeforeHalt: null },
         payoutKey: forcePayoutKey(collaboration.id),
         refundKey: forcePayoutRefundKey(collaboration.id),
@@ -300,121 +328,12 @@ export class SettlementsService {
     );
   }
 
-  // 정산 커밋 뒤의 단계(작업 등록, 알림, PG 환급)를 협업 id로 이어서 한다. 모두 같은 키라 다시 불러도 한 번만 일어난다.
-  // 운영 명령이 정산을 커밋한 뒤 부른다.
-  // 강제 지급은 지급·환급 행의 키가 일반 정산과 달라 keys로 알려 준다.
-  async finishSettlementOf(
+  // 정산 커밋 뒤의 단계(작업 등록, 알림, PG 환급)를 협업 id로 이어서 한다. 운영 명령이 정산을 커밋한 뒤 부른다.
+  finishSettlementOf(
     collaborationId: string,
     keys?: { payout: string; refund: string },
   ): Promise<void> {
-    const collaboration = await this.collaborations.findById(collaborationId);
-    const settlement = collaboration
-      ? await this.repository.findSettlement(collaborationId)
-      : null;
-    if (collaboration && settlement) {
-      await this.finishSettlement(collaboration, settlement, undefined, keys);
-    }
-  }
-
-  // 커밋 뒤의 단계. 모두 같은 키라 다시 불러도 한 번만 일어난다.
-  // 크리에이터의 알림을 사장님 환급보다 앞에 둔다: PG 환급이 계속 실패해도 크리에이터의 정산 알림은 막히지 않는다.
-  private async finishSettlement(
-    collaboration: Collaboration,
-    settlement: Settlement,
-    context?: JobRunContext,
-    keys: { payout: string; refund: string } = {
-      payout: settlePayoutKey(collaboration.id),
-      refund: settleRefundKey(collaboration.id),
-    },
-  ): Promise<void> {
-    const payout = await this.payouts.findByKey(keys.payout);
-    if (payout?.status === 'PENDING') await this.payouts.schedule(payout);
-
-    const target = { kind: 'WALLET', id: null } as const;
-    // 0원 정산의 알림("정산 0원…")은 보내지 않는다.
-    if (settlement.payoutAmount > 0) {
-      await this.notifications.notify({
-        userId: collaboration.creatorId,
-        role: 'CREATOR',
-        kind: 'SETTLEMENT_CONFIRMED',
-        params: { amount: settlement.payoutAmount },
-        target,
-        dedupeKey: `settled:${collaboration.id}`,
-      });
-    }
-    const refund = await this.refunds.findByKey(keys.refund);
-    if (refund) await this.refunds.execute(refund.id, context);
-    // 평소 조회수는 사장님이 알림으로 7일 결과(G1)를 열기 전에 채운다.
-    await this.recordUsualViews(collaboration, settlement);
-    await this.notifyStoreOfResult(collaboration, settlement);
-  }
-
-  // 사장님에게 정산이 끝났다고 알리고, 누르면 7일 결과(G1)가 열리게 한다. 이 알림이 G1로 가는 유일한 길이라
-  // 돌려줄 돈이 0원이어도 보낸다(금액 문장은 카탈로그가 뺀다). 식사권만 있는 협업은 G1이 없어 보내지 않는다.
-  // 제출 링크가 없는 협업(운영 명령의 강제 지급)은 G1이 열리지 않아 가는 곳을 지갑으로 둔다.
-  private async notifyStoreOfResult(
-    collaboration: Collaboration,
-    settlement: Settlement,
-  ): Promise<void> {
-    if (
-      settlement.refundAmount === 0 &&
-      collaboration.settlementMethod === 'NONE'
-    ) {
-      return;
-    }
-    const fixedOnly = !hasViewPay(readTerms(collaboration.terms));
-    await this.notifications.notify({
-      userId: collaboration.commissionerId,
-      role: 'STORE',
-      kind: 'SETTLEMENT_REFUNDED',
-      params: fixedOnly
-        ? { amount: settlement.refundAmount, fixedOnly: 1 }
-        : { amount: settlement.refundAmount },
-      target: collaboration.submittedUrl
-        ? { kind: 'STORE_RESULT', id: collaboration.id }
-        : { kind: 'WALLET', id: null },
-      dedupeKey: `settle-refund:${collaboration.id}`,
-    });
-  }
-
-  // 가게 인스타그램 계정의 평소 조회수를 한 번 읽어 배수와 함께 정산 줄에 저장한다.
-  // 읽은 적이 있으면(읽지 못한 것도 읽은 것이다) 다시 읽지 않는다: 같은 협업의 결과가 읽을 때마다 달라지지 않게.
-  // 조회수를 세지 않은 협업(고정 현금만)과 최종 조회수가 없는 정산(강제 지급)은 비교할 값이 없어 건너뛴다.
-  // 조회수 계정을 못 읽는 것(ViewCountUnavailableError)만 "읽지 못함"으로 저장하고 넘어간다. 그 밖의 오류는 던진다:
-  // 정산 작업이 실패로 남아 다시 돌 때 usualReadAt이 비어 있으면 이어서 읽고, 삼키면 영영 비어 비교 상자가 숨겨진다.
-  private async recordUsualViews(
-    collaboration: Collaboration,
-    settlement: Settlement,
-  ): Promise<void> {
-    if (settlement.usualReadAt) return;
-    if (
-      !hasViewPay(readTerms(collaboration.terms)) ||
-      settlement.finalViews === null
-    ) {
-      return;
-    }
-    const handle = collaboration.storeId
-      ? await this.stores.getInstagramHandle(collaboration.storeId)
-      : null;
-    let usualViews: number | null = null;
-    if (handle) {
-      try {
-        const average = await this.viewCount.readAccountAverage(handle);
-        // 음수나 소수는 잘못 읽은 값이다. 0은 나눌 수 없어 쓰지 않는다.
-        usualViews = Number.isInteger(average) && average > 0 ? average : null;
-      } catch (error) {
-        // 못 읽은 것만 "읽지 못함"으로 저장한다. 그 밖의 오류(DB, 코드 버그)는 던져 작업이 다시 돌게 한다.
-        if (!(error instanceof ViewCountUnavailableError)) throw error;
-      }
-    }
-    await this.repository.saveUsualViews(settlement.id, {
-      usualViews,
-      multiplierTenths:
-        usualViews === null
-          ? null
-          : multiplierTenthsOf(settlement.finalViews, usualViews),
-      readAt: this.clock.now(),
-    });
+    return this.finisher.finishOf(collaborationId, keys);
   }
 
   // 그날의 줄이 없을 때만 읽어서 저장한다. 읽지 못하면 views = null이다(0이 아니다).
@@ -552,65 +471,63 @@ export function isViewCountHalt(collaboration: Collaboration): boolean {
   );
 }
 
-// 최종 조회수: 7일째 값, 읽지 못했다면 가장 최근에 읽은 값. 하나도 없으면 null이다.
-function pickFinalViews(
-  snapshots: { dayIndex: number; views: number | null }[],
-): number | null {
-  const day7 = snapshots.find((s) => s.dayIndex === SNAPSHOT_DAYS);
-  if (day7?.views != null) return day7.views;
-  const readable = snapshots
-    .filter((s) => s.views !== null)
-    .sort((a, b) => b.dayIndex - a.dayIndex);
-  return readable[0]?.views ?? null;
-}
-
-// 같은 트랜잭션에서 읽은 에스크로 잔액이 조건 사본의 최대 현금 부담과 다르면 화면에 보인 금액과 보관액이 어긋난 것이라
-// 돈을 움직이지 않고 던져 되돌린다.
-function assertEscrowMatches(
-  terms: ReturnType<typeof readTerms>,
-  escrow: number,
-): void {
-  const burden = maxCashBurden(terms);
-  if (escrow !== burden) {
-    throw new Error(
-      `에스크로 잔액(${escrow})이 조건의 최대 현금 부담(${burden})과 달라요.`,
-    );
-  }
-}
-
 // 조건 사본(고정 현금, 조회수 단가, 상한)으로 지급·환급을 정한다. 상한은 에스크로 잔액이 아니라 조건의 값이다.
 // 조회수 수당이 없는 협업은 조회수로 정산하지 않는다(planFixed).
 function planByViews(
   collaboration: Collaboration,
   views: number,
   escrow: number,
-): { finalViews: number; payout: number; refund: number } {
+): {
+  finalViews: number;
+  payout: number;
+  refund: number;
+  fixedCash: number;
+  viewPay: number;
+} {
   const terms = readTerms(collaboration.terms);
   if (terms.viewRatePerThousand === null || terms.perViewCap === null) {
     throw new Error('조회수 수당이 없는 협업은 조회수로 정산할 수 없어요.');
   }
   assertEscrowMatches(terms, escrow);
-  const { payout, refund } = settleReward({
+  const { viewPay, payout, refund } = settleReward({
     views,
     ratePerThousand: terms.viewRatePerThousand,
     cap: terms.perViewCap,
     fixedCash: terms.fixedCash,
   });
-  return { finalViews: views, payout, refund };
+  return {
+    finalViews: views,
+    payout,
+    refund,
+    fixedCash: terms.fixedCash,
+    viewPay,
+  };
 }
 
 // 고정 현금만 있는 협업의 정산: 조회수 없이(finalViews = null) 고정 현금 전부를 지급하고 환급은 없다.
 function planFixed(
   collaboration: Collaboration,
   escrow: number,
-): { finalViews: null; payout: number; refund: number } {
+): {
+  finalViews: null;
+  payout: number;
+  refund: number;
+  fixedCash: number;
+  viewPay: number;
+} {
   const terms = readTerms(collaboration.terms);
   assertEscrowMatches(terms, escrow);
-  const { payout, refund } = settleReward({
+  const { viewPay, payout, refund } = settleReward({
     views: 0,
     ratePerThousand: 0,
     cap: 0,
     fixedCash: terms.fixedCash,
   });
-  return { finalViews: null, payout, refund };
+  return {
+    finalViews: null,
+    payout,
+    refund,
+    fixedCash: terms.fixedCash,
+    viewPay,
+  };
 }

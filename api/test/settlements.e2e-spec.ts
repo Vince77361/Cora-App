@@ -18,6 +18,7 @@ import { PayoutAccountsService } from '../src/payout-accounts/payout-accounts.se
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { RefundsService } from '../src/settlements/refunds.service';
 import { SettlementsService } from '../src/settlements/settlements.service';
+import { ViewReportService } from '../src/settlements/view-report.service';
 import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
 import {
   ViewCountPort,
@@ -72,6 +73,8 @@ describe('settlements', () => {
     (res.body as { error: { code: string } }).error.code;
   const messageOf = (res: request.Response) =>
     (res.body as { error: { message: string } }).error.message;
+  const settlementOf = (id: string) =>
+    prisma.settlement.findUniqueOrThrow({ where: { collaborationId: id } });
   const collaborationOf = (id: string) =>
     prisma.collaboration.findUniqueOrThrow({ where: { id } });
   const snapshotsOf = (id: string) =>
@@ -112,7 +115,14 @@ describe('settlements', () => {
       .set(auth)
       .send({ bankCode: '004', accountNumber: '110123456789', holderName })
       .expect(200);
-  // 제출하고 7일을 지나 정산까지 돌린다.
+  // 사장님이 "자료 확인했어요"를 누른 것과 같다(서비스를 바로 부른다. HTTP 쪽은 view-report e2e가 본다).
+  const confirmAsOwner = (collaborationId: string) =>
+    app
+      .get(ViewReportService)
+      .confirm(collaborationId, 'COMMISSIONER', `settle:${collaborationId}`, {
+        onlySource: 'CONNECTED_ACCOUNT',
+      });
+  // 제출하고 7일을 지나 정산까지 돌린다: 7일째 계산이 만들어지고(조회수 수당이 있을 때), 같은 시각에 사장님이 확인한다.
   async function submitAndSettle(
     s: Seeded,
     views: number | string,
@@ -120,6 +130,7 @@ describe('settlements', () => {
     await submit(s.collaborationId, `${REELS_URL}?views=${views}`).expect(200);
     clock.set(new Date(T0.getTime() + 7 * DAY));
     await scheduler.runDue(clock.now());
+    await confirmAsOwner(s.collaborationId);
   }
   const settleJob = (id: string) =>
     ({ name: 'settle', payload: { collaborationId: id } }) as const;
@@ -838,17 +849,21 @@ describe('settlements', () => {
     });
 
     it('refuses to settle when the escrow balance differs from the copied burden', async () => {
-      // 보관액(90,000)이 조건의 최대 현금 부담(100,000)과 다르면 돈을 움직이지 않고 되돌린다.
+      // 보관액(90,000)이 조건의 최대 현금 부담(100,000)과 다르면 확인할 때 돈을 움직이지 않고 되돌린다(계산은 확인 전 그대로다).
       const s = await seed({ paidEscrow: 90000 });
       await submit(s.collaborationId, `${REELS_URL}?views=4320`).expect(200);
       clock.set(new Date(T0.getTime() + 7 * DAY));
+      await scheduler.runDue(clock.now());
       const before = await ledgerOf(s.collaborationId);
-      const job = settleJob(s.collaborationId);
-      await expect(
-        scheduler.registry.run(job.name, job.payload),
-      ).rejects.toThrow('최대 현금 부담');
+      await expect(confirmAsOwner(s.collaborationId)).rejects.toThrow(
+        '최대 현금 부담',
+      );
       expect((await collaborationOf(s.collaborationId)).stage).toBe('COUNTING');
-      expect(await prisma.settlement.count()).toBe(0);
+      expect(await settlementOf(s.collaborationId)).toMatchObject({
+        status: 'UNCONFIRMED',
+        settledAt: null,
+        confirmedBy: null,
+      });
       expect(await prisma.payout.count()).toBe(0);
       expect(await prisma.refund.count()).toBe(0);
       expect(await ledgerOf(s.collaborationId)).toHaveLength(before.length);
@@ -857,14 +872,19 @@ describe('settlements', () => {
     it('notifies the settlement once with the canvas text', async () => {
       const s = await seed();
       await submitAndSettle(s, 4320);
+      // 계산이 만들어질 때의 알림(확인 요청)이 먼저, 확인 뒤의 정산 알림이 나중이다.
       expect(pushTo(s.creatorId).map((p) => p.body)).toEqual([
+        '조회수 집계가 끝났어요. 계산을 확인해 보세요.',
         '정산 43,200원이 다음 주 수요일에 들어와요.',
       ]);
       expect(
         pushTo(s.ownerId)
           .map((p) => p.body)
           .filter((b) => b.startsWith('조회수 집계')),
-      ).toEqual(['조회수 집계가 끝났어요. 56,800원을 돌려드려요.']);
+      ).toEqual([
+        '조회수 집계가 끝났어요. 자료를 확인해 주세요.',
+        '조회수 집계가 끝났어요. 56,800원을 돌려드려요.',
+      ]);
       const rows = await prisma.notification.findMany({
         where: {
           kind: { in: ['SETTLEMENT_CONFIRMED', 'SETTLEMENT_REFUNDED'] },
@@ -919,9 +939,6 @@ describe('settlements', () => {
     });
 
     describe('usual views of the store account', () => {
-      const settlementOf = (id: string) =>
-        prisma.settlement.findUniqueOrThrow({ where: { collaborationId: id } });
-
       it('saves the usual views and a 3.1 multiplier once when the collaboration settles', async () => {
         const s = await seed({
           ratePerThousand: 2000,
@@ -983,27 +1000,34 @@ describe('settlements', () => {
         });
       });
 
-      it('fails the settle job on an unexpected error and fills the usual views on the retry', async () => {
+      it('fails the confirmation steps on an unexpected error and fills the usual views on the retry', async () => {
         const s = await seed({
           ratePerThousand: 2000,
           perViewCap: 60000,
           instagram: 'https://www.instagram.com/haru_cup/',
         });
-        // ViewCountUnavailableError만 "못 읽음"으로 삼킨다. 그 밖의 오류는 작업을 실패로 만들어 다시 돌게 한다.
+        // ViewCountUnavailableError만 "못 읽음"으로 삼킨다. 그 밖의 오류는 던져 다시 돌게 한다(돈은 이미 옮겨졌다).
         jest
           .spyOn(app.get(ViewCountPort), 'readAccountAverage')
           .mockRejectedValueOnce(new Error('boom'));
         await submit(s.collaborationId, `${REELS_URL}?views=12500`).expect(200);
         clock.set(new Date(T0.getTime() + 7 * DAY));
+        await scheduler.runDue(clock.now());
+        clock.set(new Date(T0.getTime() + 9 * DAY));
         const ran = await scheduler.runDue(clock.now(), {
           allowFailures: true,
         });
         expect(
-          ran.some((j) => j.name === 'settle' && j.status === 'failed'),
+          ran.some(
+            (j) =>
+              j.name === 'settlement-auto-confirm' && j.status === 'failed',
+          ),
         ).toBe(true);
         expect((await settlementOf(s.collaborationId)).usualReadAt).toBeNull();
-        const job = settleJob(s.collaborationId);
-        await scheduler.registry.run(job.name, job.payload);
+        // 큐가 같은 작업을 다시 돌리면 이미 확인된 정산의 남은 단계를 이어서 한다.
+        await scheduler.registry.run('settlement-auto-confirm', {
+          collaborationId: s.collaborationId,
+        });
         expect(await settlementOf(s.collaborationId)).toMatchObject({
           usualViews: 4000,
           multiplierTenths: 31,
@@ -1075,7 +1099,10 @@ describe('settlements', () => {
         pushTo(s.ownerId)
           .map((p) => p.body)
           .filter((b) => b.startsWith('조회수 집계')),
-      ).toEqual(['조회수 집계가 끝났어요.']);
+      ).toEqual([
+        '조회수 집계가 끝났어요. 자료를 확인해 주세요.',
+        '조회수 집계가 끝났어요.',
+      ]);
       expect(await accountOf(s.collaborationId, 'ESCROW')).toBe(0);
     });
 
@@ -1109,7 +1136,10 @@ describe('settlements', () => {
         .mockRejectedValueOnce(new Error('process died'));
       await submit(s.collaborationId, `${REELS_URL}?views=4320`).expect(200);
       clock.set(new Date(T0.getTime() + 7 * DAY));
-      await scheduler.runDue(clock.now(), { allowFailures: true });
+      await scheduler.runDue(clock.now());
+      await expect(confirmAsOwner(s.collaborationId)).rejects.toThrow(
+        'process died',
+      );
       // 정산은 커밋됐고 환급은 아직 나가지 않았다.
       expect((await collaborationOf(s.collaborationId)).stage).toBe('SETTLED');
       expect(await prisma.refund.findMany()).toMatchObject([
@@ -1117,9 +1147,9 @@ describe('settlements', () => {
       ]);
       expect(pg.refunds).toHaveLength(0);
 
-      // 큐가 같은 작업을 다시 돌린다.
-      const job = settleJob(s.collaborationId);
-      await scheduler.registry.run(job.name, job.payload);
+      // 큐가 자동 확인 작업을 때가 되어 돌리면 이미 확인된 정산의 남은 단계를 이어서 한다.
+      clock.set(new Date(T0.getTime() + 9 * DAY));
+      await scheduler.runDue(clock.now());
       expect(await prisma.refund.findMany()).toMatchObject([
         { status: 'DONE' },
       ]);
@@ -1168,6 +1198,7 @@ describe('settlements', () => {
         clock.set(new Date(T0.getTime() + day * DAY));
         await scheduler.runDue(clock.now());
       }
+      await confirmAsOwner(s.collaborationId);
       expect((await collaborationOf(s.collaborationId)).stage).toBe('SETTLED');
       expect(await prisma.settlement.findMany()).toMatchObject([
         { finalViews: 700, payoutAmount: 7000, refundAmount: 93000 },
@@ -1770,12 +1801,17 @@ describe('settlements', () => {
           .mockRejectedValue(new Error('pg down'));
         await submit(s.collaborationId, `${REELS_URL}?views=4320`).expect(200);
         clock.set(new Date(T0.getTime() + 7 * DAY));
+        await scheduler.runDue(clock.now());
+        clock.set(new Date(T0.getTime() + 9 * DAY));
+        // 환급은 확인 완료의 뒷단계라 자동 확인 작업이 한다(7일째 작업은 계산만 만든다).
         const payload = settlePayload(s.collaborationId);
+        const run = (finalAttempt: boolean) =>
+          scheduler.registry.run('settlement-auto-confirm', payload, {
+            finalAttempt,
+          });
 
         // 마지막이 아닌 시도: 던지고, 행은 PENDING, 운영자 알림 없음. 크리에이터 정산 알림은 이미 나갔다.
-        await expect(
-          scheduler.registry.run('settle', payload, { finalAttempt: false }),
-        ).rejects.toThrow('pg down');
+        await expect(run(false)).rejects.toThrow('pg down');
         expect(alert).not.toHaveBeenCalled();
         expect(await prisma.refund.findMany()).toMatchObject([
           { amount: 56800, status: 'PENDING' },
@@ -1792,9 +1828,7 @@ describe('settlements', () => {
         ).toBe(0);
 
         // 마지막 시도: 운영자에게 한 번 알린다.
-        await expect(
-          scheduler.registry.run('settle', payload, { finalAttempt: true }),
-        ).rejects.toThrow('pg down');
+        await expect(run(true)).rejects.toThrow('pg down');
         expect(alert).toHaveBeenCalledTimes(1);
         expect(alert).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -1804,7 +1838,7 @@ describe('settlements', () => {
 
         // 나중 재시도(예: 운영자가 PG를 고친 뒤)는 같은 행으로 환급을 마친다.
         refund.mockRestore();
-        await scheduler.registry.run('settle', payload);
+        await run(true);
         expect(await prisma.refund.findMany()).toMatchObject([
           { status: 'DONE' },
         ]);

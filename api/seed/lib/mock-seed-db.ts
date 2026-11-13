@@ -132,6 +132,13 @@ export interface MockCollaborationData {
     finalViews: number;
     payoutAmount: number;
     refundAmount: number;
+    // 확인 절차를 거쳐 끝난 정산이다(계산 상자가 고정 현금과 조회수 수당을 나눠 보여 준다).
+    fixedCashAmount: number;
+    viewPayAmount: number;
+    status: 'CONFIRMED';
+    calculatedAt: Date;
+    confirmedAt: Date;
+    confirmedBy: 'COMMISSIONER' | 'AUTO';
     settledAt: Date;
     usualViews: number;
     multiplierTenths: number;

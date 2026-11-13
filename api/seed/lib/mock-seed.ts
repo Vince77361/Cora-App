@@ -430,6 +430,12 @@ export async function runMockSeed(
       finalViews: result.views,
       payoutAmount: settled.payout,
       refundAmount: settled.refund,
+      fixedCashAmount: 0,
+      viewPayAmount: settled.payout,
+      status: 'CONFIRMED' as const,
+      calculatedAt: settledAt,
+      confirmedAt: settledAt,
+      confirmedBy: 'AUTO' as const,
       settledAt,
       usualViews: result.usualViews,
       multiplierTenths: multiplierTenthsOf(
