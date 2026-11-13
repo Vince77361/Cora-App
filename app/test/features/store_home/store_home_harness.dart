@@ -25,6 +25,7 @@ Future<void> pumpStoreHome(
   FakeStoreHomeRepository? home,
   FakeStoreRepository? stores,
   FakeClock? clock,
+  FakeContentDraftRepository? drafts,
   bool smallPhoneLargeText = false,
   CoraEnv env = CoraEnv.dev,
   List<Override> overrides = const [],
@@ -53,7 +54,7 @@ Future<void> pumpStoreHome(
         home ?? FakeStoreHomeRepository(applicants: sampleApplicants()),
       ),
       contentDraftRepositoryProvider.overrideWithValue(
-        FakeContentDraftRepository(),
+        drafts ?? FakeContentDraftRepository(),
       ),
       photoPickerProvider.overrideWithValue(FakePhotoPicker()),
       photoUploaderProvider.overrideWithValue(FakePhotoUploader()),

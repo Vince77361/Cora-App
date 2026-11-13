@@ -2,6 +2,7 @@ import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/ui/cora_state_view.dart';
 import 'package:cora/features/store_home/presentation/viewmodels/store_home_view_model.dart';
 import 'package:cora/features/store_onboarding/presentation/viewmodels/my_store_view_model.dart';
+import 'package:cora/features/trial_compare/domain/trial_info.dart';
 import 'package:cora/features/trial_compare/presentation/pages/trial_compare_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -78,6 +79,10 @@ void main() {
     final stores = storeWithTrial();
     final trial = FakeTrialCompareRepository(stores: stores);
     await pumpTrialCompare(tester, stores: stores, trial: trial);
+    expect(
+      containerOf(tester).read(myStoreViewModelProvider).value!.trialBanner,
+      TrialBannerKind.compare,
+    );
 
     await tester.tap(find.text('나중에'));
     await tester.pumpAndSettle();

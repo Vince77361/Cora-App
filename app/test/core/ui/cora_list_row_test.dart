@@ -72,32 +72,34 @@ void main() {
     expect(label.fontWeight, FontWeight.w500);
   });
 
-  testWidgets('plain action is surface; dark highlighted is light gray', (
-    tester,
-  ) async {
-    await tester.pumpWidget(coraTestApp(_row()));
-    expect(
-      (tester.widget<DecoratedBox>(_actionBox().first).decoration
-              as BoxDecoration)
-          .color,
-      const Color(0xFFF8F9FA),
-    );
+  testWidgets(
+    'plain action is surface; dark highlighted is lime like the light one',
+    (tester) async {
+      await tester.pumpWidget(coraTestApp(_row()));
+      expect(
+        (tester.widget<DecoratedBox>(_actionBox().first).decoration
+                as BoxDecoration)
+            .color,
+        const Color(0xFFF8F9FA),
+      );
 
-    await tester.pumpWidget(
-      coraTestApp(_row(highlighted: true), theme: coraDarkTheme),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      (tester.widget<DecoratedBox>(_actionBox().first).decoration
-              as BoxDecoration)
-          .color,
-      const Color(0xFFF2F3F5),
-    );
-    expect(
-      tester.widget<Text>(find.text('오퍼 보내기')).style!.color,
-      const Color(0xFF0F1012),
-    );
-  });
+      await tester.pumpWidget(
+        coraTestApp(_row(highlighted: true), theme: coraDarkTheme),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (tester.widget<DecoratedBox>(_actionBox().first).decoration
+                as BoxDecoration)
+            .color,
+        // DarkNStoreHome(2026-11-12)의 `오퍼 보내기`는 라이트처럼 라임이다.
+        const Color(0xFFC6FF3D),
+      );
+      expect(
+        tester.widget<Text>(find.text('오퍼 보내기')).style!.color,
+        const Color(0xFF1F2A00),
+      );
+    },
+  );
 
   testWidgets('action and row taps are separate', (tester) async {
     var actions = 0;

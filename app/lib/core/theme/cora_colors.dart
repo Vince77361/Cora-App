@@ -133,7 +133,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
   final Color navShadow;
 
   /// 목록 줄 오른쪽 버튼 중 강조하는 것(NStoreHome `오퍼 보내기`)의 채움과 글자.
-  /// 라이트는 라임, 다크는 밝은 회색이다.
+  /// 2026-11-12 캔버스부터 라이트·다크 모두 라임이다.
   final Color highlightAction;
   final Color onHighlightAction;
 
@@ -310,9 +310,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
     navActive: Color(0xFFC6FF3D),
     navInactive: Color(0xFFA0A4AD),
     navShadow: Color(0x4717181C),
-    // DarkNStoreHome `오퍼 보내기` #F2F3F5/#0F1012
-    highlightAction: Color(0xFFF2F3F5),
-    onHighlightAction: Color(0xFF0F1012),
+    // DarkNStoreHome(2026-11-12) `오퍼 보내기` #C6FF3D/#1F2A00. 옛 캔버스는 #F2F3F5/#0F1012였다.
+    highlightAction: Color(0xFFC6FF3D),
+    onHighlightAction: Color(0xFF1F2A00),
     avatarPlaceholder: Color(0xFFD9DCE6),
     avatarEditButton: Color(0xFF2A2D33),
     avatarEditShadow: Color(0x66000000),

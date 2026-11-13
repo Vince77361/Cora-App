@@ -20,6 +20,7 @@ Future<void> showCancelOfferSheet(
   BuildContext context, {
   required ProposalDetail detail,
   required Future<void> Function() onCancel,
+  int? paymentDaysLeft,
 }) {
   final c = context.colors;
   return showModalBottomSheet<void>(
@@ -33,7 +34,11 @@ Future<void> showCancelOfferSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(CoraRadius.xxl)),
     ),
-    builder: (_) => CancelOfferSheet(detail: detail, onCancel: onCancel),
+    builder: (_) => CancelOfferSheet(
+      detail: detail,
+      onCancel: onCancel,
+      paymentDaysLeft: paymentDaysLeft,
+    ),
   );
 }
 
@@ -42,10 +47,14 @@ class CancelOfferSheet extends StatefulWidget {
     super.key,
     required this.detail,
     required this.onCancel,
+    this.paymentDaysLeft,
   });
 
   final ProposalDetail detail;
   final Future<void> Function() onCancel;
+
+  /// 결제까지 남은 날. 알면 상태 줄 끝에 `· N일 남음`을 붙인다(홈의 보낸 오퍼 줄과 같다).
+  final int? paymentDaysLeft;
 
   static const cancel = '오퍼 취소';
   static const confirmTitle = '이 오퍼를 취소할까요?';
@@ -113,7 +122,9 @@ class _CancelOfferSheetState extends State<CancelOfferSheet> {
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 16),
               child: Text(
-                CancelOfferSheet.status,
+                widget.paymentDaysLeft == null
+                    ? CancelOfferSheet.status
+                    : '${CancelOfferSheet.status} · ${widget.paymentDaysLeft}일 남음',
                 style: CoraTextStyles.bodySmall.copyWith(
                   color: c.textSecondary,
                 ),

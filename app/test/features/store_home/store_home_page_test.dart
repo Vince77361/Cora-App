@@ -5,6 +5,7 @@ import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/core/ui/cora_state_view.dart';
 import 'package:cora/features/offers/domain/offer_view.dart';
 import 'package:cora/features/payment/domain/payment_repository.dart';
+import 'package:cora/features/store_home/domain/applicant.dart';
 import 'package:cora/features/store_home/presentation/pages/store_home_page.dart';
 import 'package:cora/features/store_home/presentation/pages/store_me_page.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/store_page_preview_page.dart';
@@ -14,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
 import '../payment/fake_payment_repository.dart';
+import '../store_onboarding/fake_content_draft_repository.dart';
 import 'fake_store_home_repository.dart';
 import 'store_home_harness.dart';
 
@@ -58,8 +60,12 @@ void main() {
     // 새 지원 3, 보낸 오퍼 3, 진행 중 1(수락한 오퍼).
     expect(find.text('3'), findsNWidgets(2));
     expect(find.text('1'), findsOneWidget);
-    for (final label in ['릴스로 찾기', '리스트 검색', '빠른 입찰']) {
+    // 바로가기는 둘이다(`릴스로 찾기`·`리스트 검색`·`빠른 입찰`은 없다).
+    for (final label in ['지원자 추천', '이번 주 가게 게시물']) {
       expect(find.text(label), findsOneWidget);
+    }
+    for (final gone in ['릴스로 찾기', '리스트 검색', '빠른 입찰']) {
+      expect(find.text(gone), findsNothing);
     }
     expect(find.text('지원한 크리에이터 3'), findsOneWidget);
     expect(find.text('보낸 오퍼 3'), findsOneWidget);
@@ -156,12 +162,70 @@ void main() {
     expect(find.text('준비 중이에요.'), findsOneWidget);
   });
 
-  testWidgets('opens a placeholder for each shortcut', (tester) async {
+  testWidgets('A9 shows the two shortcuts with their counts', (tester) async {
+    await pumpStoreHome(
+      tester,
+      home: FakeStoreHomeRepository(
+        applicants: [
+          ...sampleApplicants(),
+          ...sampleApplicants().map(
+            (a) => Applicant(
+              applicationId: '${a.applicationId}-2',
+              creator: a.creator,
+              appliedAt: a.appliedAt,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // 새 지원이 3명보다 많아도 추천은 3명이다. 저장된 초안은 세 종류다.
+    expect(find.text('지원자 추천'), findsOneWidget);
+    expect(find.text('3명 보고 좋아요'), findsOneWidget);
+    expect(find.text('이번 주 가게 게시물'), findsOneWidget);
+    expect(find.text('AI 초안 3개 준비'), findsOneWidget);
+
+    await tester.tap(find.text('3명 보고 좋아요'));
+    await tester.pumpAndSettle();
+    expect(topPath(tester), AppRoutes.storeApplicantPicks);
+  });
+
+  testWidgets('A9 opens the drafts from the second shortcut', (tester) async {
     await pumpStoreHome(tester);
 
-    await tester.tap(find.text('릴스로 찾기'));
+    await tester.tap(find.text('AI 초안 3개 준비'));
     await tester.pumpAndSettle();
-    expect(topPath(tester), AppRoutes.storeComingSoon('릴스로 찾기'));
+
+    expect(topPath(tester), AppRoutes.storeDrafts);
+  });
+
+  testWidgets('A9 says the real count when fewer than three applied', (
+    tester,
+  ) async {
+    await pumpStoreHome(
+      tester,
+      home: FakeStoreHomeRepository(
+        applicants: sampleApplicants().take(2).toList(),
+      ),
+    );
+    expect(find.text('2명 보고 좋아요'), findsOneWidget);
+  });
+
+  testWidgets('A9 asks to be told when nobody applied yet', (tester) async {
+    await pumpStoreHome(tester, home: FakeStoreHomeRepository());
+    expect(find.text('새 지원이 오면 알려드려요'), findsOneWidget);
+    expect(find.textContaining('보고 좋아요'), findsNothing);
+  });
+
+  testWidgets('A9 shows no draft count text when the drafts cannot be read', (
+    tester,
+  ) async {
+    await pumpStoreHome(
+      tester,
+      drafts: FakeContentDraftRepository()..failFetch = true,
+    );
+    expect(find.text('AI 초안 보기'), findsOneWidget);
+    expect(find.textContaining('개 준비'), findsNothing);
   });
 
   group('proposals', () {
@@ -374,10 +438,13 @@ void main() {
           w.decoration is BoxDecoration &&
           (w.decoration as BoxDecoration).color == color,
     );
-    // 숫자 칸 세 개는 다크의 `surface`, 선택된 탭(과 첫 바로가기)은 밝은 회색.
-    expect(box(CoraColors.dark.surface), findsAtLeastNWidgets(3));
+    // 숫자 칸 세 개와 바로가기 둘은 다크의 `surface`, 선택된 탭은 #33363D.
+    expect(box(CoraColors.dark.surface), findsAtLeastNWidgets(5));
     expect(box(CoraColors.light.surface), findsNothing);
-    expect(box(CoraColors.dark.surfaceSelected), findsWidgets);
+    expect(box(CoraColors.dark.notifyTabSelected), findsWidgets);
+    // DarkNStoreHome의 `오퍼 보내기`는 라이트처럼 라임이다(S13).
+    expect(box(CoraColors.dark.highlightAction), findsNWidgets(3));
+    expect(CoraColors.dark.highlightAction, const Color(0xFFC6FF3D));
   });
 
   testWidgets('does not overflow at 1.3x text scale', (tester) async {

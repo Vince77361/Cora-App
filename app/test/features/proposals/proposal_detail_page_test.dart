@@ -19,6 +19,7 @@ import '../instagram_connect/fake_instagram_repository.dart';
 import '../payment/fake_payment_repository.dart';
 import '../store_browse/creator_app_harness.dart' show pumpCreatorApp;
 import '../store_browse/fake_store_browse_repository.dart';
+import '../store_home/fake_store_home_repository.dart';
 import '../store_home/store_home_harness.dart';
 import 'fake_counter_proposal_repository.dart';
 import 'fake_proposal_repository.dart';
@@ -42,10 +43,12 @@ Future<void> _openStoreDetail(
   WidgetTester tester,
   FakeProposalRepository repo, {
   String id = 'p1',
+  FakeStoreHomeRepository? home,
   List<Override> overrides = const [],
 }) async {
   await pumpStoreHome(
     tester,
+    home: home,
     overrides: [
       proposalRepositoryProvider.overrideWithValue(repo),
       paymentRepositoryProvider.overrideWithValue(FakePaymentRepository()),
@@ -359,6 +362,50 @@ void main() {
       expect(find.text('오퍼 취소'), findsNothing);
       expect(find.text('종료'), findsOneWidget);
     });
+
+    testWidgets('the cancel sheet status line says how many days are left', (
+      tester,
+    ) async {
+      await _openStoreDetail(
+        tester,
+        _repo(agreed()),
+        home: FakeStoreHomeRepository(
+          sent: [
+            sentOffer(
+              id: 'p1',
+              view: OfferView.accepted,
+              collaborationId: 'col-1',
+              paymentDaysLeft: 3,
+            ),
+          ],
+        ),
+        overrides: collab(CollaborationStage.awaitingPayment),
+      );
+
+      await tester.tap(find.text('오퍼 취소'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('수락함, 결제를 기다려요 · 3일 남음'), findsOneWidget);
+    });
+
+    testWidgets(
+      'the agreed line is not pressable once the contract is cancelled',
+      (tester) async {
+        await _openStoreDetail(
+          tester,
+          _repo(agreed()),
+          overrides: collab(CollaborationStage.cancelled),
+        );
+
+        expect(find.text('합의 완료 · 계약으로 이동'), findsOneWidget);
+        expect(find.text('›'), findsNothing);
+        await tester.tap(find.text('합의 완료 · 계약으로 이동'));
+        await tester.pumpAndSettle();
+        expect(topPath(tester), AppRoutes.storeProposal('p1'));
+        // 취소한 계약에는 오퍼 취소도 없다.
+        expect(find.text('오퍼 취소'), findsNothing);
+      },
+    );
 
     testWidgets('keeps the offer when the owner backs out', (tester) async {
       final repo = _repo(agreed());

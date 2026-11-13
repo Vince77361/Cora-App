@@ -241,8 +241,9 @@ void main() {
     expect(c.navInactive, const Color(0xFFA0A4AD));
     expect(c.navShadow, const Color(0x4717181C));
     // DarkNStoreHome `오퍼 보내기` #F2F3F5/#0F1012
-    expect(c.highlightAction, const Color(0xFFF2F3F5));
-    expect(c.onHighlightAction, const Color(0xFF0F1012));
+    // DarkNStoreHome(2026-11-12)는 라이트처럼 라임이다.
+    expect(c.highlightAction, const Color(0xFFC6FF3D));
+    expect(c.onHighlightAction, const Color(0xFF1F2A00));
     // DarkNEditProfile 사진 자리 #D9DCE6, 사진 바꾸기 버튼 #2A2D33, 그림자 rgba(0,0,0,0.4)
     expect(c.avatarPlaceholder, const Color(0xFFD9DCE6));
     expect(c.avatarEditButton, const Color(0xFF2A2D33));

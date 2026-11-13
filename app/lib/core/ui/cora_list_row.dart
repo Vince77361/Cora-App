@@ -10,7 +10,7 @@ import 'cora_pressable.dart';
 /// 알약 버튼. 안쪽 여백은 10/12, 사진·글자·버튼 사이는 12다. 줄 밖 여백(목록의 8)은 화면이 정한다.
 ///
 /// 사진 주소가 없으면 제목의 첫 글자를 `surface` 원 안에 보여 준다. [actionHighlighted]이면
-/// 버튼이 강조색(라이트 라임, 다크 밝은 회색)이고 아니면 `surface`다.
+/// 버튼이 강조색(라이트·다크 모두 라임)이고 아니면 `surface`다.
 class CoraListRow extends StatelessWidget {
   const CoraListRow({
     super.key,

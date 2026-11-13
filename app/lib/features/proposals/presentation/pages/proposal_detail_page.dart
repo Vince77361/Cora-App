@@ -15,6 +15,7 @@ import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../collaboration/domain/collaboration.dart';
+import '../../../store_home/presentation/viewmodels/store_home_view_model.dart';
 import '../../../instagram_connect/presentation/viewmodels/instagram_connect_view_model.dart';
 import '../../../offer_terms/domain/offer_terms.dart';
 import '../../../offer_terms/domain/proposal_draft.dart';
@@ -159,8 +160,20 @@ class _ProposalDetailPageState extends ConsumerState<ProposalDetailPage> {
   }
 
   /// 결제 전 오퍼의 `오퍼 취소`: 옛 홈의 취소 시트(확인 단계 포함)를 연다.
-  Future<void> _cancelOffer(ProposalDetail detail) =>
-      showCancelOfferSheet(context, detail: detail, onCancel: _vm.cancelOffer);
+  Future<void> _cancelOffer(ProposalDetail detail) {
+    // 결제까지 남은 날은 홈이 읽어 둔 보낸 오퍼 줄에 있다. 홈을 아직 못 읽었으면 날짜 없이 연다.
+    final sent = ref.read(storeHomeViewModelProvider).value?.sentOffers;
+    final days = sent
+        ?.where((o) => o.id == detail.offerId)
+        .map((o) => o.paymentDaysLeft)
+        .firstOrNull;
+    return showCancelOfferSheet(
+      context,
+      detail: detail,
+      onCancel: _vm.cancelOffer,
+      paymentDaysLeft: days,
+    );
+  }
 
   /// 크리에이터가 수락한 뒤의 `확인`: 협업 화면(A7)으로 간다.
   void _openCollaboration(String? collaborationId) {
@@ -236,6 +249,11 @@ class _ProposalDetailPageState extends ConsumerState<ProposalDetailPage> {
 }
 
 /// 끝난 제안의 맨 위 한 줄(캔버스 밖). 합의했으면 누르면 계약 화면(결제나 협업)이 열리고 끝에 `›`가 붙는다.
+/// 합의한 제안의 계약이 취소나 환불로 닫혔다.
+bool _contractClosed(CollaborationStage? stage) =>
+    stage == CollaborationStage.cancelled ||
+    stage == CollaborationStage.refunded;
+
 class _EndedLine extends StatelessWidget {
   const _EndedLine({required this.text, required this.onTap});
 
@@ -376,9 +394,11 @@ class _Loaded extends ConsumerWidget {
                 if (detail.ended)
                   _EndedLine(
                     text: endedText(detail.endKind, detail.endReason),
+                    // 취소하거나 환불돼 닫힌 계약은 열 곳이 없다.
                     onTap:
                         detail.endKind == ProposalEndKind.agreed &&
-                            detail.collaborationId != null
+                            detail.collaborationId != null &&
+                            !_contractClosed(state.contractStage)
                         ? onOpenContract
                         : null,
                   ),

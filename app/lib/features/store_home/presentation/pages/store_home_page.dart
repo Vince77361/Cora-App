@@ -20,8 +20,11 @@ import '../../../notifications/presentation/viewmodels/unread_count_view_model.d
 import '../../../notifications/presentation/widgets/notification_bell.dart';
 import '../../../offers/domain/offer_view.dart';
 import '../../../store_onboarding/presentation/viewmodels/my_store_view_model.dart';
+import '../../../trial_compare/domain/trial_compare_repository.dart';
+import '../../../trial_compare/domain/trial_info.dart';
 import '../../domain/sent_offer.dart';
 import '../store_home_text.dart';
+import '../viewmodels/home_draft_count_view_model.dart';
 import '../viewmodels/store_home_view_model.dart';
 
 /// A9 사장님 홈(NStoreHome / DarkNStoreHome). 숫자 세 칸, 바로가기, `지원한 크리에이터`와
@@ -37,7 +40,22 @@ class StoreHomePage extends ConsumerStatefulWidget {
   static const newApplications = '새 지원';
   static const sentOffers = '보낸 오퍼';
   static const inProgress = '진행 중';
-  static const shortcuts = ['릴스로 찾기', '리스트 검색', '빠른 입찰'];
+  static const picksLabel = '지원자 추천';
+  static const picksNone = '새 지원이 오면 알려드려요';
+  static const draftsLabel = '이번 주 가게 게시물';
+  static const compareBanner = '체험단 계약이 한 달 남았어요 · 비교 보기';
+  static const hintBanner = '체험단 계약 정보를 넣으면 비교해 드려요.';
+
+  /// 지원자 추천 칸의 값. 추천은 최대 3명이라 새 지원이 3명보다 적으면 그 수를 말한다.
+  static String picksValue(int newApplications) {
+    if (newApplications <= 0) return picksNone;
+    final shown = newApplications < 3 ? newApplications : 3;
+    return '$shown명 보고 좋아요';
+  }
+
+  /// 이번 주 가게 게시물 칸의 값. 저장된 초안 수를 말하고, 읽지 못했거나 없으면 `AI 초안 보기`(캔버스 밖).
+  static String draftsValue(int? count) =>
+      count == null || count <= 0 ? 'AI 초안 보기' : 'AI 초안 $count개 준비';
   static const sendOffer = '오퍼 보내기';
   static const emptyApplicants = '아직 지원한 크리에이터가 없어요.';
   static const emptyApplicantsDescription = '가게가 공개되면 지원이 도착해요.';
@@ -212,7 +230,6 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
                 state: value,
                 onSentOffer: _onSentOffer,
                 onSentOfferAction: _onSentOfferAction,
-                onShortcut: _comingSoon,
                 onBellReturn: _onBellReturn,
               ),
               AsyncError() => CoraStateView.loadFailed(
@@ -250,14 +267,12 @@ class _Body extends ConsumerWidget {
     required this.state,
     required this.onSentOffer,
     required this.onSentOfferAction,
-    required this.onShortcut,
     required this.onBellReturn,
   });
 
   final StoreHomeState state;
   final ValueChanged<SentOffer> onSentOffer;
   final ValueChanged<SentOffer> onSentOfferAction;
-  final ValueChanged<String> onShortcut;
   final ValueChanged<Object?> onBellReturn;
 
   /// 하단 메뉴(높이 64, 아래 20)에 가려지지 않게 목록 끝에 두는 여백.
@@ -270,10 +285,14 @@ class _Body extends ConsumerWidget {
     final now = ref.watch(clockProvider).now();
     final summary = state.summary;
     final sentTab = state.tab == StoreHomeTab.sentOffers;
+    final trialBanner = ref.watch(
+      myStoreViewModelProvider.select((s) => s.value?.trialBanner),
+    );
     return RefreshIndicator(
       onRefresh: () {
-        // 당겨 새로 읽을 때 종의 점도 서버 값으로 다시 맞춘다.
+        // 당겨 새로 읽을 때 종의 점과 초안 수도 서버 값으로 다시 맞춘다.
         ref.invalidate(unreadCountViewModelProvider);
+        ref.invalidate(homeDraftCountProvider);
         return vm.refresh();
       },
       color: c.text,
@@ -316,20 +335,40 @@ class _Body extends ConsumerWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Row(
-              spacing: 8,
-              children: [
-                for (final (i, label) in StoreHomePage.shortcuts.indexed)
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: 8,
+                children: [
                   Expanded(
                     child: _Shortcut(
-                      label: label,
-                      muted: i == 0,
-                      onTap: () => onShortcut(label),
+                      label: StoreHomePage.picksLabel,
+                      value: StoreHomePage.picksValue(summary.newApplications),
+                      onTap: () => context.push(AppRoutes.storeApplicantPicks),
                     ),
                   ),
-              ],
+                  Expanded(
+                    child: _Shortcut(
+                      label: StoreHomePage.draftsLabel,
+                      // 읽는 동안에는 값을 비워 두어 `AI 초안 보기`가 잠깐 보였다 바뀌지 않게 한다.
+                      value: switch (ref.watch(homeDraftCountProvider)) {
+                        AsyncData(:final value) => StoreHomePage.draftsValue(
+                          value,
+                        ),
+                        _ => '',
+                      },
+                      onTap: () => context.push(AppRoutes.storeDrafts),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+          if (trialBanner != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: _TrialBanner(kind: trialBanner),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
             child: CoraSegmentedTabs(
@@ -507,16 +546,17 @@ class _Count extends StatelessWidget {
   }
 }
 
-/// 바로가기 알약(높이 46, 14/500). 첫 번째만 `surfaceMuted`, 나머지는 `surface`.
+/// 바로가기 칸(캔버스 NStoreHome `<a>`): 안쪽 14, 모서리 20, `surface` 바탕, 이름 12 보조색 → 2 → 값 15/700.
+/// 값이 비어 있으면(읽는 중) 같은 높이의 빈 줄을 둔다.
 class _Shortcut extends StatelessWidget {
   const _Shortcut({
     required this.label,
-    required this.muted,
+    required this.value,
     required this.onTap,
   });
 
   final String label;
-  final bool muted;
+  final String value;
   final VoidCallback onTap;
 
   @override
@@ -525,28 +565,111 @@ class _Shortcut extends StatelessWidget {
     return Semantics(
       container: true,
       button: true,
-      label: label,
+      label: '$label, $value',
       onTap: onTap,
       child: ExcludeSemantics(
         child: CoraPressable(
           onTap: onTap,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: muted ? c.surfaceMuted : c.surface,
-              borderRadius: BorderRadius.circular(CoraRadius.pill),
+              color: c.surface,
+              borderRadius: BorderRadius.circular(CoraRadius.field),
             ),
-            child: SizedBox(
-              height: 46,
-              child: Center(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: CoraTextStyles.bodySmall.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: muted ? c.onSurfaceMuted : c.text,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 2,
+                children: [
+                  Text(
+                    label,
+                    style: CoraTextStyles.fieldLabel.copyWith(
+                      color: c.textSecondary,
+                    ),
                   ),
-                ),
+                  Text(
+                    value,
+                    style: CoraTextStyles.amountSmall.copyWith(color: c.text),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 체험단 줄(캔버스 NStoreHome `<a>`): 안쪽 12/16, 모서리 18, `surface`, 글자 13과 오른쪽 `›`.
+/// `COMPARE`는 비교(G3)를, `HINT`는 계약 정보 입력을 연다. 안내(`HINT`)는 한 번 보이면 서버에 봤다고 알려
+/// 다시 나오지 않게 한다.
+class _TrialBanner extends ConsumerStatefulWidget {
+  const _TrialBanner({required this.kind});
+
+  final TrialBannerKind kind;
+
+  @override
+  ConsumerState<_TrialBanner> createState() => _TrialBannerState();
+}
+
+class _TrialBannerState extends ConsumerState<_TrialBanner> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.kind == TrialBannerKind.hint) _markSeen();
+  }
+
+  /// 이 화면의 줄은 그대로 두고 서버에만 알린다(누를 수 있어야 해서). 알리지 못해도 홈은 그대로다.
+  Future<void> _markSeen() async {
+    try {
+      await ref.read(trialCompareRepositoryProvider).markHintSeen();
+    } on Object {
+      // 다음에 홈을 열 때 한 번 더 보일 뿐이다.
+    }
+  }
+
+  void _open() => context.push(
+    widget.kind == TrialBannerKind.compare
+        ? AppRoutes.storeTrialCompare
+        : AppRoutes.storeTrialInfo,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final text = widget.kind == TrialBannerKind.compare
+        ? StoreHomePage.compareBanner
+        : StoreHomePage.hintBanner;
+    return Semantics(
+      container: true,
+      button: true,
+      label: text,
+      onTap: _open,
+      child: ExcludeSemantics(
+        child: CoraPressable(
+          onTap: _open,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(CoraRadius.lg),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                spacing: 8,
+                children: [
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: CoraTextStyles.meta.copyWith(color: c.text),
+                    ),
+                  ),
+                  Text(
+                    '›',
+                    style: CoraTextStyles.meta.copyWith(color: c.textSecondary),
+                  ),
+                ],
               ),
             ),
           ),
