@@ -17,7 +17,7 @@ Name | Type | Description | Notes
 **periodEnd** | [**DateTime**](DateTime.md) | 집계가 끝나는 시각. | 
 **periodStart** | [**DateTime**](DateTime.md) | 집계 시작(링크 제출 시각). | 
 **postUrl** | **String** | 크리에이터가 낸 게시 링크. | 
-**source_** | [**ViewReportSource**](ViewReportSource.md) | CONNECTED_ACCOUNT: 연결한 인스타그램 계정에서 읽음, CAPTURE_PENDING: 캡처 자료(확인 전), CAPTURE_CONFIRMED: 캡처 자료(확정됨). | 
+**source_** | [**ViewReportSource**](ViewReportSource.md) | CONNECTED_ACCOUNT: 연결한 인스타그램 계정에서 읽음, CAPTURE_PENDING: 캡처 자료(계산 전에 캡처가 제출된 상태, 또는 캡처로 만든 계산의 확인 전), CAPTURE_CONFIRMED: 캡처 자료(확정됨). | 
 **status** | [**ViewReportStatus**](ViewReportStatus.md) | COUNTING: 집계 중(계산 없음), UNCONFIRMED: 계산이 나왔고 확인을 기다림, CONFIRMED: 확인되어 정산됨, DISPUTED: 이의가 걸려 돈이 그대로 보관됨. | 
 **views** | **int** | 조회수. 집계 중에는 그날까지 읽은 값(없으면 null), 계산이 나온 뒤에는 정산에 쓰는 값. | 
 

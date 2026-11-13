@@ -10,7 +10,7 @@
 
 part of cora_api;
 
-/// CONNECTED_ACCOUNT: 연결한 인스타그램 계정에서 읽음, CAPTURE_PENDING: 캡처 자료(확인 전), CAPTURE_CONFIRMED: 캡처 자료(확정됨).
+/// CONNECTED_ACCOUNT: 연결한 인스타그램 계정에서 읽음, CAPTURE_PENDING: 캡처 자료(계산 전에 캡처가 제출된 상태, 또는 캡처로 만든 계산의 확인 전), CAPTURE_CONFIRMED: 캡처 자료(확정됨).
 enum ViewReportSource {
   CONNECTED_ACCOUNT._(r'CONNECTED_ACCOUNT'),
   CAPTURE_PENDING._(r'CAPTURE_PENDING'),

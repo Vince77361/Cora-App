@@ -398,13 +398,17 @@ export class ViewReportService {
         periodEnd ??
         new Date(collaboration.submittedAt.getTime() + SNAPSHOT_DAYS * DAY_MS)
       ).toISOString(),
+      // 출처는 서버가 한 곳에서 정한다: 계산이 있으면 그 계산의 자료 출처(캡처가 남아 있어도 연결 계정 값으로 계산됐다면 연결 계정),
+      // 계산 전이면 캡처가 제출된 상태를 CAPTURE_PENDING으로 직접 나타낸다.
       source: settlement
         ? settlement.evidenceSource === 'CAPTURE'
           ? settlement.status === 'CONFIRMED'
             ? 'CAPTURE_CONFIRMED'
             : 'CAPTURE_PENDING'
           : 'CONNECTED_ACCOUNT'
-        : 'CONNECTED_ACCOUNT',
+        : evidence
+          ? 'CAPTURE_PENDING'
+          : 'CONNECTED_ACCOUNT',
       calc:
         settlement &&
         terms.viewRatePerThousand !== null &&

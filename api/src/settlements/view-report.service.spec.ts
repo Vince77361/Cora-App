@@ -158,6 +158,21 @@ function settlement(over: Partial<Settlement> = {}): Settlement {
   };
 }
 
+function captureRow(): ViewEvidence {
+  return {
+    id: 'e-1',
+    collaborationId: COLLAB,
+    filePath: `evidence/${CREATOR}/55555555-5555-4555-8555-555555555555.jpg`,
+    statedViews: 9800,
+    submittedById: CREATOR,
+    confirmedAt: null,
+    confirmedBy: null,
+    createdAt: NOW,
+    updatedAt: NOW,
+    deletedAt: null,
+  };
+}
+
 describe('ViewReportService', () => {
   let repository: FakeRepository;
   let collaborations: FakeCollaborations;
@@ -349,6 +364,31 @@ describe('ViewReportService', () => {
         confirmDueAt: null,
         canConfirm: false,
       });
+    });
+
+    it('shows a capture submitted before the calculation as pending', async () => {
+      repository.evidence = captureRow();
+      const view = await service.get(STORE, COLLAB);
+      expect(view).toMatchObject({
+        status: 'COUNTING',
+        source: 'CAPTURE_PENDING',
+      });
+    });
+
+    it('keeps the connected account as the source when a calculation from it exists despite a capture', async () => {
+      repository.evidence = captureRow();
+      repository.settlement = settlement();
+      expect((await service.get(STORE, COLLAB)).source).toBe(
+        'CONNECTED_ACCOUNT',
+      );
+      repository.settlement = settlement({
+        status: 'CONFIRMED',
+        settledAt: NOW,
+      });
+      collaborations.row = collaboration({ stage: 'SETTLED' });
+      expect((await service.get(STORE, COLLAB)).source).toBe(
+        'CONNECTED_ACCOUNT',
+      );
     });
 
     it('returns 404 to someone who is not part of the collaboration', async () => {

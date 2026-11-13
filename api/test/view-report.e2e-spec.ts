@@ -1237,6 +1237,45 @@ describe('view report', () => {
       expect((await reportBody(s.collaborationId)).canConfirm).toBe(true);
     });
 
+    it('shows the capture as pending before a calculation and the connected account once it calculates from there', async () => {
+      const s = await seed();
+      await submitUnreadableUntil(s, 3);
+      await sendEvidence(
+        s.collaborationId,
+        await evidenceUpload(),
+        9500,
+      ).expect(200);
+      // 계산 전에 캡처만 제출된 상태는 서버가 직접 CAPTURE_PENDING으로 나타낸다.
+      expect(await reportBody(s.collaborationId, owner)).toMatchObject({
+        status: 'COUNTING',
+        source: 'CAPTURE_PENDING',
+        evidence: { statedViews: 9500 },
+      });
+      expect(await reportBody(s.collaborationId, creator)).toMatchObject({
+        source: 'CAPTURE_PENDING',
+      });
+      // 연결이 되살아나 연결 계정 값으로 계산되면 캡처가 남아 있어도 그 출처다.
+      await prisma.collaboration.update({
+        where: { id: s.collaborationId },
+        data: { submittedUrl: `${REELS_URL}?views=9000` },
+      });
+      for (let day = 4; day <= 7; day += 1) {
+        clock.set(afterDays(day));
+        await scheduler.runDue(clock.now());
+      }
+      expect(await reportBody(s.collaborationId)).toMatchObject({
+        status: 'UNCONFIRMED',
+        source: 'CONNECTED_ACCOUNT',
+        canConfirm: true,
+        evidence: { statedViews: 9500 },
+      });
+      await confirm(s.collaborationId).expect(200);
+      expect(await reportBody(s.collaborationId, creator)).toMatchObject({
+        status: 'CONFIRMED',
+        source: 'CONNECTED_ACCOUNT',
+      });
+    });
+
     it('refuses a capture from the owner and a capture path that is not mine', async () => {
       const s = await seed();
       await submitUnreadableUntil(s, 3);
