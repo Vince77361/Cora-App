@@ -67,10 +67,15 @@ Future<void> main() async {
   final config = AppConfig.fromEnvironment();
   // 운영에서 가짜 인증이 선택되면 여기서 멈춘다(서버의 assertNoFakesInProduction과 같다).
   assertAuthAdapterStartable(config);
+  assertProductionConfig(config);
   const secureStore = FlutterSecureKeyValueStore();
   final sessionKey = SecureSessionStorage.sessionKeyFor(config.supabaseUrl);
   // iOS 키체인은 앱을 지워도 남는다. 지웠다 다시 깐 앱이 옛 로그인으로 열리지 않게, 설치 뒤
   // 첫 실행이면 SDK가 세션을 읽기 전에 키체인의 세션과 PKCE 값을 비운다.
+  // 이 빌드를 처음 받는 기존 설치(업데이트)도 표시가 없어 한 번 정리되어 다시 로그인한다.
+  // 출시 전이라 허용했다. 출시 뒤에는 표시 키 이름을 바꾸지 말 것(바꾸면 모든 사용자가 로그아웃된다).
+  // Android는 이 정리가 필요 없다: shared_preferences의 표시는 자동 백업으로 복원될 수 있지만,
+  // 보안 저장소 값은 백업되지 않는 Keystore 키로 암호화되어 있어 복원돼도 읽히지 않는다.
   await clearSessionOnFirstRun(
     marker: const SharedPreferencesFirstRunMarker(),
     store: secureStore,
@@ -94,12 +99,16 @@ Future<void> main() async {
     ),
   );
   final auth = Supabase.instance.client.auth;
-  // assertAuthAdapterStartable이 real을 이미 거부했으므로 여기까지 오면 fake뿐이다.
-  // 실제 어댑터(휴대폰 OTP·카카오·네이버)는 9번 계획에서 이 자리에 들어온다.
-  final SignInAdapter signInAdapter = switch (config.authAdapter) {
-    AuthAdapter.fake => FakeSignInAdapter.supabase(auth),
-    AuthAdapter.real => throw StateError('실제 로그인은 아직 만들지 않았습니다.'),
-  };
+  // 가짜 로그인은 개발 빌드에서만 고른다. 운영으로 컴파일하면 상수 false라 이 분기가 통째로
+  // 빠져 FakeSignInAdapter 코드가 바이너리에 남지 않는다(assertAuthAdapterStartable은 실행 중의
+  // 안전망이고, 이 조건은 컴파일 시점의 보장이다). 실제 어댑터(휴대폰 OTP·카카오·네이버)는
+  // 9번 계획이 else 쪽을 바꾼다.
+  final SignInAdapter signInAdapter;
+  if (kDevScreensCompiledIn && config.authAdapter == AuthAdapter.fake) {
+    signInAdapter = FakeSignInAdapter.supabase(auth);
+  } else {
+    throw StateError('실제 로그인은 아직 만들지 않았습니다.');
+  }
   runApp(
     ProviderScope(
       overrides: [

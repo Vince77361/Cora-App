@@ -90,6 +90,21 @@ void main() {
     },
   );
 
+  test(
+    'treats an unknown server role as a failure instead of asking for a role',
+    () async {
+      // 생성된 enum은 모르는 값을 null로 바꿔 "역할 없음"과 구분되지 않는다. 그대로 두면
+      // 앱이 역할 선택 화면으로 보내 서버의 역할을 덮어쓰게 되므로 실패로 다룬다.
+      final fake = FakeHttpClient()..body = '{"id":"user-1","role":"ADMIN"}';
+
+      await expectLater(_repo(fake).fetchMe(), throwsA(isA<MeFailure>()));
+      await expectLater(
+        _repo(fake).updateRole(UserRole.store),
+        throwsA(isA<MeFailure>()),
+      );
+    },
+  );
+
   test('a connection error becomes a MeFailure', () async {
     final fake = FakeHttpClient()..respond = (_) => throw const _Unreachable();
 

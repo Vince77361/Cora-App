@@ -103,3 +103,21 @@ void assertAuthAdapterStartable(AppConfig config) {
     );
   }
 }
+
+/// 운영 빌드가 시작해도 되는 설정인지 확인한다. 운영에서 Supabase 주소나 API 주소가 비었거나
+/// `http://`이면 로그인 토큰과 개인정보가 평문으로 오가거나 엉뚱한 곳으로 가므로 시작부터 거부한다.
+/// 개발 환경은 로컬 주소(`http://127.0.0.1`)를 쓰므로 검사하지 않는다. 오류 메시지에는 키 이름만
+/// 적고 값은 넣지 않는다(키·주소가 로그에 남지 않게).
+void assertProductionConfig(AppConfig config) {
+  if (config.env != CoraEnv.prod) return;
+  bool isHttps(String value) => value.startsWith('https://');
+  if (!isHttps(config.supabaseUrl)) {
+    throw StateError('운영 빌드의 SUPABASE_URL은 https:// 주소여야 합니다.');
+  }
+  if (!isHttps(config.apiBaseUrl)) {
+    throw StateError('운영 빌드의 API_BASE_URL은 https:// 주소여야 합니다.');
+  }
+  if (config.supabaseAnonKey.isEmpty) {
+    throw StateError('운영 빌드에는 SUPABASE_ANON_KEY가 필요합니다.');
+  }
+}

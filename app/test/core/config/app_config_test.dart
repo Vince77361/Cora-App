@@ -93,4 +93,68 @@ void main() {
       );
     });
   });
+
+  group('assertProductionConfig', () {
+    AppConfig prod({
+      String supabaseUrl = 'https://example.supabase.co',
+      String anonKey = 'anon',
+      String apiBaseUrl = 'https://api.example.com',
+    }) => AppConfig(
+      env: CoraEnv.prod,
+      supabaseUrl: supabaseUrl,
+      supabaseAnonKey: anonKey,
+      apiBaseUrl: apiBaseUrl,
+      authAdapter: AuthAdapter.real,
+    );
+
+    test('refuses a prod config with an http api url', () {
+      expect(
+        () =>
+            assertProductionConfig(prod(apiBaseUrl: 'http://api.example.com')),
+        throwsStateError,
+      );
+      expect(
+        () => assertProductionConfig(prod(supabaseUrl: 'http://x.example.com')),
+        throwsStateError,
+      );
+    });
+
+    test('refuses a prod config with an empty supabase url or key', () {
+      expect(
+        () => assertProductionConfig(prod(supabaseUrl: '')),
+        throwsStateError,
+      );
+      expect(() => assertProductionConfig(prod(anonKey: '')), throwsStateError);
+      expect(
+        () => assertProductionConfig(prod(apiBaseUrl: '')),
+        throwsStateError,
+      );
+    });
+
+    test('accepts a prod config with https urls', () {
+      expect(() => assertProductionConfig(prod()), returnsNormally);
+    });
+
+    test('does not put the configured values in the error message', () {
+      expect(
+        () => assertProductionConfig(
+          prod(apiBaseUrl: 'http://secret-host.example.com', anonKey: 'sekret'),
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(isNot(contains('secret-host')), isNot(contains('sekret'))),
+          ),
+        ),
+      );
+    });
+
+    test('does not check a dev config', () {
+      expect(
+        () => assertProductionConfig(_config(CoraEnv.dev)),
+        returnsNormally,
+      );
+    });
+  });
 }

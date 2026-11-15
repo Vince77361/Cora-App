@@ -25,7 +25,7 @@ String? fakeCheckoutPaymentId(String checkoutUrl) {
 }
 
 /// 앱 안의 가짜 결제창([AppRoutes.devFakeCheckout])을 라우터로 연다. 다른 주소(실제 PG 결제창)는
-/// 9번 계획에서 붙이므로 아직 [UnimplementedError]다.
+/// 9번 계획에서 붙이므로 아직 [StateError]다.
 class RouterCheckoutLauncher implements CheckoutLauncher {
   RouterCheckoutLauncher(this._ref);
 
@@ -37,7 +37,7 @@ class RouterCheckoutLauncher implements CheckoutLauncher {
     final config = _ref.read(appConfigProvider);
     // 운영 빌드에서는 컴파일 시점에 false라 가짜 결제창으로 가는 코드가 바이너리에서 빠진다.
     if (paymentId == null || !(kDevScreensCompiledIn && config.isDev)) {
-      throw UnimplementedError('이 결제창 주소는 아직 열 수 없습니다(9번 계획에서 PG 결제창을 붙입니다).');
+      throw StateError('이 결제창 주소는 아직 열 수 없습니다(9번 계획에서 PG 결제창을 붙입니다).');
     }
     final location = Uri(
       path: AppRoutes.devFakeCheckout,
