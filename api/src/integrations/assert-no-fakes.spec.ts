@@ -20,6 +20,9 @@ const env: Env = {
   FEE_RATE_BID: 10,
   FEE_RATE_BRAND_CONTRACT: 10,
   FAKE_CLOCK_OFFSET_DAYS: 0,
+  TRUST_PROXY_HOPS: 0,
+  RATE_LIMIT_IP_PER_MIN: 600,
+  RATE_LIMIT_USER_PER_MIN: 120,
 };
 
 describe('assertNoFakesInProduction', () => {

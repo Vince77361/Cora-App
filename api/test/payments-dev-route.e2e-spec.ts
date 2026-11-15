@@ -58,7 +58,7 @@ async function buildApp(env: DevPaymentEnv): Promise<INestApplication> {
     .compile();
   const app = moduleRef.createNestApplication({ rawBody: true });
   app.useLogger(false);
-  setupApp(app);
+  setupApp(app, { env: loadEnv(process.env) });
   await app.init();
   return app;
 }

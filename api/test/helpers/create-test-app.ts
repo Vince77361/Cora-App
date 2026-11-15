@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { setupApp } from '../../src/app.setup';
 import { Clock } from '../../src/common/clock';
+import { Env, loadEnv } from '../../src/config/env';
 import { TokenVerifier } from '../../src/auth/token-verifier';
 import { JobHandlerRegistry } from '../../src/jobs/job-handler-registry';
 import { JobScheduler } from '../../src/jobs/job-scheduler';
@@ -21,8 +22,11 @@ import { FakeTokenVerifier } from '../support/fake-token-verifier';
 // Storage는 원격 Supabase에 닿지 않도록 항상 가짜로 바꾼다. 푸시는 app.get<FakePushPort>(PushPort).sent로 확인한다.
 // 작업 큐는 Redis 없이 FakeJobScheduler로 바꾼다: app.get<FakeJobScheduler>(JobScheduler).runDue(시각).
 // 결제·송금·조회수·인스타그램·운영자 알림은 NODE_ENV=test에서 가짜 구현이 그대로 쓰이므로 app.get(PaymentPort) 등으로 꺼내 확인한다.
+// options.env는 setupApp에 넘기는 값만 바꾼다(Swagger 등록, trust proxy). 요청 수 제한 값은 모듈이 process.env에서 읽으므로
+// 바꾸려면 createTestApp을 부르기 전에 process.env.RATE_LIMIT_*를 설정한다(기본은 setup-env.ts의 아주 큰 값).
 export async function createTestApp(
   extraControllers: Type<unknown>[] = [],
+  options: { env?: Partial<Env> } = {},
 ): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
@@ -46,7 +50,7 @@ export async function createTestApp(
   const app = moduleRef.createNestApplication({ rawBody: true });
   // 예상된 오류 로그가 테스트 출력을 어지럽히지 않게 한다.
   app.useLogger(false);
-  setupApp(app);
+  setupApp(app, { env: { ...loadEnv(process.env), ...options.env } });
   await app.init();
   return app;
 }

@@ -267,4 +267,29 @@ describe('loadEnv payment, payout and queue settings', () => {
         .FAKE_CLOCK_OFFSET_DAYS,
     ).toBe(0);
   });
+
+  it('defaults the proxy hop count and rate limits and validates them', () => {
+    const env = loadEnv(valid);
+    expect(env.TRUST_PROXY_HOPS).toBe(0);
+    expect(env.RATE_LIMIT_IP_PER_MIN).toBe(600);
+    expect(env.RATE_LIMIT_USER_PER_MIN).toBe(120);
+    // 빈 값은 0이 아니라 없는 값으로 본다(0이면 모든 요청이 막힌다).
+    const blank = loadEnv({
+      ...valid,
+      TRUST_PROXY_HOPS: '',
+      RATE_LIMIT_IP_PER_MIN: '',
+      RATE_LIMIT_USER_PER_MIN: '',
+    });
+    expect(blank.RATE_LIMIT_IP_PER_MIN).toBe(600);
+    expect(blank.RATE_LIMIT_USER_PER_MIN).toBe(120);
+    expect(loadEnv({ ...valid, TRUST_PROXY_HOPS: '1' }).TRUST_PROXY_HOPS).toBe(
+      1,
+    );
+    expect(() => loadEnv({ ...valid, RATE_LIMIT_IP_PER_MIN: '0' })).toThrow(
+      /RATE_LIMIT_IP_PER_MIN/,
+    );
+    expect(() => loadEnv({ ...valid, TRUST_PROXY_HOPS: '-1' })).toThrow(
+      /TRUST_PROXY_HOPS/,
+    );
+  });
 });

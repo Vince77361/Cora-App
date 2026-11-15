@@ -4,11 +4,14 @@ import { ApiExcludeController } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Public } from '../auth/public.decorator';
 import { AppError } from '../common/errors/app-error';
+import { SkipRateLimit } from '../common/rate-limit/rate-limit';
 import { PaymentPort } from '../integrations/payment/payment.port';
 import { PaymentsService } from './payments.service';
 
 // PG가 부르는 주소라 앱 API 문서와 생성 클라이언트에 넣지 않는다.
+// PG 서버가 같은 IP에서 몰려 보낼 수 있고, 한도에 걸려 통지를 놓치면 돈 상태가 어긋나므로 요청 수 제한에서 뺀다(서명이 막는다).
 @ApiExcludeController()
+@SkipRateLimit()
 @Controller()
 export class PaymentsWebhookController {
   constructor(

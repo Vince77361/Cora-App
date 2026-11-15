@@ -63,6 +63,10 @@ export class SupabaseTokenVerifier extends TokenVerifier {
       if (typeof sub !== 'string' || !UUID.test(sub)) {
         throw new TokenRejectedError('INVALID', UNAUTHENTICATED_MESSAGE);
       }
+      // 익명 로그인(Supabase signInAnonymously)은 실제 사용자가 아니므로 쓰지 않는다. 켜져 있지 않아도 토큰은 만들어질 수 있어 서버에서도 거절한다.
+      if (payload.is_anonymous === true) {
+        throw new TokenRejectedError('ANONYMOUS', UNAUTHENTICATED_MESSAGE);
+      }
       return { userId: sub };
     } catch (e) {
       if (e instanceof AppError) throw e;

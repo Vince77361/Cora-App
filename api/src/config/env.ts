@@ -29,6 +29,9 @@ const BLANK_MEANS_DEFAULT_KEYS = [
   'FEE_RATE_BID',
   'FEE_RATE_BRAND_CONTRACT',
   'FAKE_CLOCK_OFFSET_DAYS',
+  'TRUST_PROXY_HOPS',
+  'RATE_LIMIT_IP_PER_MIN',
+  'RATE_LIMIT_USER_PER_MIN',
 ] as const;
 const DEV_DEFAULT_REDIS_URL = 'redis://127.0.0.1:6379';
 
@@ -187,6 +190,30 @@ export class Env {
   @Type(() => Number)
   @IsInt()
   FAKE_CLOCK_OFFSET_DAYS: number = 0;
+
+  // 서버 앞에 있는 프록시의 수. 요청 IP(보안 로그, IP별 요청 수 제한)는 X-Forwarded-For의 오른쪽에서 이 수만큼만 믿는다.
+  // 0이면 헤더를 믿지 않고 연결 주소를 쓴다: 프록시가 없는데 값을 올리면 누구나 IP를 속여 제한을 피한다.
+  // 호스팅 프록시 뒤에 두는 운영·스테이징에서는 그 수(보통 1)를 적어야 모든 요청이 한 IP로 보이지 않는다.
+  @Expose()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  TRUST_PROXY_HOPS: number = 0;
+
+  // 요청 수 제한(분당). 값은 소유자가 정했다(결정 16). 통신사 공용 IP(CGNAT)에서 여러 사용자가 한 IP를 쓰므로 IP 기준은 넉넉하다.
+  // 로그인한 요청은 IP가 아니라 사용자 ID로 따로 센다.
+  @Expose()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  RATE_LIMIT_IP_PER_MIN: number = 600;
+
+  @Expose()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  RATE_LIMIT_USER_PER_MIN: number = 120;
 }
 
 // process.env에는 PATH 같은 무관한 키가 많아서, Env에 선언한 키만 골라 검증한다.

@@ -18,3 +18,6 @@ process.env.OPERATOR_ALERT_ADAPTER = 'fake';
 // 테스트가 쓰는 값. 실제 비밀값이 아니다.
 process.env.PAYMENT_WEBHOOK_SECRET = 'test-payment-webhook-secret-0123456789';
 process.env.PAYOUT_ACCOUNT_KEY = Buffer.alloc(32, 7).toString('base64');
+// 요청 수 제한은 한 테스트 파일이 같은 사용자·같은 IP로 분당 수백 번 부르므로 사실상 끈다. 제한 자체는 hardening.e2e-spec이 작은 값으로 따로 시험한다.
+process.env.RATE_LIMIT_IP_PER_MIN = '1000000';
+process.env.RATE_LIMIT_USER_PER_MIN = '1000000';

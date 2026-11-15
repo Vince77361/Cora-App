@@ -127,6 +127,26 @@ describe('SupabaseTokenVerifier', () => {
     expect((invalid as TokenRejectedError).reason).toBe('INVALID');
   });
 
+  it('rejects an anonymous token with the ANONYMOUS reason, and accepts is_anonymous false', async () => {
+    const withClaim = (isAnonymous: boolean) =>
+      new SignJWT({ is_anonymous: isAnonymous })
+        .setProtectedHeader({ alg: 'ES256' })
+        .setSubject(USER)
+        .setAudience('authenticated')
+        .setIssuer(ISSUER)
+        .setExpirationTime('5m')
+        .sign(privateKey);
+    const err: unknown = await verifier
+      .verify(await withClaim(true))
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(TokenRejectedError);
+    expect((err as TokenRejectedError).code).toBe('UNAUTHENTICATED');
+    expect((err as TokenRejectedError).reason).toBe('ANONYMOUS');
+    expect(await verifier.verify(await withClaim(false))).toEqual({
+      userId: USER,
+    });
+  });
+
   describe('when the key set cannot be fetched', () => {
     let warn: jest.SpyInstance;
     beforeEach(() => {
