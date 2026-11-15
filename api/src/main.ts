@@ -21,8 +21,12 @@ async function bootstrap() {
   setupApp(app, { env });
   // 종료 신호를 받으면 새 요청을 멈추고 DB 연결과 작업 큐 작업자를 닫은 뒤 종료 코드 0으로 끝낸다. 배포 때 처리 중인 작업이 끊기지 않게 한다.
   // enableShutdownHooks()는 닫은 뒤 같은 신호를 자기 자신에게 다시 보내 종료 코드가 143이 되므로(배포 도구가 실패로 읽는다) 직접 처리한다.
+  // 신호가 연달아 와도(SIGINT 뒤 SIGTERM 등) 닫기는 한 번만 한다.
+  let closing = false;
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {
-    process.once(signal, () => {
+    process.on(signal, () => {
+      if (closing) return;
+      closing = true;
       // 닫는 데 걸리는 시간에 상한을 둔다. 넘으면 실패로 끝내 호스팅이 강제로 죽이기 전에 원인을 남긴다.
       setTimeout(() => {
         console.error(

@@ -1379,6 +1379,7 @@ describe('settlements', () => {
           userId: s.creatorId,
           target: s.collaborationId,
           amount: 43200,
+          ref: payout.id,
           result: 'ALLOWED',
           requestId: `job:payout-send:payout:${payout.id}`,
         }),
@@ -1411,8 +1412,18 @@ describe('settlements', () => {
         .map((l) => JSON.parse(l) as Record<string, unknown>)
         .filter((e) => e.event === 'PAYOUT_RESULT');
       expect(logged).toMatchObject([
-        { result: 'ALLOWED', reason: 'SENT', amount: 43200 },
-        { result: 'FAILED', reason: 'DB_UPDATE_FAILED', amount: 43200 },
+        {
+          result: 'ALLOWED',
+          reason: 'SENT',
+          amount: 43200,
+          ref: payout.id,
+        },
+        {
+          result: 'FAILED',
+          reason: 'DB_UPDATE_FAILED',
+          amount: 43200,
+          ref: payout.id,
+        },
       ]);
     });
 
@@ -1990,14 +2001,20 @@ describe('settlements', () => {
             collaborationId: s.collaborationId,
           }),
         ).rejects.toThrow('db down');
+        const refundId = (await prisma.refund.findFirstOrThrow()).id;
         // PG 환급은 나갔다. 로그에서 그 사실이 사라지지 않고, DB 반영 실패는 따로 남는다.
         expect(pg.refunds).toHaveLength(1);
         const logged = lines
           .map((l) => JSON.parse(l) as Record<string, unknown>)
           .filter((e) => e.event === 'REFUND_RESULT');
         expect(logged).toMatchObject([
-          { result: 'ALLOWED', reason: 'SENT', amount: 110000 },
-          { result: 'FAILED', reason: 'DB_UPDATE_FAILED', amount: 110000 },
+          { result: 'ALLOWED', reason: 'SENT', amount: 110000, ref: refundId },
+          {
+            result: 'FAILED',
+            reason: 'DB_UPDATE_FAILED',
+            amount: 110000,
+            ref: refundId,
+          },
         ]);
       });
 

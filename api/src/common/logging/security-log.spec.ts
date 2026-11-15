@@ -59,6 +59,15 @@ describe('securityLog', () => {
     expect(emitted().reason).toBe('STORE→CREATOR');
   });
 
+  it('carries a ref so repeated events for the same payout can be matched', () => {
+    securityLog('PAYOUT_RESULT', {
+      ref: 'payout-1',
+      result: 'ALLOWED',
+      reason: 'SENT',
+    });
+    expect(emitted().ref).toBe('payout-1');
+  });
+
   it('uses warn for DENIED and error for FAILED', () => {
     securityLog('FORBIDDEN', { result: 'DENIED' });
     expect(warn).toHaveBeenCalledTimes(1);

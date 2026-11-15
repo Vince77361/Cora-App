@@ -19,6 +19,8 @@ export interface SecurityLogFields {
   userId?: string;
   // 대상 ID(협업 ID 등). 요청 경로를 쓸 때도 쿼리 문자열은 넣지 않는다.
   target?: string;
+  // 같은 건을 가리키는 ID(지급 ID, 환급 ID 등). 재시도로 같은 사건이 여러 번 남아도 같은 건인지 알아볼 수 있게 한다.
+  ref?: string;
   // 돈이 오간 사건의 금액(원). 계좌·카드 정보는 어떤 필드에도 넣지 않는다.
   amount?: number;
   result: 'ALLOWED' | 'DENIED' | 'FAILED';
@@ -55,6 +57,7 @@ export function securityLog(
     ip: clean(context?.ip),
     userId: clean(fields.userId),
     target: clean(fields.target),
+    ref: clean(fields.ref),
     amount: fields.amount,
     result: fields.result,
     reason: clean(fields.reason),

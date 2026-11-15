@@ -81,6 +81,7 @@ export class RefundsService {
     const log = (result: 'ALLOWED' | 'FAILED', reason: string) =>
       securityLog('REFUND_RESULT', {
         target: refund.collaborationId,
+        ref: refund.id,
         amount: refund.amount,
         result,
         reason,

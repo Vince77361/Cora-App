@@ -147,6 +147,7 @@ export class PayoutsService implements OnModuleInit {
     securityLog('PAYOUT_RESULT', {
       userId: payout.creatorId,
       target: payout.collaborationId,
+      ref: payout.id,
       amount: payout.amount,
       result,
       reason,

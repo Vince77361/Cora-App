@@ -6,6 +6,11 @@ import { RATE_LIMIT_USER, RATE_LIMIT_IP } from './rate-limit';
 
 const MINUTE_MS = 60_000;
 
+// throttler의 기본 키에는 컨트롤러·핸들러 이름이 들어가 한도가 경로마다 따로 센다(경로 수만큼 느슨해진다).
+// 이름과 tracker만 써서 한 사용자·한 IP의 모든 경로 요청을 합쳐 센다.
+const globalKey = (_context: ExecutionContext, tracker: string, name: string) =>
+  `${name}:${tracker}`;
+
 interface UserRequest {
   user?: { userId: string };
 }
@@ -22,11 +27,13 @@ interface UserRequest {
             name: RATE_LIMIT_IP,
             ttl: MINUTE_MS,
             limit: config.get('RATE_LIMIT_IP_PER_MIN', { infer: true }),
+            generateKey: globalKey,
           },
           {
             name: RATE_LIMIT_USER,
             ttl: MINUTE_MS,
             limit: config.get('RATE_LIMIT_USER_PER_MIN', { infer: true }),
+            generateKey: globalKey,
             // 토큰 없이 열린 경로에는 사용자가 없다. 그 경로는 IP 제한만 받는다.
             skipIf: (context: ExecutionContext) =>
               !context.switchToHttp().getRequest<UserRequest>().user,

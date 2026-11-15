@@ -141,6 +141,36 @@ describe('hardening: request rate limits', () => {
     }
   });
 
+  it('shares one user limit across different routes', async () => {
+    const app = await createLimitedApp({ ip: 1000, user: 3 });
+    try {
+      const get = (path: string) =>
+        request(httpOf(app)).get(path).set('authorization', 'Bearer user-a');
+      // 경로가 달라도 한 사용자의 한도 하나를 함께 쓴다(경로마다 따로 세면 경로 수만큼 느슨해진다).
+      expect((await get('/me')).status).not.toBe(429);
+      expect((await get('/notifications')).status).not.toBe(429);
+      expect((await get('/wallet')).status).not.toBe(429);
+      await get('/me').expect(429);
+      await get('/notifications').expect(429);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('shares one ip limit across different routes', async () => {
+    const app = await createLimitedApp({ ip: 3, user: 1000 });
+    try {
+      const bad = (path: string) =>
+        request(httpOf(app)).get(path).set('authorization', 'Bearer nope');
+      await bad('/me').expect(401);
+      await bad('/notifications').expect(401);
+      await bad('/wallet').expect(401);
+      await bad('/stores/me').expect(429);
+    } finally {
+      await app.close();
+    }
+  });
+
   it('limits an ip even when the tokens are invalid', async () => {
     const app = await createLimitedApp({ ip: 3, user: 1000 });
     try {

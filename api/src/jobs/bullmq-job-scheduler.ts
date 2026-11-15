@@ -1,4 +1,5 @@
 import {
+  BeforeApplicationShutdown,
   Logger,
   OnApplicationBootstrap,
   OnApplicationShutdown,
@@ -60,7 +61,10 @@ export interface FailedJobLike {
 
 export class BullMqJobScheduler
   extends JobScheduler
-  implements OnApplicationBootstrap, OnApplicationShutdown
+  implements
+    OnApplicationBootstrap,
+    BeforeApplicationShutdown,
+    OnApplicationShutdown
 {
   private readonly logger = new Logger(BullMqJobScheduler.name);
   private worker?: Worker;
@@ -241,8 +245,15 @@ export class BullMqJobScheduler
     );
   }
 
-  async onApplicationShutdown(): Promise<void> {
+  // 종료 순서(Nest): beforeApplicationShutdown → HTTP 서버 정리(처리 중 요청 대기) → onApplicationShutdown.
+  // 작업자는 맨 먼저 닫는다: 새 작업을 더 꺼내지 않고 진행 중인 작업은 끝날 때까지 기다린다(close가 기다린다).
+  // 이때 DB는 아직 열려 있어야 송금·환급 작업이 마지막 반영까지 마친다.
+  async beforeApplicationShutdown(): Promise<void> {
     await this.worker?.close();
+  }
+
+  // 큐는 HTTP 요청이 다 끝난 뒤에 닫는다: 처리 중이던 요청이 마지막으로 작업을 올릴 수 있어서다.
+  async onApplicationShutdown(): Promise<void> {
     await this.real?.queue.close();
   }
 }
