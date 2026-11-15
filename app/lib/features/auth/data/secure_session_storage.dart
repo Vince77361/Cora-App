@@ -20,6 +20,11 @@ class SecureSessionStorage extends LocalStorage {
   /// 세션을 담는 키. SDK 기본값(`sb-<프로젝트>-auth-token`)과 같은 모양으로 넘긴다.
   final String persistSessionKey;
 
+  /// SDK 기본 키(supabase_flutter `Supabase.initialize`의 `sb-<호스트 첫 마디>-auth-token`)와
+  /// 같은 값. 저장소를 만들 때와 첫 실행 정리가 같은 키를 쓰게 한 곳에서 만든다.
+  static String sessionKeyFor(String supabaseUrl) =>
+      'sb-${Uri.parse(supabaseUrl).host.split('.').first}-auth-token';
+
   @override
   Future<void> initialize() async {}
 
@@ -58,6 +63,12 @@ class SecureGotrueAsyncStorage extends GotrueAsyncStorage {
 
   /// 세션 키와 겹치지 않게 접두어를 붙인다.
   static String _scoped(String key) => 'cora.gotrue.$key';
+
+  /// gotrue가 PKCE 로그인 중간값을 두는 키(`supabase.auth.token-code-verifier`)를 이
+  /// 저장소가 실제로 쓰는 키로 바꾼 것. 첫 실행 정리가 지울 때 쓴다.
+  static final String codeVerifierStoreKey = _scoped(
+    'supabase.auth.token-code-verifier',
+  );
 
   // 읽기·지우기는 best-effort다. gotrue의 signOut은 PKCE 값을 지우다 던지면 signedOut을
   // 보내지 못한 채 끝나, 기기의 세션은 지워졌는데 화면은 로그인 상태로 남는다. 이 값은

@@ -18,9 +18,13 @@ class FlutterSecureKeyValueStore implements SecureKeyValueStore {
     this._storage = const FlutterSecureStorage(
       // 기본값(unlocked)은 기기가 잠겨 있으면 읽지 못한다. 앱이 백그라운드에서 깨어나
       // 토큰을 갱신하려 할 때 막히지 않도록 "처음 한 번 잠금을 푼 뒤"부터 읽을 수 있게 한다.
-      // `_this_device`가 아닌 것은 기기 교체 때 암호화된 백업으로 옮겨 가 다시 로그인하지
-      // 않게 하려는 것이다(iCloud 키체인 동기화는 꺼 둔 채).
-      iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+      // `_this_device`라서 암호화 백업·기기 이전으로 다른 기기에 옮겨 가지 않는다(리프레시
+      // 토큰이 복원본으로 새는 길을 막는 것이고, 기기를 바꾸면 다시 로그인한다). 소유자
+      // 결정 15. 등급을 바꿔도 플러그인이 읽기·지우기 때 다른 등급의 항목까지 찾으므로 이전
+      // 등급으로 저장된 세션도 그대로 읽힌다.
+      iOptions: IOSOptions(
+        accessibility: KeychainAccessibility.first_unlock_this_device,
+      ),
     ),
   ]);
 

@@ -210,6 +210,24 @@ void main() {
     expect(me.fetchCalls, 2);
   });
 
+  testWidgets('signs out from the error screen when me keeps failing', (
+    tester,
+  ) async {
+    final auth = _signedIn();
+    final me = FakeMeRepository()..failFetch = true;
+    await _pumpA1(tester, me: me, auth: auth);
+
+    expect(find.text(_serverDown), findsOneWidget);
+    expect(find.text('로그아웃'), findsOneWidget);
+
+    await tester.tap(find.text('로그아웃'));
+    await tester.pumpAndSettle();
+
+    expect(auth.signOutCalls, 1);
+    expect(find.byType(LoginPage), findsOneWidget);
+    expect(find.text(_serverDown), findsNothing);
+  });
+
   testWidgets('shows an error with retry when the server never answers', (
     tester,
   ) async {

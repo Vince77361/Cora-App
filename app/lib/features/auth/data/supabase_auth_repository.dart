@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show AuthException, GoTrueClient, Session;
 
+import '../../../core/time/clock.dart';
 import '../domain/auth_repository.dart';
 import '../domain/auth_session.dart';
 import 'sign_in_adapter.dart';
@@ -10,14 +11,19 @@ import 'supabase_failures.dart';
 /// Supabase Auth의 세션을 다룬다. 앱에서 `supabase_flutter`를 아는 기능 코드는 이
 /// `features/auth/data` 안의 파일뿐이다(앱 시작점 main.dart는 SDK 초기화만 한다).
 class SupabaseAuthRepository implements AuthRepository {
-  SupabaseAuthRepository(this._auth, {required SignInAdapter signInAdapter})
-    : _adapter = signInAdapter;
+  SupabaseAuthRepository(
+    this._auth, {
+    required SignInAdapter signInAdapter,
+    this._clock = const SystemClock(),
+  }) : _adapter = signInAdapter;
 
   final GoTrueClient _auth;
 
   /// 로그인하는 방법. 세션 감시·갱신·로그아웃·보관은 이 클래스가 하고, 로그인 한 번이
   /// 어떻게 이루어지는지만 어댑터가 안다.
   final SignInAdapter _adapter;
+
+  final Clock _clock;
 
   @override
   AuthSession? get currentSession => _toDomain(_auth.currentSession);
@@ -28,13 +34,28 @@ class SupabaseAuthRepository implements AuthRepository {
       try {
         // SDK의 만료 판정은 여유 시간(30초)을 두고, 동시에 부른 갱신은 하나로 합쳐 준다.
         await _auth.refreshSession();
-      } on AuthException catch (error) {
+      } catch (error) {
         // 리프레시 토큰이 무효하면 SDK가 signedOut을 직접 보내 라우터가 로그인 화면으로
-        // 보낸다. 여기서는 던지지 않고 남은 토큰(없으면 null)으로 요청이 나가게 둔다.
+        // 보낸다. 네트워크 오류는 세션이 끝난 것이 아니므로 아래에서 남은 토큰의 실제
+        // 만료 시각으로 판정한다. 어느 쪽이든 이 함수는 던지지 않는다.
         _debugLog('요청 전 토큰 갱신 실패', error);
       }
     }
-    return _auth.currentSession?.accessToken;
+    final session = _auth.currentSession;
+    if (session == null) return null;
+    // 갱신에 실패한 채 SDK의 여유(30초) 안에 든 토큰은 아직 쓸 수 있다. 실제 `exp`가 지났을
+    // 때만 헤더 없이 보낸다. 헤더가 없는 요청의 401은 로그아웃을 일으키지 않아서 사용자는
+    // 로그아웃 대신 오류 화면과 "다시 시도"를 본다.
+    if (session.isExpired && _pastExp(session)) return null;
+    return session.accessToken;
+  }
+
+  bool _pastExp(Session session) {
+    final exp = session.expiresAt;
+    if (exp == null) return false;
+    return !_clock.now().isBefore(
+      DateTime.fromMillisecondsSinceEpoch(exp * 1000),
+    );
   }
 
   @override

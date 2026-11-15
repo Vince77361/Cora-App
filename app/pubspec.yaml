@@ -43,6 +43,8 @@ dependencies:
   cora_api:
     path: packages/cora_api
   flutter_secure_storage: ^11.2.0
+  # 첫 실행 표시(앱을 지우면 함께 지워지는 저장소). 보안 저장소(키체인)는 앱을 지워도 남는다.
+  shared_preferences: ^2.5.3
   flutter_svg: ^2.3.3
   image_picker: ^1.2.4
   url_launcher: ^6.3.3

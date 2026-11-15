@@ -12,6 +12,7 @@ import 'core/network/timeout_http_client.dart';
 import 'package:cora_api/api.dart' as api;
 import 'features/applicant_picks/data/api_applicant_picks_repository.dart';
 import 'features/applicant_picks/domain/applicant_picks_repository.dart';
+import 'features/auth/data/first_run_marker.dart';
 import 'features/auth/data/secure_key_value_store.dart';
 import 'features/auth/data/fake_sign_in_adapter.dart';
 import 'features/auth/data/secure_session_storage.dart';
@@ -67,6 +68,14 @@ Future<void> main() async {
   // 운영에서 가짜 인증이 선택되면 여기서 멈춘다(서버의 assertNoFakesInProduction과 같다).
   assertAuthAdapterStartable(config);
   const secureStore = FlutterSecureKeyValueStore();
+  final sessionKey = SecureSessionStorage.sessionKeyFor(config.supabaseUrl);
+  // iOS 키체인은 앱을 지워도 남는다. 지웠다 다시 깐 앱이 옛 로그인으로 열리지 않게, 설치 뒤
+  // 첫 실행이면 SDK가 세션을 읽기 전에 키체인의 세션과 PKCE 값을 비운다.
+  await clearSessionOnFirstRun(
+    marker: const SharedPreferencesFirstRunMarker(),
+    store: secureStore,
+    keys: [sessionKey, SecureGotrueAsyncStorage.codeVerifierStoreKey],
+  );
   // 저장된 세션을 기기에서 읽어 올려 둔다. 그래서 첫 화면을 그리기 전에 로그인 여부를 안다.
   // SUPABASE_ANON_KEY에는 새 공개 키(sb_publishable_…)가 들어 있다. SDK의 anonKey 인자는
   // 같은 일을 하지만 사용 중단 예정이라 publishableKey로 넘긴다.
@@ -79,9 +88,7 @@ Future<void> main() async {
     authOptions: FlutterAuthClientOptions(
       localStorage: SecureSessionStorage(
         store: secureStore,
-        // SDK 기본 키와 같은 모양(sb-<프로젝트>-auth-token).
-        persistSessionKey:
-            'sb-${Uri.parse(config.supabaseUrl).host.split('.').first}-auth-token',
+        persistSessionKey: sessionKey,
       ),
       pkceAsyncStorage: SecureGotrueAsyncStorage(store: secureStore),
     ),

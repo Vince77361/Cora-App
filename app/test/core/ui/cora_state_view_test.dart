@@ -94,6 +94,35 @@ void main() {
     expect(retries, 1);
   });
 
+  testWidgets('shows a secondary action next to retry only when given', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      coraTestApp(CoraStateView.loadFailed(onRetry: () {})),
+    );
+    expect(find.text('로그아웃'), findsNothing);
+
+    var retries = 0;
+    var secondary = 0;
+    await tester.pumpWidget(
+      coraTestApp(
+        CoraStateView.loadFailed(
+          onRetry: () => retries++,
+          secondaryLabel: '로그아웃',
+          onSecondary: () => secondary++,
+        ),
+      ),
+    );
+    expect(find.text('다시 시도'), findsOneWidget);
+    await tester.tap(find.text('로그아웃'));
+    await tester.pumpAndSettle();
+    expect(secondary, 1);
+    expect(retries, 0);
+    await tester.tap(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+    expect(retries, 1);
+  });
+
   testWidgets('calls the action from the other action states', (tester) async {
     var saved = 0;
     await tester.pumpWidget(

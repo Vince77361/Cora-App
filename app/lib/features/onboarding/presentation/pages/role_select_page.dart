@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import '../../../../core/ui/cora_logo.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_select_card.dart';
 import '../../../../core/ui/cora_state_view.dart';
+import '../../../auth/domain/auth_repository_provider.dart';
 import '../../domain/user_role.dart';
 import '../viewmodels/me_view_model.dart';
 import '../viewmodels/role_select_view_model.dart';
@@ -25,6 +27,9 @@ class RoleSelectPage extends ConsumerWidget {
 
   /// 캔버스에 없는 문구(서버에 닿지 못한 경우). 소유자 확인 전의 임시 문구다.
   static const serverUnreachable = '서버에 연결하지 못했어요.';
+
+  /// 캔버스에 없는 문구(오류 화면의 로그아웃 단추). 소유자 확인 전의 임시 문구다.
+  static const signOutLabel = '로그아웃';
 
   /// 캔버스 A1: 위 여백 72, 로고 → 36 → 제목 → 12 → 설명 → 32 → 카드(간격 10).
   static const _top = 72.0;
@@ -52,6 +57,12 @@ class RoleSelectPage extends ConsumerWidget {
               ref.invalidate(roleSelectViewModelProvider);
               context.go(AppRoutes.splash);
             },
+            // 내 정보를 계속 불러오지 못하면 사용자가 이 화면에 갇힌다. 로그아웃하면 세션이
+            // 사라져 라우터가 로그인 화면(E1)으로 보낸다. 캔버스에 없는 문구라 소유자
+            // 확인 전의 임시 문구다.
+            secondaryLabel: signOutLabel,
+            onSecondary: () =>
+                unawaited(ref.read(authRepositoryProvider).signOut()),
           ),
           data: (s) => _Content(state: s),
         ),

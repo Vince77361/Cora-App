@@ -24,9 +24,15 @@ class CoraStateView extends StatelessWidget {
     this.description,
     this.actionLabel,
     this.onAction,
+    this.secondaryLabel,
+    this.onSecondary,
   }) : assert(
          (actionLabel == null) == (onAction == null),
          'actionLabel and onAction go together',
+       ),
+       assert(
+         (secondaryLabel == null) == (onSecondary == null),
+         'secondaryLabel and onSecondary go together',
        );
 
   /// F8 `불러오는 중`.
@@ -34,7 +40,9 @@ class CoraStateView extends StatelessWidget {
     : kind = CoraStateKind.loading,
       description = null,
       actionLabel = null,
-      onAction = null;
+      onAction = null,
+      secondaryLabel = null,
+      onSecondary = null;
 
   /// F8 `영상을 불러오지 못했어요`. 화면마다 [title]을 그 화면의 말로 바꿔 쓴다.
   const CoraStateView.loadFailed({
@@ -42,7 +50,13 @@ class CoraStateView extends StatelessWidget {
     this.title = '영상을 불러오지 못했어요',
     this.description = '연결이 불안정해요. 잠시 뒤 다시 시도해 주세요.',
     required VoidCallback onRetry,
-  }) : kind = CoraStateKind.loadFailed,
+    this.secondaryLabel,
+    this.onSecondary,
+  }) : assert(
+         (secondaryLabel == null) == (onSecondary == null),
+         'secondaryLabel and onSecondary go together',
+       ),
+       kind = CoraStateKind.loadFailed,
        actionLabel = retryLabel,
        onAction = onRetry;
 
@@ -54,6 +68,8 @@ class CoraStateView extends StatelessWidget {
     this.actionLabel,
     this.onAction,
   }) : kind = CoraStateKind.empty,
+       secondaryLabel = null,
+       onSecondary = null,
        assert(
          (actionLabel == null) == (onAction == null),
          'actionLabel and onAction go together',
@@ -65,7 +81,9 @@ class CoraStateView extends StatelessWidget {
       title = '오늘 추천을 모두 봤어요',
       description = '관심과 저장에 담은 후보를 비교해 보세요. 내일 새 추천이 올라와요.',
       actionLabel = '저장한 후보 보기',
-      onAction = onOpenSaved;
+      onAction = onOpenSaved,
+      secondaryLabel = null,
+      onSecondary = null;
 
   /// F8 `이전 판본이라 수락할 수 없어요`. [version]은 상대가 보낸 최신 판본 번호다.
   /// 조사는 판본 번호의 받침에 맞춘다(`판본 2를`, `판본 3을`). 그래서 const가 아니다.
@@ -78,13 +96,20 @@ class CoraStateView extends StatelessWidget {
        description =
            '상대가 ${josa('판본 $version', JosaPair.eulReul)} 보냈어요. 바뀐 조건을 확인한 뒤 수락해 주세요.',
        actionLabel = '판본 $version 보기',
-       onAction = onOpen;
+       onAction = onOpen,
+       secondaryLabel = null,
+       onSecondary = null;
 
   final CoraStateKind kind;
   final String title;
   final String? description;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  /// 첫 단추 옆에 나란히 놓는 보조 단추(예: 내 정보를 계속 불러오지 못할 때의 로그아웃).
+  /// 모양은 첫 단추와 같다. 라벨과 콜백을 함께 줄 때만 나온다.
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
 
   static const retryLabel = '다시 시도';
 
@@ -102,6 +127,8 @@ class CoraStateView extends StatelessWidget {
                 description: description,
                 actionLabel: actionLabel,
                 onAction: onAction,
+                secondaryLabel: secondaryLabel,
+                onSecondary: onSecondary,
               ),
       ),
     );
@@ -196,6 +223,8 @@ class _MessageCard extends StatelessWidget {
     required this.description,
     required this.actionLabel,
     required this.onAction,
+    required this.secondaryLabel,
+    required this.onSecondary,
   });
 
   final CoraStateKind kind;
@@ -203,6 +232,8 @@ class _MessageCard extends StatelessWidget {
   final String? description;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
 
   @override
   Widget build(BuildContext context) {
@@ -254,7 +285,22 @@ class _MessageCard extends StatelessWidget {
                   if (actionLabel != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: _ActionChip(label: actionLabel!, onTap: onAction!),
+                      // 단추가 둘이면 나란히 놓고, 글자가 커져 좁아지면 줄을 바꾼다.
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _ActionChip(label: actionLabel!, onTap: onAction!),
+                            if (secondaryLabel != null)
+                              _ActionChip(
+                                label: secondaryLabel!,
+                                onTap: onSecondary!,
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -392,30 +438,27 @@ class _ActionChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // 캔버스의 `width: max-content`처럼 글자 너비만큼만 차지해 왼쪽에 붙는다.
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Semantics(
-        container: true,
-        button: true,
-        enabled: true,
+    // 캔버스의 `width: max-content`처럼 글자 너비만큼만 차지한다(왼쪽 붙임은 부르는 쪽이 한다).
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: true,
+      onTap: onTap,
+      child: CoraPressable(
         onTap: onTap,
-        child: CoraPressable(
-          onTap: onTap,
-          child: Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: c.chipAction,
-              borderRadius: BorderRadius.circular(CoraRadius.pill),
-            ),
-            // `alignment`를 주면 Container가 가로로 늘어난다. 글자 너비만큼만 두고 세로로만 가운데에 둔다.
-            child: Center(
-              widthFactor: 1,
-              child: Text(
-                label,
-                style: CoraTextStyles.label.copyWith(color: c.onChipAction),
-              ),
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: c.chipAction,
+            borderRadius: BorderRadius.circular(CoraRadius.pill),
+          ),
+          // `alignment`를 주면 Container가 가로로 늘어난다. 글자 너비만큼만 두고 세로로만 가운데에 둔다.
+          child: Center(
+            widthFactor: 1,
+            child: Text(
+              label,
+              style: CoraTextStyles.label.copyWith(color: c.onChipAction),
             ),
           ),
         ),
