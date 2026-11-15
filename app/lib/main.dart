@@ -74,7 +74,7 @@ Future<void> main() async {
   // 첫 실행이면 SDK가 세션을 읽기 전에 키체인의 세션과 PKCE 값을 비운다.
   // 이 빌드를 처음 받는 기존 설치(업데이트)도 표시가 없어 한 번 정리되어 다시 로그인한다.
   // 출시 전이라 허용했다. 출시 뒤에는 표시 키 이름을 바꾸지 말 것(바꾸면 모든 사용자가 로그아웃된다).
-  // Android는 이 정리가 필요 없다: shared_preferences의 표시는 자동 백업으로 복원될 수 있지만,
+  // Android는 이 정리가 필요 없다: 백업과 기기 간 이전을 모두 막았고, 막히지 않더라도
   // 보안 저장소 값은 백업되지 않는 Keystore 키로 암호화되어 있어 복원돼도 읽히지 않는다.
   await clearSessionOnFirstRun(
     marker: const SharedPreferencesFirstRunMarker(),

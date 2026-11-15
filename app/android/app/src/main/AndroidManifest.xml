@@ -2,9 +2,9 @@
     <!-- 로그인(Supabase)과 API 요청에 필요하다. 템플릿은 debug/profile에만 두어 release 빌드가 네트워크를 못 쓴다. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- allowBackup="false": 로그인 세션을 담은 보안 저장소 파일이 클라우드 백업에 실려 나가지 않게 한다.
-         API 26~30은 이 값이 막지만, targetSdk 31 이상 기기의 클라우드 백업과 기기 간 이전(device-to-device
-         transfer)은 allowBackup으로 막히지 않아 android:dataExtractionRules(res/xml/data_extraction_rules.xml)로
-         따로 막는다.
+         Android 12+(targetSdk 31 이상)에서도 이 값은 클라우드 백업을 막지만 기기 간 이전(device-to-device
+         transfer)은 막지 못한다. 그래서 android:dataExtractionRules(res/xml/data_extraction_rules.xml)로
+         기기 간 이전을 막고, 클라우드 백업도 같은 규칙에 함께 적어 둔다.
          Keystore 키는 기기 밖으로 못 나가서 복원해 봐야 읽지도 못하지만, 토큰이 백업 사본에 남을 이유도 없다. -->
     <application
         android:label="Cora"
