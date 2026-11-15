@@ -6,6 +6,10 @@ import { AppError, ErrorCode, STATUS_BY_CODE } from './app-error';
 class FakeResponse {
   statusCode = 0;
   body: unknown = null;
+  headers: Record<string, string> = {};
+  getHeader(name: string): string | undefined {
+    return this.headers[name];
+  }
   status(code: number): this {
     this.statusCode = code;
     return this;
@@ -43,6 +47,19 @@ describe('AllExceptionsFilter', () => {
     const logged = JSON.stringify(error.mock.calls);
     expect(logged).toContain('INTERNAL');
     expect(logged).not.toContain('Bearer');
+  });
+
+  it('falls back to the X-Request-Id response header when there is no request context', () => {
+    // 요청 ID 미들웨어가 헤더는 적었지만 비동기 문맥 밖에서 난 오류(예: 본문 파서)도 같은 ID로 이어 본다.
+    const res = new FakeResponse();
+    res.headers['X-Request-Id'] = 'abc12345-header';
+    new AllExceptionsFilter().catch(
+      new AppError('UNAUTHENTICATED', '로그인이 필요해요.'),
+      hostOf(res),
+    );
+    expect(
+      (res.body as { error: { requestId?: string } }).error.requestId,
+    ).toBe('abc12345-header');
   });
 
   it('does not log expected client errors', () => {

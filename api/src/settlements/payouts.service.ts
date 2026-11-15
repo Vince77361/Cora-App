@@ -126,8 +126,15 @@ export class PayoutsService implements OnModuleInit {
       }
       throw error;
     }
-    await this.repository.markPayoutDone(payout.id, externalId);
+    // 돈이 나간 사실은 DB 반영보다 먼저 남긴다: 반영이 실패해도 로그에서 송금이 사라지지 않는다.
     this.logResult(payout, 'ALLOWED', 'SENT');
+    try {
+      await this.repository.markPayoutDone(payout.id, externalId);
+    } catch (error) {
+      // 송금은 나갔는데 DONE이 기록되지 못했다. 던지면 작업이 다시 돌고 같은 키라 송금은 한 번뿐이다. 운영자가 로그로 알아볼 수 있게 따로 남긴다.
+      this.logResult(payout, 'FAILED', 'DB_UPDATE_FAILED');
+      throw error;
+    }
     await this.notifyDone(payout);
   }
 

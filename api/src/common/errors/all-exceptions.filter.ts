@@ -156,13 +156,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
         result: 'DENIED',
       });
     }
+    // 요청 ID 미들웨어가 헤더에 먼저 적었으므로 문맥이 없는 곳(미들웨어보다 앞에서 난 오류)에서도 헤더 값으로 이어 본다.
+    const header = res.getHeader('X-Request-Id');
     res.status(status).json({
       // requestId는 응답 헤더 X-Request-Id와 같은 값이다. 앱이 이 값을 로그에 남겨 서버 로그와 이어 본다.
       error: {
         code,
         message,
         details: details ?? null,
-        requestId: currentRequestId(),
+        requestId:
+          currentRequestId() ??
+          (typeof header === 'string' ? header : undefined),
       },
     });
   }

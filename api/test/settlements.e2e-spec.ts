@@ -17,6 +17,7 @@ import { assertBalanced } from '../src/ledger/ledger-postings';
 import { PayoutAccountsService } from '../src/payout-accounts/payout-accounts.service';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { RefundsService } from '../src/settlements/refunds.service';
+import { SettlementsRepository } from '../src/settlements/settlements.repository';
 import { SettlementsService } from '../src/settlements/settlements.service';
 import { ViewReportService } from '../src/settlements/view-report.service';
 import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
@@ -1387,6 +1388,34 @@ describe('settlements', () => {
       expect(all).not.toContain('김민지');
     });
 
+    it('still logs PAYOUT_RESULT as sent and then as DB_UPDATE_FAILED when saving DONE fails after the transfer', async () => {
+      const lines: string[] = [];
+      for (const level of ['log', 'warn', 'error'] as const) {
+        jest.spyOn(Logger.prototype, level).mockImplementation((m: unknown) => {
+          if (typeof m === 'string' && m.startsWith('{')) lines.push(m);
+        });
+      }
+      const s = await seed();
+      await registerAccount();
+      await submitAndSettle(s, 4320);
+      const payout = await prisma.payout.findFirstOrThrow();
+      jest
+        .spyOn(app.get(SettlementsRepository), 'markPayoutDone')
+        .mockRejectedValueOnce(new Error('db down'));
+      await expect(
+        scheduler.registry.run('payout-send', { payoutId: payout.id }),
+      ).rejects.toThrow('db down');
+      // 송금은 나갔다. 로그에서 그 사실이 사라지지 않고, DB 반영 실패는 따로 남는다.
+      expect(payoutPort.sent).toHaveLength(1);
+      const logged = lines
+        .map((l) => JSON.parse(l) as Record<string, unknown>)
+        .filter((e) => e.event === 'PAYOUT_RESULT');
+      expect(logged).toMatchObject([
+        { result: 'ALLOWED', reason: 'SENT', amount: 43200 },
+        { result: 'FAILED', reason: 'DB_UPDATE_FAILED', amount: 43200 },
+      ]);
+    });
+
     it('does not send twice when the payout job runs twice', async () => {
       const s = await seed();
       await registerAccount();
@@ -1941,6 +1970,35 @@ describe('settlements', () => {
           }),
         ).toBe(1);
         expect(alert).toHaveBeenCalledTimes(1);
+      });
+
+      it('still logs REFUND_RESULT as sent and then as DB_UPDATE_FAILED when saving DONE fails after the PG refund', async () => {
+        const lines: string[] = [];
+        for (const level of ['log', 'warn', 'error'] as const) {
+          jest
+            .spyOn(Logger.prototype, level)
+            .mockImplementation((m: unknown) => {
+              if (typeof m === 'string' && m.startsWith('{')) lines.push(m);
+            });
+        }
+        const s = await seed();
+        jest
+          .spyOn(app.get(SettlementsRepository), 'markRefundDone')
+          .mockRejectedValueOnce(new Error('db down'));
+        await expect(
+          scheduler.registry.run('refund-unsubmitted', {
+            collaborationId: s.collaborationId,
+          }),
+        ).rejects.toThrow('db down');
+        // PG 환급은 나갔다. 로그에서 그 사실이 사라지지 않고, DB 반영 실패는 따로 남는다.
+        expect(pg.refunds).toHaveLength(1);
+        const logged = lines
+          .map((l) => JSON.parse(l) as Record<string, unknown>)
+          .filter((e) => e.event === 'REFUND_RESULT');
+        expect(logged).toMatchObject([
+          { result: 'ALLOWED', reason: 'SENT', amount: 110000 },
+          { result: 'FAILED', reason: 'DB_UPDATE_FAILED', amount: 110000 },
+        ]);
       });
 
       it('does the same for an unsubmitted refund', async () => {

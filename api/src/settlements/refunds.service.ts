@@ -85,18 +85,26 @@ export class RefundsService {
         result,
         reason,
       });
+    let externalId: string;
     try {
-      const { externalId } = await this.paymentPort.refund({
+      ({ externalId } = await this.paymentPort.refund({
         pgTransactionId: await this.pgTransactionIdOf(refund),
         amount: refund.amount,
         idempotencyKey: `refund:${refund.id}`,
-      });
-      await this.repository.markRefundDone(refund.id, externalId);
+      }));
     } catch (error) {
       log('FAILED', error instanceof Error ? error.name : 'unknown');
       throw error;
     }
+    // 돈이 나간 사실은 DB 반영보다 먼저 남긴다: 반영이 실패해도 로그에서 환급이 사라지지 않는다.
     log('ALLOWED', 'SENT');
+    try {
+      await this.repository.markRefundDone(refund.id, externalId);
+    } catch (error) {
+      // PG 환급은 끝났는데 DONE이 기록되지 못했다. 던지면 다시 시도하지만 같은 키라 PG에서는 한 번만 환급된다.
+      log('FAILED', 'DB_UPDATE_FAILED');
+      throw error;
+    }
   }
 
   // 돌려보낼 결제의 PG 거래 번호. 보통은 협업의 보관을 시작시킨 결제이고, 협업에 반영되지 못한 결제(늦은 승인, 이중 결제)의
