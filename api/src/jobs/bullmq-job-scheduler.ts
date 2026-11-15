@@ -163,6 +163,7 @@ export class BullMqJobScheduler
 
   // 작업자가 실제로 작업을 실행하는 한 곳. 처리기가 없으면 다시 시도해도 소용없으므로 재시도하지 않는다.
   async process(job: {
+    id?: string;
     name: string;
     data: { payload: JobPayload };
     attemptsMade?: number;
@@ -174,6 +175,7 @@ export class BullMqJobScheduler
     try {
       await this.deps.registry.run(job.name as JobName, job.data.payload, {
         finalAttempt,
+        jobId: job.id,
       });
     } catch (e) {
       if (e instanceof NoJobHandlerError) {

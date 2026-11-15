@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import {
   CollaborationStage,
   ContentFormat,
@@ -1354,6 +1354,37 @@ describe('settlements', () => {
       expect(
         await prisma.notification.findMany({ where: { kind: 'PAYOUT_DONE' } }),
       ).toMatchObject([{ dedupeKey: `payout-done:${payout.id}` }]);
+    });
+
+    it('logs PAYOUT_RESULT with the amount and a job request id, without account numbers', async () => {
+      const lines: string[] = [];
+      for (const level of ['log', 'warn', 'error'] as const) {
+        jest.spyOn(Logger.prototype, level).mockImplementation((m: unknown) => {
+          if (typeof m === 'string' && m.startsWith('{')) lines.push(m);
+        });
+      }
+      const s = await seed();
+      await registerAccount();
+      await submitAndSettle(s, 4320);
+      clock.set(PAYDAY);
+      await scheduler.runDue(clock.now());
+      const payout = await prisma.payout.findFirstOrThrow();
+      const logged = lines
+        .map((l) => JSON.parse(l) as Record<string, unknown>)
+        .filter((e) => e.event === 'PAYOUT_RESULT');
+      expect(logged).toEqual([
+        expect.objectContaining({
+          event: 'PAYOUT_RESULT',
+          userId: s.creatorId,
+          target: s.collaborationId,
+          amount: 43200,
+          result: 'ALLOWED',
+          requestId: `job:payout-send:payout:${payout.id}`,
+        }),
+      ]);
+      const all = lines.join('\n');
+      expect(all).not.toContain('110123456789');
+      expect(all).not.toContain('김민지');
     });
 
     it('does not send twice when the payout job runs twice', async () => {

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cora_api/api.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// 서버가 오류 응답에 담는 코드(`api/src/common/errors/app-error.ts`의 `ErrorCode`)와 앱이
@@ -37,7 +38,7 @@ abstract final class ApiErrorCode {
 
 /// 서버 오류 응답(또는 연결 실패)을 화면이 분기하기 쉬운 값으로 푼 것.
 ///
-/// 서버는 모든 오류를 `{"error": {"code", "message", "details"}}`로 보낸다. 생성된 클라이언트는
+/// 서버는 모든 오류를 `{"error": {"code", "message", "details", "requestId"}}`로 보낸다. 생성된 클라이언트는
 /// 실패하면 `ApiException`을 던지고 `message`에 응답 본문 문자열을 넣는다.
 class ApiError {
   const ApiError({
@@ -45,6 +46,7 @@ class ApiError {
     required this.code,
     this.message,
     this.latestVersion,
+    this.requestId,
   });
 
   /// 오류를 해석한다. 던져진 값이 무엇이든 던지지 않고 [ApiError]를 돌려준다.
@@ -69,6 +71,10 @@ class ApiError {
   /// 판본 번호. 그 밖의 오류에는 null이다.
   final int? latestVersion;
 
+  /// 서버가 오류 본문에 담아 보낸 요청 ID(응답 헤더 `X-Request-Id`와 같은 값). 서버 로그와 이어 볼 때만 쓰므로
+  /// 화면에는 보이지 않고 디버그 로그에만 남는다. 본문에 없거나 모양이 다르면 null.
+  final String? requestId;
+
   bool get isConflict => code == ApiErrorCode.conflict;
 
   /// 수락하려는 판본이 최신이 아니다(409). 최신 번호는 [latestVersion]에 있다.
@@ -79,7 +85,8 @@ class ApiError {
 
   // message는 사용자 문구라 개인정보가 섞일 수 있어 로그에 남지 않게 뺀다.
   @override
-  String toString() => 'ApiError(status: $status, code: $code)';
+  String toString() =>
+      'ApiError(status: $status, code: $code${requestId == null ? '' : ', requestId: $requestId'})';
 }
 
 ApiError _fromApiException(ApiException exception) {
@@ -98,13 +105,23 @@ ApiError _fromApiException(ApiException exception) {
   if (status == 0) return const ApiError(code: ApiErrorCode.network);
 
   final body = _serverBody(exception.message);
-  return ApiError(
+  final error = ApiError(
     status: status,
     code: body?.code ?? _codeForStatus(status),
     message: body?.message,
     latestVersion: body?.latestVersion,
+    requestId: body?.requestId,
   );
+  // 사용자에게는 보이지 않는다. 개발 중 서버 로그와 이어 보려고 디버그 빌드에서만 남긴다.
+  if (kDebugMode && error.requestId != null) {
+    debugPrint(
+      '[api] 오류 응답 requestId=${error.requestId} 상태=$status 코드=${error.code}',
+    );
+  }
+  return error;
 }
+
+final _requestIdPattern = RegExp(r'^[A-Za-z0-9-]{8,64}$');
 
 bool _isNetworkFailure(Object error) =>
     error is SocketException ||
@@ -113,7 +130,8 @@ bool _isNetworkFailure(Object error) =>
     // TlsException 등 입출력 계열 실패.
     error is IOException;
 
-({String code, String? message, int? latestVersion})? _serverBody(String? raw) {
+({String code, String? message, int? latestVersion, String? requestId})?
+_serverBody(String? raw) {
   if (raw == null || raw.isEmpty) return null;
   try {
     final decoded = jsonDecode(raw);
@@ -126,11 +144,16 @@ bool _isNetworkFailure(Object error) =>
     final message = error['message'];
     final details = error['details'];
     final latest = details is Map ? details['latestVersion'] : null;
+    final requestId = error['requestId'];
     return (
       code: code,
       message: message is String ? message : null,
       latestVersion: code == ApiErrorCode.staleVersion && latest is int
           ? latest
+          : null,
+      // 서버가 정한 모양(영문·숫자·-, 8~64자)만 믿는다. 로그에 이상한 값이 들어가지 않게.
+      requestId: requestId is String && _requestIdPattern.hasMatch(requestId)
+          ? requestId
           : null,
     );
   } on FormatException {

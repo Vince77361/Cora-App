@@ -61,6 +61,7 @@ describe('error envelope', () => {
         code: 'NOT_FOUND',
         message: expect.any(String) as string,
         details: null,
+        requestId: expect.any(String) as string,
       },
     });
   });
@@ -72,6 +73,7 @@ describe('error envelope', () => {
         code: 'INTERNAL',
         message: '서버 오류가 발생했어요.',
         details: null,
+        requestId: expect.any(String) as string,
       },
     });
     expect(JSON.stringify(res.body)).not.toContain('leaked');
@@ -99,6 +101,7 @@ describe('error envelope', () => {
         code: 'RATE_LIMITED',
         message: expect.any(String) as string,
         details: null,
+        requestId: expect.any(String) as string,
       },
     });
   });
@@ -123,6 +126,7 @@ describe('error envelope', () => {
         code: 'VALIDATION_FAILED',
         message: expect.any(String) as string,
         details: null,
+        requestId: expect.any(String) as string,
       },
     });
   });
@@ -144,6 +148,7 @@ describe('error envelope', () => {
         code: 'VALIDATION_FAILED',
         message: expect.any(String) as string,
         details: null,
+        requestId: expect.any(String) as string,
       },
     });
   });

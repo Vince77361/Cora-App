@@ -5,7 +5,9 @@ import {
   HttpException,
   Logger,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
+import { securityLog } from '../logging/security-log';
+import { currentRequestId } from '../request-context/request-context';
 import { AppError, ErrorCode, STATUS_BY_CODE } from './app-error';
 
 export const INTERNAL_MESSAGE = '서버 오류가 발생했어요.';
@@ -67,18 +69,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
   catch(exception: unknown, host: ArgumentsHost): void {
-    const res = host.switchToHttp().getResponse<Response>();
+    const http = host.switchToHttp();
+    const res = http.getResponse<Response>();
+    const req = http.getRequest<Request & { user?: { userId: string } }>();
 
     if (exception instanceof AppError) {
       // INTERNAL은 서버 쪽 장애(예: 키 묶음 조회 실패)라 로그가 없으면 보이지 않는다.
       // AppError의 메시지는 화면에 보여 줄 고정 문구라 토큰이나 개인정보가 없다.
       if (exception.code === 'INTERNAL') {
         this.logger.error(
-          `AppError INTERNAL: ${exception.message}`,
+          `[${currentRequestId() ?? '-'}] AppError INTERNAL: ${exception.message}`,
           exception.stack,
         );
       }
       this.send(
+        req,
         res,
         STATUS_BY_CODE[exception.code],
         exception.code,
@@ -93,8 +98,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const code = codeForStatus(status);
       // 5xx는 내부 메시지를 숨기고 로그에만 남긴다.
       if (code === 'INTERNAL') {
-        this.logger.error(exception.message, exception.stack);
+        this.logger.error(
+          `[${currentRequestId() ?? '-'}] ${exception.message}`,
+          exception.stack,
+        );
         this.send(
+          req,
           res,
           status >= 500 ? status : 500,
           'INTERNAL',
@@ -105,13 +114,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
       const message =
         code === 'RATE_LIMITED' ? RATE_LIMITED_MESSAGE : messageOf(exception);
-      this.send(res, status, code, message, null);
+      this.send(req, res, status, code, message, null);
       return;
     }
 
     const exposedStatus = exposedClientStatus(exception);
     if (exposedStatus !== null) {
       this.send(
+        req,
         res,
         exposedStatus,
         codeForStatus(exposedStatus),
@@ -123,21 +133,37 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // 알 수 없는 오류의 원문은 서버 로그에만 남기고 응답에는 고정 문구만 쓴다.
     this.logger.error(
-      exception instanceof Error ? exception.message : String(exception),
+      `[${currentRequestId() ?? '-'}] ${exception instanceof Error ? exception.message : String(exception)}`,
       exception instanceof Error ? exception.stack : undefined,
     );
-    this.send(res, 500, 'INTERNAL', INTERNAL_MESSAGE, null);
+    this.send(req, res, 500, 'INTERNAL', INTERNAL_MESSAGE, null);
   }
 
   private send(
+    req: Request & { user?: { userId: string } },
     res: Response,
     status: number,
     code: ErrorCode,
     message: string,
     details: unknown,
   ): void {
-    res
-      .status(status)
-      .json({ error: { code, message, details: details ?? null } });
+    // 권한 없음은 어느 경로에서 났든(서비스의 AppError, 가드의 HttpException) 여기서 한 번만 남긴다.
+    // 쿼리 문자열에는 값이 실릴 수 있어 경로만 쓴다.
+    if (status === 403) {
+      securityLog('FORBIDDEN', {
+        userId: req.user?.userId,
+        target: `${req.method} ${req.path}`,
+        result: 'DENIED',
+      });
+    }
+    res.status(status).json({
+      // requestId는 응답 헤더 X-Request-Id와 같은 값이다. 앱이 이 값을 로그에 남겨 서버 로그와 이어 본다.
+      error: {
+        code,
+        message,
+        details: details ?? null,
+        requestId: currentRequestId(),
+      },
+    });
   }
 }

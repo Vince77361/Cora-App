@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { User, UserRole } from '@prisma/client';
+import { securityLog } from '../common/logging/security-log';
 import { MeModel } from './dto/me.model';
 import { UsersRepository } from './users.repository';
 
@@ -23,7 +24,14 @@ export class UsersService {
 
   // 역할은 나중에 바꿀 수 있다(기획). 행이 없으면 먼저 만든다.
   async setRole(userId: string, role: UserRole): Promise<MeModel> {
-    await this.users.upsert(userId);
-    return toMe(await this.users.updateRole(userId, role));
+    const before = await this.users.upsert(userId);
+    const updated = await this.users.updateRole(userId, role);
+    // 역할은 접근 범위를 바꾸므로 이전 값과 새 값을 남긴다.
+    securityLog('ROLE_CHANGED', {
+      userId,
+      result: 'ALLOWED',
+      reason: `${before.role ?? 'NONE'}→${role}`,
+    });
+    return toMe(updated);
   }
 }

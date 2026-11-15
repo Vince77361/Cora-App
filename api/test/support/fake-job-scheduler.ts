@@ -68,7 +68,10 @@ export class FakeJobScheduler extends JobScheduler {
         .sort((a, b) => a.runAt.getTime() - b.runAt.getTime())[0];
       if (!due) break;
       try {
-        await this.registry.run(due.name, due.payload);
+        await this.registry.run(due.name, due.payload, {
+          finalAttempt: true,
+          jobId: due.jobKey,
+        });
         due.status = 'done';
       } catch (e) {
         due.status = 'failed';

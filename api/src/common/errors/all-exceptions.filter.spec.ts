@@ -18,7 +18,10 @@ class FakeResponse {
 
 function hostOf(res: FakeResponse): ArgumentsHost {
   return {
-    switchToHttp: () => ({ getResponse: () => res }),
+    switchToHttp: () => ({
+      getResponse: () => res,
+      getRequest: () => ({ method: 'GET', path: '/x' }),
+    }),
   } as unknown as ArgumentsHost;
 }
 

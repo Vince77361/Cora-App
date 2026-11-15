@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import {
   CollaborationStage,
   PaymentStatus,
@@ -473,6 +473,34 @@ describe('payments', () => {
       expect(sum('ESCROW')).toBe(90000);
       expect(sum('FEE_REVENUE')).toBe(9000);
       expect((await collaborationOf(s.collaborationId)).stage).toBe('FUNDED');
+    });
+
+    it('logs PAYMENT_RESULT with the amount and no payment details', async () => {
+      const lines: string[] = [];
+      for (const level of ['log', 'warn', 'error'] as const) {
+        jest.spyOn(Logger.prototype, level).mockImplementation((m: unknown) => {
+          if (typeof m === 'string' && m.startsWith('{')) lines.push(m);
+        });
+      }
+      const s = await seed();
+      const paymentId = await startPayment(s.collaborationId);
+      const res = await webhook(paymentId, 'APPROVED').expect(200);
+      const payment = await prisma.payment.findUniqueOrThrow({
+        where: { id: paymentId },
+      });
+      const logged = lines
+        .map((l) => JSON.parse(l) as Record<string, unknown>)
+        .filter((e) => e.event === 'PAYMENT_RESULT');
+      expect(logged).toEqual([
+        expect.objectContaining({
+          target: s.collaborationId,
+          amount: payment.amountEscrow + payment.amountFee,
+          result: 'ALLOWED',
+          reason: 'APPROVED',
+          requestId: res.headers['x-request-id'],
+        }),
+      ]);
+      expect(lines.join('\n')).not.toContain(`fake-tx-${paymentId}`);
     });
 
     it('funds the collaboration on an approved webhook', async () => {

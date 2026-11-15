@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import {
   CollaborationStage,
   Payment,
@@ -634,6 +634,45 @@ describe('ops commands', () => {
       ).toBe(1);
       expect(pg.refunds).toHaveLength(1);
       expect(await prisma.refund.count()).toBe(1);
+    });
+
+    it('logs OPS_COMMAND and REFUND_RESULT with the command name, the collaboration and no free text', async () => {
+      const lines: string[] = [];
+      for (const level of ['log', 'warn', 'error'] as const) {
+        jest.spyOn(Logger.prototype, level).mockImplementation((m: unknown) => {
+          if (typeof m === 'string' && m.startsWith('{')) lines.push(m);
+        });
+      }
+      const s = await seed('COUNTING');
+      expect(
+        (await withWho('force-refund', '--collaboration', s.collaborationId))
+          .exitCode,
+      ).toBe(0);
+      // 거절된 두 번째 실행도 남는다.
+      await withWho('force-refund', '--collaboration', s.collaborationId);
+      const events = lines.map((l) => JSON.parse(l) as Record<string, unknown>);
+      const ops = events.filter((e) => e.event === 'OPS_COMMAND');
+      expect(ops).toMatchObject([
+        {
+          target: s.collaborationId,
+          result: 'ALLOWED',
+          reason: 'force-refund',
+        },
+        { target: s.collaborationId, result: 'DENIED', reason: 'force-refund' },
+      ]);
+      expect(String(ops[0].requestId)).toMatch(/^ops:force-refund:/);
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          event: 'REFUND_RESULT',
+          target: s.collaborationId,
+          amount: 110000,
+          result: 'ALLOWED',
+          requestId: ops[0].requestId,
+        }),
+      );
+      // 운영자 이름과 사유 같은 자유 입력은 로그에 없다.
+      expect(lines.join('\n')).not.toContain('김운영');
+      expect(lines.join('\n')).not.toContain('운영 확인 후 처리');
     });
 
     it('refunds a halted collaboration and lets only one of two simultaneous commands win', async () => {

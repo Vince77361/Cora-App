@@ -6,6 +6,7 @@ import { SUBMIT_DUE_DAYS } from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
+import { securityLog } from '../common/logging/security-log';
 import { CreatorsService } from '../creators/creators.service';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import { PaymentPort } from '../integrations/payment/payment.port';
@@ -234,6 +235,7 @@ export class PaymentsService {
     }
     if (result.status === 'FAILED') {
       await this.payments.markFailed(payment.id);
+      this.logResult(payment, 'FAILED', 'PG_FAILED');
       return;
     }
     // 대기 중이거나 새 결제에 밀려 취소된 결제는 승인 트랜잭션을 탄다. 이미 승인됐거나 실패한 결제만 따로 본다.
@@ -354,6 +356,7 @@ export class PaymentsService {
     });
 
     if (outcome === 'funded') {
+      this.logResult(payment, 'ALLOWED', 'APPROVED');
       const funded = await this.collaborations.findById(collaboration.id);
       if (funded) await this.afterFunded(funded, options);
       return;
@@ -382,6 +385,22 @@ export class PaymentsService {
       body: `결제 ID: ${payment.id}`,
     });
     await this.payments.markApproved(payment.id, pgTransactionId, now);
+    this.logResult(payment, 'DENIED', 'LATE_APPROVAL');
+  }
+
+  // 결제 결과 반영을 보안 로그에 남긴다. 대상은 협업 ID이고 금액(에스크로+수수료)만 싣는다:
+  // 카드·계좌 정보와 PG 거래 번호는 넣지 않는다.
+  private logResult(
+    payment: Payment,
+    result: 'ALLOWED' | 'DENIED' | 'FAILED',
+    reason: string,
+  ): void {
+    securityLog('PAYMENT_RESULT', {
+      target: payment.collaborationId,
+      amount: payment.amountEscrow + payment.amountFee,
+      result,
+      reason,
+    });
   }
 
   // 이미 승인됐거나 실패한 결제에 승인 통지가 또 왔다.
@@ -404,6 +423,7 @@ export class PaymentsService {
       subject: UNEXPECTED_APPROVAL_SUBJECT,
       body: `결제 ID: ${payment.id}`,
     });
+    this.logResult(payment, 'DENIED', 'UNEXPECTED_APPROVAL');
   }
 
   // 커밋 뒤의 후속 단계. 모두 같은 키라 다시 불러도 한 번만 일어난다.

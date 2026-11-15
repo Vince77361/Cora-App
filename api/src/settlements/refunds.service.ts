@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, Refund } from '@prisma/client';
+import { securityLog } from '../common/logging/security-log';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import { PaymentPort } from '../integrations/payment/payment.port';
 import { JobRunContext } from '../jobs/job-scheduler';
@@ -75,13 +76,27 @@ export class RefundsService {
   }
 
   // PG에 환급을 요청하고 DONE으로 바꾼다. 같은 환급은 늘 같은 키(refund:<환급 id>)라 몇 번을 보내도 PG에서 한 번만 환급된다.
+  // 결과는 보안 로그에도 남긴다(대상은 협업 ID, 금액만. 실패 사유는 오류 이름만).
   private async sendToPg(refund: Refund): Promise<void> {
-    const { externalId } = await this.paymentPort.refund({
-      pgTransactionId: await this.pgTransactionIdOf(refund),
-      amount: refund.amount,
-      idempotencyKey: `refund:${refund.id}`,
-    });
-    await this.repository.markRefundDone(refund.id, externalId);
+    const log = (result: 'ALLOWED' | 'FAILED', reason: string) =>
+      securityLog('REFUND_RESULT', {
+        target: refund.collaborationId,
+        amount: refund.amount,
+        result,
+        reason,
+      });
+    try {
+      const { externalId } = await this.paymentPort.refund({
+        pgTransactionId: await this.pgTransactionIdOf(refund),
+        amount: refund.amount,
+        idempotencyKey: `refund:${refund.id}`,
+      });
+      await this.repository.markRefundDone(refund.id, externalId);
+    } catch (error) {
+      log('FAILED', error instanceof Error ? error.name : 'unknown');
+      throw error;
+    }
+    log('ALLOWED', 'SENT');
   }
 
   // 돌려보낼 결제의 PG 거래 번호. 보통은 협업의 보관을 시작시킨 결제이고, 협업에 반영되지 못한 결제(늦은 승인, 이중 결제)의

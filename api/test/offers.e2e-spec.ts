@@ -2059,6 +2059,7 @@ describe('offers', () => {
           code: 'STALE_VERSION',
           message: '이전 판본이라 수락할 수 없어요.',
           details: { latestVersion: 2 },
+          requestId: expect.any(String) as string,
         },
       });
       expect(

@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Payout, Prisma } from '@prisma/client';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
+import { securityLog } from '../common/logging/security-log';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import {
   PayoutFailedError,
@@ -116,6 +117,7 @@ export class PayoutsService implements OnModuleInit {
       // 송금 쪽이 실패를 알렸다: 자동으로 다시 보내지 않고 운영자가 확인한다(운영 명령 retry-payout).
       if (error instanceof PayoutFailedError) {
         await this.repository.markPayoutFailed(payout.id);
+        this.logResult(payout, 'FAILED', 'TRANSFER_FAILED');
         await this.alertQuietly(
           '송금이 실패했어요. 확인해 주세요.',
           `지급 ID: ${payout.id}`,
@@ -125,7 +127,23 @@ export class PayoutsService implements OnModuleInit {
       throw error;
     }
     await this.repository.markPayoutDone(payout.id, externalId);
+    this.logResult(payout, 'ALLOWED', 'SENT');
     await this.notifyDone(payout);
+  }
+
+  // 대상은 협업 ID이고 금액만 싣는다. 계좌번호·예금주는 어떤 로그에도 남기지 않는다.
+  private logResult(
+    payout: Payout & { creatorId: string },
+    result: 'ALLOWED' | 'FAILED',
+    reason: string,
+  ): void {
+    securityLog('PAYOUT_RESULT', {
+      userId: payout.creatorId,
+      target: payout.collaborationId,
+      amount: payout.amount,
+      result,
+      reason,
+    });
   }
 
   // 계좌를 등록한 크리에이터의 대기 중 지급 가운데 지급일이 이미 지난 것을 다음 지급일로 옮기고 작업을 다시 올린다.

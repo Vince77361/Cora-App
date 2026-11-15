@@ -3,8 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { createRemoteJWKSet, errors, jwtVerify } from 'jose';
 import type { JWTVerifyGetKey } from 'jose';
 import { AppError } from '../common/errors/app-error';
+import { securityLog } from '../common/logging/security-log';
 import { Env } from '../config/env';
-import { TokenVerifier } from './token-verifier';
+import { TokenRejectedError, TokenVerifier } from './token-verifier';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -60,18 +61,22 @@ export class SupabaseTokenVerifier extends TokenVerifier {
       });
       const sub = payload.sub;
       if (typeof sub !== 'string' || !UUID.test(sub)) {
-        throw new AppError('UNAUTHENTICATED', UNAUTHENTICATED_MESSAGE);
+        throw new TokenRejectedError('INVALID', UNAUTHENTICATED_MESSAGE);
       }
       return { userId: sub };
     } catch (e) {
       if (e instanceof AppError) throw e;
       if (isTokenProblem(e)) {
-        throw new AppError('UNAUTHENTICATED', UNAUTHENTICATED_MESSAGE);
+        throw new TokenRejectedError(
+          e instanceof errors.JWTExpired ? 'EXPIRED' : 'INVALID',
+          UNAUTHENTICATED_MESSAGE,
+        );
       }
       // 오류 이름만 남긴다. 메시지에는 URL 같은 값이, 토큰은 더더욱 남기지 않는다.
-      this.logger.warn(
-        `키 묶음 조회에 실패했어요: ${e instanceof Error ? e.name : 'unknown'}`,
-      );
+      const name = e instanceof Error ? e.name : 'unknown';
+      this.logger.warn(`키 묶음 조회에 실패했어요: ${name}`);
+      // 사용자가 모두 401을 받기 전에 운영자가 알아챌 수 있게 보안 로그에도 남긴다.
+      securityLog('AUTH_INFRA_FAILED', { result: 'FAILED', reason: name });
       throw new AppError('INTERNAL', INTERNAL_MESSAGE);
     }
   }

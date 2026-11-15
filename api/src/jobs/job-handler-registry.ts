@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { runWithRequestContext } from '../common/request-context/request-context';
 import type { JobName } from './job-names';
 import type { JobHandler, JobPayload, JobRunContext } from './job-scheduler';
 
@@ -34,6 +35,11 @@ export class JobHandlerRegistry {
       this.logger.warn(`처리기가 등록되지 않은 작업을 건너뛰어요: ${name}`);
       throw new NoJobHandlerError(name);
     }
-    await handler(payload, context);
+    // BullMQ 작업자와 FakeJobScheduler가 모두 지나는 한 곳이라 여기서 요청 ID를 정한다:
+    // 작업이 남기는 보안 로그와 오류 로그를 같은 작업끼리 묶어 볼 수 있다.
+    await runWithRequestContext(
+      { requestId: `job:${name}:${context?.jobId ?? 'unknown'}` },
+      () => handler(payload, context),
+    );
   }
 }

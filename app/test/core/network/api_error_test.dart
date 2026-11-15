@@ -7,8 +7,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
 /// 서버 필터(`all-exceptions.filter.ts`)가 보내는 오류 본문과 같은 모양.
-String _body(String code, String message, {Object? details}) =>
-    '{"error":{"code":"$code","message":"$message","details":${details ?? 'null'}}}';
+String _body(
+  String code,
+  String message, {
+  Object? details,
+  String? requestId,
+}) =>
+    '{"error":{"code":"$code","message":"$message","details":${details ?? 'null'}'
+    '${requestId == null ? '' : ',"requestId":"$requestId"'}}}';
 
 void main() {
   group('server error bodies', () {
@@ -50,6 +56,42 @@ void main() {
         ).latestVersion,
         isNull,
       );
+    });
+
+    test('reads requestId from the error envelope', () {
+      final error = ApiError.from(
+        ApiException(
+          404,
+          _body(
+            'NOT_FOUND',
+            '없어요.',
+            requestId: '0b1c2d3e-aaaa-4bbb-8ccc-123456789abc',
+          ),
+        ),
+      );
+
+      expect(error.requestId, '0b1c2d3e-aaaa-4bbb-8ccc-123456789abc');
+      expect(error.code, ApiErrorCode.notFound);
+      // 화면에 보일 문구에는 섞이지 않는다.
+      expect(error.message, '없어요.');
+      expect(
+        error.toString(),
+        contains('0b1c2d3e-aaaa-4bbb-8ccc-123456789abc'),
+      );
+    });
+
+    test('has no requestId when the body lacks one or it looks wrong', () {
+      expect(
+        ApiError.from(ApiException(404, _body('NOT_FOUND', 'x'))).requestId,
+        isNull,
+      );
+      expect(
+        ApiError.from(
+          ApiException(404, _body('NOT_FOUND', 'x', requestId: 'a b\\nfake')),
+        ).requestId,
+        isNull,
+      );
+      expect(ApiError.from(ApiException(500, 'not json')).requestId, isNull);
     });
 
     test('reads RATE_LIMITED from a 429 body', () {

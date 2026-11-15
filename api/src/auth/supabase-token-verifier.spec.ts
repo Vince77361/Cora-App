@@ -8,6 +8,7 @@ import {
   SignJWT,
 } from 'jose';
 import { AppError } from '../common/errors/app-error';
+import { TokenRejectedError } from './token-verifier';
 import { SupabaseTokenVerifier } from './supabase-token-verifier';
 
 const SUPABASE_URL = 'https://abc.supabase.co';
@@ -114,6 +115,18 @@ describe('SupabaseTokenVerifier', () => {
     await expectRejected(noExp);
   });
 
+  it('tells an expired token from an invalid one for the security log', async () => {
+    const expired: unknown = await verifier
+      .verify(await sign({ exp: Math.floor(Date.now() / 1000) - 120 }))
+      .catch((e: unknown) => e);
+    expect(expired).toBeInstanceOf(TokenRejectedError);
+    expect((expired as TokenRejectedError).reason).toBe('EXPIRED');
+    const invalid: unknown = await verifier
+      .verify('not-a-jwt')
+      .catch((e: unknown) => e);
+    expect((invalid as TokenRejectedError).reason).toBe('INVALID');
+  });
+
   describe('when the key set cannot be fetched', () => {
     let warn: jest.SpyInstance;
     beforeEach(() => {
@@ -136,6 +149,19 @@ describe('SupabaseTokenVerifier', () => {
     it('reports a JWKS timeout as INTERNAL, not as a bad token', async () => {
       const err = await errorOf(failing(new errors.JWKSTimeout()));
       expect(err.code).toBe('INTERNAL');
+    });
+
+    it('logs AUTH_INFRA_FAILED with the error name only', async () => {
+      const error = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+      await errorOf(failing(new errors.JWKSTimeout()));
+      const line = JSON.parse(error.mock.calls[0][0] as string) as object;
+      expect(line).toMatchObject({
+        event: 'AUTH_INFRA_FAILED',
+        result: 'FAILED',
+        reason: 'JWKSTimeout',
+      });
+      expect(JSON.stringify(line)).not.toContain('eyJ');
+      error.mockRestore();
     });
 
     it('reports a network failure as INTERNAL', async () => {

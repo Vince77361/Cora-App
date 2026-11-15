@@ -5,6 +5,7 @@ import { FakeJobScheduler } from '../../test/support/fake-job-scheduler';
 import { BullMqJobScheduler, toBullJobId } from './bullmq-job-scheduler';
 import type { JobLike, JobQueue } from './bullmq-job-scheduler';
 import type { CollaborationJobPayload } from './job-scheduler';
+import { currentRequestId } from '../common/request-context/request-context';
 import { JobHandlerRegistry, NoJobHandlerError } from './job-handler-registry';
 
 const T0 = new Date('2026-11-11T00:00:00.000Z');
@@ -20,6 +21,26 @@ describe('JobHandlerRegistry', () => {
     });
     await registry.run('settle', { collaborationId: 'c1' });
     expect(seen).toEqual([{ collaborationId: 'c1' }]);
+  });
+
+  it('runs the handler with a job request id', async () => {
+    const registry = new JobHandlerRegistry();
+    const seen: (string | undefined)[] = [];
+    registry.register('settle', () => {
+      seen.push(currentRequestId());
+      return Promise.resolve();
+    });
+    await registry.run(
+      'settle',
+      { collaborationId: 'c1' },
+      {
+        finalAttempt: true,
+        jobId: 'settle%3Ac1',
+      },
+    );
+    await registry.run('settle', { collaborationId: 'c1' });
+    expect(seen).toEqual(['job:settle:settle%3Ac1', 'job:settle:unknown']);
+    expect(currentRequestId()).toBeUndefined();
   });
 
   it('warns and throws NoJobHandlerError when no handler is registered', async () => {
