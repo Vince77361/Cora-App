@@ -255,6 +255,33 @@ void main() {
   });
 
   testWidgets(
+    'with a closed campaign and an active collaboration the app opens '
+    'on collaborations and the discover tab starts a new campaign',
+    (tester) async {
+      final campaigns = FakeCampaignRepository();
+      final collaborations = FakeCollaborationRepository(
+        active: [
+          collaboration(
+            kind: CollaborationKind.brandContract,
+            role: CollaborationRole.commissioner,
+          ),
+        ],
+      );
+      await _pump(tester, campaigns: campaigns, collaborations: collaborations);
+
+      // 앱을 열면 진입 규칙이 협업 탭으로 보낸다.
+      expect(routerOf(tester).state.uri.path, '/brand/collaborations');
+      expect(find.text('캠페인 시작하기'), findsNothing);
+
+      await tester.tap(find.text('발견'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('캠페인 시작하기'), findsOneWidget);
+      expect(routerOf(tester).state.uri.path, '/brand/campaign/new');
+    },
+  );
+
+  testWidgets(
     'the edit screen offers a retry when the campaign cannot be read',
     (tester) async {
       final campaigns = FakeCampaignRepository(active: defaultCampaign);

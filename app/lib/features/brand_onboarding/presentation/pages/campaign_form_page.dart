@@ -141,7 +141,8 @@ class _CampaignFormPageState extends ConsumerState<CampaignFormPage> {
     final closed = await ref
         .read(campaignFormViewModelProvider(widget.editing).notifier)
         .close();
-    // 마감하면 진행 중인 캠페인이 없으므로 진입 규칙이 캠페인 만들기로 보낸다.
+    // 마감하면 진행 중인 캠페인이 없으므로 진입 규칙이 캠페인 만들기로, 진행 중인 브랜드 협업이 있으면
+    // 협업 탭으로 보낸다.
     if (closed && mounted) context.go(AppRoutes.brand);
   }
 

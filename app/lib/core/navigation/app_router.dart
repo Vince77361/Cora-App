@@ -704,6 +704,13 @@ Future<String?> _redirect(
     // 진입 경로를 알 수 없으면(조회 실패) 빈 화면에 갇히지 않게 역할 화면으로 보낸다.
     return AppRoutes.role;
   }
+  // 하단 `발견` 탭은 캠페인이 없을 때 새 캠페인을 만들려는 것이다. 진행 중인 협업이 있어도 협업 탭으로
+  // 되돌리지 않는다(그러면 협업이 끝날 때까지 새 캠페인을 열 길이 없다).
+  if (target == AppRoutes.brandCollaborations &&
+      path == AppRoutes.brand &&
+      uri.queryParameters[AppRoutes.fromParam] == AppRoutes.fromTab) {
+    return AppRoutes.brandCampaignNew;
+  }
   if (target == path) return null;
   // 역할을 고른 직후라는 표시는 리다이렉트 너머로 이어 준다(전환을 고르는 데 쓴다).
   return uri.queryParameters[AppRoutes.fromParam] == AppRoutes.fromRoleSelect

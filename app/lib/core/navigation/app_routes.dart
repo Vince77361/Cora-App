@@ -247,6 +247,11 @@ abstract final class AppRoutes {
     path,
   ).replace(queryParameters: {fromParam: fromRoleSelect}).toString();
 
+  /// 브랜드 하단 메뉴의 `발견` 탭이 `/brand`에 붙이는 표시(`?from=tab`). 진행 중인 캠페인이 없을 때
+  /// 진입 규칙이 협업 탭으로 보내지 않고 캠페인 만들기를 열게 한다(앱을 열 때와 로그인할 때는 규칙 그대로).
+  static const fromTab = 'tab';
+  static const brandDiscoverTab = '/brand?$fromParam=$fromTab';
+
   /// 홈이나 진입 화면으로도 쓰이는 경로(예: `/store/coming-soon/:title`)를 앱 안에서 `push`로
   /// 열 때 `extra`로 넘긴다. 넘기지 않으면 제자리에서 나타난다(진입과 구별할 수 없어서).
   static const stacked = 'stacked';

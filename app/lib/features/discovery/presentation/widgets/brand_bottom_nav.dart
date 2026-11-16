@@ -22,7 +22,7 @@ class BrandBottomNav extends StatelessWidget {
     // 협업 탭은 지금 탭이어도 누르면 그 탭의 바닥으로 돌아간다(07이 쌓여 열렸거나 링크로 열렸을 때).
     if (index == currentIndex && index != CoraCreatorNavItems.collab) return;
     if (index == CoraCreatorNavItems.discover) {
-      context.go(AppRoutes.brand);
+      context.go(AppRoutes.brandDiscoverTab);
       return;
     }
     if (index == CoraCreatorNavItems.likes) {

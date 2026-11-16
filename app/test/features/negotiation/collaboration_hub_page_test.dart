@@ -157,7 +157,7 @@ void main() {
     expect(find.byType(BrandBottomNav), findsOneWidget);
     await tester.tap(find.text('발견'));
     await tester.pumpAndSettle();
-    expect(opened.last, AppRoutes.brand);
+    expect(opened.last, AppRoutes.brandDiscoverTab);
   });
 
   testWidgets('works in the dark theme', (tester) async {
