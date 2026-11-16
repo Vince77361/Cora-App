@@ -422,18 +422,23 @@ class _Body extends StatelessWidget {
   List<_GroupData> _groups(TermsLatest latest) {
     final t = latest.terms;
     final reasons = latest.reasons;
+    final fields = latest.fields;
     final followers = latest.followers;
     return [
-      if (reasons.isNotEmpty || followers != null)
+      if (reasons.isNotEmpty || fields.isNotEmpty || followers != null)
         _GroupData(
           id: _Group.why,
           title: TermsTexts.groupWhy,
-          summary: reasons.isEmpty
-              ? followersLabel(followers!)
-              : reasonLabel(reasons.first),
+          // 요약은 첫 이유(브리프). 이유가 없으면 분야, 그것도 없으면 팔로워다.
+          summary: reasons.isNotEmpty
+              ? reasonLabel(reasons.first)
+              : (fields.isNotEmpty
+                    ? fields.join(', ')
+                    : followersLabel(followers!)),
           rows: [
             if (reasons.isNotEmpty)
               (TermsTexts.rowFit, reasons.map(reasonLabel).join(', ')),
+            if (fields.isNotEmpty) (TermsTexts.rowFields, fields.join(', ')),
             if (followers != null)
               (TermsTexts.rowFollowers, followersLabel(followers)),
           ],

@@ -85,7 +85,7 @@ String repostValueLabel(BrandUsageRights rights) =>
 String adsValueLabel(BrandUsageRights rights) =>
     rights == BrandUsageRights.adsToo ? '포함' : '별도 협의';
 
-/// 06 `지급과 광고 표시`의 요약이자 `지급 시점` 값. `최종 게시 후 7일 이내`.
+/// 06 `지급과 광고 표시`의 `지급 시점` 값. `최종 게시 후 7일 이내`.
 String payoutLabel(int days) => '최종 게시 후 $days일 이내';
 
 /// 06 `추천된 이유`의 `잘 맞는 점` 한 줄과 요약에 쓰는 이유 문구.
@@ -175,6 +175,7 @@ abstract final class TermsTexts {
   static const groupUse = '콘텐츠 활용';
   static const groupPay = '지급과 광고 표시';
   static const rowFit = '잘 맞는 점';
+  static const rowFields = '주요 분야';
   static const rowFollowers = '팔로워';
   static const rowRevision = '수정 범위';
   static const rowExtraShoot = '추가 촬영';

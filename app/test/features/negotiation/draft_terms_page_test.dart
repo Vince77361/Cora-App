@@ -212,6 +212,8 @@ void main() {
     expect(find.text('브랜드 계정 재게시만'), findsOneWidget);
     expect(find.text('최종 게시 후 7일 이내'), findsOneWidget);
     expect(find.text('잘 맞는 점'), findsOneWidget);
+    expect(find.text('주요 분야'), findsOneWidget);
+    expect(find.text('리빙·소품, 패션'), findsOneWidget);
     expect(find.text('팔로워'), findsOneWidget);
     expect(find.text('8,200명'), findsOneWidget);
     expect(find.text('추가 촬영'), findsNothing);
@@ -260,24 +262,59 @@ void main() {
     expect(find.text('포함'), findsOneWidget);
   });
 
-  testWidgets('without followers the row is hidden, and without any reason or '
-      'followers the whole group is', (tester) async {
+  testWidgets(
+    'without followers the row is hidden, and without any reason, field or '
+    'followers the whole group is',
+    (tester) async {
+      await _pump(
+        tester,
+        FakeNegotiationRepository(latest: termsLatest(followers: null)),
+      );
+      expect(find.text('추천된 이유'), findsOneWidget);
+      expect(find.text('잘 맞는 점'), findsOneWidget);
+      expect(find.text('팔로워'), findsNothing);
+
+      await _pump(
+        tester,
+        FakeNegotiationRepository(
+          latest: termsLatest(
+            followers: null,
+            reasons: const <MatchReason>[],
+            fields: const [],
+          ),
+        ),
+      );
+      expect(find.text('추천된 이유'), findsNothing);
+      expect(find.text('수정과 촬영'), findsOneWidget);
+    },
+  );
+
+  testWidgets('the main fields line is hidden when the list is empty', (
+    tester,
+  ) async {
     await _pump(
       tester,
-      FakeNegotiationRepository(latest: termsLatest(followers: null)),
+      FakeNegotiationRepository(latest: termsLatest(fields: const [])),
     );
-    expect(find.text('추천된 이유'), findsOneWidget);
-    expect(find.text('잘 맞는 점'), findsOneWidget);
-    expect(find.text('팔로워'), findsNothing);
 
+    expect(find.text('잘 맞는 점'), findsOneWidget);
+    expect(find.text('주요 분야'), findsNothing);
+    expect(find.text('팔로워'), findsOneWidget);
+  });
+
+  testWidgets('with only fields the group stays and summarizes the fields', (
+    tester,
+  ) async {
     await _pump(
       tester,
       FakeNegotiationRepository(
         latest: termsLatest(followers: null, reasons: const <MatchReason>[]),
       ),
     );
-    expect(find.text('추천된 이유'), findsNothing);
-    expect(find.text('수정과 촬영'), findsOneWidget);
+
+    expect(find.text('추천된 이유'), findsOneWidget);
+    expect(find.text('주요 분야'), findsOneWidget);
+    expect(find.text('리빙·소품, 패션'), findsNWidgets(2)); // 요약과 줄
   });
 
   testWidgets('without a notice the notice box is not drawn', (tester) async {

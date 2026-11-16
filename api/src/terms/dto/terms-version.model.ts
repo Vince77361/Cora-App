@@ -105,6 +105,14 @@ export class TermsLatestModel {
   reasons!: MatchReason[];
 
   @ApiProperty({
+    type: String,
+    isArray: true,
+    description:
+      '크리에이터가 협업 원칙에서 고른 분야의 이름표(고른 순서). 원칙이 없으면 빈 배열.',
+  })
+  fields!: string[];
+
+  @ApiProperty({
     enum: ProductTrialDays,
     enumName: 'ProductTrialDays',
     description: '캠페인의 제품 사용 기간.',

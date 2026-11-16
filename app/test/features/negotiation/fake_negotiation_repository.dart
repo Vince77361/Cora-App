@@ -49,6 +49,7 @@ TermsLatest termsLatest({
   bool needsInstagram = false,
   String? notice = '얼굴 출연과 제품 설명문 낭독은 진행하지 않아요.',
   List<MatchReason> reasons = const [MatchReason.field],
+  List<String> fields = const ['리빙·소품', '패션'],
   int? followers = 8200,
 }) => TermsLatest(
   terms: terms ?? termsVersion(),
@@ -57,6 +58,7 @@ TermsLatest termsLatest({
   needsInstagram: needsInstagram,
   notice: notice,
   reasons: reasons,
+  fields: fields,
   followers: followers,
 );
 
@@ -100,6 +102,7 @@ class FakeNegotiationRepository implements NegotiationRepository {
       needsInstagram: false,
       notice: latest.notice,
       reasons: latest.reasons,
+      fields: latest.fields,
       followers: latest.followers,
     );
   }

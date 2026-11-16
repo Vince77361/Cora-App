@@ -4461,6 +4461,13 @@
       },
       "TermsLatestModel": {
         "properties": {
+          "fields": {
+            "description": "크리에이터가 협업 원칙에서 고른 분야의 이름표(고른 순서). 원칙이 없으면 빈 배열.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "followers": {
             "description": "크리에이터가 연동한 인스타그램의 팔로워 수. 연동이 없으면 null.",
             "nullable": true,
@@ -4506,6 +4513,7 @@
           "terms",
           "notice",
           "reasons",
+          "fields",
           "trialDays",
           "followers",
           "myTurn",

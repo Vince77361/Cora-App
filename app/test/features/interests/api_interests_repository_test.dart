@@ -101,6 +101,7 @@ Map<String, Object?> _termsVersion({int version = 2}) => {
 };
 
 Map<String, Object?> _latest({bool myTurn = true, int version = 2}) => {
+  'fields': <String>[],
   'followers': null,
   'mine': false,
   'myTurn': myTurn,

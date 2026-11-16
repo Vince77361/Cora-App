@@ -13,6 +13,7 @@ part of cora_api;
 class TermsLatestModel {
   /// Returns a new [TermsLatestModel] instance.
   TermsLatestModel({
+    this.fields = const [],
     required this.followers,
     required this.mine,
     required this.myTurn,
@@ -22,6 +23,9 @@ class TermsLatestModel {
     required this.terms,
     required this.trialDays,
   });
+
+  /// 크리에이터가 협업 원칙에서 고른 분야의 이름표(고른 순서). 원칙이 없으면 빈 배열.
+  List<String> fields;
 
   /// 크리에이터가 연동한 인스타그램의 팔로워 수. 연동이 없으면 null.
   int? followers;
@@ -50,6 +54,7 @@ class TermsLatestModel {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is TermsLatestModel &&
+          _deepEquality.equals(other.fields, fields) &&
           other.followers == followers &&
           other.mine == mine &&
           other.myTurn == myTurn &&
@@ -62,6 +67,7 @@ class TermsLatestModel {
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
+      (fields.hashCode) +
       (followers == null ? 0 : followers!.hashCode) +
       (mine.hashCode) +
       (myTurn.hashCode) +
@@ -73,10 +79,11 @@ class TermsLatestModel {
 
   @override
   String toString() =>
-      'TermsLatestModel[followers=$followers, mine=$mine, myTurn=$myTurn, needsInstagram=$needsInstagram, notice=$notice, reasons=$reasons, terms=$terms, trialDays=$trialDays]';
+      'TermsLatestModel[fields=$fields, followers=$followers, mine=$mine, myTurn=$myTurn, needsInstagram=$needsInstagram, notice=$notice, reasons=$reasons, terms=$terms, trialDays=$trialDays]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    json[r'fields'] = this.fields;
     if (this.followers != null) {
       json[r'followers'] = this.followers;
     } else {
@@ -107,6 +114,10 @@ class TermsLatestModel {
       // Note 1: the values aren't checked for validity beyond being non-null.
       // Note 2: this code is stripped in release mode!
       assert(() {
+        assert(json.containsKey(r'fields'),
+            'Required key "TermsLatestModel[fields]" is missing from JSON.');
+        assert(json[r'fields'] != null,
+            'Required key "TermsLatestModel[fields]" has a null value in JSON.');
         assert(json.containsKey(r'followers'),
             'Required key "TermsLatestModel[followers]" is missing from JSON.');
         assert(json.containsKey(r'mine'),
@@ -139,6 +150,11 @@ class TermsLatestModel {
       }());
 
       return TermsLatestModel(
+        fields: json[r'fields'] is Iterable
+            ? (json[r'fields'] as Iterable)
+                .cast<String>()
+                .toList(growable: false)
+            : const [],
         followers: mapValueOfType<int>(json, r'followers'),
         mine: mapValueOfType<bool>(json, r'mine')!,
         myTurn: mapValueOfType<bool>(json, r'myTurn')!,
@@ -203,6 +219,7 @@ class TermsLatestModel {
 
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
+    'fields',
     'followers',
     'mine',
     'myTurn',

@@ -20,7 +20,12 @@ import { BrandProposal } from './draft-terms';
 import { ProposeRewardDto } from './dto/propose-reward.dto';
 import { TermsLatestModel, TermsVersionModel } from './dto/terms-version.model';
 import { nextTermsValues, proposalProblem, sameReward } from './proposal-rules';
-import { isMyTurn, termsNotice, toTermsVersionModel } from './terms-rules';
+import {
+  isMyTurn,
+  principleFieldLabels,
+  termsNotice,
+  toTermsVersionModel,
+} from './terms-rules';
 import { TermsRepository } from './terms.repository';
 import { TermsService } from './terms.service';
 
@@ -74,6 +79,7 @@ export class NegotiationService {
     return {
       terms: toTermsVersionModel(latest, collaboration.commissionerId),
       notice: termsNotice(principles),
+      fields: principleFieldLabels(principles),
       reasons:
         principles && brand
           ? matchScore(principles, {

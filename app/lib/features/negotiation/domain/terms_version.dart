@@ -69,6 +69,7 @@ class TermsLatest {
     required this.needsInstagram,
     this.notice,
     this.reasons = const [],
+    this.fields = const [],
     this.followers,
   });
 
@@ -88,6 +89,9 @@ class TermsLatest {
 
   /// 크리에이터의 협업 원칙과 캠페인이 겹치는 규칙.
   final List<MatchReason> reasons;
+
+  /// 크리에이터가 협업 원칙에서 고른 분야의 이름표(고른 순서). 원칙이 없으면 빈 목록이다.
+  final List<String> fields;
 
   /// 크리에이터가 연동한 인스타그램의 팔로워 수. 연동이 없으면 null.
   final int? followers;

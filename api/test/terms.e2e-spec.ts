@@ -62,6 +62,7 @@ interface LatestBody {
   terms: TermsVersionBody;
   notice: string | null;
   reasons: string[];
+  fields: string[];
   trialDays: string;
   followers: number | null;
   myTurn: boolean;
@@ -225,6 +226,7 @@ describe('terms version 1 and its confirmation', () => {
         expect(body.trialDays).toBe('D7');
         expect(body.followers).toBeNull();
         expect(body.notice).toBeNull();
+        expect(body.fields).toEqual(['액세서리·주얼리']);
         // 캠페인 한 줄이 아니라 크리에이터가 쓴 글이 제목이다.
         expect(body.terms.title).not.toBe(CAMPAIGN.headline);
       }
@@ -237,6 +239,19 @@ describe('terms version 1 and its confirmation', () => {
       expect(body.reasons).toEqual(
         expect.arrayContaining(['FIELD', 'FACE', 'SCRIPT', 'FEE', 'TRIAL']),
       );
+    });
+
+    it('lists the creator principle fields by name in the order chosen, to both sides', async () => {
+      const campaignId = await makeBoth({
+        principles: { fields: ['LIVING', 'ACCESSORY'] },
+      });
+      const id = await matchUp(campaignId);
+      for (const auth of [authBrand, authCreator]) {
+        expect((await latestOf(auth, id)).fields).toEqual([
+          '리빙·소품',
+          '액세서리·주얼리',
+        ]);
+      }
     });
 
     it('builds the notice line from the creator principles', async () => {

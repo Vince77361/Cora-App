@@ -1,4 +1,5 @@
-import type { TermsVersion } from '@prisma/client';
+import type { IndustryCategory, TermsVersion } from '@prisma/client';
+import { INDUSTRY_LABELS } from '../common/industry';
 import { maxCashBurden } from '../stores/reward-terms';
 import { TermsVersionModel } from './dto/terms-version.model';
 
@@ -13,6 +14,13 @@ export function termsNotice(
   if (!principles.faceOk) return '얼굴 출연은 진행하지 않아요.';
   if (!principles.scriptOk) return '제품 설명문 낭독은 진행하지 않아요.';
   return null;
+}
+
+// 06 `추천된 이유`의 `주요 분야`: 크리에이터가 협업 원칙에서 고른 분야의 이름표를 고른 순서대로. 원칙이 없으면 빈 배열이다.
+export function principleFieldLabels(
+  principles: { fields: IndustryCategory[] } | null,
+): string[] {
+  return principles ? principles.fields.map((f) => INDUSTRY_LABELS[f]) : [];
 }
 
 // 판본을 낸 쪽. 만든 사람이 없으면 서버(서로 관심이 닿을 때 만든 버전 1)다.

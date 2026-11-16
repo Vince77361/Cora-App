@@ -3,6 +3,7 @@ import {
   isMyTurn,
   proposedByOf,
   termsMaxCash,
+  principleFieldLabels,
   termsNotice,
   toTermsVersionModel,
 } from './terms-rules';
@@ -29,6 +30,23 @@ const row = (over: Partial<TermsVersion> = {}): TermsVersion => ({
   updatedAt: new Date('2026-11-11T03:00:00.000Z'),
   deletedAt: null,
   ...over,
+});
+
+describe('principleFieldLabels', () => {
+  it('names the chosen fields in the order the creator chose them', () => {
+    expect(principleFieldLabels({ fields: ['LIVING', 'FASHION'] })).toEqual([
+      '리빙·소품',
+      '패션',
+    ]);
+    expect(principleFieldLabels({ fields: ['ACCESSORY'] })).toEqual([
+      '액세서리·주얼리',
+    ]);
+  });
+
+  it('is empty without principles or fields', () => {
+    expect(principleFieldLabels(null)).toEqual([]);
+    expect(principleFieldLabels({ fields: [] })).toEqual([]);
+  });
 });
 
 describe('termsNotice', () => {

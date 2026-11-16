@@ -45,6 +45,7 @@ Map<String, Object?> _latest({
   'needsInstagram': false,
   'notice': '얼굴 출연과 제품 설명문 낭독은 진행하지 않아요.',
   'reasons': ['FIELD', 'FEE', 'TRIAL'],
+  'fields': ['리빙·소품', '패션'],
   'terms': _version(performance: performance),
   'trialDays': 'D7',
 };
@@ -68,6 +69,7 @@ void main() {
       MatchReason.fee,
       MatchReason.trial,
     ]);
+    expect(latest.fields, ['리빙·소품', '패션']);
     expect(latest.followers, 8200);
     final t = latest.terms;
     expect(t.version, 3);

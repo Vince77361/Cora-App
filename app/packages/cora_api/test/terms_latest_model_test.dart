@@ -16,6 +16,12 @@ void main() {
   // final instance = TermsLatestModel();
 
   group('test TermsLatestModel', () {
+    // 크리에이터가 협업 원칙에서 고른 분야의 이름표(고른 순서). 원칙이 없으면 빈 배열.
+    // List<String> fields (default value: const [])
+    test('to test the property `fields`', () async {
+      // TODO
+    });
+
     // 크리에이터가 연동한 인스타그램의 팔로워 수. 연동이 없으면 null.
     // int followers
     test('to test the property `followers`', () async {

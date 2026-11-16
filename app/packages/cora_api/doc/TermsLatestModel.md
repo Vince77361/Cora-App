@@ -8,6 +8,7 @@ import 'package:cora_api/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**fields** | **List<String>** | 크리에이터가 협업 원칙에서 고른 분야의 이름표(고른 순서). 원칙이 없으면 빈 배열. | [default to const []]
 **followers** | **int** | 크리에이터가 연동한 인스타그램의 팔로워 수. 연동이 없으면 null. | 
 **mine** | **bool** | 최신 판본을 내가 냈다. | 
 **myTurn** | **bool** | 최신 판본을 내가 아직 확인하지 않았다. | 

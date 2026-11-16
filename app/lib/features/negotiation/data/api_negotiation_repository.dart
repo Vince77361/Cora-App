@@ -65,6 +65,7 @@ class ApiNegotiationRepository implements NegotiationRepository {
     needsInstagram: m.needsInstagram,
     notice: m.notice,
     reasons: [for (final r in m.reasons) _reason(r)],
+    fields: List.of(m.fields),
     followers: m.followers,
   );
 
