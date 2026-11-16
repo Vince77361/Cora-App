@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/navigation/cora_hero_tag.dart';
+import '../../../../core/text/count_and_date_labels.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_swipe_tokens.dart';
 import '../../../../core/theme/cora_text_styles.dart';
@@ -433,7 +434,7 @@ class _Body extends StatelessWidget {
                 Expanded(
                   child: _ValueTile(
                     label: CreatorDiscoveryTexts.scheduleTitle,
-                    value: CreatorDiscoveryTexts.scheduleValue(
+                    value: afterDateLabel(
                       detail.startFrom,
                     ),
                   ),

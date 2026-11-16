@@ -47,14 +47,21 @@ Future<List<String>> _pump(
     routes: [
       GoRoute(
         path: AppRoutes.brandInterests,
-        builder: (context, state) => Scaffold(
-          body: Center(
-            child: TextButton(
-              onPressed: () => context.push(AppRoutes.brandCompare('c1', 'c2')),
-              child: const Text('open compare'),
+        builder: (context, state) {
+          // 04가 서로 관심 알림의 `확인하기`로 여는 03(`?match=`)만 기록한다.
+          if (state.uri.queryParameters.containsKey('match')) {
+            opened.add(state.uri.toString());
+          }
+          return Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () =>
+                    context.push(AppRoutes.brandCompare('c1', 'c2')),
+                child: const Text('open compare'),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.brandComparePattern,
@@ -403,7 +410,7 @@ void main() {
     // 상대가 이미 관심을 보낸 후보라 이 제안으로 바로 서로 관심이 닿는다.
     final discovery = FakeDiscoveryRepository()..matchOn.add('c2');
     final repo = _canvas();
-    await _pump(tester, repo, discovery: discovery);
+    final opened = await _pump(tester, repo, discovery: discovery);
 
     await tester.tap(find.text('민에게 제안'));
     await tester.pumpAndSettle();
@@ -416,6 +423,26 @@ void main() {
     expect(find.textContaining('상대도 고르면'), findsNothing);
     // 표를 다시 읽는다.
     expect(repo.compared, hasLength(2));
+
+    // `확인하기`가 그 협업의 서로 관심(05)을 연다.
+    await tester.tap(find.text('확인하기'));
+    await tester.pumpAndSettle();
+    expect(opened, [AppRoutes.brandMatch('collab-c2')]);
+  });
+
+  testWidgets('a proposal that only waits for the other side has no confirm '
+      'button', (tester) async {
+    await _pump(tester, _canvas());
+
+    await tester.tap(find.text('민에게 제안'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('검토하고 보내기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('이 조건으로 보내기'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('제안을 보냈어요'), findsOneWidget);
+    expect(find.text('확인하기'), findsNothing);
   });
 
   testWidgets('with the same state on both sides the left candidate gets the '

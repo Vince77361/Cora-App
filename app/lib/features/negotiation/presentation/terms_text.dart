@@ -1,4 +1,5 @@
 import '../../../core/text/josa.dart';
+import '../../../core/text/count_and_date_labels.dart';
 import '../../collaboration/domain/collaboration.dart'
     show Collaboration, CollaborationNextAction;
 import '../../discovery/domain/discovery_card.dart' show MatchReason;
@@ -23,7 +24,7 @@ String cashLabel(int? amount, FeeBand? band) {
 
 /// 03 카드 아래 글의 날짜. `11월 16일 이후`, 날짜가 없으면 `일정 협의`.
 String startFromLabel(DateTime? date) =>
-    date == null ? '일정 협의' : '${date.month}월 ${date.day}일 이후';
+    date == null ? '일정 협의' : afterDateLabel(date);
 
 /// 04 `결과물`. `{형식} {편 수}편`, 릴스와 쇼츠는 뒤에 ` · 30초`(결과물의 길이는 고정 안내다).
 String compareDeliverableLabel(ContentFormat format, int pieces) {
@@ -100,17 +101,7 @@ String revisionSummary(RevisionScope scope) =>
 String payoutSummary(int days) => '${payoutLabel(days)} 지급';
 
 /// 06 `팔로워`. `8,200명`.
-String followersLabel(int followers) => '${_commas(followers)}명';
-
-String _commas(int n) {
-  final digits = n.abs().toString();
-  final out = StringBuffer(n < 0 ? '-' : '');
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) out.write(',');
-    out.write(digits[i]);
-  }
-  return out.toString();
-}
+String followersLabel(int followers) => '${withCommas(followers)}명';
 
 /// 06 머리의 제목과 오른쪽 표지. [highlighted]면 내가 응답할 차례라 라임 알약이다.
 class TermsHeader {

@@ -166,44 +166,24 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     }, model.targetId);
   });
 
-  /// 결정을 보낸다. 생성된 `PutDecisionDto`는 값이 없는 `note`·`proposal`을 `null`로 실어 보내는데,
-  /// 서버는 `null`을 "보내지 않음"으로 읽지 못해 500을 낸다(`cleanNote`가 `null.trim()`). 서버 규칙은
-  /// "빠뜨리면 저장된 값을 그대로 둔다"이므로 값이 없는 칸은 본문에서 뺀다. 서버가 `null`도 받게 고치면
-  /// 이 우회는 `putDecision(PutDecisionDto(...))`로 되돌릴 수 있다.
+  /// 결정을 보낸다. 값이 없는 `note`·`proposal`은 명시적 `null`로 가고, 서버는 그것을 "보내지 않음"으로 읽어
+  /// 저장된 글과 제안을 그대로 둔다(2ed39d4).
   Future<api.DecisionResultModel?> _putDecision({
     required api.SwipeDecisionKind decision,
     required DiscoveryTarget target,
     String? note,
     RewardProposal? proposal,
-  }) async {
-    final body = <String, Object?>{
-      'decision': decision.toJson(),
-      'targetId': target.id,
-      'targetKind':
-          (target.kind == DiscoveryTargetKind.creator
-                  ? api.DecisionTargetKind.CREATOR
-                  : api.DecisionTargetKind.CAMPAIGN)
-              .toJson(),
-      'note': ?note,
-      'proposal': ?(proposal == null ? null : _proposalJson(proposal)),
-    };
-    final client = _discovery.apiClient;
-    final response = await client.invokeAPI(
-      '/discovery/decisions',
-      'PUT',
-      <api.QueryParam>[],
-      body,
-      <String, String>{},
-      <String, String>{},
-      'application/json',
-    );
-    if (response.statusCode >= 400) {
-      throw api.ApiException(response.statusCode, response.body);
-    }
-    if (response.body.isEmpty || response.statusCode == 204) return null;
-    return await client.deserializeAsync(response.body, 'DecisionResultModel')
-        as api.DecisionResultModel;
-  }
+  }) => _discovery.putDecision(
+    api.PutDecisionDto(
+      decision: decision,
+      note: note,
+      proposal: proposal == null ? null : _proposalDto(proposal),
+      targetId: target.id,
+      targetKind: target.kind == DiscoveryTargetKind.creator
+          ? api.DecisionTargetKind.CREATOR
+          : api.DecisionTargetKind.CAMPAIGN,
+    ),
+  );
 
   static Future<T> _guard<T>(Future<T> Function() call) async {
     try {
@@ -224,16 +204,17 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
         DiscoveryTargetKind.store => api.SwipeTargetKind.STORE,
       };
 
-  static Map<String, Object?> _proposalJson(RewardProposal p) => {
-    'fee': p.fee,
-    'productProvided': p.productProvided,
-    'performance': ?(p.performance == null
-        ? null
-        : {
-            'ratePer1000': p.performance!.ratePer1000,
-            'cap': p.performance!.cap,
-          }),
-  };
+  static api.BrandProposalDto _proposalDto(RewardProposal p) =>
+      api.BrandProposalDto(
+        fee: p.fee,
+        productProvided: p.productProvided,
+        performance: p.performance == null
+            ? null
+            : api.ProposalPerformanceDto(
+                cap: p.performance!.cap,
+                ratePer1000: p.performance!.ratePer1000,
+              ),
+      );
 
   static CreatorCard _creatorCard(api.CreatorCardModel m) => CreatorCard(
     creatorId: m.creatorId,

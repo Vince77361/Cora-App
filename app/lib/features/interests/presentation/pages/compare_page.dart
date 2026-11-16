@@ -33,7 +33,7 @@ class ComparePage extends ConsumerStatefulWidget {
 }
 
 class _ComparePageState extends ConsumerState<ComparePage> {
-  ({String message, int serial})? _notice;
+  ({String message, int serial, String? matchedId})? _notice;
   int _serial = 0;
   bool _opening = false;
 
@@ -78,14 +78,22 @@ class _ComparePageState extends ConsumerState<ComparePage> {
         ),
       );
       if (!mounted) return;
-      // 상대가 이미 관심을 보낸 후보면 이 제안으로 바로 서로 관심이 닿았다(01과 같은 문구).
+      // 상대가 이미 관심을 보낸 후보면 이 제안으로 바로 서로 관심이 닿았다(01과 같은 문구,
+      // `확인하기`로 05를 연다).
       final message = switch (sent) {
         ProposalSent() => InterestsTexts.proposalSent(side.name),
         ProposalMatched() => DiscoveryTexts.matchToast(side.name),
         ProposalStale() || ProposalDismissed() => null,
       };
       if (message == null) return;
-      setState(() => _notice = (message: message, serial: ++_serial));
+      final matchedId = sent is ProposalMatched ? sent.collaborationId : null;
+      setState(
+        () => _notice = (
+          message: message,
+          serial: ++_serial,
+          matchedId: matchedId,
+        ),
+      );
       await _vm.refresh();
     } finally {
       _opening = false;
@@ -133,6 +141,15 @@ class _ComparePageState extends ConsumerState<ComparePage> {
                       child: DiscoveryToastBanner(
                         key: ValueKey(notice.serial),
                         message: notice.message,
+                        match: notice.matchedId != null,
+                        action: notice.matchedId == null
+                            ? null
+                            : DiscoveryTexts.matchToastAction,
+                        onAction: notice.matchedId == null
+                            ? null
+                            : () => context.push(
+                                AppRoutes.brandMatch(notice.matchedId!),
+                              ),
                         onDismiss: () {
                           if (mounted && _notice?.serial == notice.serial) {
                             setState(() => _notice = null);

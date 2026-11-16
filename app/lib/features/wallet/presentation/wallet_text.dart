@@ -1,3 +1,4 @@
+import '../../../core/text/count_and_date_labels.dart';
 import '../../../core/time/kst.dart';
 import '../../offer_terms/presentation/offer_terms_text.dart';
 import '../domain/wallet.dart';
@@ -42,7 +43,7 @@ String entryTitle(WalletEntry e) =>
 /// 설명이 없어 비운다.
 String? entrySubtitle(WalletEntry e) => switch (e.kind) {
   WalletEntryKind.payoutScheduled || WalletEntryKind.payoutFailed =>
-    e.views == null ? null : '조회수 ${_withCommas(e.views!)}회분',
+    e.views == null ? null : '조회수 ${withCommas(e.views!)}회분',
   WalletEntryKind.payoutDone => '${kstMonthDay(e.at)} 지급',
   WalletEntryKind.held => e.published ? '게시 확인 중' : null,
   WalletEntryKind.voucher => e.voucherName,
@@ -66,14 +67,4 @@ String accountLabel(WalletAccount account) {
   final last = account.accountLast4;
   final tail = last.length <= 2 ? last : last.substring(last.length - 2);
   return '${account.bankFullName} ****$tail';
-}
-
-String _withCommas(int n) {
-  final digits = n.toString();
-  final out = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) out.write(',');
-    out.write(digits[i]);
-  }
-  return out.toString();
 }

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_motion.dart';
+import '../../../../core/theme/cora_swipe_tokens.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
@@ -30,7 +31,7 @@ Future<MatchSheetResult> showMatchSheet(
     // 바탕은 시트 안에서 칠한다. 시트가 열린 채 밝기가 바뀌어도 따라가게 한다.
     backgroundColor: Colors.transparent,
     // 캔버스 Pass의 뒤 덮개 rgba(15,16,18,0.45). 두 모드가 같다.
-    barrierColor: const Color(0x730F1012),
+    barrierColor: CoraSwipeTokens.sheetBarrier,
     elevation: 0,
     showDragHandle: false,
     builder: (_) => MatchSheet(info: info),

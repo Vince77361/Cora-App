@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/cora_colors.dart';
+import '../../../../core/theme/cora_swipe_tokens.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../domain/pass_reason.dart';
@@ -20,19 +21,22 @@ Future<void> showPassReasonSheet(
   required Future<void> Function(PassReason reason) onSave,
   required Future<UndoResult> Function() onUndo,
 }) {
-  final c = context.colors;
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: c.background,
+    // 바탕은 시트 안에서 칠한다. 시트가 열린 채 밝기가 바뀌어도 따라가게 한다.
+    backgroundColor: Colors.transparent,
     // 캔버스 Pass의 뒤 덮개 rgba(15,16,18,0.45). 두 모드가 같다.
-    barrierColor: const Color(0x730F1012),
+    barrierColor: CoraSwipeTokens.sheetBarrier,
     elevation: 0,
     showDragHandle: false,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    builder: (context) => DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.colors.background,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: PassReasonSheet(onSave: onSave, onUndo: onUndo),
     ),
-    builder: (_) => PassReasonSheet(onSave: onSave, onUndo: onUndo),
   );
 }
 

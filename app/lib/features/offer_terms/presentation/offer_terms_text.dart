@@ -1,3 +1,4 @@
+import '../../../core/text/count_and_date_labels.dart';
 import '../domain/offer_terms.dart';
 
 // 오퍼 조건을 화면에 보이는 문구로 바꾸는 순수 함수들. 모집 조건·오퍼 보내기, 보상·예산 설정(F1),
@@ -9,21 +10,11 @@ const voucherNameMaxLength = 20;
 /// 금액을 캔버스 문구로. 만 원 단위로 딱 떨어지면 `4만 원`, 아니면 `11,000원`.
 String won(int amount) {
   if (amount >= 10000 && amount % 10000 == 0) return '${amount ~/ 10000}만 원';
-  return '${_withCommas(amount)}원';
+  return '${withCommas(amount)}원';
 }
 
 /// 금액을 쉼표로만 끊어서(`100,000원`). 결제 화면은 만 원 단위로 줄이지 않고 정확한 금액을 보인다.
-String wonExact(int amount) => '${_withCommas(amount)}원';
-
-String _withCommas(int amount) {
-  final digits = amount.abs().toString();
-  final out = StringBuffer(amount < 0 ? '-' : '');
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) out.write(',');
-    out.write(digits[i]);
-  }
-  return out.toString();
-}
+String wonExact(int amount) => '${withCommas(amount)}원';
 
 String formatLabel(ContentFormat format) => switch (format) {
   ContentFormat.shorts => '쇼츠',

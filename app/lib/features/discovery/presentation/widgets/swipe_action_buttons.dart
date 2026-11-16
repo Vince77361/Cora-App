@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/cora_colors.dart';
+import '../../../../core/theme/cora_swipe_tokens.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../discovery_text.dart';
 
@@ -41,21 +42,21 @@ class SwipeActionButtons extends StatelessWidget {
             opacity: canUndo ? 1 : 0.45,
             onTap: onUndo,
             icon: const _IconSpec(size: 28, kind: _IconKind.undo),
-            color: const Color(0xFFFFFFFF),
+            color: CoraSwipeTokens.actionIcon,
           ),
         _ActionButton(
           label: DiscoveryTexts.passLabel,
           box: 64,
           onTap: onPass,
           icon: const _IconSpec(size: 42, kind: _IconKind.pass),
-          color: const Color(0xFFFFFFFF),
+          color: CoraSwipeTokens.actionIcon,
         ),
         _ActionButton(
           label: DiscoveryTexts.holdLabel,
           box: 52,
           onTap: onHold,
           icon: const _IconSpec(size: 32, kind: _IconKind.hold),
-          color: const Color(0xFFFFFFFF),
+          color: CoraSwipeTokens.actionIcon,
         ),
         _ActionButton(
           label: DiscoveryTexts.likeLabel,
@@ -209,7 +210,7 @@ class _IconPainter extends CustomPainter {
     canvas.drawPath(
       path.shift(Offset(0, 2 * 24 / size.width)),
       paint(
-        const Color(0x8C000000),
+        CoraSwipeTokens.actionIconShadow,
         blur: MaskFilter.blur(BlurStyle.normal, sigma),
       ),
     );

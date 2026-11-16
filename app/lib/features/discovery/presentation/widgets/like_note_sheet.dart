@@ -18,14 +18,20 @@ Future<LikeNoteResult?> showLikeNoteSheet(BuildContext context) {
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    backgroundColor: c.background,
+    // 바탕은 시트 안에서 칠한다. 시트가 열린 채 밝기가 바뀌어도 따라가게 한다.
+    backgroundColor: Colors.transparent,
     barrierColor: c.scrim.withValues(alpha: 0.4),
     elevation: 0,
     showDragHandle: false,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(CoraRadius.xxl)),
+    builder: (context) => DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.colors.background,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(CoraRadius.xxl),
+        ),
+      ),
+      child: const LikeNoteSheet(),
     ),
-    builder: (_) => const LikeNoteSheet(),
   );
 }
 

@@ -26,6 +26,14 @@ abstract final class CoraSwipeTokens {
   static const creatorPillOn = Color(0xFF17181C);
   static const creatorPillShadow = Color(0x1A17181C);
 
+  /// 넘기기·보류·관심·되돌리기 버튼의 흰 아이콘(사진 위에 얹어 라이트·다크가 같다)과 그 그림자
+  /// `0 2px 6px rgba(0,0,0,0.55)`. 관심 아이콘만 테마의 `accent`다.
+  static const actionIcon = Color(0xFFFFFFFF);
+  static const actionIconShadow = Color(0x8C000000);
+
+  /// 시트(02 넘기기 이유, 보류, 05 서로 관심) 뒤 덮개. 캔버스 Pass의 rgba(15,16,18,0.45)로 두 모드가 같다.
+  static const sheetBarrier = Color(0x730F1012);
+
   /// 08 알림 문구의 다크 그림자 `0 8px 24px rgba(23,24,28,0.16)`.
   static const creatorToastShadowDark = Color(0x2917181C);
 

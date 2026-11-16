@@ -38,6 +38,10 @@ class VoucherPage extends ConsumerWidget {
             CoraPageHeader(onBack: leave),
             Expanded(
               child: switch (async) {
+                // 브랜드 협업에는 식사권이 없고 조건 사본도 없다. 링크로 온 경우 A7처럼 07로 보낸다.
+                AsyncData(:final value)
+                    when !value.collaboration.isStoreOffer =>
+                  _RedirectToProgress(collaborationId: collaborationId),
                 AsyncData(:final value) => _Ticket(
                   storeName: value.collaboration.counterpartName,
                   voucherName:
@@ -58,6 +62,33 @@ class VoucherPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// 화면이 뜨면 한 번만 07로 바꿔 연다(그동안은 불러오는 중으로 보인다).
+class _RedirectToProgress extends StatefulWidget {
+  const _RedirectToProgress({required this.collaborationId});
+
+  final String collaborationId;
+
+  @override
+  State<_RedirectToProgress> createState() => _RedirectToProgressState();
+}
+
+class _RedirectToProgressState extends State<_RedirectToProgress> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.pushReplacement(
+          AppRoutes.collaborationProgress(widget.collaborationId),
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const CoraStateView.loading();
 }
 
 class _Ticket extends StatelessWidget {

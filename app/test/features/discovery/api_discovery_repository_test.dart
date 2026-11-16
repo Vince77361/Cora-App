@@ -275,8 +275,9 @@ void main() {
       final body = jsonDecode((fake.requests.single as http.Request).body);
       expect(body['decision'], wire);
       expect(body['targetKind'], 'CAMPAIGN');
-      expect(body.containsKey('proposal'), isFalse);
-      expect(body.containsKey('note'), isFalse);
+      // 비운 칸은 명시적 null이다. 서버가 보내지 않은 것으로 읽는다(2ed39d4).
+      expect(body['proposal'], isNull);
+      expect(body['note'], isNull);
     }
   });
 

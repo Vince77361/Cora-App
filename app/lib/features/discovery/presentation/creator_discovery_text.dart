@@ -83,10 +83,6 @@ abstract final class CreatorDiscoveryTexts {
     return '${sentences.join(' ')} 내 협업 원칙과 ${detail.overlapCount}개가 겹쳐요.';
   }
 
-  /// `11월 16일 이후`.
-  static String scheduleValue(DateTime date) =>
-      '${date.month}월 ${date.day}일 이후';
-
   /// `7일 먼저 사용`, 기간이 없으면 `기간 자유`.
   static String trialValue(ProductTrialDays days) => switch (days) {
     ProductTrialDays.d3 => '3일 먼저 사용',

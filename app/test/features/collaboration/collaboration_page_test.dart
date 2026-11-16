@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_clock.dart';
 import '../../support/load_app_fonts.dart';
+import '../../support/pump_cora_app.dart' show routerOf;
 import '../store_browse/creator_app_harness.dart';
 import 'collaboration_harness.dart';
 import 'fake_collaboration_repository.dart';
@@ -211,6 +212,21 @@ void main() {
     expect(find.text('협업 번호 c0ffee11'), findsOneWidget);
     final voucherName = tester.widget<Text>(find.text('2인 식사권'));
     expect(voucherName.style!.fontSize, greaterThanOrEqualTo(32));
+  });
+
+  testWidgets('the voucher screen of a brand collaboration opens 07 instead', (
+    tester,
+  ) async {
+    final brand = collaboration(
+      id: _id,
+      kind: CollaborationKind.brandContract,
+      brandProgress: const BrandProgress(doneCount: 2, current: 3),
+    );
+    await pumpCollaboration(tester, repo: _repo(brand), open: false);
+    routerOf(tester).push(AppRoutes.creatorVoucher(_id));
+    await tester.pumpAndSettle();
+
+    expect(topPath(tester), AppRoutes.collaborationProgress(_id));
   });
 
   testWidgets('does not show the voucher button without a voucher', (
