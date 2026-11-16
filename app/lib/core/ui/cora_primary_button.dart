@@ -14,6 +14,10 @@ enum CoraPrimaryButtonLook {
   /// 라이트·다크 모두 라임(`accent`/`onAccent`). 꺼지면 `surface` 바탕에 보통 굵기(500) 글자.
   /// 로그인(E1)과 휴대폰 인증(E2)이 이 모양이다(NLogin, NVerify).
   accent,
+
+  /// 09 협업 원칙의 `다음`(Principles, DarkPrinciples). 켜지면 `nextAction`/`onNextAction`이고
+  /// 글자는 두 모드 모두 700이다. 꺼지면 `standard`와 같다.
+  next,
 }
 
 /// 화면 아래의 알약 모양 기본 버튼(캔버스 A1 `가게 링크로 시작하기`, Principles `다음`).
@@ -43,15 +47,18 @@ class CoraPrimaryButton extends StatelessWidget {
     final c = context.colors;
     final enabled = onPressed != null;
     final accent = look == CoraPrimaryButtonLook.accent;
-    final onColor = accent ? c.accent : c.primaryAction;
-    final onForeground = accent ? c.onAccent : c.onPrimaryAction;
+    final next = look == CoraPrimaryButtonLook.next;
+    final onColor = accent ? c.accent : (next ? c.nextAction : c.primaryAction);
+    final onForeground = accent
+        ? c.onAccent
+        : (next ? c.onNextAction : c.onPrimaryAction);
     final offColor = accent ? c.surface : c.line;
     // 다크의 기본 버튼은 밝은 회색 바탕이라 글자를 한 단계 가볍게(500) 쓴다(DarkNRole 등).
     // 라이트의 라임 바탕은 700이다.
     final dark = Theme.of(context).brightness == Brightness.dark;
     final textStyle = accent && !enabled
         ? CoraTextStyles.bodyLarge
-        : (!accent && dark
+        : (!accent && !next && dark
               ? CoraTextStyles.button.copyWith(fontWeight: FontWeight.w500)
               : CoraTextStyles.button);
     return Semantics(

@@ -31,9 +31,11 @@ class CreatorProfileSetupState {
     this.displayName = '',
     this.contentFocus = '',
     this.instagramHandle = '',
+    this.cardHeadline = '',
     this.regionSido,
     this.regionSigungu = '',
     this.photo,
+    this.cardPhoto,
     this.saving = false,
     this.error,
   });
@@ -42,12 +44,18 @@ class CreatorProfileSetupState {
   final String contentFocus;
   final String instagramHandle;
 
+  /// 브랜드가 보는 카드의 `대표 콘텐츠 한 줄`(최대 40자).
+  final String cardHeadline;
+
   /// 고른 시·도. 아직 안 골랐으면 null.
   final String? regionSido;
   final String regionSigungu;
 
   /// 고른 사진. 저장할 때 올린다.
   final PickedPhoto? photo;
+
+  /// 브랜드가 보는 카드의 `대표 사진`. 저장할 때 올린다.
+  final PickedPhoto? cardPhoto;
   final bool saving;
   final CreatorProfileSetupError? error;
 
@@ -59,10 +67,13 @@ class CreatorProfileSetupState {
     String? displayName,
     String? contentFocus,
     String? instagramHandle,
+    String? cardHeadline,
     String? regionSido,
     String? regionSigungu,
     PickedPhoto? photo,
     bool clearPhoto = false,
+    PickedPhoto? cardPhoto,
+    bool clearCardPhoto = false,
     bool? saving,
     CreatorProfileSetupError? error,
     bool clearError = false,
@@ -70,9 +81,11 @@ class CreatorProfileSetupState {
     displayName: displayName ?? this.displayName,
     contentFocus: contentFocus ?? this.contentFocus,
     instagramHandle: instagramHandle ?? this.instagramHandle,
+    cardHeadline: cardHeadline ?? this.cardHeadline,
     regionSido: regionSido ?? this.regionSido,
     regionSigungu: regionSigungu ?? this.regionSigungu,
     photo: clearPhoto ? null : (photo ?? this.photo),
+    cardPhoto: clearCardPhoto ? null : (cardPhoto ?? this.cardPhoto),
     saving: saving ?? this.saving,
     error: clearError ? null : (error ?? this.error),
   );
@@ -95,11 +108,17 @@ class CreatorProfileSetupViewModel
   void setContentFocus(String v) => _edit((s) => s.copyWith(contentFocus: v));
   void setInstagramHandle(String v) =>
       _edit((s) => s.copyWith(instagramHandle: v));
+  void setCardHeadline(String v) => _edit((s) => s.copyWith(cardHeadline: v));
   void setRegionSido(String v) => _edit((s) => s.copyWith(regionSido: v));
   void setRegionSigungu(String v) => _edit((s) => s.copyWith(regionSigungu: v));
 
   /// 보관함에서 사진을 고른다. 5MB를 넘으면 쓰지 않고 안내한다. 고르지 않고 닫으면 그대로 둔다.
-  Future<void> pickPhoto() async {
+  Future<void> pickPhoto() => _pick(card: false);
+
+  /// 브랜드가 보는 카드의 `대표 사진`을 고른다. 규칙은 [pickPhoto]와 같다.
+  Future<void> pickCardPhoto() => _pick(card: true);
+
+  Future<void> _pick({required bool card}) async {
     final current = state.value;
     if (current == null || current.saving) return;
     final picked = await ref.read(photoPickerProvider).pick();
@@ -107,14 +126,19 @@ class CreatorProfileSetupViewModel
     final latest = state.value ?? current;
     if (picked.bytes.length > maxPhotoBytes) {
       state = AsyncData(
-        latest.copyWith(
-          clearPhoto: true,
-          error: CreatorProfileSetupError.photoTooLarge,
-        ),
+        (card
+                ? latest.copyWith(clearCardPhoto: true)
+                : latest.copyWith(clearPhoto: true))
+            .copyWith(error: CreatorProfileSetupError.photoTooLarge),
       );
       return;
     }
-    state = AsyncData(latest.copyWith(photo: picked, clearError: true));
+    state = AsyncData(
+      (card
+              ? latest.copyWith(cardPhoto: picked)
+              : latest.copyWith(photo: picked))
+          .copyWith(clearError: true),
+    );
   }
 
   /// 사진을 올리고 프로필을 저장한다. 저장되면 true. 실패하면 입력을 그대로 두고 false.
@@ -123,16 +147,11 @@ class CreatorProfileSetupViewModel
     if (current == null || !current.canSubmit) return false;
     state = AsyncData(current.copyWith(saving: true, clearError: true));
     try {
-      final photo = current.photo;
-      final photoPath = photo == null
-          ? null
-          : await ref
-                .read(photoUploaderProvider)
-                .upload(
-                  purpose: PhotoPurpose.creatorPhoto,
-                  bytes: photo.bytes,
-                  contentType: photo.contentType,
-                );
+      final photoPath = await _upload(current.photo, PhotoPurpose.creatorPhoto);
+      final cardPhotoPath = await _upload(
+        current.cardPhoto,
+        PhotoPurpose.creatorCard,
+      );
       await ref
           .read(creatorProfileRepositoryProvider)
           .save(
@@ -142,6 +161,9 @@ class CreatorProfileSetupViewModel
             contentFocus: _blankToNull(current.contentFocus),
             instagramHandle: _blankToNull(current.instagramHandle),
             photoPath: photoPath,
+            // 비워 두면 서버에 저장된 카드 값을 그대로 둔다(저장소가 지키는 규칙).
+            cardHeadline: _blankToNull(current.cardHeadline),
+            cardPhotoPath: cardPhotoPath,
           );
       if (!ref.mounted) return true;
       state = AsyncData(current.copyWith(saving: false, clearError: true));
@@ -153,6 +175,17 @@ class CreatorProfileSetupViewModel
       );
       return false;
     }
+  }
+
+  Future<String?> _upload(PickedPhoto? photo, PhotoPurpose purpose) async {
+    if (photo == null) return null;
+    return ref
+        .read(photoUploaderProvider)
+        .upload(
+          purpose: purpose,
+          bytes: photo.bytes,
+          contentType: photo.contentType,
+        );
   }
 
   static CreatorProfileSetupError _errorFor(Object error) => switch (error) {

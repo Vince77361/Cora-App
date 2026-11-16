@@ -7,8 +7,11 @@ abstract class CreatorProfileRepository {
   /// 내 프로필. 아직 만들지 않았으면 null. 서버에 닿지 못하면 [CreatorProfileFailure].
   Future<CreatorProfile?> fetchMine();
 
-  /// 프로필을 만들거나 통째로 바꾼다. [photoPath]는 [PhotoUploader]가 돌려준 저장 위치다.
-  /// 실패하면 [CreatorProfileFailure].
+  /// 프로필을 만들거나 통째로 바꾼다. [photoPath]·[cardPhotoPath]는 [PhotoUploader]가 돌려준 저장 위치다.
+  ///
+  /// 서버는 이 요청을 전체 교체로 받아 카드 값을 빠뜨리면 지운다. 그래서 [cardHeadline]·
+  /// [cardPhotoPath]가 null이면 서버에 저장된 현재 카드 값을 그대로 보낸다(프로필만 고치는
+  /// 저장이 카드를 지우지 않게 한다). 한 줄을 지우려면 빈 글자를 준다. 실패하면 [CreatorProfileFailure].
   Future<CreatorProfile> save({
     required String displayName,
     required String regionSido,
@@ -16,6 +19,8 @@ abstract class CreatorProfileRepository {
     String? contentFocus,
     String? instagramHandle,
     String? photoPath,
+    String? cardHeadline,
+    String? cardPhotoPath,
   });
 }
 

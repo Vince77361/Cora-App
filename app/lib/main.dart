@@ -25,6 +25,8 @@ import 'features/view_report/data/api_view_report_repository.dart';
 import 'features/view_report/domain/view_report_repository.dart';
 import 'features/creator_profile/data/api_creator_profile_repository.dart';
 import 'features/creator_profile/domain/creator_profile_repository.dart';
+import 'features/principles/data/api_principles_repository.dart';
+import 'features/principles/domain/principles_repository.dart';
 import 'features/instagram_connect/data/api_instagram_repository.dart';
 import 'features/instagram_connect/domain/instagram_repository.dart';
 import 'features/notification_settings/data/api_notification_settings_repository.dart';
@@ -130,6 +132,9 @@ Future<void> main() async {
         ),
         creatorProfileRepositoryProvider.overrideWith(
           (ref) => ApiCreatorProfileRepository(ref.watch(apiClientProvider)),
+        ),
+        principlesRepositoryProvider.overrideWith(
+          (ref) => ApiPrinciplesRepository(ref.watch(apiClientProvider)),
         ),
         storeBrowseRepositoryProvider.overrideWith(
           (ref) => ApiStoreBrowseRepository(ref.watch(apiClientProvider)),

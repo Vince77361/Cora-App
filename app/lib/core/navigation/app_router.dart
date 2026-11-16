@@ -17,6 +17,7 @@ import '../../features/notification_settings/presentation/pages/notification_set
 import '../../features/notifications/presentation/notification_routes.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/onboarding/domain/me.dart';
+import '../../features/principles/presentation/pages/principles_page.dart';
 import '../../features/payment/presentation/pages/fake_checkout_page.dart';
 import '../../features/payment/presentation/pages/store_payment_page.dart';
 import '../../features/onboarding/presentation/pages/role_home_placeholder_page.dart';
@@ -311,6 +312,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.creatorProfileSetup,
         pageBuilder: (context, state) =>
             _entryPage(state, const CreatorProfileSetupPage()),
+      ),
+      // 협업 원칙(09). 프로필 설정이 끝나면 제자리에서 이어지고, 앱 안에서 `push`로 열면 밀려 들어온다.
+      GoRoute(
+        path: AppRoutes.creatorPrinciples,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const PrinciplesPage()),
       ),
       GoRoute(
         path: '/creator/stores/:id',

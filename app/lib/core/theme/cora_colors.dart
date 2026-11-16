@@ -68,6 +68,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     this.roleCardIdle = const Color(0xFFFFFFFF),
     this.compareBarNow = const Color(0xFF17181C),
     this.reportBadge = const Color(0xFFFFFFFF),
+    this.nextAction = const Color(0xFFC6FF3D),
+    this.onNextAction = const Color(0xFF1F2A00),
   });
 
   final Color background;
@@ -200,6 +202,11 @@ class CoraColors extends ThemeExtension<CoraColors> {
   /// F4 `성과 확인`의 표지(`미확인`·`이의 제기됨`)의 바탕(NMetrics #FFFFFF, DarkNMetrics #2A2D33). 글자는
   /// `미확인`이 `textSecondary`, `이의 제기됨`이 `text`다. `확인 완료`는 `accent`/`onAccent`다.
   final Color reportBadge;
+
+  /// 09 협업 원칙의 `다음` 버튼 채움과 글자(Principles #C6FF3D/#1F2A00, DarkPrinciples #F2F3F5/#0F1012).
+  /// 기본 버튼(`primaryAction`)과 채움은 같지만 다크의 글자가 #17181C가 아니라 #0F1012다.
+  final Color nextAction;
+  final Color onNextAction;
 
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
@@ -343,6 +350,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     roleCardIdle: Color(0xFF2A2D33),
     compareBarNow: Color(0xFF0F1012),
     reportBadge: Color(0xFF2A2D33),
+    nextAction: Color(0xFFF2F3F5),
+    onNextAction: Color(0xFF0F1012),
   );
 
   @override
@@ -411,6 +420,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? roleCardIdle,
     Color? compareBarNow,
     Color? reportBadge,
+    Color? nextAction,
+    Color? onNextAction,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -478,6 +489,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
       roleCardIdle: roleCardIdle ?? this.roleCardIdle,
       compareBarNow: compareBarNow ?? this.compareBarNow,
       reportBadge: reportBadge ?? this.reportBadge,
+      nextAction: nextAction ?? this.nextAction,
+      onNextAction: onNextAction ?? this.onNextAction,
     );
   }
 
@@ -553,6 +566,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
       roleCardIdle: mix(roleCardIdle, other.roleCardIdle),
       compareBarNow: mix(compareBarNow, other.compareBarNow),
       reportBadge: mix(reportBadge, other.reportBadge),
+      nextAction: mix(nextAction, other.nextAction),
+      onNextAction: mix(onNextAction, other.onNextAction),
     );
   }
 }

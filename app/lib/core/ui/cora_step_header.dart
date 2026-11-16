@@ -10,9 +10,13 @@ class CoraBackButton extends StatelessWidget {
     super.key,
     required this.onPressed,
     this.dimmed = false,
+    this.semanticLabel = '뒤로',
   });
 
   final VoidCallback? onPressed;
+
+  /// 화면 읽기 프로그램이 읽는 이름. 09는 캔버스대로 `이전 질문`이다.
+  final String semanticLabel;
 
   /// 흐리게(opacity 0.3). NOffer가 1단계에서 이전 단계 버튼을 이렇게 둔다.
   final bool dimmed;
@@ -25,7 +29,7 @@ class CoraBackButton extends StatelessWidget {
     return Semantics(
       container: true,
       button: true,
-      label: '뒤로',
+      label: semanticLabel,
       onTap: onPressed,
       child: ExcludeSemantics(
         child: CoraPressable(

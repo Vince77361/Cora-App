@@ -95,6 +95,9 @@ abstract final class AppRoutes {
 
   // 크리에이터 흐름
   static const creatorProfileSetup = '/creator/profile/setup';
+
+  /// 협업 원칙(09). 프로필 설정을 마치면 이어지고, 프로필에서 다시 열 수도 있다.
+  static const creatorPrinciples = '/creator/principles';
   static const creatorOffers = '/creator/offers';
   static String creatorStore(String storeId) =>
       '/creator/stores/${Uri.encodeComponent(storeId)}';

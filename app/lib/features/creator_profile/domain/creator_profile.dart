@@ -7,6 +7,8 @@ class CreatorProfile {
     this.contentFocus,
     this.instagramHandle,
     this.photoUrl,
+    this.cardHeadline,
+    this.cardPhotoUrl,
   });
 
   final String displayName;
@@ -18,6 +20,10 @@ class CreatorProfile {
   /// 사진을 볼 수 있는 주소. 사진이 없으면 null.
   final String? photoUrl;
 
+  /// 브랜드가 보는 카드의 `대표 콘텐츠 한 줄`(최대 40자)과 `대표 사진`의 주소. 없으면 null.
+  final String? cardHeadline;
+  final String? cardPhotoUrl;
+
   @override
   bool operator ==(Object other) =>
       other is CreatorProfile &&
@@ -26,7 +32,9 @@ class CreatorProfile {
       other.regionSigungu == regionSigungu &&
       other.contentFocus == contentFocus &&
       other.instagramHandle == instagramHandle &&
-      other.photoUrl == photoUrl;
+      other.photoUrl == photoUrl &&
+      other.cardHeadline == cardHeadline &&
+      other.cardPhotoUrl == cardPhotoUrl;
 
   @override
   int get hashCode => Object.hash(
@@ -36,5 +44,7 @@ class CreatorProfile {
     contentFocus,
     instagramHandle,
     photoUrl,
+    cardHeadline,
+    cardPhotoUrl,
   );
 }

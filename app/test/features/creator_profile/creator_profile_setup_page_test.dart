@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:cora/core/media/photo_picker.dart';
 import 'package:cora/core/navigation/app_routes.dart';
@@ -9,9 +8,11 @@ import 'package:cora/features/creator_profile/domain/creator_profile.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile_repository.dart';
 import 'package:cora/features/creator_profile/presentation/pages/creator_profile_setup_page.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
+import 'package:cora/features/principles/domain/principles_repository.dart';
+import 'package:cora/features/principles/presentation/pages/principles_page.dart';
 import 'package:cora/features/store_browse/domain/store_browse_repository.dart';
-import 'package:cora/features/store_browse/presentation/pages/store_list_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_photos.dart';
@@ -19,6 +20,7 @@ import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
 import '../auth/fake_auth_repository.dart';
 import '../onboarding/fake_me_repository.dart';
+import '../principles/fake_principles_repository.dart';
 import '../store_browse/fake_store_browse_repository.dart';
 import 'fake_creator_profile_repository.dart';
 
@@ -44,6 +46,9 @@ Future<void> _pump(
       ),
       storeBrowseRepositoryProvider.overrideWithValue(
         FakeStoreBrowseRepository(),
+      ),
+      principlesRepositoryProvider.overrideWithValue(
+        FakePrinciplesRepository(),
       ),
       photoPickerProvider.overrideWithValue(picker ?? FakePhotoPicker()),
       photoUploaderProvider.overrideWithValue(uploader ?? FakePhotoUploader()),
@@ -86,6 +91,52 @@ void main() {
     expect(find.text('인스타그램 아이디 (선택)'), findsOneWidget);
     expect(find.text('사진 고르기 (선택)'), findsOneWidget);
     expect(find.text('시작하기'), findsOneWidget);
+  });
+
+  testWidgets('has the card headline and card photo inputs', (tester) async {
+    await _pump(tester);
+
+    expect(find.text('대표 콘텐츠 한 줄 (선택)'), findsOneWidget);
+    expect(find.text('대표 사진 (선택)'), findsOneWidget);
+    final headline = tester.widget<TextField>(
+      find.byKey(CreatorProfileSetupPage.cardHeadlineFieldKey),
+    );
+    // 서버가 받는 한 줄은 40자까지다.
+    expect(
+      headline.inputFormatters!
+          .whereType<LengthLimitingTextInputFormatter>()
+          .single
+          .maxLength,
+      40,
+    );
+  });
+
+  testWidgets('saves the card headline and the card photo', (tester) async {
+    final repo = FakeCreatorProfileRepository();
+    final uploader = FakePhotoUploader()..path = 'creator-cards/u/c.png';
+    final picker = FakePhotoPicker(
+      next: PickedPhoto(bytes: _png, contentType: 'image/png'),
+    );
+    await _pump(tester, repo: repo, picker: picker, uploader: uploader);
+    await _typeName(tester, '서윤');
+    await _chooseProvince(tester, '서울특별시');
+    await tester.enterText(
+      find.byKey(CreatorProfileSetupPage.cardHeadlineFieldKey),
+      '출근 전 30초, 오늘의 손목 루틴',
+    );
+    await tester.ensureVisible(
+      find.byKey(CreatorProfileSetupPage.cardPhotoTileKey),
+    );
+    await tester.tap(find.byKey(CreatorProfileSetupPage.cardPhotoTileKey));
+    await tester.pumpAndSettle();
+    expect(find.text('사진 바꾸기'), findsOneWidget);
+
+    await tester.tap(find.text('시작하기'));
+    await tester.pumpAndSettle();
+
+    expect(uploader.lastPurpose, PhotoPurpose.creatorCard);
+    expect(repo.savedCardHeadline, '출근 전 30초, 오늘의 손목 루틴');
+    expect(repo.savedCardPhotoPath, 'creator-cards/u/c.png');
   });
 
   testWidgets('the text fields draw no border of their own', (tester) async {
@@ -150,7 +201,7 @@ void main() {
     expect(find.text('제주특별자치도'), findsOneWidget);
   });
 
-  testWidgets('saves and goes to the creator home', (tester) async {
+  testWidgets('saves and goes to the collaboration principles', (tester) async {
     final repo = FakeCreatorProfileRepository();
     await _pump(tester, repo: repo);
     await _typeName(tester, '서윤');
@@ -178,8 +229,9 @@ void main() {
     expect(repo.savedRegionSigungu, '마포구');
     expect(repo.savedContentFocus, '맛집 릴스');
     expect(repo.savedInstagramHandle, 'seoyun.reels');
-    expect(currentPath(tester), AppRoutes.creator);
-    expect(find.byType(StoreListPage), findsOneWidget);
+    // 프로필 다음에 협업 원칙(09)이 이어진다.
+    expect(currentPath(tester), AppRoutes.creatorPrinciples);
+    expect(find.byType(PrinciplesPage), findsOneWidget);
   });
 
   testWidgets('shows an error and keeps the input when saving fails', (
@@ -203,7 +255,7 @@ void main() {
     repo.failSave = false;
     await tester.tap(find.text('시작하기'));
     await tester.pumpAndSettle();
-    expect(currentPath(tester), AppRoutes.creator);
+    expect(currentPath(tester), AppRoutes.creatorPrinciples);
   });
 
   testWidgets('skips setup when a profile already exists', (tester) async {

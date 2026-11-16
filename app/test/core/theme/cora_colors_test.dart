@@ -285,6 +285,23 @@ void main() {
     );
   });
 
+  test('09 next button matches Principles and DarkPrinciples', () {
+    expect(CoraColors.light.nextAction, const Color(0xFFC6FF3D));
+    expect(CoraColors.light.onNextAction, const Color(0xFF1F2A00));
+    expect(CoraColors.dark.nextAction, const Color(0xFFF2F3F5));
+    // 다크 글자는 기본 버튼의 #17181C가 아니라 #0F1012다.
+    expect(CoraColors.dark.onNextAction, const Color(0xFF0F1012));
+    final mixed = CoraColors.light.lerp(CoraColors.dark, 1);
+    expect(mixed.nextAction, const Color(0xFFF2F3F5));
+    expect(mixed.onNextAction, const Color(0xFF0F1012));
+    final changed = CoraColors.light.copyWith(
+      nextAction: const Color(0xFF123456),
+      onNextAction: const Color(0xFF654321),
+    );
+    expect(changed.nextAction, const Color(0xFF123456));
+    expect(changed.onNextAction, const Color(0xFF654321));
+  });
+
   test('G1 compare bar matches NResult and DarkNResult', () {
     expect(CoraColors.light.compareBarNow, const Color(0xFF17181C));
     expect(CoraColors.dark.compareBarNow, const Color(0xFF0F1012));

@@ -668,6 +668,7 @@ void main() {
           '/store/offers/new/:creatorId',
           '/store/coming-soon/:title',
           '/creator/profile/setup',
+          '/creator/principles',
           '/creator',
           '/creator/stores/:id',
           '/creator/offers',

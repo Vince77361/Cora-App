@@ -278,4 +278,57 @@ void main() {
       }
     });
   });
+
+  group('next look (09)', () {
+    testWidgets('enabled uses nextAction with a bold label in both modes', (
+      tester,
+    ) async {
+      for (final (theme, c) in [
+        (coraLightTheme, CoraColors.light),
+        (coraDarkTheme, CoraColors.dark),
+      ]) {
+        await tester.pumpWidget(
+          coraTestApp(
+            CoraPrimaryButton(
+              label: '다음',
+              onPressed: () {},
+              look: CoraPrimaryButtonLook.next,
+            ),
+            theme: theme,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(_decoration(tester).color, c.nextAction);
+        final style = _labelStyle(tester, '다음');
+        expect(style.color, c.onNextAction);
+        // 다크에서도 700이다(기본 버튼은 다크에서 500).
+        expect(style.fontWeight, FontWeight.w700);
+      }
+    });
+
+    testWidgets('disabled is line with a bold textSecondary label', (
+      tester,
+    ) async {
+      for (final (theme, c) in [
+        (coraLightTheme, CoraColors.light),
+        (coraDarkTheme, CoraColors.dark),
+      ]) {
+        await tester.pumpWidget(
+          coraTestApp(
+            const CoraPrimaryButton(
+              label: '다음',
+              onPressed: null,
+              look: CoraPrimaryButtonLook.next,
+            ),
+            theme: theme,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(_decoration(tester).color, c.line);
+        final style = _labelStyle(tester, '다음');
+        expect(style.color, c.textSecondary);
+        expect(style.fontWeight, FontWeight.w700);
+      }
+    });
+  });
 }
