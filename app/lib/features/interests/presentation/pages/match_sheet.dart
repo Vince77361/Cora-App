@@ -98,11 +98,10 @@ class _MatchSheetState extends State<MatchSheet>
       AfterMatch(info.collaborationId, info.baseVersion),
     );
     if (sent is! ProposalSent || !mounted) return;
-    // 보낸 제안은 07(진행 단계)에서 이어서 본다.
+    // 보낸 제안은 그 협업의 07(진행 단계)에서 이어서 본다. 브랜드와 크리에이터가 같은 경로를 쓰고, 목록이나
+    // 받은 오퍼 탭이 아니라 이 협업으로 곧바로 간다.
     navigator.pop(MatchSheetResult.moved);
-    router.go(
-      info.isBrand ? AppRoutes.brandCollaborations : AppRoutes.creatorOffers,
-    );
+    router.go(AppRoutes.collaborationProgress(info.collaborationId));
   }
 
   @override

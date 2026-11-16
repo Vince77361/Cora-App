@@ -81,6 +81,18 @@ void main() {
       expect(reasonLabel(MatchReason.trial), '제품 사용 기간이 맞아요');
     });
 
+    test(
+      'the group summaries add the canvas suffix, the inner rows do not',
+      () {
+        expect(revisionSummary(RevisionScope.guideOnce), '기획안 기준 1회 수정');
+        expect(revisionSummary(RevisionScope.none), '수정 없음');
+        expect(payoutSummary(7), '최종 게시 후 7일 이내 지급');
+        expect(payoutSummary(14), '최종 게시 후 14일 이내 지급');
+        expect(revisionLabel(RevisionScope.guideOnce), '기획안 기준 1회');
+        expect(payoutLabel(7), '최종 게시 후 7일 이내');
+      },
+    );
+
     test('the money labels cut at ten thousand won or spell the amount', () {
       expect(won(300000), '30만 원');
       expect(wonLabel(350000), '350,000원');

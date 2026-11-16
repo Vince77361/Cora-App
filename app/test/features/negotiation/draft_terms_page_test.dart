@@ -8,6 +8,9 @@ import 'package:cora/features/collaboration/domain/collaboration_repository.dart
 import 'package:cora/features/discovery/domain/discovery_card.dart'
     show MatchReason;
 import 'package:cora/features/negotiation/domain/brand_usage_rights.dart';
+import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
+import 'package:cora/features/onboarding/domain/user_role.dart';
+import 'package:cora/features/negotiation/presentation/viewmodels/brand_collaborations_view_model.dart';
 import 'package:cora/features/negotiation/domain/negotiation_repository.dart';
 import 'package:cora/features/negotiation/domain/terms_version.dart';
 import 'package:cora/features/negotiation/presentation/pages/draft_terms_page.dart';
@@ -20,6 +23,7 @@ import 'package:go_router/go_router.dart';
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
 import '../collaboration/fake_collaboration_repository.dart';
+import '../onboarding/fake_me_repository.dart';
 import 'fake_negotiation_repository.dart';
 
 const _id = 'c0ffee11-aaaa-bbbb-cccc-000000000001';
@@ -34,6 +38,7 @@ Future<List<String>> _pump(
   bool fromProgress = false,
   bool smallPhoneLargeText = false,
   FakeCollaborationRepository? collaborations,
+  FakeMeRepository? me,
 }) async {
   if (smallPhoneLargeText) {
     useSmallPhoneWithLargeText(tester);
@@ -104,6 +109,7 @@ Future<List<String>> _pump(
       key: UniqueKey(),
       overrides: [
         currentUserIdProvider.overrideWithValue('user-1'),
+        if (me != null) meRepositoryProvider.overrideWithValue(me),
         negotiationRepositoryProvider.overrideWithValue(repo),
         collaborationRepositoryProvider.overrideWithValue(
           collaborations ??
@@ -208,9 +214,12 @@ void main() {
     }
     // 요약: 첫 이유, 수정 범위, 활용 권한, 지급 라벨(추천된 이유는 펼쳐져 있어 이유가 줄에도 한 번 더 나온다)
     expect(find.text('분야가 맞아요'), findsNWidgets(2));
-    expect(find.text('기획안 기준 1회'), findsOneWidget);
+    // 수정과 촬영·지급의 요약은 캔버스 글자(`… 수정`, `… 지급`)다. 안쪽 줄 값에는 접미사가 없다.
+    expect(find.text('기획안 기준 1회 수정'), findsOneWidget);
     expect(find.text('브랜드 계정 재게시만'), findsOneWidget);
-    expect(find.text('최종 게시 후 7일 이내'), findsOneWidget);
+    expect(find.text('최종 게시 후 7일 이내 지급'), findsOneWidget);
+    expect(find.text('기획안 기준 1회'), findsNothing);
+    expect(find.text('최종 게시 후 7일 이내'), findsNothing);
     expect(find.text('잘 맞는 점'), findsOneWidget);
     expect(find.text('주요 분야'), findsOneWidget);
     expect(find.text('리빙·소품, 패션'), findsOneWidget);
@@ -235,6 +244,7 @@ void main() {
     await _tapGroup(tester, '지급과 광고 표시');
 
     expect(find.text('지급 시점'), findsOneWidget);
+    expect(find.text('최종 게시 후 7일 이내'), findsOneWidget); // 안쪽 줄
     expect(find.text('광고 표시'), findsOneWidget);
     expect(find.text('게시물·영상에 명확히'), findsOneWidget);
     expect(find.text('재게시'), findsNothing);
@@ -254,7 +264,8 @@ void main() {
     await _pump(tester, repo);
 
     await _tapGroup(tester, '수정과 촬영');
-    expect(find.text('초안 기준 2회'), findsNWidgets(2));
+    expect(find.text('초안 기준 2회 수정'), findsOneWidget); // 요약
+    expect(find.text('초안 기준 2회'), findsOneWidget); // 안쪽 줄
     expect(find.text('추가 촬영'), findsOneWidget);
 
     await _tapGroup(tester, '콘텐츠 활용');
@@ -562,6 +573,77 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(opened.last, AppRoutes.brandCollaborations);
+  });
+
+  testWidgets('back from a deep link before the collaboration is read goes to '
+      'the creator collaboration tab for a creator', (tester) async {
+    final opened = await _pump(
+      tester,
+      FakeNegotiationRepository()..failFetch = true,
+      me: FakeMeRepository(role: UserRole.creator),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('뒤로'));
+    await tester.pumpAndSettle();
+
+    expect(opened.last, AppRoutes.creatorOffers);
+  });
+
+  testWidgets('a failed reload from the older-version card shows the load '
+      'failure and can retry', (tester) async {
+    final repo = FakeNegotiationRepository()
+      ..confirmFailure = const NegotiationStale(2)
+      ..newerLatest = termsLatest(terms: termsVersion(version: 2));
+    await _pump(tester, repo);
+    await tester.tap(find.text('이 판본 수락'));
+    await tester.pumpAndSettle();
+    expect(find.text('판본 2 보기'), findsOneWidget);
+
+    repo.failFetch = true;
+    await tester.tap(find.text('판본 2 보기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('조건을 불러오지 못했어요'), findsOneWidget);
+    expect(find.text('이전 판본이라 수락할 수 없어요'), findsNothing);
+
+    repo.failFetch = false;
+    await tester.tap(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('받은 제안 · 판본 2'), findsOneWidget);
+    expect(find.text('이 판본 수락'), findsOneWidget);
+  });
+
+  testWidgets('accepting makes the brand collaboration list read again', (
+    tester,
+  ) async {
+    final collaborations = FakeCollaborationRepository(
+      active: [
+        collaboration(
+          id: _id,
+          kind: CollaborationKind.brandContract,
+          storeName: '서윤의 작은 취향',
+        ),
+      ],
+    );
+    await _pump(
+      tester,
+      FakeNegotiationRepository(),
+      collaborations: collaborations,
+    );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(DraftTermsPage)),
+    );
+    container.listen(brandCollaborationsViewModelProvider, (_, _) {});
+    await container.read(brandCollaborationsViewModelProvider.future);
+    final before = collaborations.fetchActiveCalls;
+
+    await tester.tap(find.text('이 판본 수락'));
+    await tester.pumpAndSettle();
+    await container.read(brandCollaborationsViewModelProvider.future);
+
+    expect(collaborations.fetchActiveCalls, greaterThan(before));
   });
 
   testWidgets('the dark theme uses the dark canvas colors', (tester) async {

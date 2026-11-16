@@ -16,6 +16,8 @@ import '../../../../core/ui/cora_pill_button.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart' show won;
+import '../../../onboarding/domain/user_role.dart';
+import '../../../onboarding/presentation/viewmodels/me_view_model.dart';
 import '../../../store_browse/presentation/widgets/photo_overlays.dart';
 import '../../domain/terms_version.dart';
 import '../terms_text.dart';
@@ -47,16 +49,22 @@ class _DraftTermsPageState extends ConsumerState<DraftTermsPage> {
   TermsViewModel get _vm =>
       ref.read(termsViewModelProvider(widget.collaborationId).notifier);
 
+  /// 내 역할(내 정보). 협업을 읽기 전이나 못 읽었을 때 뒤로 갈 곳을 고르는 데 쓴다. 모르면 null.
+  UserRole? _myRole;
+
+  /// 뒤로. 쌓인 화면이 없으면(링크로 열림) 내 역할의 협업 탭으로 간다. 협업을 읽기 전이나 읽기에 실패했을 때는
+  /// 협업이 아니라 내 정보의 역할로 고른다.
   void _leave(TermsState? state) {
     if (context.canPop()) {
       context.pop();
-    } else {
-      context.go(
-        state == null || state.isBrand
-            ? AppRoutes.brandCollaborations
-            : AppRoutes.creatorOffers,
-      );
+      return;
     }
+    final isBrand = state != null
+        ? state.isBrand
+        : _myRole != UserRole.creator;
+    context.go(
+      isBrand ? AppRoutes.brandCollaborations : AppRoutes.creatorOffers,
+    );
   }
 
   Future<void> _accept() async {
@@ -88,9 +96,19 @@ class _DraftTermsPageState extends ConsumerState<DraftTermsPage> {
 
   @override
   Widget build(BuildContext context) {
+    _myRole = ref.watch(meViewModelProvider.select((a) => a.value?.role));
     final provider = termsViewModelProvider(widget.collaborationId);
     final async = ref.watch(provider);
     final value = async.value;
+    if (value != null && value.staleVersion != null && value.reloadFailed) {
+      return _Shell(
+        onBack: () => _leave(value),
+        child: CoraStateView.loadFailed(
+          title: TermsTexts.loadFailed,
+          onRetry: _vm.reload,
+        ),
+      );
+    }
     if (value != null && value.staleVersion != null) {
       return _Shell(
         onBack: () => _leave(value),
@@ -446,7 +464,7 @@ class _Body extends StatelessWidget {
       _GroupData(
         id: _Group.edit,
         title: TermsTexts.groupEdit,
-        summary: revisionLabel(t.revisionScope),
+        summary: revisionSummary(t.revisionScope),
         rows: [
           (TermsTexts.rowRevision, revisionLabel(t.revisionScope)),
           (TermsTexts.rowExtraShoot, TermsTexts.negotiable),
@@ -464,7 +482,7 @@ class _Body extends StatelessWidget {
       _GroupData(
         id: _Group.pay,
         title: TermsTexts.groupPay,
-        summary: payoutLabel(t.payoutDays),
+        summary: payoutSummary(t.payoutDays),
         rows: [
           (TermsTexts.rowPayout, payoutLabel(t.payoutDays)),
           (TermsTexts.rowAdMark, TermsTexts.adMark),

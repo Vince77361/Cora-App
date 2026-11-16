@@ -420,6 +420,84 @@ void main() {
     expect((cell.decoration as BoxDecoration).color, const Color(0xFF1C1E22));
   });
 
+  testWidgets('the photo is 52 inside a 2px ring, 56 across', (tester) async {
+    await _pump(tester, brandCollab());
+
+    final ring = tester.widgetList<Container>(find.byType(Container)).where((
+      c,
+    ) {
+      final d = c.decoration;
+      return d is BoxDecoration &&
+          d.shape == BoxShape.circle &&
+          d.border != null;
+    });
+    final size = tester.getSize(find.byWidget(ring.single));
+    expect(size, const Size(56, 56));
+  });
+
+  testWidgets('a pushed progress screen has a back button, a standalone one '
+      'does not', (tester) async {
+    await _pump(tester, brandCollab());
+    expect(find.bySemanticsLabel('뒤로'), findsNothing);
+
+    useCanvasPhone(tester);
+    final router = GoRouter(
+      initialLocation: '/start',
+      routes: [
+        GoRoute(
+          path: '/start',
+          builder: (context, state) => Scaffold(
+            body: TextButton(
+              onPressed: () =>
+                  context.push(AppRoutes.collaborationProgress(brandCollabId)),
+              child: const Text('open progress'),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: AppRoutes.collaborationProgressPattern,
+          builder: (context, state) =>
+              BrandProgressPage(collaborationId: state.pathParameters['id']!),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        key: UniqueKey(),
+        overrides: [
+          currentUserIdProvider.overrideWithValue('user-1'),
+          collaborationRepositoryProvider.overrideWithValue(
+            FakeCollaborationRepository(active: [brandCollab()]),
+          ),
+          creatorProfileRepositoryProvider.overrideWithValue(
+            FakeCreatorProfileRepository(),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router, theme: coraLightTheme),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open progress'));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('뒤로'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('뒤로'));
+    await tester.pumpAndSettle();
+    expect(find.text('open progress'), findsOneWidget);
+  });
+
+  testWidgets('tapping the current collaboration tab goes to its root', (
+    tester,
+  ) async {
+    final opened = await _pump(tester, brandCollab());
+
+    await tester.tap(find.text('협업'));
+    await tester.pumpAndSettle();
+
+    expect(opened.last, startsWith(AppRoutes.brandCollaborations));
+  });
+
   testWidgets('the light ring is the progress green', (tester) async {
     await _pump(tester, brandCollab());
 

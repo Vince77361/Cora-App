@@ -8,6 +8,7 @@ import '../../../collaboration/presentation/viewmodels/collaboration_view_model.
 import '../../domain/negotiation_repository.dart';
 import '../../domain/terms_version.dart';
 import '../terms_text.dart';
+import 'brand_collaborations_view_model.dart';
 
 /// 06이 그리는 것: 협업(상대 이름·사진, 내 쪽)과 그 최신 조건 판본.
 class TermsState {
@@ -17,6 +18,7 @@ class TermsState {
     this.busy = false,
     this.notice,
     this.staleVersion,
+    this.reloadFailed = false,
   });
 
   final Collaboration collaboration;
@@ -31,6 +33,9 @@ class TermsState {
   /// 수락하려는 사이 상대가 더 새 판본을 냈다. 값은 최신 판본 번호이고, 있으면 06은 F8 옛 판본 상태를 보인다.
   final int? staleVersion;
 
+  /// 옛 판본에서 `판본 N 보기`로 다시 읽으려다 실패했다. 있으면 06은 옛 판본 카드 대신 불러오기 실패 상태를 보인다.
+  final bool reloadFailed;
+
   /// 내가 브랜드 쪽이다.
   bool get isBrand => collaboration.role == CollaborationRole.commissioner;
 
@@ -42,12 +47,14 @@ class TermsState {
     bool clearNotice = false,
     int? staleVersion,
     bool clearStale = false,
+    bool? reloadFailed,
   }) => TermsState(
     collaboration: collaboration ?? this.collaboration,
     latest: latest ?? this.latest,
     busy: busy ?? this.busy,
     notice: clearNotice ? null : (notice ?? this.notice),
     staleVersion: clearStale ? null : (staleVersion ?? this.staleVersion),
+    reloadFailed: reloadFailed ?? this.reloadFailed,
   );
 }
 
@@ -93,8 +100,13 @@ class TermsViewModel extends AsyncNotifier<TermsState> {
       state = AsyncData(fresh);
     } catch (_) {
       if (!ref.mounted || current == null) return;
+      // 옛 판본 카드는 안내를 그리지 않으므로, 그 상태에서 못 읽으면 불러오기 실패 상태로 바꿔 다시 시도하게 한다.
       state = AsyncData(
-        current.copyWith(busy: false, notice: TermsTexts.actionFailed),
+        current.copyWith(
+          busy: false,
+          notice: TermsTexts.actionFailed,
+          reloadFailed: current.staleVersion != null,
+        ),
       );
     }
   }
@@ -140,6 +152,7 @@ class TermsViewModel extends AsyncNotifier<TermsState> {
     // 07과 협업 목록이 새 판본 상태(내가 확인함)를 다시 읽는다.
     ref.invalidate(collaborationViewModelProvider(collaborationId));
     ref.invalidate(collaborationListViewModelProvider);
+    ref.invalidate(brandCollaborationsViewModelProvider);
     final latest = state.value ?? current;
     state = AsyncData(latest.copyWith(busy: false));
     return true;

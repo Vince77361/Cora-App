@@ -11,6 +11,7 @@ import '../../../../core/ui/cora_logo.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_state_view.dart';
+import '../../../../core/ui/cora_step_header.dart' show CoraBackButton;
 import '../../../collaboration/domain/collaboration.dart';
 import '../../../collaboration/presentation/collaboration_text.dart'
     show loadFailedMessage;
@@ -92,7 +93,10 @@ class _BrandProgressPageState extends ConsumerState<BrandProgressPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ProgressHeader(isBrand: c == null ? null : isBrand),
+                ProgressHeader(
+                  isBrand: c == null ? null : isBrand,
+                  onBack: context.canPop() ? () => context.pop() : null,
+                ),
                 Expanded(
                   child: c != null
                       ? _Content(
@@ -132,9 +136,12 @@ class _BrandProgressPageState extends ConsumerState<BrandProgressPage> {
 /// 머리: 왼쪽 로고, 오른쪽 `브랜드 관점`(크리에이터는 `크리에이터 관점`, 캔버스 밖) 알약. 역할을 모르는 동안
 /// ([isBrand]가 null)은 알약을 그리지 않는다.
 class ProgressHeader extends StatelessWidget {
-  const ProgressHeader({super.key, required this.isBrand});
+  const ProgressHeader({super.key, required this.isBrand, this.onBack});
 
   final bool? isBrand;
+
+  /// 다른 화면 위에 쌓여 열렸을 때만 준다(캔버스 밖). 있으면 로고 앞에 뒤로 가기가 붙는다.
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +152,13 @@ class ProgressHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const CoraLogo(size: 26),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onBack != null) CoraBackButton(onPressed: onBack),
+              const CoraLogo(size: 26),
+            ],
+          ),
           if (brand != null)
             DecoratedBox(
               decoration: BoxDecoration(
@@ -320,7 +333,7 @@ class _Content extends ConsumerWidget {
   }
 }
 
-/// 상대 사진: 지름 52, 테두리 2(라이트 `#5C7A00`, 다크 라임), 사진 기준점 62% 42%.
+/// 상대 사진: 사진 52 + 테두리 2(바깥 지름 56)(라이트 `#5C7A00`, 다크 라임), 사진 기준점 62% 42%.
 class _Avatar extends StatelessWidget {
   const _Avatar({required this.url});
 
@@ -330,7 +343,7 @@ class _Avatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return ExcludeSemantics(
-      // Container는 테두리 두께만큼 안쪽 여백을 둔다(DecoratedBox는 사진이 테두리를 덮는다). 전체 지름 52.
+      // Container는 테두리 두께만큼 안쪽 여백을 둔다(DecoratedBox는 사진이 테두리를 덮는다). 전체 지름 56(캔버스는 사진 52 + 테두리 2).
       child: Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
@@ -338,8 +351,8 @@ class _Avatar extends StatelessWidget {
         ),
         child: ClipOval(
           child: SizedBox(
-            width: 48,
-            height: 48,
+            width: 52,
+            height: 52,
             child: CoraNetworkPhoto(
               url: url,
               alignment: const Alignment(0.24, -0.16),

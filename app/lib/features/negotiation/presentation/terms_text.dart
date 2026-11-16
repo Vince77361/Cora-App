@@ -91,6 +91,14 @@ String payoutLabel(int days) => '최종 게시 후 $days일 이내';
 /// 06 `추천된 이유`의 `잘 맞는 점` 한 줄과 요약에 쓰는 이유 문구.
 String reasonLabel(MatchReason reason) => reason.label;
 
+/// 06 `수정과 촬영`의 요약. 캔버스는 `기획안 기준 1회 수정`이다(안쪽 줄 값은 [revisionLabel] 그대로). 수정이 없으면
+/// `수정 없음`이다(캔버스 밖).
+String revisionSummary(RevisionScope scope) =>
+    scope == RevisionScope.none ? '수정 없음' : '${revisionLabel(scope)} 수정';
+
+/// 06 `지급과 광고 표시`의 요약. 캔버스는 `최종 게시 후 7일 이내 지급`이다(안쪽 줄 값은 [payoutLabel] 그대로).
+String payoutSummary(int days) => '${payoutLabel(days)} 지급';
+
 /// 06 `팔로워`. `8,200명`.
 String followersLabel(int followers) => '${_commas(followers)}명';
 

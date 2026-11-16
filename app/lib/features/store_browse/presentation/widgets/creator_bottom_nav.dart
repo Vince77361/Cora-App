@@ -12,7 +12,8 @@ class CreatorBottomNav extends StatelessWidget {
   final int currentIndex;
 
   void _onTap(BuildContext context, int index) {
-    if (index == currentIndex) return;
+    // 협업 탭은 지금 탭이어도 누르면 그 탭의 바닥으로 돌아간다(07이 쌓여 열렸을 때).
+    if (index == currentIndex && index != CoraCreatorNavItems.collab) return;
     switch (index) {
       case CoraCreatorNavItems.discover:
         context.go(AppRoutes.creator);

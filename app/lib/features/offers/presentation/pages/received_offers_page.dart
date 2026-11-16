@@ -17,7 +17,8 @@ import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../collaboration/presentation/collaboration_text.dart';
 import '../../../collaboration/presentation/viewmodels/collaboration_list_view_model.dart';
-import '../../../negotiation/presentation/terms_text.dart' show brandRowSubtitle;
+import '../../../negotiation/presentation/terms_text.dart'
+    show brandRowSubtitle;
 import '../../../offer_terms/presentation/offer_terms_text.dart';
 import '../../../proposals/presentation/viewmodels/proposals_view_model.dart';
 import '../../../store_browse/presentation/widgets/creator_bottom_nav.dart';

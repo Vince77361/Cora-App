@@ -1,3 +1,4 @@
+import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/features/discovery/domain/reward_proposal.dart';
 import 'package:cora/features/instagram_connect/domain/instagram_repository.dart';
@@ -51,9 +52,11 @@ Future<({List<String> opened, List<MatchSheetResult> results})> _pump(
         path: '/collaborations/:id/terms',
         builder: (context, state) => stub(state),
       ),
-      // 보낸 제안은 07(진행 단계)로 이어진다. 두 경로는 Task 11이 등록하므로 여기서는 위치만 기록한다.
-      GoRoute(path: '/brand/collaborations', builder: (c, s) => stub(s)),
-      GoRoute(path: '/creator/offers', builder: (c, s) => stub(s)),
+      // 보낸 제안은 그 협업의 07(진행 단계)로 이어진다. 여기서는 위치만 기록한다.
+      GoRoute(
+        path: AppRoutes.collaborationProgressPattern,
+        builder: (c, s) => stub(s),
+      ),
       GoRoute(path: '/creator/instagram', builder: (c, s) => stub(s)),
     ],
   );
@@ -198,13 +201,13 @@ void main() {
         performance: (ratePer1000: 2000, cap: 60000),
       ),
     );
-    expect(env.opened, ['/brand/collaborations']);
+    expect(env.opened, [AppRoutes.collaborationProgress('collab-1')]);
     expect(env.results, [MatchSheetResult.moved]);
     expect(find.text('서로를 골랐어요.'), findsNothing);
   });
 
-  testWidgets('the creator side proposes the same way and goes to its own '
-      'progress list', (tester) async {
+  testWidgets('the creator side proposes the same way and goes to that '
+      'collaboration progress', (tester) async {
     final repo = FakeInterestsRepository()
       ..proposalBase = proposalBase(proposedByBrand: false);
     final env = await _pump(
@@ -226,7 +229,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repo.proposed.single.proposal.productProvided, isFalse);
-    expect(env.opened, ['/creator/offers']);
+    expect(env.opened, [AppRoutes.collaborationProgress('collab-1')]);
   });
 
   testWidgets('a creator turning on view pay is asked to connect instagram', (
