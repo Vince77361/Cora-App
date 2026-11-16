@@ -37,6 +37,7 @@ class InterestTabs extends StatelessWidget {
               Semantics(
                 container: true,
                 button: true,
+                label: label,
                 selected: i == selected,
                 onTap: () => onChanged(i),
                 child: ExcludeSemantics(

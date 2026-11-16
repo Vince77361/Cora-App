@@ -11,7 +11,7 @@ abstract final class NotificationRoutes {
   static const wallet = '/creator/wallet';
 
   /// 사장님 홈을 열면서 고를 탭. 홈이 쿼리(`?tab=`)로 읽는다.
-  static const tabParam = 'tab';
+  static const tabParam = AppRoutes.tabParam;
   static const applicantsTab = 'applicants';
   static const sentOffersTab = 'sent-offers';
 }

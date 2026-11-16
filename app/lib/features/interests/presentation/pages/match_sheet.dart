@@ -76,7 +76,20 @@ class _MatchSheetState extends State<MatchSheet>
     router.push(AppRoutes.collaborationTerms(widget.info.collaborationId));
   }
 
+  /// 제안 흐름이 열려 있는 동안 다시 눌러 자리 화면이 두 번 쌓이지 않게 한다.
+  bool _proposing = false;
+
   Future<void> _proposeFirst() async {
+    if (_proposing) return;
+    _proposing = true;
+    try {
+      await _proposeFirstOnce();
+    } finally {
+      _proposing = false;
+    }
+  }
+
+  Future<void> _proposeFirstOnce() async {
     final info = widget.info;
     final router = GoRouter.of(context);
     final navigator = Navigator.of(context);

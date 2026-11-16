@@ -1,4 +1,7 @@
 import 'package:cora_api/api.dart' as api;
+import 'package:flutter/foundation.dart';
+
+import '../../../core/network/api_error.dart';
 
 import '../../discovery/domain/discovery_target.dart';
 import '../../negotiation/domain/brand_usage_rights.dart';
@@ -107,7 +110,15 @@ class ApiInterestsRepository implements InterestsRepository {
       return await call();
     } on InterestsFailure {
       rethrow;
-    } catch (_) {
+    } catch (error) {
+      // 사용자에게는 같은 실패지만 원인을 알 수 있게 종류와 상태 코드만 남긴다(응답 본문과 문구는 남기지 않는다).
+      if (kDebugMode) {
+        final parsed = ApiError.from(error);
+        debugPrint(
+          '[interests] 읽기 실패: 종류=${error.runtimeType} '
+          '상태=${parsed.status} 코드=${parsed.code}',
+        );
+      }
       throw const InterestsFailure();
     }
   }

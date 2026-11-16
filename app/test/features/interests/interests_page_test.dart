@@ -643,4 +643,51 @@ void main() {
     expect((extra! as CreatorCard).creatorId, 'c2');
     expect((extra! as CreatorCard).displayName, '민의 옷장 기록');
   });
+
+  testWidgets('the tabs and the terms link have screen reader names', (
+    tester,
+  ) async {
+    await _pump(tester, _three());
+
+    for (final label in ['저장 3', '서로 관심 1', '보낸 관심 1', '보류 1']) {
+      expect(find.bySemanticsLabel(label), findsOneWidget, reason: label);
+    }
+    expect(find.bySemanticsLabel('협업 조건 확인'), findsOneWidget);
+  });
+
+  testWidgets('a held card turned into a pass without a reload still shows '
+      'the notice and drops the card', (tester) async {
+    final discovery = FakeDiscoveryRepository();
+    final repo = _three();
+    await _pump(tester, repo, discovery: discovery);
+
+    await tester.tap(find.text('하루 한 컵'));
+    await tester.pumpAndSettle();
+    // 결정은 저장되지만 목록을 다시 읽지 못한다.
+    repo.failFetch = true;
+    await tester.tap(find.text('넘기기'));
+    await tester.pumpAndSettle();
+
+    expect(discovery.decisions.single.outcome, SwipeOutcome.pass);
+    expect(find.text('넘겼어요. 상대에게는 알리지 않아요.'), findsOneWidget);
+    expect(find.text('하루 한 컵'), findsNothing);
+    expect(find.text('저장 2'), findsOneWidget);
+  });
+
+  testWidgets('a held card turned into a like without a reload moves to the '
+      'sent tab', (tester) async {
+    final discovery = FakeDiscoveryRepository();
+    final repo = _three();
+    await _pump(tester, repo, discovery: discovery);
+
+    await tester.tap(find.text('하루 한 컵'));
+    await tester.pumpAndSettle();
+    repo.failFetch = true;
+    await tester.tap(find.text('관심 보내기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('관심을 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
+    expect(find.text('보류 0'), findsOneWidget);
+    expect(find.text('보낸 관심 2'), findsOneWidget);
+  });
 }

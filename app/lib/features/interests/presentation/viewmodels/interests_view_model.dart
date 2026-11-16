@@ -163,10 +163,34 @@ class InterestsViewModel extends AsyncNotifier<InterestsState> {
     final fresh = await _reload();
     if (!ref.mounted) return null;
     final current = state.value;
-    if (fresh != null && current != null) {
-      state = AsyncData(
-        _merge(current, fresh).copyWith(notice: _notice(message)),
-      );
+    if (current != null) {
+      if (fresh != null) {
+        state = AsyncData(
+          _merge(current, fresh).copyWith(notice: _notice(message)),
+        );
+      } else {
+        // 결정은 저장됐는데 목록을 다시 읽지 못했다. 카드가 옛 상태로 남아 다시 누르게 되지 않도록 지금
+        // 목록에서 바꿔 준다(넘김은 목록에서 빼고, 관심은 응답 대기로 보인다. 서로 관심이면 협업 id를 모르는 채
+        // 응답 대기로 보이지만 곧 열리는 05가 알려 준다).
+        final next = [
+          for (final c in current.cards)
+            if (c == card)
+              if (outcome == SwipeOutcome.pass)
+                ...const <InterestCard>[]
+              else
+                c.copyWith(
+                  state: result.matched
+                      ? InterestState.mutual
+                      : InterestState.waiting,
+                  collaborationId: result.collaborationId,
+                )
+            else
+              c,
+        ];
+        state = AsyncData(
+          _merge(current, next).copyWith(notice: _notice(message)),
+        );
+      }
     }
     return result.matched ? result.collaborationId : null;
   }

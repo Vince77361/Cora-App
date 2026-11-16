@@ -245,4 +245,17 @@ void main() {
     // 시트의 바탕은 캔버스 DarkMatch의 #0F1012이고, 시트 안에서 칠한다.
     expect(colors, contains(const Color(0xFF0F1012)));
   });
+
+  testWidgets('tapping propose-first twice opens the proposal entry once', (
+    tester,
+  ) async {
+    final env = await _pump(tester, matchInfo());
+
+    // 첫 탭이 연 화면이 그려지기 전에 한 번 더 누른다.
+    await tester.tap(find.text('내가 먼저 제안하기'));
+    await tester.tap(find.text('내가 먼저 제안하기'));
+    await tester.pumpAndSettle();
+
+    expect(env.opened, hasLength(1));
+  });
 }

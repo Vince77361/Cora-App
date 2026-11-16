@@ -52,6 +52,7 @@ class InterestStatusBox extends StatelessWidget {
                   Semantics(
                     container: true,
                     button: true,
+                    label: InterestsTexts.openTerms,
                     onTap: () => onOpenTerms(card),
                     child: ExcludeSemantics(
                       child: CoraPressable(

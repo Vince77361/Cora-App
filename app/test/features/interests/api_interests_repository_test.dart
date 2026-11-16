@@ -10,6 +10,7 @@ import 'package:cora/features/offer_terms/domain/offer_terms.dart'
     show ContentFormat;
 import 'package:cora/features/principles/domain/principles.dart' show FeeBand;
 import 'package:cora_api/api.dart' as api;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
@@ -187,6 +188,31 @@ void main() {
       throwsA(isA<InterestsFailure>()),
     );
   });
+
+  test(
+    'a failure logs only its kind and status, never the response body',
+    () async {
+      final logs = <String>[];
+      final original = debugPrint;
+      debugPrint = (message, {wrapWidth}) => logs.add(message ?? '');
+      addTearDown(() => debugPrint = original);
+      final fake = FakeHttpClient()
+        ..statusCode = 409
+        ..body =
+            '{"error":{"code":"CONFLICT","message":"비밀 본문","details":null}}';
+
+      await expectLater(
+        _repo(fake).fetchSaved(),
+        throwsA(isA<InterestsFailure>()),
+      );
+
+      final line = logs.singleWhere((l) => l.startsWith('[interests]'));
+      expect(line, contains('ApiException'));
+      expect(line, contains('상태=409'));
+      expect(line, contains('코드=CONFLICT'));
+      expect(line, isNot(contains('비밀 본문')));
+    },
+  );
 
   test('compare maps the two sides and the differing rows', () async {
     Map<String, Object?> side(String id, {String state = 'WAITING'}) => {

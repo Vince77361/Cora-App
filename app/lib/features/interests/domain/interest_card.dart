@@ -60,6 +60,22 @@ class InterestCard {
 
   String get id => target.id;
 
+  /// 상태와 협업만 바꾼 카드(보류를 결정한 뒤 목록을 다시 읽지 못했을 때 지금 목록에서 바꾼다).
+  InterestCard copyWith({InterestState? state, String? collaborationId}) =>
+      InterestCard(
+        target: target,
+        name: name,
+        shortName: shortName,
+        state: state ?? this.state,
+        headline: headline,
+        photoUrl: photoUrl,
+        fee: fee,
+        feeBand: feeBand,
+        startFrom: startFrom,
+        hasProposal: hasProposal,
+        collaborationId: collaborationId ?? this.collaborationId,
+      );
+
   // 같은 대상은 같은 카드다(고른 카드를 목록을 다시 읽은 뒤에도 알아본다).
   @override
   bool operator ==(Object other) =>
