@@ -15,6 +15,7 @@ import {
 } from '../integrations/store-link/store-link.port';
 import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
+import { VisibilityService } from '../visibility/visibility.service';
 import { AdvanceStep } from './dto/advance-onboarding.dto';
 import {
   AnalyzeStoreLinksResultModel,
@@ -89,6 +90,7 @@ export class StoresService {
     private readonly storage: StoragePort,
     private readonly storeLink: StoreLinkPort,
     private readonly creators: CreatorsService,
+    private readonly visibility: VisibilityService,
     private readonly clock: Clock,
   ) {}
 
@@ -331,12 +333,14 @@ export class StoresService {
     );
   }
 
-  // 공개된 가게 목록. 내 가게는 빠지고, 내 활동 지역과 가까운 가게가 먼저 나온다(같은 묶음에서는 최근 공개 순).
+  // 공개된 가게 목록. 내 가게는 빠지고, 내가 피하는 업종의 가게도 빠진다.
+  // 내 활동 지역과 가까운 가게가 먼저 나온다(같은 묶음에서는 최근 공개 순).
   async listPublished(userId: string): Promise<StoreSummaryModel[]> {
-    const [rows, creator] = await Promise.all([
+    const [published, creator] = await Promise.all([
       this.stores.listPublished(userId),
       this.creators.getSummary(userId),
     ]);
+    const rows = await this.visibility.filterCommissioners(published, userId);
     // 크리에이터 프로필이 없으면 지역을 모르므로 최근 공개 순만 쓴다.
     const mine = creator
       ? { regionSido: creator.regionSido, regionSigungu: creator.regionSigungu }
@@ -347,7 +351,7 @@ export class StoresService {
       .map(({ row }) => this.toSummary(row));
   }
 
-  // 내 가게여도 공개된 것만 보인다(미리 보기). 등록 중인 가게는 누구에게나 404다.
+  // 내 가게여도 공개된 것만 보인다(미리 보기). 등록 중인 가게와, 내가 피하는 업종의 가게는 404다.
   async getPublished(
     userId: string,
     storeId: string,
@@ -355,7 +359,12 @@ export class StoresService {
     const store = UUID.test(storeId)
       ? await this.stores.findPublishedDetail(storeId, userId, this.clock.now())
       : null;
-    if (!store) throw new AppError('NOT_FOUND', '가게를 찾을 수 없어요.');
+    if (
+      !store ||
+      !(await this.visibility.commissionerVisibleTo(store, userId))
+    ) {
+      throw new AppError('NOT_FOUND', '가게를 찾을 수 없어요.');
+    }
     const mine = store.applications[0]?.status;
     const open = store.offers[0];
     return {

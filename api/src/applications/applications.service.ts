@@ -7,6 +7,7 @@ import { CreatorsService } from '../creators/creators.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
+import { VisibilityService } from '../visibility/visibility.service';
 import { ApplicationsRepository } from './applications.repository';
 import { ApplicantModel } from './dto/applicant.model';
 import { ApplyDto } from './dto/apply.dto';
@@ -40,6 +41,7 @@ export class ApplicationsService {
     private readonly creators: CreatorsService,
     private readonly notifications: NotificationsService,
     private readonly collaborations: CollaborationsRepository,
+    private readonly visibility: VisibilityService,
     private readonly clock: Clock,
   ) {}
 
@@ -51,6 +53,10 @@ export class ApplicationsService {
   ): Promise<ApplicationModel> {
     await this.assertRole(userId, 'CREATOR', '크리에이터 계정만 쓸 수 있어요.');
     const store = await this.stores.requirePublished(storeId);
+    // 내가 피하는 업종의 가게는 없는 가게와 같게 404다(조회와 같은 규칙).
+    if (!(await this.visibility.commissionerVisibleTo(store, userId))) {
+      throw new AppError('NOT_FOUND', '가게를 찾을 수 없어요.');
+    }
     if (store.ownerId === userId) {
       throw new AppError('CONFLICT', '내 가게에는 지원할 수 없어요.');
     }
@@ -117,7 +123,7 @@ export class ApplicationsService {
   async listApplicants(userId: string): Promise<ApplicantModel[]> {
     await this.assertRole(userId, 'STORE', '가게 계정만 쓸 수 있어요.');
     const store = await this.stores.requireMyStore(userId);
-    const rows = await this.applications.listApplied(store.id);
+    const rows = await this.visibleApplied(store);
     const summaries = await Promise.all(
       rows.map((row) => this.creators.getSummary(row.creatorId)),
     );
@@ -144,7 +150,7 @@ export class ApplicationsService {
   async listRecommended(userId: string): Promise<RecommendedApplicantsModel> {
     await this.assertRole(userId, 'STORE', '가게 계정만 쓸 수 있어요.');
     const store = await this.stores.requireMyStore(userId);
-    const rows = await this.applications.listApplied(store.id);
+    const rows = await this.visibleApplied(store);
     // 넘기지 않은 지원자만 읽는다. 프로필이 지워진 지원자는 보여 줄 것이 없어 뺀다.
     const open = rows.filter((row) => row.skippedFromPicksAt === null);
     const summaries = await Promise.all(
@@ -227,6 +233,18 @@ export class ApplicationsService {
   // 가게 홈의 "새 지원자" 수.
   countNew(storeId: string): Promise<number> {
     return this.applications.countApplied(storeId);
+  }
+
+  // 지원 중인 지원. 이 가게의 업종을 피하는 크리에이터는 지원했더라도 보이지 않는다(나중에 피하게 된 경우도 바로 빠진다).
+  private async visibleApplied(store: Store) {
+    const rows = await this.applications.listApplied(store.id);
+    const visible = new Set(
+      await this.visibility.filterCreators(
+        rows.map((row) => row.creatorId),
+        { userId: store.ownerId, kind: 'STORE', industry: store.industry },
+      ),
+    );
+    return rows.filter((row) => visible.has(row.creatorId));
   }
 
   private async assertRole(

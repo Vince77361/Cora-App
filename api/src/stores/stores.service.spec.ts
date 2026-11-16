@@ -19,6 +19,7 @@ import {
 import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
 import { FakeClock } from '../../test/support/fake-clock';
+import { FakeVisibility } from '../../test/support/fake-visibility';
 import { FakeStoragePort } from '../../test/support/fake-storage.port';
 import { numberedSlug } from './slugify';
 import { StoresRepository } from './stores.repository';
@@ -394,6 +395,7 @@ describe('StoresService', () => {
   let link: FakeStoreLinkPort;
   let storage: FakeStoragePort;
   let clock: FakeClock;
+  let visibility: FakeVisibility;
   let service: StoresService;
 
   beforeEach(() => {
@@ -403,6 +405,7 @@ describe('StoresService', () => {
     link = new FakeStoreLinkPort();
     storage = new FakeStoragePort();
     clock = new FakeClock();
+    visibility = new FakeVisibility();
     service = new StoresService(
       repo,
       users,
@@ -410,6 +413,7 @@ describe('StoresService', () => {
       storage,
       link,
       creators,
+      visibility,
       clock,
     );
   });
@@ -913,6 +917,36 @@ describe('StoresService', () => {
         'NOT_FOUND',
       );
       expect(await codeOf(service.requirePublished('not-a-uuid'))).toBe(
+        'NOT_FOUND',
+      );
+    });
+
+    it('hides a store of an avoided industry from the list and returns 404 for its detail', async () => {
+      const hidden = makeStore({
+        ownerId: OWNER,
+        status: 'PUBLISHED',
+        name: '술집',
+        industry: 'ALCOHOL',
+        defaultFormat: 'REELS',
+        defaultVoucherName: '식사권',
+        defaultVoucherValue: 40000,
+        defaultVoucherPeople: 2,
+      });
+      const shown = makeStore({
+        ownerId: randomUUID(),
+        status: 'PUBLISHED',
+        name: '카페',
+        industry: 'FOOD_CAFE',
+        defaultFormat: 'REELS',
+        defaultVoucherName: '식사권',
+        defaultVoucherValue: 40000,
+        defaultVoucherPeople: 2,
+      });
+      repo.stores.push(hidden, shown);
+      visibility.hiddenIndustries.add('ALCOHOL');
+      const list = await service.listPublished(OTHER);
+      expect(list.map((s) => s.id)).toEqual([shown.id]);
+      expect(await codeOf(service.getPublished(OTHER, hidden.id))).toBe(
         'NOT_FOUND',
       );
     });

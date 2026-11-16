@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { Application, Store, UserRole } from '@prisma/client';
 import { FakeClock } from '../../test/support/fake-clock';
+import { FakeVisibility } from '../../test/support/fake-visibility';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
@@ -178,6 +179,7 @@ class FakeStoresService extends StoresService {
       null as never,
       null as never,
       null as never,
+      null as never,
     );
   }
 
@@ -324,6 +326,7 @@ describe('ApplicationsService', () => {
   let push: FakeNotifications;
   let collaborations: FakeCollaborations;
   let clock: FakeClock;
+  let visibility: FakeVisibility;
   let service: ApplicationsService;
   let store: Store;
 
@@ -334,6 +337,7 @@ describe('ApplicationsService', () => {
     creators = new FakeCreatorsService();
     push = new FakeNotifications();
     collaborations = new FakeCollaborations();
+    visibility = new FakeVisibility();
     clock = new FakeClock(new Date('2026-11-14T03:00:00.000Z'));
     service = new ApplicationsService(
       repo,
@@ -342,6 +346,7 @@ describe('ApplicationsService', () => {
       creators,
       push,
       collaborations,
+      visibility,
       clock,
     );
     store = makeStore();
@@ -350,6 +355,12 @@ describe('ApplicationsService', () => {
   });
 
   describe('apply', () => {
+    it('returns 404 when the store industry is one the creator avoids', async () => {
+      visibility.hiddenIndustries.add(store.industry);
+      expect(await codeOf(service.apply(CREATOR, store.id))).toBe('NOT_FOUND');
+      expect(repo.rows).toHaveLength(0);
+    });
+
     it('creates an APPLIED application and notifies the store owner', async () => {
       const result = await service.apply(CREATOR, store.id);
       expect(result).toEqual({
@@ -496,6 +507,15 @@ describe('ApplicationsService', () => {
       expect(list.map((a) => a.creator.userId)).toEqual([CREATOR]);
     });
 
+    it('leaves out applicants who avoid the store industry', async () => {
+      creators.add(CREATOR_B, '서울특별시', '성동구');
+      await repo.create(store.id, CREATOR);
+      await repo.create(store.id, CREATOR_B);
+      visibility.hiddenCreators.add(CREATOR_B);
+      const list = await service.listApplicants(OWNER);
+      expect(list.map((a) => a.creator.userId)).toEqual([CREATOR]);
+    });
+
     it('lists applicants from the store district first', async () => {
       // 지원 순서: 다른 시·도, 같은 시·도 다른 구, 같은 구. 최근 지원이 위가 되도록 거꾸로 쌓인다.
       creators.profiles.clear();
@@ -549,6 +569,19 @@ describe('ApplicationsService', () => {
       users.role = 'STORE';
       stores.store = null;
       expect(await codeOf(service.listRecommended(OWNER))).toBe('NOT_FOUND');
+    });
+
+    it('leaves out applicants who avoid the store industry and does not count them as new', async () => {
+      users.role = 'STORE';
+      const near = ['서울특별시', '성동구'] as [string, string];
+      const visible = await applicant(near);
+      const avoiding = randomUUID();
+      creators.add(avoiding, near[0], near[1], null);
+      await repo.create(store.id, avoiding);
+      visibility.hiddenCreators.add(avoiding);
+      const result = await service.listRecommended(OWNER);
+      expect(result.items.map((i) => i.applicationId)).toEqual([visible]);
+      expect(result.totalNew).toBe(1);
     });
 
     it('returns at most three applicants and the total of new applications', async () => {

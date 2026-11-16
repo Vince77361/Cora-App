@@ -24,6 +24,7 @@ import {
   defaultsOfStore,
 } from '../stores/reward-terms';
 import { UsersService } from '../users/users.service';
+import { VisibilityService } from '../visibility/visibility.service';
 import { EndedOfferModel } from './dto/ended-offer.model';
 import { OfferVersionModel } from './dto/offer-version.model';
 import { ProposeVersionDto } from './dto/propose-version.dto';
@@ -87,6 +88,7 @@ export class OffersService {
     private readonly instagram: InstagramService,
     private readonly notifications: NotificationsService,
     private readonly jobs: JobScheduler,
+    private readonly visibility: VisibilityService,
     private readonly clock: Clock,
   ) {}
 
@@ -101,7 +103,11 @@ export class OffersService {
       throw new AppError('CONFLICT', '나에게는 오퍼를 보낼 수 없어요.');
     }
     const creator = await this.creators.getSummary(input.creatorId);
-    if (!creator) {
+    // 그 업종을 피하는 크리에이터는 없는 크리에이터와 같게 404다.
+    if (
+      !creator ||
+      !(await this.visibility.commissionerVisibleTo(store, creator.userId))
+    ) {
       throw new AppError('NOT_FOUND', '크리에이터를 찾을 수 없어요.');
     }
     // 조회수 단가와 상한, 식사권, 사용권을 비우면 가게의 기본 조건으로 채운다.
@@ -509,7 +515,16 @@ export class OffersService {
   ): Promise<{ offerId: string; version: number }> {
     await this.assertRole(userId, 'CREATOR', '크리에이터 계정만 쓸 수 있어요.');
     const card = UUID.test(storeId) ? await this.card(storeId) : null;
-    if (!card) throw new AppError('NOT_FOUND', '가게를 찾을 수 없어요.');
+    // 내가 피하는 업종의 가게는 없는 가게와 같게 404다.
+    if (
+      !card ||
+      !(await this.visibility.commissionerVisibleTo(
+        { ownerId: card.ownerId, industry: card.summary.industry },
+        userId,
+      ))
+    ) {
+      throw new AppError('NOT_FOUND', '가게를 찾을 수 없어요.');
+    }
     if (card.ownerId === userId) {
       throw new AppError('CONFLICT', '내 가게에는 제안할 수 없어요.');
     }

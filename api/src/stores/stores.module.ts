@@ -3,12 +3,19 @@ import { CreatorsModule } from '../creators/creators.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { UploadsModule } from '../uploads/uploads.module';
 import { UsersModule } from '../users/users.module';
+import { VisibilityModule } from '../visibility/visibility.module';
 import { StoresController } from './stores.controller';
 import { StoresRepository } from './stores.repository';
 import { StoresService } from './stores.service';
 
 @Module({
-  imports: [IntegrationsModule, UploadsModule, UsersModule, CreatorsModule],
+  imports: [
+    IntegrationsModule,
+    UploadsModule,
+    UsersModule,
+    CreatorsModule,
+    VisibilityModule,
+  ],
   controllers: [StoresController],
   providers: [StoresService, StoresRepository],
   // 콘텐츠 초안, 지원, 오퍼가 내 가게와 공개 가게를 찾을 때 쓴다.

@@ -155,6 +155,7 @@ class FakeStoresService extends StoresService {
       null as never,
       null as never,
       null as never,
+      null as never,
     );
   }
 

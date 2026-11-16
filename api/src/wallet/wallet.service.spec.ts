@@ -120,6 +120,7 @@ class FakeStores extends StoresService {
       null as never,
       null as never,
       null as never,
+      null as never,
     );
   }
   getOfferCard(storeId: string) {

@@ -8,6 +8,7 @@ import { JobsModule } from '../jobs/jobs.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { StoresModule } from '../stores/stores.module';
 import { UsersModule } from '../users/users.module';
+import { VisibilityModule } from '../visibility/visibility.module';
 import { DeclineNoticeHandler } from './jobs/decline-notice.handler';
 import { OfferResponseExpiryHandler } from './jobs/offer-response-expiry.handler';
 import { PaymentDueExpiryHandler } from './jobs/payment-due-expiry.handler';
@@ -28,6 +29,7 @@ import { ProposalsService } from './proposals.service';
     ApplicationsModule,
     CollaborationsModule,
     InstagramModule,
+    VisibilityModule,
   ],
   // OffersController가 먼저다: offers/sent·offers/received가 offers/:id보다 앞서 등록돼야 한다.
   controllers: [OffersController, ProposalsController],

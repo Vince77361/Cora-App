@@ -4,6 +4,7 @@ import { CreatorsModule } from '../creators/creators.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { StoresModule } from '../stores/stores.module';
 import { UsersModule } from '../users/users.module';
+import { VisibilityModule } from '../visibility/visibility.module';
 import { ApplicationsController } from './applications.controller';
 import { ApplicationsRepository } from './applications.repository';
 import { ApplicationsService } from './applications.service';
@@ -17,6 +18,7 @@ import { ApplicationsService } from './applications.service';
     CreatorsModule,
     UsersModule,
     CollaborationsModule,
+    VisibilityModule,
   ],
   controllers: [ApplicationsController],
   providers: [ApplicationsService, ApplicationsRepository],

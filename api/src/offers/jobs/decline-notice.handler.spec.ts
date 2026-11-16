@@ -16,6 +16,7 @@ class FakeOffersService extends OffersService {
       null as never,
       null as never,
       null as never,
+      null as never,
     );
   }
   sendDeclineNotice(offerId: string, declinedAt: Date): Promise<void> {

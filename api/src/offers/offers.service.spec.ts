@@ -16,6 +16,7 @@ import { UsersService } from '../users/users.service';
 import { JobHandlerRegistry } from '../jobs/job-handler-registry';
 import { DeclineNoticeHandler } from './jobs/decline-notice.handler';
 import { FakeClock } from '../../test/support/fake-clock';
+import { FakeVisibility } from '../../test/support/fake-visibility';
 import { FakeJobScheduler } from '../../test/support/fake-job-scheduler';
 import {
   InSameTransaction,
@@ -288,6 +289,7 @@ class FakeStores extends StoresService {
       null as never,
       null as never,
       null as never,
+      null as never,
     );
     this.store = store;
   }
@@ -333,6 +335,7 @@ class FakeApplications extends ApplicationsService {
   newCount = 0;
   constructor() {
     super(
+      null as never,
       null as never,
       null as never,
       null as never,
@@ -450,6 +453,7 @@ describe('OffersService', () => {
   let instagram: FakeInstagram;
   let creators: FakeCreators;
   let clock: FakeClock;
+  let visibility: FakeVisibility;
   let jobs: FakeJobScheduler;
   let service: OffersService;
   const REELS = {
@@ -469,6 +473,7 @@ describe('OffersService', () => {
     creators = new FakeCreators();
     clock = new FakeClock(T0);
     jobs = new FakeJobScheduler(new JobHandlerRegistry());
+    visibility = new FakeVisibility();
     service = new OffersService(
       repo,
       users,
@@ -479,6 +484,7 @@ describe('OffersService', () => {
       instagram,
       push,
       jobs,
+      visibility,
       clock,
     );
   });
@@ -506,6 +512,14 @@ describe('OffersService', () => {
     await expect(
       service.send(OWNER, { ...REELS, creatorId: OWNER }),
     ).rejects.toMatchObject({ code: 'CONFLICT' });
+  });
+
+  it('returns 404 when the recipient avoids the store industry', async () => {
+    visibility.hiddenIndustries.add(stores.store.industry);
+    await expect(service.send(OWNER, { ...REELS })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+    expect(repo.rows).toHaveLength(0);
   });
 
   it('checks the terms before looking for an open offer', async () => {
