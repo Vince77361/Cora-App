@@ -365,11 +365,12 @@ class _CampaignFormPageState extends ConsumerState<CampaignFormPage> {
 
 const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
-/// `11월 20일 (금)`.
+/// 한국 시간 기준 오늘 0시.
 DateTime _kstToday(DateTime now) {
   final kst = toKst(now);
   return DateTime(kst.year, kst.month, kst.day);
 }
 
+/// `11월 20일 (금)`.
 String _dayLabel(DateTime day) =>
     '${day.month}월 ${day.day}일 (${_weekdays[day.weekday - 1]})';

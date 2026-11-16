@@ -13,15 +13,6 @@ import 'swipe_stamp.dart';
 export 'swipe_deck_controller.dart';
 export 'swipe_physics.dart' show SwipeOutcome;
 
-/// [SwipeDeck.onSwiped]가 "이 넘김은 받지 않는다"고 알리려고 던진다(예: 읽기만 하는 둘러보기에서의
-/// 관심). 카드는 제자리로 돌아오고, 저장 실패와 달리 Flutter 오류로 알리지 않는다.
-class SwipeRejected implements Exception {
-  const SwipeRejected();
-
-  @override
-  String toString() => 'SwipeRejected';
-}
-
 /// 카드를 끌어서 넘기는 덱(캔버스 01 발견, 08 크리에이터의 발견, 9A 둘러보기).
 ///
 /// 맨 위 카드만 움직인다. 오른쪽으로 밀면 관심, 왼쪽은 넘김, 위쪽은 보류다(기준은
@@ -30,8 +21,10 @@ class SwipeRejected implements Exception {
 /// 한 번에 한 장만 넘어간다. 카드가 날아가는 동안과 [onSwiped]가 끝나기 전에는 끌기와
 /// [SwipeDeckController.swipe]를 받지 않아서 결정이 두 번 저장되거나 카드가 겹치지 않는다.
 /// [onSwiped]가 예외를 던지면 카드는 제자리로 돌아온다. 오류를 보여 주는 일은 [onSwiped]를
-/// 만든 쪽이 한다(여기서는 삼킨다). [SwipeRejected]는 오류가 아니라 거절이라 조용히 돌려놓고,
-/// 카드가 제자리에 돌아온 뒤 [onRejected]를 부른다.
+/// 만든 쪽이 한다(여기서는 삼킨다).
+///
+/// [accepts]가 어떤 방향을 받지 않는다고 하면(예: 읽기만 하는 둘러보기의 관심) 그 방향으로는 카드가
+/// 날아가지 않는다. 놓으면 스프링으로 제자리에 돌아오고, 다 멈춘 뒤에 [onRejected]가 불린다.
 ///
 /// 이 덱은 자기가 넘긴 카드를 기억해 [items]에서 숨긴다. 부모가 넘긴 카드를 목록에서 지워도,
 /// 그대로 두고 새 목록 객체로 다시 그려도 카드가 되살아나지 않는다. 지웠던 카드를 다시
@@ -44,6 +37,7 @@ class SwipeDeck<T> extends StatefulWidget {
     required this.onSwiped,
     required this.empty,
     this.onTap,
+    this.accepts,
     this.onRejected,
     this.controller,
   });
@@ -58,7 +52,11 @@ class SwipeDeck<T> extends StatefulWidget {
   /// 맨 위 카드를 끌지 않고 눌렀을 때.
   final VoidCallback? onTap;
 
-  /// [onSwiped]가 [SwipeRejected]를 던져 카드가 제자리로 돌아온 뒤.
+  /// 이 방향으로 넘기는 것을 받는지. null이면 모두 받는다. false이면 카드가 날아가지 않고 제자리로
+  /// 돌아온다(버튼으로 넘길 때는 카드가 움직이지 않는다).
+  final bool Function(SwipeOutcome outcome)? accepts;
+
+  /// [accepts]가 받지 않은 넘김에서 카드가 제자리에 멈춘 뒤.
   final VoidCallback? onRejected;
 
   /// 넘길 카드가 하나도 없을 때 보여 줄 것.
@@ -177,6 +175,15 @@ class _SwipeDeckState<T> extends State<SwipeDeck<T>>
     final remaining = _remaining;
     if (remaining.isEmpty) return;
     final item = remaining.first;
+    if (widget.accepts?.call(outcome) == false) {
+      // 받지 않는 방향이다. 카드는 화면 밖으로 나가지 않고 스프링으로 제자리에 돌아온다.
+      _setBusy(true);
+      if (_offset.value != Offset.zero) await _springBack();
+      if (!mounted) return;
+      _setBusy(false);
+      widget.onRejected?.call();
+      return;
+    }
     _setBusy(true);
     setState(() {
       _leaving = item;
@@ -191,16 +198,14 @@ class _SwipeDeckState<T> extends State<SwipeDeck<T>>
     } catch (error, stack) {
       // 저장하지 못한 결정이다. 카드를 돌려놓아 다시 고르게 한다. 오류 안내는 onSwiped 쪽 몫이지만,
       // 예상하지 못한 오류가 조용히 묻히지 않게 Flutter 오류로도 알린다.
-      if (error is! SwipeRejected) {
-        FlutterError.reportError(
-          FlutterErrorDetails(
-            exception: error,
-            stack: stack,
-            library: 'swipe deck',
-            context: ErrorDescription('while saving a swiped card'),
-          ),
-        );
-      }
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'swipe deck',
+          context: ErrorDescription('while saving a swiped card'),
+        ),
+      );
       if (!mounted) return;
       await _springBack();
       if (!mounted) return;
@@ -209,7 +214,6 @@ class _SwipeDeckState<T> extends State<SwipeDeck<T>>
         _hasLeaving = false;
       });
       _setBusy(false);
-      if (error is SwipeRejected) widget.onRejected?.call();
       return;
     }
     if (!mounted) return;

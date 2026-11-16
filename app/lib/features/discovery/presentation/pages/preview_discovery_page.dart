@@ -51,7 +51,6 @@ class _PreviewDiscoveryPageState extends ConsumerState<PreviewDiscoveryPage> {
   }
 
   Future<void> _onSwiped(PreviewCard card, SwipeOutcome outcome) async {
-    if (outcome != SwipeOutcome.pass) throw const SwipeRejected();
     ref.read(previewDiscoveryViewModelProvider.notifier).pass(card);
   }
 
@@ -176,6 +175,8 @@ class _PreviewDeck extends StatelessWidget {
                 controller: controller,
                 items: state.remaining,
                 onSwiped: onSwiped,
+                // 넘김만 받는다. 관심·보류는 카드가 날아가지 않고 제자리로 돌아온 뒤 A1로 간다.
+                accepts: (outcome) => outcome == SwipeOutcome.pass,
                 onRejected: onRejected,
                 // 카드를 눌러도 상세는 없다. A1로 돌아가 역할을 고르게 한다.
                 onTap: onRejected,

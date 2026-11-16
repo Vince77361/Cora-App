@@ -13,6 +13,7 @@ Future<void> _pumpDeck(
   required Future<void> Function(String, SwipeOutcome) onSwiped,
   VoidCallback? onTap,
   VoidCallback? onRejected,
+  bool Function(SwipeOutcome)? accepts,
   SwipeDeckController? controller,
   bool disableAnimations = false,
 }) {
@@ -30,6 +31,7 @@ Future<void> _pumpDeck(
                 items: items,
                 controller: controller,
                 onTap: onTap,
+                accepts: accepts,
                 onRejected: onRejected,
                 cardBuilder: (context, item) => Center(child: Text(item)),
                 onSwiped: onSwiped,
@@ -215,39 +217,120 @@ void main() {
     expect(find.text('B'), findsOneWidget);
   });
 
-  testWidgets(
-    'a rejected swipe returns the card quietly and then calls onRejected',
-    (tester) async {
+  group('a direction the deck does not accept', () {
+    bool onlyPass(SwipeOutcome o) => o == SwipeOutcome.pass;
+
+    testWidgets('springs back from the release point and never flies out', (
+      tester,
+    ) async {
       final controller = SwipeDeckController();
       addTearDown(controller.dispose);
+      final swiped = <_Swipe>[];
       var rejected = 0;
-      var rejectedWhileBusy = true;
-      var rejectedOffset = 0.0;
+      var busyWhenRejected = true;
       await _pumpDeck(
         tester,
         items: const ['A', 'B'],
         controller: controller,
-        onSwiped: (item, outcome) async => throw const SwipeRejected(),
+        accepts: onlyPass,
+        onSwiped: (item, outcome) async => swiped.add((item, outcome)),
         onRejected: () {
           rejected++;
-          rejectedWhileBusy = controller.busy;
-          rejectedOffset = tester.getCenter(find.text('A')).dx;
+          busyWhenRejected = controller.busy;
         },
       );
       final home = tester.getCenter(find.text('A'));
+      final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
 
-      await tester.drag(find.text('A'), const Offset(200, 0));
+      final gesture = await tester.startGesture(home);
+      await gesture.moveBy(const Offset(200, 0));
+      await tester.pump();
+      final released = tester.getCenter(find.text('A')).dx;
+      expect(released, greaterThan(home.dx + 150));
+      await gesture.up();
+
+      // 놓은 뒤 매 프레임: 카드는 놓은 자리보다 더 나가지 않고 화면 안에 있으며, 뒤 카드가 비치지 않는다.
+      var furthest = released;
+      for (var i = 0; i < 120 && rejected == 0; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final rect = tester.getRect(find.text('A'));
+        furthest = rect.center.dx > furthest ? rect.center.dx : furthest;
+        expect(rect.left, lessThan(screen.width));
+        expect(rect.right, greaterThan(0));
+        expect(find.text('B'), findsOneWidget);
+      }
       await tester.pumpAndSettle();
 
-      // 예상된 거절이라 Flutter 오류로 알리지 않는다. 카드가 제자리로 돌아온 뒤에 불린다.
-      expect(tester.takeException(), isNull);
+      expect(furthest, closeTo(released, 0.5));
+      expect(swiped, isEmpty);
       expect(rejected, 1);
-      expect(rejectedWhileBusy, isFalse);
-      expect(rejectedOffset, closeTo(home.dx, 0.5));
+      expect(busyWhenRejected, isFalse);
+      expect(tester.takeException(), isNull);
       expect(find.text('A'), findsOneWidget);
       expect(tester.getCenter(find.text('A')).dx, closeTo(home.dx, 0.5));
-    },
-  );
+    });
+
+    testWidgets('does not fly out when pushed up either', (tester) async {
+      var rejected = 0;
+      await _pumpDeck(
+        tester,
+        items: const ['A', 'B'],
+        accepts: onlyPass,
+        onSwiped: (item, outcome) async => fail('should not be saved'),
+        onRejected: () => rejected++,
+      );
+      final home = tester.getCenter(find.text('A'));
+      final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+
+      final gesture = await tester.startGesture(home);
+      await gesture.moveBy(const Offset(0, -300));
+      await tester.pump();
+      final released = tester.getCenter(find.text('A')).dy;
+      await gesture.up();
+      for (var i = 0; i < 120 && rejected == 0; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final rect = tester.getRect(find.text('A'));
+        expect(rect.center.dy, greaterThanOrEqualTo(released - 0.5));
+        expect(rect.bottom, greaterThan(0));
+        expect(rect.top, lessThan(screen.height));
+      }
+      await tester.pumpAndSettle();
+
+      expect(rejected, 1);
+      expect(tester.getCenter(find.text('A')).dy, closeTo(home.dy, 0.5));
+    });
+
+    testWidgets('a button swipe does not move the card and reports at once', (
+      tester,
+    ) async {
+      final controller = SwipeDeckController();
+      addTearDown(controller.dispose);
+      var rejected = 0;
+      final saved = <SwipeOutcome>[];
+      await _pumpDeck(
+        tester,
+        items: const ['A', 'B'],
+        controller: controller,
+        accepts: onlyPass,
+        onSwiped: (item, outcome) async => saved.add(outcome),
+        onRejected: () => rejected++,
+      );
+      final home = tester.getCenter(find.text('A'));
+
+      await controller.swipe(SwipeOutcome.like);
+      expect(rejected, 1);
+      expect(tester.getCenter(find.text('A')), home);
+      expect(controller.busy, isFalse);
+
+      // 받는 방향은 그대로 넘어간다.
+      final passed = controller.swipe(SwipeOutcome.pass);
+      await tester.pumpAndSettle();
+      await passed;
+      expect(find.text('A'), findsNothing);
+      expect(rejected, 1);
+      expect(saved, [SwipeOutcome.pass]);
+    });
+  });
 
   testWidgets('shows the empty widget after the last card', (tester) async {
     await _pumpDeck(

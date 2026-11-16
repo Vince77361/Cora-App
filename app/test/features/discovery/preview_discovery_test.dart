@@ -125,11 +125,28 @@ void main() {
       final repo = _three();
       await _openPreview(tester, repo);
 
-      await tester.drag(find.text('서윤의 작은 취향'), const Offset(300, 0));
-      // 카드가 제자리로 돌아오는 동안은 아직 둘러보기 화면이다.
-      await tester.pump(const Duration(milliseconds: 400));
+      final card = find.text('서윤의 작은 취향');
+      final home = tester.getCenter(card);
+      final gesture = await tester.startGesture(home);
+      // 처음 움직임은 끌기로 알아보는 데 쓰이므로 두 번에 나눠 움직인다.
+      await gesture.moveBy(const Offset(30, 0));
+      await gesture.moveBy(const Offset(270, 0));
       await tester.pump();
-      expect(find.byType(PreviewDiscoveryPage), findsOneWidget);
+      final released = tester.getCenter(card).dx;
+      expect(released, greaterThan(home.dx + 150));
+      await gesture.up();
+
+      // 카드는 화면 밖으로 날아가지 않고 놓은 자리에서 제자리로 돌아온다. 다 멈추기 전에는 아직
+      // 둘러보기 화면이고, 멈춘 뒤에 A1로 간다.
+      var frames = 0;
+      while (find.byType(PreviewDiscoveryPage).evaluate().isNotEmpty &&
+          frames++ < 200) {
+        await tester.pump(const Duration(milliseconds: 16));
+        if (card.evaluate().isEmpty) break;
+        final rect = tester.getRect(card);
+        expect(rect.center.dx, lessThanOrEqualTo(released + 0.5));
+        expect(rect.left, lessThan(390));
+      }
       await tester.pumpAndSettle();
 
       _expectBackOnRolePage(tester, hint: true);
