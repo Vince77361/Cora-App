@@ -2,6 +2,19 @@ import 'dart:async';
 
 import 'package:cora/features/principles/domain/principles.dart';
 import 'package:cora/features/principles/domain/principles_repository.dart';
+import 'package:cora/features/store_onboarding/domain/my_store.dart'
+    show IndustryCategory;
+
+/// 협업 원칙을 정한 크리에이터의 기본 원칙(08이 원칙 띠를 보이지 않는다).
+const defaultPrinciples = Principles(
+  fields: [IndustryCategory.foodCafe],
+  blockedIndustries: [],
+  faceOk: true,
+  scriptOk: true,
+  honestReview: true,
+  feeBand: FeeBand.w300k,
+  trialDays: ProductTrialDays.d7,
+);
 
 /// 손으로 쓴 가짜 협업 원칙 저장소. 서버가 가진 원칙을 흉내 낸다.
 class FakePrinciplesRepository implements PrinciplesRepository {

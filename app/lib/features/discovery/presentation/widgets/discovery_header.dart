@@ -11,10 +11,16 @@ import '../discovery_text.dart';
 /// 01 발견 머리(캔버스 Main): 높이 64, 좌우 16. 왼쪽 로고 `cora`, 오른쪽 종 아이콘과 역할 알약
 /// (`브랜드`가 고른 쪽). 알약 안의 `크리에이터`는 보여 주기만 한다(역할은 바꿀 수 없다).
 ///
+/// [creator]이면 08의 머리다(캔버스 CreatorDiscover). 알약에서 `크리에이터`가 고른 쪽이다. 종 아이콘은
+/// 캔버스 밖이지만 01처럼 로고와 알약 사이에 둔다.
+///
 /// [onChooseRole]을 주면 둘러보기(9A)의 머리다. 종 아이콘이 없고, 알약은 `둘러보는 중` 한 칸이며,
 /// 오른쪽에 `역할 고르기`가 있다.
 class DiscoveryHeader extends StatelessWidget {
-  const DiscoveryHeader({super.key, this.onChooseRole});
+  const DiscoveryHeader({super.key, this.onChooseRole, this.creator = false});
+
+  /// 08(크리에이터의 발견)의 머리인지.
+  final bool creator;
 
   /// 둘러보기에서 `역할 고르기`를 눌렀을 때. null이면 01의 머리다.
   final VoidCallback? onChooseRole;
@@ -40,9 +46,20 @@ class DiscoveryHeader extends StatelessWidget {
                 ],
               )
             else
-              const Row(
-                spacing: 6,
-                children: [NotificationBell(), DiscoveryRolePill()],
+              // 글자를 키운 작은 화면에서 종과 알약이 로고와 겹치지 않게 맞춰 줄인다.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 6,
+                    children: [
+                      const NotificationBell(),
+                      DiscoveryRolePill(creator: creator),
+                    ],
+                  ),
+                ),
               ),
           ],
         ),
@@ -53,20 +70,28 @@ class DiscoveryHeader extends StatelessWidget {
 
 /// 역할 알약: 안쪽 4, 칸 둘(`브랜드`가 고른 쪽). 고른 칸은 `stepPill` 바탕(라이트 흰색+그림자, 다크
 /// `#F2F3F5`), 고르지 않은 칸은 보조 글자색이다. [cells]를 주면 그 칸들이 모두 고른 칸이다
-/// (둘러보기의 `둘러보는 중` 한 칸).
+/// (둘러보기의 `둘러보는 중` 한 칸). [creator]이면 `크리에이터`가 고른 칸이고, 08 캔버스는 다크에서도
+/// 흰색(#FFFFFF)과 그림자 rgba(23,24,28,0.10)다.
 class DiscoveryRolePill extends StatelessWidget {
-  const DiscoveryRolePill({super.key, this.cells});
+  const DiscoveryRolePill({super.key, this.cells, this.creator = false});
 
   final List<String>? cells;
+  final bool creator;
+
+  static const _creatorSelected = Color(0xFFFFFFFF);
+  static const _creatorOn = Color(0xFF17181C);
+  static const _creatorShadow = Color(0x1A17181C);
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     Widget cell(String label, {required bool selected}) => DecoratedBox(
       decoration: BoxDecoration(
-        color: selected ? c.stepPill : null,
+        color: selected ? (creator ? _creatorSelected : c.stepPill) : null,
         borderRadius: BorderRadius.circular(999),
-        boxShadow: selected ? CoraShadows.stepPill(c.stepPillShadow) : null,
+        boxShadow: selected
+            ? CoraShadows.stepPill(creator ? _creatorShadow : c.stepPillShadow)
+            : null,
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -74,7 +99,9 @@ class DiscoveryRolePill extends StatelessWidget {
           label,
           style: CoraTextStyles.label.copyWith(
             height: 1.0,
-            color: selected ? c.onStepPill : c.textSecondary,
+            color: selected
+                ? (creator ? _creatorOn : c.onStepPill)
+                : c.textSecondary,
           ),
         ),
       ),
@@ -92,8 +119,8 @@ class DiscoveryRolePill extends StatelessWidget {
             if (cells case final only?)
               for (final label in only) cell(label, selected: true)
             else ...[
-              cell(DiscoveryTexts.brandPill, selected: true),
-              cell(DiscoveryTexts.creatorPill, selected: false),
+              cell(DiscoveryTexts.brandPill, selected: !creator),
+              cell(DiscoveryTexts.creatorPill, selected: creator),
             ],
           ],
         ),

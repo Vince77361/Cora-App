@@ -17,6 +17,8 @@ import '../../features/creator_profile/presentation/pages/creator_profile_setup_
 import '../../features/dev/presentation/pages/motion_gallery_page.dart';
 import '../../features/discovery/domain/discovery_card.dart';
 import '../../features/discovery/presentation/pages/brand_discovery_page.dart';
+import '../../features/discovery/presentation/pages/campaign_detail_page.dart';
+import '../../features/discovery/presentation/pages/creator_discovery_page.dart';
 import '../../features/interests/presentation/pages/compare_page.dart';
 import '../../features/interests/presentation/pages/interests_page.dart';
 import '../../features/interests/presentation/viewmodels/interests_view_model.dart'
@@ -44,7 +46,6 @@ import '../../features/payout_account/presentation/pages/payout_account_page.dar
 import '../../features/wallet/presentation/pages/wallet_page.dart';
 import '../../features/offers/presentation/pages/send_offer_page.dart';
 import '../../features/store_browse/presentation/pages/store_detail_page.dart';
-import '../../features/store_browse/presentation/pages/store_list_page.dart';
 import '../../features/store_home/presentation/pages/store_home_page.dart';
 import '../../features/trial_compare/presentation/pages/trial_compare_page.dart';
 import '../../features/view_report/presentation/pages/view_evidence_page.dart';
@@ -398,11 +399,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      // 크리에이터 흐름. 10번 작업이 실제 화면으로 바꾼다.
+      // 크리에이터 흐름. 홈은 발견(08)이다. 옛 공개된 가게 목록(`StoreListPage`)은 더 이상 이 경로에 걸지 않는다.
       GoRoute(
         path: AppRoutes.creator,
         pageBuilder: (context, state) =>
-            _entryPage(state, const StoreListPage()),
+            _entryPage(state, const CreatorDiscoveryPage()),
+      ),
+      // 캠페인 상세(D1). 08의 카드를 누르면 사진이 이어지며 열린다. 카드는 `extra`로 받는다.
+      GoRoute(
+        path: AppRoutes.creatorCampaignPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          CampaignDetailPage(
+            campaignId: state.pathParameters['id']!,
+            card: state.extra is CampaignCard
+                ? state.extra! as CampaignCard
+                : null,
+          ),
+          key: state.pageKey,
+        ),
       ),
       GoRoute(
         path: AppRoutes.creatorProfileSetup,

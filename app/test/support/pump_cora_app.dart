@@ -10,6 +10,7 @@ import 'package:cora/features/discovery/domain/discovery_repository.dart';
 import 'package:cora/features/interests/domain/interests_repository.dart';
 import 'package:cora/features/notification_settings/domain/notification_settings_repository.dart';
 import 'package:cora/features/notifications/domain/notification_repository.dart';
+import 'package:cora/features/principles/domain/principles_repository.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
 import 'package:cora/features/proposals/domain/proposal_repository.dart';
 import 'package:cora/features/server_config/domain/server_config_repository.dart';
@@ -33,6 +34,7 @@ import '../features/interests/fake_interests_repository.dart';
 import '../features/notification_settings/fake_notification_settings_repository.dart';
 import '../features/notifications/fake_notification_repository.dart';
 import '../features/onboarding/fake_me_repository.dart';
+import '../features/principles/fake_principles_repository.dart';
 import '../features/proposals/fake_proposal_repository.dart';
 import '../features/server_config/fake_server_config_repository.dart';
 import '../features/store_home/fake_store_home_repository.dart';
@@ -116,6 +118,11 @@ Widget coraAppWith(
       if (!_overrides(overrides, discoveryRepositoryProvider))
         discoveryRepositoryProvider.overrideWithValue(
           FakeDiscoveryRepository(),
+        ),
+      // 08 크리에이터의 발견이 협업 원칙이 있는지 읽는다. 기본은 원칙을 정한 크리에이터다.
+      if (!_overrides(overrides, principlesRepositoryProvider))
+        principlesRepositoryProvider.overrideWithValue(
+          FakePrinciplesRepository(principles: defaultPrinciples),
         ),
       // 03 관심·보류가 저장한 후보를 읽는다. 기본은 저장한 후보가 없는 계정이다.
       if (!_overrides(overrides, interestsRepositoryProvider))

@@ -13,6 +13,10 @@ abstract final class CoraSwipeTokens {
   static const topScrimHeight = 120.0;
   static const topScrim = [Color(0x6117181C), Color(0x0017181C)];
 
+  /// 08(크리에이터의 발견)의 다크 카드 영역 바탕. 캔버스 DarkCreatorDiscover `#2A2D33`.
+  /// 라이트는 [backdrop]이고, 01의 다크는 화면 바탕(`#0F1012`)이다.
+  static const creatorBackdropDark = Color(0xFF2A2D33);
+
   /// 아래쪽 글자 덮개: 0%, 35%, 70%, 100%에서 rgba(23,24,28)의 알파 0, 0.2, 0.48, 0.66.
   static const bottomScrim = [
     Color(0x0017181C),

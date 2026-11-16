@@ -7,7 +7,9 @@ import 'package:cora/features/discovery/domain/discovery_repository.dart';
 import 'package:cora/features/discovery/domain/discovery_target.dart';
 import 'package:cora/features/discovery/domain/pass_reason.dart';
 import 'package:cora/features/discovery/domain/reward_proposal.dart';
-import 'package:cora/features/principles/domain/principles.dart' show FeeBand;
+import 'package:cora/features/discovery/domain/campaign_detail.dart';
+import 'package:cora/features/principles/domain/principles.dart'
+    show FeeBand, ProductTrialDays;
 import 'package:cora_api/api.dart' as api;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -83,6 +85,115 @@ void main() {
       expect(card.reasons, [MatchReason.fee]);
     },
   );
+
+  test(
+    'fetchCampaignCards keeps the reward line and the other province',
+    () async {
+      final fake = FakeHttpClient()
+        ..body = jsonEncode({
+          'day': '2026-11-16',
+          'total': 1,
+          'cards': [
+            {
+              'kind': 'STORE',
+              'headline': '진한 국물을 12시간 끓이는 작은 라멘집이에요.',
+              'rewardLine': '식사권 + 조회수 수당',
+              'otherSido': '부산광역시',
+              'photoUrl': null,
+              'reasons': [],
+              'tags': ['소상공인', '팔로워무관'],
+              'store': {
+                'id': 's1',
+                'name': '한그릇 라멘',
+                'industry': 'FOOD_CAFE',
+                'category': '라멘집',
+                'neighborhood': '성수동',
+                'regionSido': '부산광역시',
+                'regionSigungu': '해운대구',
+                'coverPhotoUrl': 'https://x/ramen.jpg',
+                'defaultTerms': {
+                  'format': 'REELS',
+                  'pieces': 1,
+                  'fixedCash': 0,
+                  'maxCashBurden': 60000,
+                  'settlementMethod': 'PER_VIEW',
+                  'usageRights': 'STORE_REPOST_3M',
+                  'viewRatePerThousand': 2000,
+                  'perViewCap': 60000,
+                  'voucherName': '식사권',
+                  'voucherValue': 40000,
+                  'voucherPeople': 2,
+                },
+              },
+            },
+          ],
+        });
+
+      final card =
+          (await _repo(fake).fetchCampaignCards()).cards.single as StoreCard;
+
+      expect(card.store.id, 's1');
+      expect(card.rewardLine, '식사권 + 조회수 수당');
+      expect(card.otherSido, '부산광역시');
+      // 사진은 가게의 대표 사진이다.
+      expect(card.photoUrl, 'https://x/ramen.jpg');
+      expect(card.tags, ['소상공인', '팔로워무관']);
+      expect(card.target, const DiscoveryTarget.store('s1'));
+    },
+  );
+
+  test('fetchCampaignDetail maps the schedule, lists and trial days', () async {
+    final fake = FakeHttpClient()
+      ..body = jsonEncode({
+        'kind': 'CAMPAIGN',
+        'campaignId': 'camp-1',
+        'brandName': '모아 스튜디오',
+        'brandTagline': '느린 결 일상의 주얼리',
+        'headline': '나만의 아침 루틴 속 작은 포인트',
+        'fee': 300000,
+        'productProvided': true,
+        'photoUrl': null,
+        'reasons': ['FIELD', 'SCRIPT', 'FEE'],
+        'tags': ['대본낭독없음'],
+        'startFrom': '2026-11-16',
+        'trialDays': 'D7',
+        'mustInclude': ['소재 정보', '광고 표시'],
+        'notRequired': ['FACE', 'FIXED_LINES', 'SCRIPT_READING'],
+        'overlapCount': 3,
+        'myDecision': null,
+      });
+
+    final detail = await _repo(fake).fetchCampaignDetail('camp-1');
+
+    expect(fake.requests.single.url.path, '/campaigns/camp-1/detail');
+    expect(detail.brandName, '모아 스튜디오');
+    expect(detail.fee, 300000);
+    expect(detail.startFrom.month, 11);
+    expect(detail.startFrom.day, 16);
+    expect(detail.trialDays, ProductTrialDays.d7);
+    expect(detail.mustInclude, ['소재 정보', '광고 표시']);
+    expect(detail.notRequired, [
+      NotRequiredItem.face,
+      NotRequiredItem.fixedLines,
+      NotRequiredItem.scriptReading,
+    ]);
+    expect(detail.overlapCount, 3);
+    expect(detail.reasons, [
+      MatchReason.field,
+      MatchReason.script,
+      MatchReason.fee,
+    ]);
+    expect(detail.asCard.target, const DiscoveryTarget.campaign('camp-1'));
+  });
+
+  test('fetchCampaignDetail throws a failure on a 404', () async {
+    final fake = FakeHttpClient()..statusCode = 404;
+
+    await expectLater(
+      _repo(fake).fetchCampaignDetail('camp-1'),
+      throwsA(isA<DiscoveryFailure>()),
+    );
+  });
 
   test('fetchPreviewCards maps the read-only cards', () async {
     final fake = FakeHttpClient()

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/swipe_deck/swipe_physics.dart' show SwipeOutcome;
+import 'campaign_detail.dart';
 import 'discovery_card.dart';
 import 'discovery_target.dart';
 import 'pass_reason.dart';
@@ -22,6 +23,9 @@ abstract class DiscoveryRepository {
 
   /// 오늘 크리에이터에게 보일 캠페인·가게 카드(08).
   Future<({int total, List<DiscoveryCard> cards})> fetchCampaignCards();
+
+  /// D1 캠페인 상세. 보이지 않거나 내가 넘긴 캠페인은 [DiscoveryFailure]다(서버가 404로 답한다).
+  Future<CampaignDetail> fetchCampaignDetail(String campaignId);
 
   /// 관심·넘김·보류를 보낸다. [note]는 관심에 붙이는 글, [proposal]은 브랜드의 보상 제안이다.
   /// 실패하면 [DiscoveryFailure].

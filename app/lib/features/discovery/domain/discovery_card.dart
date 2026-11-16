@@ -1,4 +1,5 @@
 import '../../principles/domain/principles.dart' show FeeBand;
+import 'discovery_target.dart';
 import '../../store_browse/domain/store_summary.dart';
 
 /// 카드가 상대와 "잘 맞는 점"으로 보여 주는 이유(상세에 나온다). 서버의 `MatchReason`과 같다.
@@ -62,6 +63,9 @@ sealed class DiscoveryCard {
   String? get photoUrl;
   List<String> get tags;
   List<MatchReason> get reasons;
+
+  /// 이 카드에 결정을 보낼 때의 대상.
+  DiscoveryTarget get target;
 }
 
 /// 브랜드의 캠페인 카드.
@@ -83,6 +87,9 @@ class CampaignCard extends DiscoveryCard {
   final String? brandTagline;
   @override
   final String headline;
+
+  @override
+  DiscoveryTarget get target => DiscoveryTarget.campaign(campaignId);
 
   /// 제작비(원).
   final int fee;
@@ -117,6 +124,9 @@ class StoreCard extends DiscoveryCard {
   final StoreSummary store;
   @override
   final String headline;
+
+  @override
+  DiscoveryTarget get target => DiscoveryTarget.store(store.id);
 
   /// 보상 줄(`식사권 + 조회수 수당`). 없으면 null.
   final String? rewardLine;

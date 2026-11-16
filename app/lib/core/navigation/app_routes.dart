@@ -139,6 +139,9 @@ abstract final class AppRoutes {
   /// 크리에이터의 관심·보류 목록(03, 크리에이터 쪽).
   static const creatorInterests = '/creator/interests';
 
+  /// 크리에이터의 03 보류 탭. 08의 `보류 보기`가 연다.
+  static const creatorHeld = '$creatorInterests?$tabParam=held';
+
   /// 크리에이터 쪽 서로 관심 확인(05).
   static String creatorMatch(String collaborationId) =>
       '$creatorInterests?$matchParam=${Uri.encodeQueryComponent(collaborationId)}';
@@ -148,9 +151,12 @@ abstract final class AppRoutes {
   static String collaborationTerms(String collaborationId) =>
       '/collaborations/${Uri.encodeComponent(collaborationId)}/terms';
 
-  /// 캠페인 상세(D1). 크리에이터의 03 카드를 누르면 열린다. 11번 작업이 등록한다.
+  /// 캠페인 상세(D1). 크리에이터의 08·03 카드를 누르면 열린다.
   static String creatorCampaign(String campaignId) =>
       '/creator/campaigns/${Uri.encodeComponent(campaignId)}';
+
+  /// [creatorCampaign]의 라우트 패턴.
+  static const creatorCampaignPattern = '/creator/campaigns/:id';
 
   /// 브랜드의 협업(07). 11번 작업이 등록한다.
   static const brandCollaborations = '/brand/collaborations';

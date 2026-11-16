@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/navigation/cora_hero_tag.dart';
-import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/ui/swipe_deck/swipe_card_frame.dart';
 import '../../domain/discovery_card.dart';
 import '../discovery_text.dart';
+import 'swipe_progress_bar.dart';
 
 /// 01의 크리에이터 카드 한 장. 카드 틀(사진, 이름, 콘텐츠 한 줄, 희망 제작비, 꼬리표)은 덱의
 /// [SwipeCardFrame]이고, 캔버스에 있는 카드 위쪽 작은 진행 막대 세 칸(첫 칸만 채움)을 얹는다.
@@ -25,7 +25,6 @@ class CreatorSwipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -38,40 +37,8 @@ class CreatorSwipeCard extends StatelessWidget {
           tags: card.tags,
           heroTag: CoraHeroTag.of('creator', card.creatorId),
         ),
-        // 캔버스의 left 10, right 10, top 14, 칸 높이 3, 간격 4. 두 번째·세 번째 칸은 흰색 40%.
-        Positioned(
-          left: 10,
-          right: 10,
-          top: 14,
-          child: ExcludeSemantics(
-            child: Row(
-              spacing: 4,
-              children: [
-                _Segment(color: c.swipeProgressOn),
-                const _Segment(color: Color(0x66FFFFFF)),
-                const _Segment(color: Color(0x66FFFFFF)),
-              ],
-            ),
-          ),
-        ),
+        const SwipeProgressBar(segments: 3),
       ],
     );
   }
-}
-
-class _Segment extends StatelessWidget {
-  const _Segment({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: const SizedBox(height: 3),
-    ),
-  );
 }

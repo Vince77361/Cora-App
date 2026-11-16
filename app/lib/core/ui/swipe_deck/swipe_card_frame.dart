@@ -23,6 +23,7 @@ class SwipeCardFrame extends StatelessWidget {
     required this.tags,
     this.heroTag,
     this.bottomInset = CoraSwipeTokens.textInsetBottom,
+    this.photoAlignment = CoraSwipeTokens.photoAlignment,
   });
 
   /// 사진 주소. 없거나 불러오지 못하면 바탕색만 보인다.
@@ -37,7 +38,7 @@ class SwipeCardFrame extends StatelessWidget {
   /// 큰 제목. 줄바꿈(`\n`)을 그대로 보여 준다.
   final String title;
 
-  /// 제작비·보상 줄. `accent` 색이다.
+  /// 제작비·보상 줄. `accent` 색이다. 비어 있으면 그리지 않는다.
   final String priceLine;
 
   /// 꼬리표. 앞에 `#`을 붙여 보여 준다.
@@ -49,12 +50,15 @@ class SwipeCardFrame extends StatelessWidget {
   /// 글자 덮개 아래쪽 여백.
   final double bottomInset;
 
+  /// 사진 가운데 기준점(CSS `object-position`). 01은 50% 30%, 08은 62% 50%다.
+  final Alignment photoAlignment;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     Widget photo = CoraNetworkPhoto(
       url: photoUrl,
-      alignment: CoraSwipeTokens.photoAlignment,
+      alignment: photoAlignment,
       background: c.photoPlaceholder,
     );
     if (heroTag != null) photo = Hero(tag: heroTag!, child: photo);
@@ -157,7 +161,8 @@ class SwipeCardFrame extends StatelessWidget {
                             spacing: 12,
                             crossAxisAlignment: WrapCrossAlignment.end,
                             children: [
-                              Text(priceLine, style: priceStyle),
+                              if (priceLine.isNotEmpty)
+                                Text(priceLine, style: priceStyle),
                               for (final tag in tags)
                                 Text('#$tag', style: tagStyle),
                             ],

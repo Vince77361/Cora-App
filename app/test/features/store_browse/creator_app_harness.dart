@@ -2,6 +2,7 @@ import 'package:cora/core/time/clock.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/collaboration/presentation/mail_launcher.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile.dart';
+import 'package:cora/features/discovery/domain/discovery_repository.dart';
 import 'package:cora/core/config/app_config.dart';
 import 'package:cora/features/instagram_connect/domain/instagram_repository.dart';
 import 'package:cora/features/payout_account/domain/payout_account_repository.dart';
@@ -18,6 +19,7 @@ import '../../support/fake_clock.dart';
 import '../../support/pump_cora_app.dart';
 import '../auth/fake_auth_repository.dart';
 import '../creator_profile/fake_creator_profile_repository.dart';
+import '../discovery/fake_discovery_repository.dart';
 import '../collaboration/fake_collaboration_repository.dart';
 import '../offers/fake_received_offers_repository.dart';
 import '../instagram_connect/fake_instagram_repository.dart';
@@ -31,6 +33,9 @@ import 'fake_store_browse_repository.dart';
 Future<void> pumpCreatorApp(
   WidgetTester tester, {
   FakeStoreBrowseRepository? stores,
+
+  /// 08이 읽는 오늘 목록. 주지 않으면 [stores]의 가게마다 가게 카드 하나다.
+  FakeDiscoveryRepository? discovery,
   FakeReceivedOffersRepository? offers,
   FakeCollaborationRepository? collaborations,
   MailLauncher? mail,
@@ -50,6 +55,7 @@ Future<void> pumpCreatorApp(
   } else {
     usePhone(tester);
   }
+  final browse = stores ?? FakeStoreBrowseRepository();
   await pumpCoraApp(
     tester,
     auth: FakeAuthRepository(session: FakeAuthRepository.signedInSession),
@@ -61,8 +67,20 @@ Future<void> pumpCreatorApp(
           profile: CreatorProfile(displayName: '서윤', regionSido: mySido),
         )..failFetch = profileFails,
       ),
-      storeBrowseRepositoryProvider.overrideWithValue(
-        stores ?? FakeStoreBrowseRepository(),
+      storeBrowseRepositoryProvider.overrideWithValue(browse),
+      discoveryRepositoryProvider.overrideWithValue(
+        discovery ??
+            FakeDiscoveryRepository(
+              campaignCards: [
+                for (final s in browse.stores)
+                  discoveryStore(
+                    s.id,
+                    summary: s,
+                    name: s.name,
+                    otherSido: s.regionSido != mySido ? s.regionSido : null,
+                  ),
+              ],
+            ),
       ),
       receivedOffersRepositoryProvider.overrideWithValue(
         offers ?? FakeReceivedOffersRepository(),

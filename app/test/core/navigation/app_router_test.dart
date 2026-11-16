@@ -13,7 +13,7 @@ import 'package:cora/features/dev/presentation/pages/motion_gallery_page.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile_repository.dart';
 import 'package:cora/features/store_browse/domain/store_browse_repository.dart';
-import 'package:cora/features/store_browse/presentation/pages/store_list_page.dart';
+import 'package:cora/features/discovery/presentation/pages/creator_discovery_page.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
@@ -186,8 +186,8 @@ void main() {
     await tester.tap(find.text('카카오로 계속하기'));
     await tester.pumpAndSettle();
 
-    // 프로필이 있는 크리에이터의 홈은 공개된 가게 목록이다.
-    expect(find.byType(StoreListPage), findsOneWidget);
+    // 프로필이 있는 크리에이터의 홈은 발견(08)이다.
+    expect(find.byType(CreatorDiscoveryPage), findsOneWidget);
     expect(currentPath(tester), AppRoutes.creator);
   });
 
@@ -622,7 +622,10 @@ void main() {
       await tester.tap(find.text('카카오로 계속하기'));
       await tester.pumpAndSettle();
 
-      expect(pushedDuration(tester, StoreListPage), CoraMotion.fadeDuration);
+      expect(
+        pushedDuration(tester, CreatorDiscoveryPage),
+        CoraMotion.fadeDuration,
+      );
     });
 
     testWidgets('pushing an entry route with stacked slides it in', (
@@ -649,42 +652,44 @@ void main() {
       );
     });
 
-    testWidgets('every route of the store, creator and brand flows is registered', (
-      tester,
-    ) async {
-      await pumpCoraApp(tester, auth: FakeAuthRepository());
-      final paths = _paths(routerOf(tester).configuration.routes);
-      expect(
-        paths,
-        containsAll([
-          '/browse',
-          '/store/onboarding/links',
-          '/store/onboarding/page',
-          '/store/onboarding/edit',
-          '/store/onboarding/drafts',
-          '/store/onboarding/terms',
-          '/store',
-          '/store/page',
-          '/store/drafts',
-          '/store/offers/new/:creatorId',
-          '/store/coming-soon/:title',
-          '/creator/profile/setup',
-          '/creator/principles',
-          '/creator',
-          '/creator/stores/:id',
-          '/creator/offers',
-          '/brand',
-          '/brand/profile/setup',
-          '/brand/campaign/new',
-          '/brand/campaign/edit',
-          '/brand/creators/:id',
-          '/brand/profile',
-          '/brand/interests',
-          '/brand/interests/compare',
-          '/creator/interests',
-          '/brand/coming-soon/:title',
-        ]),
-      );
-    });
+    testWidgets(
+      'every route of the store, creator and brand flows is registered',
+      (tester) async {
+        await pumpCoraApp(tester, auth: FakeAuthRepository());
+        final paths = _paths(routerOf(tester).configuration.routes);
+        expect(
+          paths,
+          containsAll([
+            '/browse',
+            '/store/onboarding/links',
+            '/store/onboarding/page',
+            '/store/onboarding/edit',
+            '/store/onboarding/drafts',
+            '/store/onboarding/terms',
+            '/store',
+            '/store/page',
+            '/store/drafts',
+            '/store/offers/new/:creatorId',
+            '/store/coming-soon/:title',
+            '/creator/profile/setup',
+            '/creator/principles',
+            '/creator',
+            '/creator/campaigns/:id',
+            '/creator/stores/:id',
+            '/creator/offers',
+            '/brand',
+            '/brand/profile/setup',
+            '/brand/campaign/new',
+            '/brand/campaign/edit',
+            '/brand/creators/:id',
+            '/brand/profile',
+            '/brand/interests',
+            '/brand/interests/compare',
+            '/creator/interests',
+            '/brand/coming-soon/:title',
+          ]),
+        );
+      },
+    );
   });
 }

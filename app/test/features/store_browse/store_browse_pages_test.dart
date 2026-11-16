@@ -3,14 +3,19 @@ import 'package:cora/core/ui/cora_bottom_nav.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart';
 import 'package:cora/features/store_browse/domain/store_detail.dart';
 import 'package:cora/features/store_browse/presentation/pages/store_detail_page.dart';
-import 'package:cora/features/store_browse/presentation/pages/store_list_page.dart';
+import 'package:cora/features/discovery/presentation/pages/creator_discovery_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
+import '../discovery/fake_discovery_repository.dart';
 import 'creator_app_harness.dart';
 import 'fake_store_browse_repository.dart';
+
+/// 하단 메뉴의 항목. 08의 카드에도 `관심`(도장) 같은 글자가 있어서 메뉴 안에서만 찾는다.
+Finder _navItem(String label) =>
+    find.descendant(of: find.byType(CoraBottomNav), matching: find.text(label));
 
 Future<void> _openFirstStore(WidgetTester tester) async {
   await tester.tap(find.text('한그릇 라멘'));
@@ -20,17 +25,19 @@ Future<void> _openFirstStore(WidgetTester tester) async {
 void main() {
   setUpAll(loadAppFonts);
 
-  group('creator home (published stores)', () {
-    testWidgets('lists published stores with their reward headline', (
+  group('creator home (discovery)', () {
+    testWidgets('opens the discovery screen with the store card', (
       tester,
     ) async {
       await pumpCreatorApp(tester);
 
       expect(currentPath(tester), AppRoutes.creator);
-      expect(find.text('공개된 가게'), findsOneWidget);
+      expect(find.byType(CreatorDiscoveryPage), findsOneWidget);
+      expect(find.text('내 원칙과 맞는 캠페인 1 / 1'), findsOneWidget);
       expect(find.text('한그릇 라멘'), findsOneWidget);
-      expect(find.text('라멘집, 성수동'), findsOneWidget);
-      expect(find.text('식사권 40,000원 · 2인 + 조회수 수당'), findsOneWidget);
+      expect(find.text('식사권 + 조회수 수당'), findsOneWidget);
+      // 옛 공개된 가게 목록은 더 이상 홈이 아니다.
+      expect(find.text('공개된 가게'), findsNothing);
       // 같은 시·도라서 시·도 표지는 없다.
       expect(find.text('서울특별시'), findsNothing);
     });
@@ -38,8 +45,8 @@ void main() {
     testWidgets('marks a store in another province', (tester) async {
       final stores = FakeStoreBrowseRepository(
         stores: [
-          ramenStore(id: '1'),
           ramenStore(id: '2', name: '바다 국수', regionSido: '부산광역시'),
+          ramenStore(id: '1'),
         ],
       );
       await pumpCreatorApp(tester, stores: stores);
@@ -59,15 +66,17 @@ void main() {
         tester,
         stores: FakeStoreBrowseRepository(stores: []),
       );
-      expect(find.text('아직 공개된 가게가 없어요.'), findsOneWidget);
+      expect(find.text('아직 추천할 캠페인이 없어요.'), findsOneWidget);
     });
 
     testWidgets('shows an error with retry when loading fails', (tester) async {
-      final stores = FakeStoreBrowseRepository()..failFetch = true;
-      await pumpCreatorApp(tester, stores: stores);
-      expect(find.text('가게를 불러오지 못했어요.'), findsOneWidget);
+      final discovery = FakeDiscoveryRepository(
+        campaignCards: [discoveryStore('1')],
+      )..failCampaignFetch = true;
+      await pumpCreatorApp(tester, discovery: discovery);
+      expect(find.text('추천을 불러오지 못했어요'), findsOneWidget);
 
-      stores.failFetch = false;
+      discovery.failCampaignFetch = false;
       await tester.tap(find.text('다시 시도'));
       await tester.pumpAndSettle();
       expect(find.text('한그릇 라멘'), findsOneWidget);
@@ -76,9 +85,9 @@ void main() {
     testWidgets('has the creator menu and opens collaboration', (tester) async {
       await pumpCreatorApp(tester);
       for (final label in ['발견', '관심', '대화', '협업', '프로필']) {
-        expect(find.text(label), findsOneWidget);
+        expect(_navItem(label), findsOneWidget);
       }
-      await tester.tap(find.text('협업'));
+      await tester.tap(_navItem('협업'));
       await tester.pumpAndSettle();
       expect(currentPath(tester), AppRoutes.creatorOffers);
       expect(find.text('받은 오퍼'), findsOneWidget);
@@ -88,7 +97,7 @@ void main() {
       tester,
     ) async {
       await pumpCreatorApp(tester);
-      await tester.tap(find.text('대화'));
+      await tester.tap(_navItem('대화'));
       await tester.pumpAndSettle();
       expect(find.text('준비 중이에요.'), findsOneWidget);
     });
@@ -97,7 +106,7 @@ void main() {
       tester,
     ) async {
       await pumpCreatorApp(tester);
-      await tester.tap(find.text('관심'));
+      await tester.tap(_navItem('관심'));
       await tester.pumpAndSettle();
       expect(currentPath(tester), AppRoutes.creatorInterests);
       expect(find.text('관심·보류'), findsOneWidget);
@@ -106,7 +115,9 @@ void main() {
   });
 
   group('store detail (D2)', () {
-    testWidgets('store photo is a Hero from list to detail', (tester) async {
+    testWidgets('store photo is a Hero from the card to detail', (
+      tester,
+    ) async {
       await pumpCreatorApp(tester);
       Hero hero() => tester.widget<Hero>(find.byType(Hero));
       expect(hero().tag, 'store:1');
@@ -380,13 +391,13 @@ void main() {
       expect(find.text('아직 없어요'), findsOneWidget);
     });
 
-    testWidgets('back returns to the list', (tester) async {
+    testWidgets('back returns to the discovery screen', (tester) async {
       await pumpCreatorApp(tester);
       await _openFirstStore(tester);
       await tester.tap(find.bySemanticsLabel('뒤로'));
       await tester.pumpAndSettle();
       expect(currentPath(tester), AppRoutes.creator);
-      expect(find.byType(StoreListPage), findsOneWidget);
+      expect(find.byType(CreatorDiscoveryPage), findsOneWidget);
       expect(find.byType(StoreDetailPage), findsNothing);
     });
   });

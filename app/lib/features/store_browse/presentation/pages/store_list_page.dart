@@ -17,8 +17,9 @@ import '../viewmodels/store_list_view_model.dart';
 import '../widgets/creator_bottom_nav.dart';
 import '../widgets/photo_overlays.dart';
 
-/// 크리에이터 홈. 공개된 가게를 사진 카드 목록으로 보여 주고, 누르면 가게 상세(D2)로 간다.
-/// 캔버스에 없는 화면이라 D2의 사진 카드를 줄여 쓴다(4번 계획이 스와이프 발견 화면으로 바꾼다).
+/// 옛 크리에이터 홈. 공개된 가게를 사진 카드 목록으로 보여 주고, 누르면 가게 상세(D2)로 간다.
+/// 4번 계획의 Task 11이 `/creator`를 발견(08, `CreatorDiscoveryPage`)으로 바꿔서 지금은 어느 경로에도
+/// 걸려 있지 않다. 쓰는 곳이 없어지면 지운다.
 class StoreListPage extends ConsumerWidget {
   const StoreListPage({super.key});
 

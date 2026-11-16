@@ -2,9 +2,10 @@ import 'package:cora_api/api.dart' as api;
 
 import '../../../core/network/api_error.dart';
 import '../../../core/ui/swipe_deck/swipe_physics.dart' show SwipeOutcome;
-import '../../principles/domain/principles.dart' show FeeBand;
+import '../../principles/domain/principles.dart' show FeeBand, ProductTrialDays;
 import '../../store_browse/data/api_store_browse_repository.dart'
     show summaryFromWire;
+import '../domain/campaign_detail.dart';
 import '../domain/discovery_card.dart';
 import '../domain/discovery_repository.dart';
 import '../domain/discovery_target.dart';
@@ -16,10 +17,12 @@ import '../domain/reward_proposal.dart';
 class ApiDiscoveryRepository implements DiscoveryRepository {
   ApiDiscoveryRepository(api.ApiClient client)
     : _recommendations = api.RecommendationsApi(client),
-      _discovery = api.DiscoveryApi(client);
+      _discovery = api.DiscoveryApi(client),
+      _details = api.CardDetailsApi(client);
 
   final api.RecommendationsApi _recommendations;
   final api.DiscoveryApi _discovery;
+  final api.CardDetailsApi _details;
 
   @override
   Future<({int total, List<CreatorCard> cards})> fetchCreatorCards() =>
@@ -40,6 +43,41 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
         return (
           total: model.total,
           cards: [for (final c in model.cards) _discoveryCard(c)],
+        );
+      });
+
+  @override
+  Future<CampaignDetail> fetchCampaignDetail(String campaignId) =>
+      _guard(() async {
+        final m = await _details.getCampaignDetail(campaignId);
+        if (m == null) throw const DiscoveryFailure();
+        return CampaignDetail(
+          campaignId: m.campaignId,
+          brandName: m.brandName,
+          brandTagline: m.brandTagline,
+          headline: m.headline,
+          fee: m.fee,
+          productProvided: m.productProvided,
+          photoUrl: m.photoUrl,
+          tags: List.unmodifiable(m.tags),
+          reasons: [for (final r in m.reasons) _reason(r)],
+          startFrom: m.startFrom,
+          trialDays: switch (m.trialDays) {
+            api.ProductTrialDays.D3 => ProductTrialDays.d3,
+            api.ProductTrialDays.D7 => ProductTrialDays.d7,
+            api.ProductTrialDays.D14 => ProductTrialDays.d14,
+            _ => ProductTrialDays.any,
+          },
+          mustInclude: List.unmodifiable(m.mustInclude),
+          notRequired: [
+            for (final r in m.notRequired)
+              switch (r) {
+                api.NotRequired.FACE => NotRequiredItem.face,
+                api.NotRequired.FIXED_LINES => NotRequiredItem.fixedLines,
+                _ => NotRequiredItem.scriptReading,
+              },
+          ],
+          overlapCount: m.overlapCount,
         );
       });
 
@@ -215,7 +253,8 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
         headline: m.headline,
         rewardLine: m.rewardLine,
         otherSido: m.otherSido,
-        photoUrl: m.photoUrl,
+        // 서버는 가게 카드에 사진을 따로 싣지 않고 가게의 대표 사진을 쓴다.
+        photoUrl: m.photoUrl ?? m.store!.coverPhotoUrl,
         tags: List.unmodifiable(m.tags),
         reasons: [for (final r in m.reasons) _reason(r)],
       );
