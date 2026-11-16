@@ -17,6 +17,9 @@ import '../../../server_config/presentation/viewmodels/server_config_view_model.
 import '../../../store_onboarding/presentation/viewmodels/my_store_view_model.dart';
 import '../../domain/offer_terms.dart';
 import '../../domain/proposal_draft.dart';
+import '../../../negotiation/presentation/terms_text.dart'
+    show compareUsageLabel;
+import '../brand_proposal_copy.dart';
 import '../offer_terms_text.dart';
 import '../viewmodels/proposal_draft_view_model.dart';
 import '../widgets/terms_summary.dart';
@@ -150,6 +153,8 @@ class _ReviewSendPageState extends ConsumerState<ReviewSendPage> {
   String? _storeName() {
     final target = widget.target;
     if (target is CounterTarget) return target.storeName;
+    // 브랜드의 제안은 가게를 읽지 않는다(브랜드에는 가게가 없다).
+    if (target is BrandProposalTarget) return target.recruitLine;
     return ref.watch(myStoreViewModelProvider.select((s) => s.value?.name));
   }
 
@@ -158,6 +163,7 @@ class _ReviewSendPageState extends ConsumerState<ReviewSendPage> {
     NewOfferTarget(:final creatorName) => creatorName,
     ReplyTarget(:final counterpartName) => counterpartName,
     CounterTarget(:final storeName) => storeName,
+    BrandProposalTarget(:final recipientName) => recipientName,
   };
 
   @override
@@ -202,8 +208,12 @@ class _ReviewSendPageState extends ConsumerState<ReviewSendPage> {
           children: [
             CoraStepHeader(
               pageLabel: ReviewSendPage.pageLabel,
-              step: ReviewSendPage.step,
-              total: ReviewSendPage.totalSteps,
+              step: target is BrandProposalTarget
+                  ? BrandProposalCopy.reviewStep
+                  : ReviewSendPage.step,
+              total: target is BrandProposalTarget
+                  ? BrandProposalCopy.totalSteps
+                  : ReviewSendPage.totalSteps,
               onBack: _sending ? null : () => Navigator.of(context).maybePop(),
             ),
             Expanded(child: body),
@@ -248,6 +258,8 @@ class _Body extends StatelessWidget {
   final VoidCallback onConnect;
 
   bool get _recruit => target is RecruitTarget;
+  BrandProposalTarget? get _brand =>
+      target is BrandProposalTarget ? target as BrandProposalTarget : null;
 
   @override
   Widget build(BuildContext context) {
@@ -255,48 +267,88 @@ class _Body extends StatelessWidget {
     final reward = terms.reward;
     final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
     final burden = reward.maxCashBurden;
-    final rows = <TermsRow>[
-      TermsRow(label: ReviewSendPage.recruitLabel, value: storeName),
-      TermsRow(
-        label: ReviewSendPage.deliverableLabel,
-        value: deliverableLine(terms.format, terms.pieces),
-      ),
-      TermsRow(
-        label: ReviewSendPage.benefitLabel,
-        value: reward.voucher == null
-            ? ReviewSendPage.none
-            : benefitLine(reward.voucher!),
-      ),
-      TermsRow(
-        label: ReviewSendPage.fixedCashLabel,
-        value: reward.fixedCash == 0
-            ? ReviewSendPage.none
-            : fixedCashLabel(reward.fixedCash),
-      ),
-      TermsRow(
-        label: ReviewSendPage.viewPayLabel,
-        value: reward.viewPay == null
-            ? ReviewSendPage.none
-            : viewPayLine(reward.viewPay!),
-      ),
-      TermsRow(
-        label: ReviewSendPage.usageRightsLabel,
-        value: usageRightsLabel(terms.usageRights),
-        onTap: onPickUsageRights,
-      ),
-      TermsRow(
-        label: ReviewSendPage.burdenLabel,
-        value: wonExact(burden),
-        bold: true,
-      ),
-    ];
+    final brand = _brand;
+    final rows = brand != null
+        ? <TermsRow>[
+            TermsRow(label: ReviewSendPage.recruitLabel, value: storeName),
+            TermsRow(
+              label: ReviewSendPage.deliverableLabel,
+              value: '${formatLabel(terms.format)} ${terms.pieces}편',
+            ),
+            TermsRow(
+              label: BrandProposalCopy.reviewBenefitLabel,
+              value: reward.voucher == null
+                  ? BrandProposalCopy.benefitOff
+                  : BrandProposalCopy.benefitOn,
+            ),
+            TermsRow(
+              label: BrandProposalCopy.reviewFixedCashLabel,
+              value: fixedCashLabel(reward.fixedCash),
+            ),
+            TermsRow(
+              label: BrandProposalCopy.reviewViewPayLabel,
+              value: reward.viewPay == null
+                  ? ReviewSendPage.none
+                  : viewPayLine(reward.viewPay!),
+            ),
+            // 사용권은 그 판본의 값이라 고치지 못한다(줄을 눌러도 열리지 않는다).
+            TermsRow(
+              label: ReviewSendPage.usageRightsLabel,
+              value: compareUsageLabel(brand.usageRights),
+            ),
+            TermsRow(
+              label: ReviewSendPage.burdenLabel,
+              value: wonExact(burden),
+              bold: true,
+            ),
+          ]
+        : <TermsRow>[
+            TermsRow(label: ReviewSendPage.recruitLabel, value: storeName),
+            TermsRow(
+              label: ReviewSendPage.deliverableLabel,
+              value: deliverableLine(terms.format, terms.pieces),
+            ),
+            TermsRow(
+              label: ReviewSendPage.benefitLabel,
+              value: reward.voucher == null
+                  ? ReviewSendPage.none
+                  : benefitLine(reward.voucher!),
+            ),
+            TermsRow(
+              label: ReviewSendPage.fixedCashLabel,
+              value: reward.fixedCash == 0
+                  ? ReviewSendPage.none
+                  : fixedCashLabel(reward.fixedCash),
+            ),
+            TermsRow(
+              label: ReviewSendPage.viewPayLabel,
+              value: reward.viewPay == null
+                  ? ReviewSendPage.none
+                  : viewPayLine(reward.viewPay!),
+            ),
+            TermsRow(
+              label: ReviewSendPage.usageRightsLabel,
+              value: usageRightsLabel(terms.usageRights),
+              onTap: onPickUsageRights,
+            ),
+            TermsRow(
+              label: ReviewSendPage.burdenLabel,
+              value: wonExact(burden),
+              bold: true,
+            ),
+          ];
     final notice = _recruit
         ? ReviewSendPage.openCallNotice
         : ReviewSendPage.notice(
             version: target.versionNumber,
             maxCashBurden: burden,
-            feeRate: config.feeRates.storeOffer,
-            showFee: target is! CounterTarget,
+            feeRate: brand != null
+                ? config.feeRates.brandContract
+                : config.feeRates.storeOffer,
+            // 이용료는 맡기는 쪽이 낸다: 크리에이터가 내는 제안에는 이용료 문장이 없다.
+            showFee: brand != null
+                ? brand.proposedByBrand
+                : target is! CounterTarget,
           );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

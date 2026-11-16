@@ -1,3 +1,4 @@
+import '../../negotiation/domain/brand_usage_rights.dart';
 import 'offer_terms.dart';
 
 /// 제안(조건)을 만드는 화면(F1 보상·예산 설정, F2 보내기 전 검토)이 누구에게 무엇을 만드는지.
@@ -133,6 +134,98 @@ final class CounterTarget extends ProposalTarget {
     storeName,
     nextVersion,
     start,
+  );
+}
+
+/// 브랜드 계약의 보상 제안(4번 계획 Task 10b). 서로 관심 전에는 크리에이터에게 관심과 함께 보내고(04),
+/// 서로 관심 뒤에는 협업의 새 판본으로 낸다(05). 같은 F1·F2 화면을 쓰되 줄 이름, 범위, 사용권, 이용료율을
+/// 이 대상이 정한다. 가게를 읽지 않는다.
+///
+/// 고르는 값은 [startFee], [startProductProvided], [startPerformance]에서 시작한다. 성과 추가는 주지 않으면
+/// 꺼져 있다. 사용권은 그 판본의 값이라 화면에서 고칠 수 없다.
+final class BrandProposalTarget extends ProposalTarget {
+  const BrandProposalTarget({
+    required this.recipientName,
+    required this.recruitLine,
+    required this.format,
+    required this.usageRights,
+    required this.startFee,
+    required this.startProductProvided,
+    this.startPerformance,
+    this.pieces = 1,
+    this.nextVersion = 1,
+    this.proposedByBrand = true,
+  });
+
+  /// 받는 사람의 이름(크리에이터의 활동 이름, 크리에이터가 내면 브랜드 이름).
+  final String recipientName;
+
+  /// F2의 `모집` 줄. `{브랜드 이름} · {캠페인 한 줄}`.
+  final String recruitLine;
+
+  /// 캠페인의 형식. 블로그 글이면 성과 추가를 켤 수 없다.
+  final ContentFormat format;
+  final int pieces;
+
+  /// 고칠 수 없는 사용권.
+  final BrandUsageRights usageRights;
+
+  final int startFee;
+  final bool startProductProvided;
+  final ViewPay? startPerformance;
+  final int nextVersion;
+
+  /// 브랜드가 내는 제안이다. 크리에이터가 내면 이용료 문장이 없다(이용료는 브랜드가 낸다).
+  final bool proposedByBrand;
+
+  /// 제품 제공 여부를 담는 표지. 초안은 가게와 같은 [OfferTerms]를 쓰므로 `제품 제공`을 이름만 있는
+  /// 혜택으로 둔다. 금액이 없어 현금 부담에 들어가지 않는다.
+  static const productVoucher = Voucher(name: '제품 제공', value: 0);
+
+  /// 현금 고정비의 빠른 선택. 서버 범위(1만~1,000만 원)에 맞춘 화면의 편의 값이다.
+  static const fixedCashPresets = [100000, 300000, 500000, 1000000];
+
+  /// F1이 시작하는 조건.
+  OfferTerms get startTerms => OfferTerms(
+    format: format,
+    pieces: pieces,
+    reward: Reward(
+      voucher: startProductProvided ? productVoucher : null,
+      fixedCash: startFee,
+      viewPay: format == ContentFormat.blog ? null : startPerformance,
+    ),
+  );
+
+  @override
+  int get versionNumber => nextVersion;
+
+  @override
+  bool operator ==(Object other) =>
+      other is BrandProposalTarget &&
+      other.recipientName == recipientName &&
+      other.recruitLine == recruitLine &&
+      other.format == format &&
+      other.pieces == pieces &&
+      other.usageRights == usageRights &&
+      other.startFee == startFee &&
+      other.startProductProvided == startProductProvided &&
+      other.startPerformance == startPerformance &&
+      other.nextVersion == nextVersion &&
+      other.proposedByBrand == proposedByBrand;
+
+  @override
+  int get hashCode => Object.hash(
+    BrandProposalTarget,
+    recipientName,
+    recruitLine,
+    format,
+    pieces,
+    usageRights,
+    startFee,
+    startProductProvided,
+    startPerformance,
+    nextVersion,
+    proposedByBrand,
   );
 }
 

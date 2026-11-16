@@ -1,6 +1,13 @@
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/core/theme/cora_theme.dart';
+import 'package:cora/features/brand_onboarding/domain/brand_repository.dart';
+import 'package:cora/features/brand_onboarding/domain/campaign_repository.dart';
+import 'package:cora/features/discovery/domain/discovery_repository.dart';
+import 'package:cora/features/discovery/domain/discovery_target.dart';
+import 'package:cora/features/discovery/domain/reward_proposal.dart';
+import 'package:cora/core/ui/swipe_deck/swipe_physics.dart' show SwipeOutcome;
+import 'package:cora/features/server_config/domain/server_config_repository.dart';
 import 'package:cora/features/interests/domain/compare_result.dart';
 import 'package:cora/features/interests/domain/interest_card.dart';
 import 'package:cora/features/interests/domain/interests_repository.dart';
@@ -14,6 +21,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
+import '../brand_onboarding/fake_brand_repository.dart';
+import '../brand_onboarding/fake_campaign_repository.dart';
+import '../discovery/fake_discovery_repository.dart';
+import '../server_config/fake_server_config_repository.dart';
 import 'fake_interests_repository.dart';
 
 /// 04를 `/brand/interests/compare?a=c1&b=c2`에 올린다. 04가 여는 경로는 위치 글자만 보이는 빈 화면이고 위치를
@@ -22,6 +33,7 @@ Future<List<String>> _pump(
   WidgetTester tester,
   FakeInterestsRepository repo, {
   ThemeData? theme,
+  FakeDiscoveryRepository? discovery,
 }) async {
   useCanvasPhone(tester);
   final opened = <String>[];
@@ -64,7 +76,22 @@ Future<List<String>> _pump(
   addTearDown(router.dispose);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [interestsRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        interestsRepositoryProvider.overrideWithValue(repo),
+        // 보상 제안 흐름(F1, F2)이 읽고 보내는 저장소.
+        discoveryRepositoryProvider.overrideWithValue(
+          discovery ?? FakeDiscoveryRepository(),
+        ),
+        campaignRepositoryProvider.overrideWithValue(
+          FakeCampaignRepository(active: defaultCampaign),
+        ),
+        brandRepositoryProvider.overrideWithValue(
+          FakeBrandRepository(profile: defaultBrandProfile),
+        ),
+        serverConfigRepositoryProvider.overrideWithValue(
+          FakeServerConfigRepository(),
+        ),
+      ],
       child: MaterialApp.router(
         routerConfig: router,
         theme: theme ?? coraLightTheme,
@@ -248,17 +275,81 @@ void main() {
     );
   });
 
-  testWidgets('the proposal button of a waiting candidate goes to the '
-      'proposal entry', (tester) async {
-    final opened = await _pump(tester, _canvas());
+  testWidgets('proposing from compare sends a like with the proposal', (
+    tester,
+  ) async {
+    final discovery = FakeDiscoveryRepository();
+    final repo = _canvas();
+    await _pump(tester, repo, discovery: discovery);
 
     await tester.tap(find.text('민에게 제안'));
     await tester.pumpAndSettle();
 
-    // 보상 제안 흐름(F1, F2)이 들어오기 전의 자리 화면이다.
-    expect(opened, [
-      '/brand/coming-soon/%EB%B3%B4%EC%83%81%20%EC%A0%9C%EC%95%88',
-    ]);
+    // F1: 내가 이미 만든 제안(35만 원, 제품 제공)에서 시작하고, 성과 추가는 꺼져 있다.
+    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.text('현금 고정비'), findsOneWidget);
+    expect(find.text('350,000원'), findsOneWidget);
+    await tester.tap(find.text('검토하고 보내기'));
+    await tester.pumpAndSettle();
+
+    // F2: 받는 사람은 후보, 모집 줄은 브랜드와 캠페인 한 줄이다.
+    expect(find.text('2 / 2'), findsOneWidget);
+    expect(find.text('민의 옷장 기록'), findsWidgets);
+    expect(find.text('느린 결 · 나만의 아침 루틴 속 작은 포인트'), findsOneWidget);
+    await tester.tap(find.text('이 조건으로 보내기'));
+    await tester.pumpAndSettle();
+
+    final sent = discovery.decisions.single;
+    expect(sent.target, DiscoveryTarget.creator('c2'));
+    expect(sent.outcome, SwipeOutcome.like);
+    expect(
+      sent.proposal,
+      const RewardProposal(fee: 350000, productProvided: true),
+    );
+    // 흐름이 닫히고 04에 보냈다는 안내가 뜬 채 표를 다시 읽는다.
+    expect(find.text('1 / 2'), findsNothing);
+    expect(find.text('민의 옷장 기록에게 제안을 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
+    expect(repo.compared, hasLength(2));
+  });
+
+  testWidgets('the proposal starts from the campaign when none was made yet', (
+    tester,
+  ) async {
+    final repo = FakeInterestsRepository(
+      compareResult: CompareResult(
+        sides: [
+          compareSide('c1', name: '서윤의 작은 취향', shortName: '서윤'),
+          compareSide('c2', name: '민의 옷장 기록', shortName: '민'),
+        ],
+        differs: const {},
+      ),
+    );
+    await _pump(tester, repo);
+
+    await tester.tap(find.text('민에게 제안'));
+    await tester.pumpAndSettle();
+
+    // 캠페인의 제작비 30만 원과 제품 제공에서 시작한다.
+    expect(find.text('300,000원'), findsOneWidget);
+    expect(find.text('제품 제공'), findsOneWidget);
+  });
+
+  testWidgets('a failed proposal stays on the review screen with the message', (
+    tester,
+  ) async {
+    final discovery = FakeDiscoveryRepository()..failDecide = true;
+    await _pump(tester, _canvas(), discovery: discovery);
+
+    await tester.tap(find.text('민에게 제안'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('검토하고 보내기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('이 조건으로 보내기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('잠시 문제가 생겼어요. 다시 시도해 주세요.'), findsOneWidget);
+    expect(find.text('2 / 2'), findsOneWidget);
+    expect(find.textContaining('제안을 보냈어요'), findsNothing);
   });
 
   testWidgets('with the same state on both sides the left candidate gets the '

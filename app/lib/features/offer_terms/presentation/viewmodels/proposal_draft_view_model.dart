@@ -56,6 +56,8 @@ class ProposalDraftViewModel extends AsyncNotifier<OfferTerms> {
       CounterTarget(:final start) => start,
       ReplyTarget(:final start) => start,
       NewOfferTarget(:final start) => start,
+      // 브랜드의 제안은 가게를 읽지 않고 대상이 준 값에서 시작한다(성과 추가는 주지 않으면 꺼져 있다).
+      BrandProposalTarget(:final startTerms) => startTerms,
       _ => null,
     };
     final start = given ?? store?.defaultTerms ?? config.defaultTerms;
@@ -126,6 +128,10 @@ class ProposalDraftViewModel extends AsyncNotifier<OfferTerms> {
     if (terms == null) return;
     _changeReward(terms.copyWith(reward: terms.reward.withVoucher(voucher)));
   }
+
+  /// 브랜드의 제안에서 `혜택`(제품 제공)을 켜고 끈다.
+  void setProductProvided(bool provided) =>
+      setVoucher(provided ? BrandProposalTarget.productVoucher : null);
 
   void setFixedCash(int amount) {
     final terms = _terms;

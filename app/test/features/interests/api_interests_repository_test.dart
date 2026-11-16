@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cora/features/discovery/domain/discovery_target.dart';
+import 'package:cora/features/discovery/domain/reward_proposal.dart';
 import 'package:cora/features/interests/data/api_interests_repository.dart';
 import 'package:cora/features/interests/domain/compare_result.dart';
 import 'package:cora/features/interests/domain/interest_card.dart';
@@ -36,6 +37,26 @@ class _RoutedClient extends http.BaseClient {
         ),
       ),
       fail ? 404 : 200,
+      headers: {'content-type': 'application/json'},
+      request: request,
+    );
+  }
+}
+
+/// 한 번 정해진 상태와 본문으로 답하고, 받은 요청의 본문을 기록한다(새 판본 내기의 응답을 본다).
+class _StatusClient extends http.BaseClient {
+  _StatusClient(this.status, this.body);
+
+  final int status;
+  final Object? body;
+  final requests = <http.Request>[];
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    requests.add(request as http.Request);
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(jsonEncode(body))),
+      status,
       headers: {'content-type': 'application/json'},
       request: request,
     );
@@ -407,6 +428,159 @@ void main() {
 
       await expectLater(
         _repo(client).fetchMatch('collab-1'),
+        throwsA(isA<InterestsFailure>()),
+      );
+    });
+  });
+
+  group('fetchProposalBase', () {
+    test('reads the counterpart, the recruit line and the latest terms for a '
+        'brand', () async {
+      final client = _RoutedClient()
+        ..bodies['/collaborations/collab-1'] = _collaboration(
+          role: 'COMMISSIONER',
+        )
+        ..bodies['/collaborations/collab-1/terms/latest'] = _latest();
+
+      final base = await _repo(client).fetchProposalBase('collab-1');
+
+      expect(base.proposedByBrand, isTrue);
+      expect(base.counterpartName, '서윤의 작은 취향');
+      expect(base.counterpartPhotoUrl, 'https://x/creator.jpg');
+      expect(base.recruitLine, '모아 스튜디오 · 아침 루틴');
+      expect(base.format, ContentFormat.reels);
+      expect(base.usageRights, BrandUsageRights.repostOnly);
+      expect(base.fee, 300000);
+      expect(base.productProvided, isTrue);
+      expect(base.performance, isNull);
+    });
+
+    test(
+      'a creator proposes to the brand and keeps a running performance',
+      () async {
+        final latest = _latest();
+        (latest['terms']! as Map<String, Object?>)['performance'] = {
+          'cap': 60000,
+          'ratePer1000': 2000,
+        };
+        final client = _RoutedClient()
+          ..bodies['/collaborations/collab-1'] = _collaboration(role: 'CREATOR')
+          ..bodies['/collaborations/collab-1/terms/latest'] = latest;
+
+        final base = await _repo(client).fetchProposalBase('collab-1');
+
+        expect(base.proposedByBrand, isFalse);
+        expect(base.counterpartName, '모아 스튜디오');
+        expect(base.performance?.ratePerThousand, 2000);
+        expect(base.performance?.cap, 60000);
+      },
+    );
+
+    test('a failed read becomes an InterestsFailure', () async {
+      final client = _RoutedClient()..failing.add('/collaborations/collab-1');
+
+      await expectLater(
+        _repo(client).fetchProposalBase('collab-1'),
+        throwsA(isA<InterestsFailure>()),
+      );
+    });
+  });
+
+  group('proposeReward', () {
+    const proposal = RewardProposal(
+      fee: 350000,
+      productProvided: false,
+      performance: (ratePer1000: 2000, cap: 60000),
+    );
+
+    test('posts the base version with the money and the benefit', () async {
+      final client = _StatusClient(201, _termsVersion(version: 3));
+
+      await _repo(
+        client,
+      ).proposeReward('collab-1', baseVersion: 2, proposal: proposal);
+
+      final request = client.requests.single;
+      expect(request.method, 'POST');
+      expect(request.url.path, '/collaborations/collab-1/terms');
+      expect(jsonDecode(request.body), {
+        'baseVersion': 2,
+        'fee': 350000,
+        'productProvided': false,
+        'performance': {'ratePer1000': 2000, 'cap': 60000},
+      });
+    });
+
+    test('sends a null performance when the add-on is off', () async {
+      final client = _StatusClient(201, _termsVersion(version: 3));
+
+      await _repo(client).proposeReward(
+        'collab-1',
+        baseVersion: 2,
+        proposal: const RewardProposal(fee: 300000, productProvided: true),
+      );
+
+      expect(jsonDecode(client.requests.single.body)['performance'], isNull);
+    });
+
+    test('a stale version carries the latest version number', () async {
+      final client = _StatusClient(409, {
+        'error': {
+          'code': 'STALE_VERSION',
+          'message': '이전 판본이라 제안할 수 없어요.',
+          'details': {'latestVersion': 4},
+        },
+      });
+
+      await expectLater(
+        _repo(
+          client,
+        ).proposeReward('collab-1', baseVersion: 2, proposal: proposal),
+        throwsA(
+          isA<RewardProposalStale>().having(
+            (e) => e.latestVersion,
+            'latestVersion',
+            4,
+          ),
+        ),
+      );
+    });
+
+    test('the instagram conflict and the no-change rejection keep the server '
+        'message', () async {
+      for (final (status, code, message) in [
+        (409, 'CONFLICT', '인스타그램을 연동하면 수락할 수 있어요.'),
+        (400, 'VALIDATION_FAILED', '바꾼 조건이 없어요.'),
+      ]) {
+        final client = _StatusClient(status, {
+          'error': {'code': code, 'message': message, 'details': null},
+        });
+
+        await expectLater(
+          _repo(
+            client,
+          ).proposeReward('collab-1', baseVersion: 2, proposal: proposal),
+          throwsA(
+            isA<RewardProposalRejected>().having(
+              (e) => e.message,
+              'message',
+              message,
+            ),
+          ),
+          reason: code,
+        );
+      }
+    });
+
+    test('any other failure becomes an InterestsFailure', () async {
+      final client = _StatusClient(500, {
+        'error': {'code': 'INTERNAL', 'message': 'x', 'details': null},
+      });
+
+      await expectLater(
+        _repo(
+          client,
+        ).proposeReward('collab-1', baseVersion: 2, proposal: proposal),
         throwsA(isA<InterestsFailure>()),
       );
     });

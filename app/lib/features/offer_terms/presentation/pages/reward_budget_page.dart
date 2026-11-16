@@ -16,6 +16,7 @@ import '../../../server_config/domain/server_config.dart';
 import '../../../server_config/presentation/viewmodels/server_config_view_model.dart';
 import '../../domain/offer_terms.dart';
 import '../../domain/proposal_draft.dart';
+import '../brand_proposal_copy.dart';
 import '../offer_terms_text.dart';
 import '../viewmodels/proposal_draft_view_model.dart';
 import '../widgets/benefit_edit_sheet.dart';
@@ -70,6 +71,7 @@ class RewardBudgetPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final config = ref.watch(serverConfigViewModelProvider);
     final draft = ref.watch(proposalDraftViewModelProvider(target));
+    final brand = target is BrandProposalTarget;
     final Widget body;
     if (config.value != null && draft.value != null) {
       body = _Body(
@@ -99,8 +101,8 @@ class RewardBudgetPage extends ConsumerWidget {
           children: [
             CoraStepHeader(
               pageLabel: pageLabel,
-              step: step,
-              total: totalSteps,
+              step: brand ? BrandProposalCopy.budgetStep : step,
+              total: brand ? BrandProposalCopy.totalSteps : totalSteps,
               onBack: () => Navigator.of(context).maybePop(),
             ),
             Expanded(child: body),
@@ -169,7 +171,9 @@ class _Body extends ConsumerWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        RewardBudgetPage.description,
+                        target is BrandProposalTarget
+                            ? BrandProposalCopy.description
+                            : RewardBudgetPage.description,
                         style: CoraTextStyles.bodySmall.copyWith(
                           color: c.textSecondary,
                         ),
@@ -253,7 +257,7 @@ class RewardEditor extends ConsumerWidget {
     final amount = await showFixedCashSheet(
       context,
       initial: terms.reward.fixedCash,
-      max: limits.storeMax,
+      max: target is BrandProposalTarget ? limits.brandMax : limits.storeMax,
       step: limits.step,
     );
     if (amount == null) return;
@@ -299,24 +303,46 @@ class RewardEditor extends ConsumerWidget {
     if (config == null || terms == null) return const SizedBox.shrink();
     final reward = terms.reward;
     final presets = config.reward.fixedCash.presets;
+    final brand = target is BrandProposalTarget;
+    final pills = brand
+        ? [
+            for (final amount in BrandProposalTarget.fixedCashPresets)
+              if (amount <= config.reward.fixedCash.brandMax) amount,
+          ]
+        : presets;
     final customCash =
-        reward.fixedCash != 0 && !presets.contains(reward.fixedCash);
+        reward.fixedCash != 0 && !pills.contains(reward.fixedCash);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 8,
       children: [
-        _BenefitCard(
-          voucher: reward.voucher,
-          onTap: () => _editBenefit(context, ref, terms, config),
-        ),
+        if (brand)
+          _ProductCard(
+            provided: reward.voucher != null,
+            onToggle: () => _vm(ref).setProductProvided(reward.voucher == null),
+          )
+        else
+          _BenefitCard(
+            voucher: reward.voucher,
+            onTap: () => _editBenefit(context, ref, terms, config),
+          ),
         _FixedCashCard(
+          label: brand
+              ? BrandProposalCopy.fixedCashLabel
+              : RewardBudgetPage.fixedCashLabel,
           selected: reward.fixedCash,
-          presets: presets,
+          presets: pills,
           custom: customCash,
           onPick: _vm(ref).setFixedCash,
           onCustom: () => _customCash(context, ref, terms, config),
         ),
         _ViewPayCard(
+          label: brand
+              ? BrandProposalCopy.viewPayLabel
+              : RewardBudgetPage.viewPayLabel,
+          hint: brand
+              ? BrandProposalCopy.viewPayHint
+              : RewardBudgetPage.viewPayHint,
           viewPay: reward.viewPay,
           allowed: terms.viewPayAllowed,
           countingDays: config.reward.countingDays,
@@ -410,8 +436,79 @@ class _BenefitCard extends StatelessWidget {
   }
 }
 
+/// 브랜드의 `혜택` 카드: 제품 제공을 켜고 끈다(식사권의 이름·금액·인원은 없다). 카드 전체를 누른다.
+class _ProductCard extends StatelessWidget {
+  const _ProductCard({required this.provided, required this.onToggle});
+
+  final bool provided;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final value = provided
+        ? BrandProposalCopy.benefitOn
+        : BrandProposalCopy.benefitOff;
+    return Semantics(
+      container: true,
+      toggled: provided,
+      label:
+          '${BrandProposalCopy.benefitLabel}, $value, ${BrandProposalCopy.benefitHint}',
+      onTap: onToggle,
+      child: ExcludeSemantics(
+        child: CoraPressable(
+          onTap: onToggle,
+          child: _Card(
+            child: Row(
+              spacing: 12,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            BrandProposalCopy.benefitLabel,
+                            style: CoraTextStyles.meta.copyWith(
+                              color: c.textSecondary,
+                            ),
+                          ),
+                          Flexible(
+                            child: Text(
+                              BrandProposalCopy.benefitHint,
+                              style: CoraTextStyles.fieldLabel.copyWith(
+                                color: c.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        value,
+                        style: CoraTextStyles.bodyLarge.copyWith(
+                          fontSize: 17,
+                          color: c.text,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _SwitchGraphic(on: provided),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _FixedCashCard extends StatelessWidget {
   const _FixedCashCard({
+    required this.label,
     required this.selected,
     required this.presets,
     required this.custom,
@@ -419,6 +516,7 @@ class _FixedCashCard extends StatelessWidget {
     required this.onCustom,
   });
 
+  final String label;
   final int selected;
   final List<int> presets;
 
@@ -435,7 +533,7 @@ class _FixedCashCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            RewardBudgetPage.fixedCashLabel,
+            label,
             style: CoraTextStyles.meta.copyWith(color: c.textSecondary),
           ),
           const SizedBox(height: 8),
@@ -527,6 +625,8 @@ class _Pill extends StatelessWidget {
 
 class _ViewPayCard extends StatelessWidget {
   const _ViewPayCard({
+    required this.label,
+    required this.hint,
     required this.viewPay,
     required this.allowed,
     required this.countingDays,
@@ -535,6 +635,8 @@ class _ViewPayCard extends StatelessWidget {
     required this.onCap,
   });
 
+  final String label;
+  final String hint;
   final ViewPay? viewPay;
 
   /// 블로그 글이면 false다. 스위치가 꺼져 있고 눌리지 않는다.
@@ -557,8 +659,7 @@ class _ViewPayCard extends StatelessWidget {
             container: true,
             toggled: on,
             enabled: allowed,
-            label:
-                '${RewardBudgetPage.viewPayLabel}, ${RewardBudgetPage.viewPayHint}',
+            label: '$label, $hint',
             onTap: toggle,
             child: ExcludeSemantics(
               child: CoraPressable(
@@ -573,13 +674,13 @@ class _ViewPayCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              RewardBudgetPage.viewPayLabel,
+                              label,
                               style: CoraTextStyles.listLabel.copyWith(
                                 color: c.text,
                               ),
                             ),
                             Text(
-                              RewardBudgetPage.viewPayHint,
+                              hint,
                               style: CoraTextStyles.fieldLabel.copyWith(
                                 color: c.textSecondary,
                               ),

@@ -4,13 +4,16 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_error.dart';
 
 import '../../discovery/domain/discovery_target.dart';
+import '../../discovery/domain/reward_proposal.dart';
 import '../../negotiation/domain/brand_usage_rights.dart';
 import '../../offer_terms/data/offer_terms_from_wire.dart' show formatFromWire;
+import '../../offer_terms/domain/offer_terms.dart' show ViewPay;
 import '../../principles/domain/principles.dart' show FeeBand;
 import '../domain/compare_result.dart';
 import '../domain/interest_card.dart';
 import '../domain/interests_repository.dart';
 import '../domain/match_info.dart';
+import '../domain/proposal_base.dart';
 
 /// 생성된 API 클라이언트(`cora_api`)로 관심 목록, 후보 비교, 서로 관심 정보를 읽는다. 생성된 타입은
 /// 이 파일 밖으로 내보내지 않는다.
@@ -105,6 +108,94 @@ class ApiInterestsRepository implements InterestsRepository {
     );
   });
 
+  @override
+  Future<ProposalBase> fetchProposalBase(String collaborationId) => _guard(
+    () async {
+      final collaboration = await _collaborations.getCollaboration(
+        collaborationId,
+      );
+      final latest = await _terms.getLatestTerms(collaborationId);
+      if (collaboration == null || latest == null) {
+        throw const InterestsFailure();
+      }
+      final t = latest.terms;
+      final campaign = collaboration.campaign;
+      final brandName = campaign?.brandName;
+      final headline = campaign?.headline;
+      final isBrand = collaboration.role == api.CollaborationRole.COMMISSIONER;
+      final recruitLine = brandName == null
+          ? (headline ?? '')
+          : (headline == null || headline.isEmpty
+                ? brandName
+                : '$brandName · $headline');
+      return ProposalBase(
+        counterpartName: collaboration.counterpart.name,
+        counterpartPhotoUrl: collaboration.counterpart.photoUrl,
+        recruitLine: recruitLine,
+        format: formatFromWire(t.format),
+        pieces: t.pieces,
+        usageRights: _usage(t.usageRights),
+        fee: t.fee,
+        productProvided: t.productProvided,
+        performance: t.performance == null
+            ? null
+            : ViewPay(
+                ratePerThousand: t.performance!.ratePer1000,
+                cap: t.performance!.cap,
+              ),
+        proposedByBrand: isBrand,
+      );
+    },
+  );
+
+  @override
+  Future<void> proposeReward(
+    String collaborationId, {
+    required int baseVersion,
+    required RewardProposal proposal,
+  }) async {
+    try {
+      final p = proposal.performance;
+      await _terms.proposeReward(
+        collaborationId,
+        api.ProposeRewardDto(
+          baseVersion: baseVersion,
+          fee: proposal.fee,
+          productProvided: proposal.productProvided,
+          performance: p == null
+              ? null
+              : api.RewardPerformanceDto(
+                  ratePer1000: p.ratePer1000,
+                  cap: p.cap,
+                ),
+        ),
+      );
+    } catch (error) {
+      final parsed = ApiError.from(error);
+      if (kDebugMode) {
+        debugPrint(
+          '[interests] 제안 실패: 종류=${error.runtimeType} '
+          '상태=${parsed.status} 코드=${parsed.code}',
+        );
+      }
+      if (parsed.isStaleVersion) {
+        throw RewardProposalStale(parsed.latestVersion);
+      }
+      // 서버가 사용자 문구와 함께 거절한 409(인스타그램 연동)와 400(바꾼 조건 없음)은 그 문구를 보인다.
+      if ((parsed.isConflict || parsed.status == 400) &&
+          parsed.message != null) {
+        throw RewardProposalRejected(parsed.message);
+      }
+      throw const InterestsFailure();
+    }
+  }
+
+  static BrandUsageRights _usage(api.BrandUsageRights r) => switch (r) {
+    api.BrandUsageRights.REPOST_ONLY => BrandUsageRights.repostOnly,
+    api.BrandUsageRights.ADS_TOO => BrandUsageRights.adsToo,
+    _ => BrandUsageRights.none,
+  };
+
   static Future<T> _guard<T>(Future<T> Function() call) async {
     try {
       return await call();
@@ -155,11 +246,7 @@ class ApiInterestsRepository implements InterestsRepository {
     fee: s.fee,
     feeBand: _feeBand(s.feeBand),
     perfCap: s.perfCap,
-    usageRights: switch (s.usageRights) {
-      api.BrandUsageRights.REPOST_ONLY => BrandUsageRights.repostOnly,
-      api.BrandUsageRights.ADS_TOO => BrandUsageRights.adsToo,
-      _ => BrandUsageRights.none,
-    },
+    usageRights: _usage(s.usageRights),
     startDate: _dateOnly(s.startDate),
     faceOk: s.faceOk,
   );

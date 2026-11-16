@@ -58,9 +58,22 @@ class _ComparePageState extends ConsumerState<ComparePage> {
     }
     _opening = true;
     try {
+      // 내가 이미 만든 제안이 있으면(표의 현금 고정비가 정해진 금액이면) 그 값에서 다시 연다.
+      final fee = side.fee;
       final sent = await openRewardProposal(
         context,
-        BeforeMatch(side.creatorId),
+        BeforeMatch(
+          side.creatorId,
+          recipientName: side.name,
+          recipientPhotoUrl: side.photoUrl,
+          current: fee == null
+              ? null
+              : CurrentProposal(
+                  fee: fee,
+                  productProvided: side.productProvided,
+                  perfCap: side.perfCap,
+                ),
+        ),
       );
       if (!sent || !mounted) return;
       setState(

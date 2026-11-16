@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/navigation/app_routes.dart';
+import '../../../core/navigation/cora_transitions.dart';
+import 'pages/reward_proposal_flow_page.dart';
 
 /// 보상 제안을 어디에 보내는가. 04의 `…에게 제안`은 서로 관심 전이라 크리에이터에게 관심과 함께 보내고,
 /// 05의 `내가 먼저 제안하기`는 이미 있는 협업의 새 판본으로 보낸다.
@@ -9,11 +11,55 @@ sealed class RewardProposalTarget {
   const RewardProposalTarget();
 }
 
-/// 서로 관심 전: [creatorId]에게 보내는 관심에 제안을 붙인다.
+/// 내가 이미 크리에이터에게 만들어 둔 제안의 값(04의 표가 아는 값). 단가는 표에 없어서 성과 추가의 상한만 안다.
+class CurrentProposal {
+  const CurrentProposal({
+    required this.fee,
+    required this.productProvided,
+    this.perfCap,
+  });
+
+  final int fee;
+  final bool productProvided;
+  final int? perfCap;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CurrentProposal &&
+      other.fee == fee &&
+      other.productProvided == productProvided &&
+      other.perfCap == perfCap;
+
+  @override
+  int get hashCode => Object.hash(fee, productProvided, perfCap);
+}
+
+/// 서로 관심 전: [creatorId]에게 보내는 관심에 제안을 붙인다. [recipientName]과 [recipientPhotoUrl]은 F2의
+/// 받는 사람이고, [current]가 있으면 F1이 그 값에서 시작한다(없으면 캠페인의 값에서).
 class BeforeMatch extends RewardProposalTarget {
-  const BeforeMatch(this.creatorId);
+  const BeforeMatch(
+    this.creatorId, {
+    this.recipientName,
+    this.recipientPhotoUrl,
+    this.current,
+  });
 
   final String creatorId;
+  final String? recipientName;
+  final String? recipientPhotoUrl;
+  final CurrentProposal? current;
+
+  @override
+  bool operator ==(Object other) =>
+      other is BeforeMatch &&
+      other.creatorId == creatorId &&
+      other.recipientName == recipientName &&
+      other.recipientPhotoUrl == recipientPhotoUrl &&
+      other.current == current;
+
+  @override
+  int get hashCode =>
+      Object.hash(creatorId, recipientName, recipientPhotoUrl, current);
 }
 
 /// 서로 관심 뒤: 협업 [collaborationId]의 최신 판본 [baseVersion] 위에 새 판본을 낸다.
@@ -22,29 +68,44 @@ class AfterMatch extends RewardProposalTarget {
 
   final String collaborationId;
   final int baseVersion;
-}
 
-const _placeholderTitle = '보상 제안';
+  @override
+  bool operator ==(Object other) =>
+      other is AfterMatch &&
+      other.collaborationId == collaborationId &&
+      other.baseVersion == baseVersion;
+
+  @override
+  int get hashCode => Object.hash(collaborationId, baseVersion);
+}
 
 /// 보상·예산 설정(F1)에서 보내기 전 검토(F2)로 이어지는 흐름을 여는 한 곳. 보냈으면 true다.
 ///
-/// 지금은 자리다. F1·F2를 브랜드의 제안으로 여는 일은 이 계획의 다음 커밋이 맡고, 그때 이 함수의 몸을
-/// 바꾼다. 부르는 쪽(04·05)은 [RewardProposalTarget]만 넘기고 결과로 `보냈어요` 문구와 이동을 정한다.
+/// 흐름은 하나의 경로(F1) 위에 F2가 쌓이는 모양이고, 보내면 둘을 함께 닫는다. 서로 관심 뒤에 내는 판본이 그사이
+/// 옛 판본이 됐으면(409 `STALE_VERSION`) 흐름을 닫고 F8의 `이전 판본이라 수락할 수 없어요` 화면을 연다(false).
+/// 부르는 쪽(04·05)은 결과로 `보냈어요` 문구와 이동을 정한다.
 Future<bool> openRewardProposal(
   BuildContext context,
   RewardProposalTarget target,
 ) async {
-  // 자리 화면은 역할마다 경로가 다르다(브랜드와 크리에이터가 서로의 경로를 열 수 없다). 지금 열려 있는
-  // 화면의 경로로 어느 쪽인지 안다.
+  final navigator = Navigator.of(context, rootNavigator: true);
   final router = GoRouter.of(context);
-  final creator = router.routeInformationProvider.value.uri.path.startsWith(
-    AppRoutes.creator,
+  final result = await navigator.push<RewardProposalFlowResult>(
+    CoraTransitions.push<RewardProposalFlowResult>(
+      RewardProposalFlowPage(target: target),
+    ).createRoute(context),
   );
-  await router.push<void>(
-    creator
-        ? AppRoutes.creatorComingSoon(_placeholderTitle)
-        : AppRoutes.brandComingSoon(_placeholderTitle),
-    extra: AppRoutes.stacked,
-  );
-  return false;
+  if (result == null) return false;
+  if (result.stale && context.mounted && target is AfterMatch) {
+    await navigator.push<void>(
+      CoraTransitions.push<void>(
+        StaleProposalPage(
+          latestVersion: result.latestVersion ?? target.baseVersion + 1,
+          onOpen: () =>
+              router.push(AppRoutes.collaborationTerms(target.collaborationId)),
+        ),
+      ).createRoute(context),
+    );
+  }
+  return result.sent;
 }
