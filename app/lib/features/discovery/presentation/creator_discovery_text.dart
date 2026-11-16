@@ -22,6 +22,12 @@ abstract final class CreatorDiscoveryTexts {
   static String matchToast(String brandName) =>
       '${josa(brandName, JosaPair.gwaWa)} 서로 관심이 닿았어요.';
 
+  /// 카드의 접근성 이름(캔버스 `aria-label`).
+  static String cardLabel(String name) => '$name 오퍼 상세 보기';
+
+  /// 캔버스 밖: 이미 지원했거나 오퍼가 온 가게를 오른쪽으로 밀었을 때(서버 409). 지원했다고 말하지 않는다.
+  static const alreadyAppliedToast = '이미 지원한 가게예요.';
+
   // 가게 카드를 오른쪽으로 밀면(가게 흐름 개정의 `조건 그대로 지원`과 같은 호출, 계획의 문구).
   static const appliedToast = '지원했어요. 사장님이 고르면 오퍼가 도착해요.';
 

@@ -103,6 +103,12 @@ FakeDiscoveryRepository _mixed() => FakeDiscoveryRepository(
   campaignTotal: 4,
 );
 
+Finder _semanticsLabeled(String label) => find.byWidgetPredicate(
+  (w) => w is Semantics && w.properties.label == label,
+);
+
+final _undoButton = _semanticsLabeled('되돌리기');
+
 Future<void> _swipe(WidgetTester tester, String name, Offset by) async {
   await tester.drag(find.text(name), by);
   await tester.pumpAndSettle();
@@ -173,6 +179,12 @@ void main() {
     await tester.tap(find.bySemanticsLabel('알림'));
     await tester.pumpAndSettle();
     expect(opened, ['/notifications']);
+  });
+
+  testWidgets('the card has the canvas accessibility label', (tester) async {
+    await _pump(tester, _mixed());
+
+    expect(_semanticsLabeled('모아 스튜디오 오퍼 상세 보기'), findsOneWidget);
   });
 
   testWidgets('the creator pill is the selected cell', (tester) async {
@@ -309,6 +321,39 @@ void main() {
 
       expect(find.text('한그릇 라멘'), findsNothing);
       expect(find.text('모아 스튜디오'), findsOneWidget);
+      // 지원했다고 말하지 않고 중립 안내 하나만 뜬다.
+      expect(find.text('이미 지원한 가게예요.'), findsOneWidget);
+      expect(find.text('지원했어요. 사장님이 고르면 오퍼가 도착해요.'), findsNothing);
+      expect(find.byType(DiscoveryToastBanner), findsOneWidget);
+    });
+
+    testWidgets('undo is off right after applying to a store', (tester) async {
+      final repo = FakeDiscoveryRepository(
+        campaignCards: [
+          discoveryCampaign('k1'),
+          discoveryStore('s1'),
+          discoveryCampaign('k2'),
+        ],
+      );
+      final stores = FakeStoreBrowseRepository();
+      await _pump(tester, repo, stores: stores);
+
+      // 먼저 캠페인을 넘기고, 그 뒤 가게에 지원한다.
+      await _swipe(tester, '모아 스튜디오', const Offset(-300, 0));
+      await _swipe(tester, '한그릇 라멘', const Offset(300, 0));
+      expect(stores.applied, ['s1']);
+
+      // 지원 직후의 되돌리기는 그 전의 넘김을 되살리지 않는다.
+      await tester.tap(_undoButton);
+      await tester.pumpAndSettle();
+      expect(repo.undoCalls, 0);
+      expect(repo.decisions, hasLength(1));
+
+      // 다른 결정을 하면 다시 켜진다.
+      await _swipe(tester, '모아 스튜디오', const Offset(-300, 0));
+      await tester.tap(find.text('마지막 카드 되돌리기'));
+      await tester.pumpAndSettle();
+      expect(repo.undoCalls, 1);
     });
 
     testWidgets('a failed apply brings the card back with a notice', (

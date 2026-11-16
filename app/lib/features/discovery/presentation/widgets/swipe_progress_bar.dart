@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/cora_colors.dart';
+import '../../../../core/theme/cora_swipe_tokens.dart';
 
 /// 카드 위쪽의 작은 진행 막대(캔버스 01은 세 칸, 08은 두 칸). 첫 칸만 채우고(라이트 흰색, 다크 `#0F1012`)
 /// 나머지는 흰색 40%다. 캔버스의 left 10, right 10, top 14, 칸 높이 3, 간격 4.
@@ -22,7 +23,9 @@ class SwipeProgressBar extends StatelessWidget {
           children: [
             for (var i = 0; i < segments; i++)
               _Segment(
-                color: i == 0 ? c.swipeProgressOn : const Color(0x66FFFFFF),
+                color: i == 0
+                    ? c.swipeProgressOn
+                    : CoraSwipeTokens.progressIdle,
               ),
           ],
         ),

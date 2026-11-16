@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shadows.dart';
+import '../../../../core/theme/cora_swipe_tokens.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_logo.dart';
 import '../../../../core/ui/cora_pressable.dart';
@@ -78,19 +79,19 @@ class DiscoveryRolePill extends StatelessWidget {
   final List<String>? cells;
   final bool creator;
 
-  static const _creatorSelected = Color(0xFFFFFFFF);
-  static const _creatorOn = Color(0xFF17181C);
-  static const _creatorShadow = Color(0x1A17181C);
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     Widget cell(String label, {required bool selected}) => DecoratedBox(
       decoration: BoxDecoration(
-        color: selected ? (creator ? _creatorSelected : c.stepPill) : null,
+        color: selected
+            ? (creator ? CoraSwipeTokens.creatorPillSelected : c.stepPill)
+            : null,
         borderRadius: BorderRadius.circular(999),
         boxShadow: selected
-            ? CoraShadows.stepPill(creator ? _creatorShadow : c.stepPillShadow)
+            ? CoraShadows.stepPill(
+                creator ? CoraSwipeTokens.creatorPillShadow : c.stepPillShadow,
+              )
             : null,
       ),
       child: Padding(
@@ -100,7 +101,7 @@ class DiscoveryRolePill extends StatelessWidget {
           style: CoraTextStyles.label.copyWith(
             height: 1.0,
             color: selected
-                ? (creator ? _creatorOn : c.onStepPill)
+                ? (creator ? CoraSwipeTokens.creatorPillOn : c.onStepPill)
                 : c.textSecondary,
           ),
         ),

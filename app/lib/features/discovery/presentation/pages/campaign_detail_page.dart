@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/navigation/cora_hero_tag.dart';
 import '../../../../core/theme/cora_colors.dart';
+import '../../../../core/theme/cora_swipe_tokens.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
@@ -296,7 +297,7 @@ class _Photo extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x0017181C), Color(0xCC17181C)],
+                  colors: CoraSwipeTokens.detailPhotoScrim,
                 ),
               ),
             ),

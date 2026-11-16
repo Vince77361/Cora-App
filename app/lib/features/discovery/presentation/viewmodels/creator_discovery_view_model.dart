@@ -8,6 +8,7 @@ import '../../domain/discovery_repository.dart';
 import '../../domain/discovery_target.dart';
 import '../../domain/pass_reason.dart';
 import '../../domain/undo_result.dart';
+import '../creator_discovery_text.dart';
 
 export '../../domain/undo_result.dart';
 
@@ -54,6 +55,7 @@ class CreatorDiscoveryState {
     this.principlesMissing = false,
     this.done = const {},
     this.toast,
+    this.lastWasApply = false,
   });
 
   /// 오늘 목록 전체(이미 결정한 카드 포함).
@@ -69,6 +71,10 @@ class CreatorDiscoveryState {
   final Set<DiscoveryTarget> done;
   final CreatorToast? toast;
 
+  /// 마지막으로 한 일이 가게 지원이다. 지원은 서버의 결정 기록에 없어서 이때 되돌리기를 누르면 그 전의
+  /// 넘김이 대신 돌아온다. 그래서 다른 결정을 하기 전까지 되돌리기를 끈다.
+  final bool lastWasApply;
+
   /// 아직 결정하지 않은 카드(덱에 넘기는 목록).
   List<DiscoveryCard> get remaining => [
     for (final c in loaded)
@@ -78,7 +84,7 @@ class CreatorDiscoveryState {
   /// 오늘 이미 결정한 카드 수(되돌리기가 있을 수 있다는 뜻).
   int get decided => total - remaining.length;
 
-  bool get canUndo => decided > 0;
+  bool get canUndo => decided > 0 && !lastWasApply;
 
   /// [card]의 `{n} / {total}`에서 n. 불러오기 전에 이미 결정한 카드 수를 앞에 더한다.
   int positionOf(DiscoveryCard card) =>
@@ -91,12 +97,14 @@ class CreatorDiscoveryState {
     Set<DiscoveryTarget>? done,
     CreatorToast? toast,
     bool clearToast = false,
+    bool? lastWasApply,
   }) => CreatorDiscoveryState(
     total: total ?? this.total,
     loaded: loaded ?? this.loaded,
     principlesMissing: principlesMissing ?? this.principlesMissing,
     done: done ?? this.done,
     toast: clearToast ? null : (toast ?? this.toast),
+    lastWasApply: lastWasApply ?? this.lastWasApply,
   );
 }
 
@@ -159,14 +167,22 @@ class CreatorDiscoveryViewModel extends AsyncNotifier<CreatorDiscoveryState> {
           case SwipeOutcome.hold:
             return;
           case SwipeOutcome.like:
+            var alreadyApplied = false;
             try {
               await ref
                   .read(storeBrowseRepositoryProvider)
                   .apply(card.store.id);
             } on StoreBrowseFailure catch (error) {
               if (!error.conflict) rethrow;
+              alreadyApplied = true;
             }
-            toast = _toast(CreatorToastKind.applied);
+            // 409는 이미 지원했거나 오퍼가 온 상태다. 지원했다고 말하지 않고 카드만 치운다.
+            toast = alreadyApplied
+                ? _toast(
+                    CreatorToastKind.notice,
+                    message: CreatorDiscoveryTexts.alreadyAppliedToast,
+                  )
+                : _toast(CreatorToastKind.applied);
           case SwipeOutcome.pass:
             await repo.decide(target, outcome);
             toast = _toast(CreatorToastKind.pass, target: target);
@@ -192,7 +208,11 @@ class CreatorDiscoveryViewModel extends AsyncNotifier<CreatorDiscoveryState> {
     if (!ref.mounted) return;
     final latest = state.value ?? current;
     state = AsyncData(
-      latest.copyWith(done: {...latest.done, target}, toast: toast),
+      latest.copyWith(
+        done: {...latest.done, target},
+        toast: toast,
+        lastWasApply: card is StoreCard && outcome == SwipeOutcome.like,
+      ),
     );
   }
 
@@ -205,6 +225,8 @@ class CreatorDiscoveryViewModel extends AsyncNotifier<CreatorDiscoveryState> {
   Future<UndoResult> undoLast() async {
     final current = state.value;
     if (current == null) return UndoResult.failed;
+    // 마지막이 지원이면 서버에는 되돌릴 결정이 그 전 것뿐이라 엉뚱한 카드가 돌아온다.
+    if (current.lastWasApply) return UndoResult.nothing;
     final DiscoveryTarget? target;
     try {
       target = await ref.read(discoveryRepositoryProvider).undoLast();
@@ -220,6 +242,7 @@ class CreatorDiscoveryViewModel extends AsyncNotifier<CreatorDiscoveryState> {
         latest.copyWith(
           done: {...latest.done}..remove(target),
           clearToast: true,
+          lastWasApply: false,
         ),
       );
       return UndoResult.undone;
@@ -236,6 +259,7 @@ class CreatorDiscoveryViewModel extends AsyncNotifier<CreatorDiscoveryState> {
           loaded: list.cards,
           done: const {},
           clearToast: true,
+          lastWasApply: false,
         ),
       );
     } catch (_) {

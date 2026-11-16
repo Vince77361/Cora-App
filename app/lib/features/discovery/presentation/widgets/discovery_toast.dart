@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shadows.dart';
+import '../../../../core/theme/cora_swipe_tokens.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_pressable.dart';
 
@@ -61,7 +62,9 @@ class _DiscoveryToastBannerState extends State<DiscoveryToastBanner> {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final deep = widget.creator && dark;
     final surface = deep ? c.background : c.toastSurface;
-    final shadow = deep ? const Color(0x2917181C) : c.toastShadow;
+    final shadow = deep
+        ? CoraSwipeTokens.creatorToastShadowDark
+        : c.toastShadow;
     final textStyle = CoraTextStyles.bodySmall.copyWith(
       fontWeight: widget.match ? FontWeight.w500 : FontWeight.w400,
       color: widget.match ? c.onAccent : (deep ? c.text : c.onToast),

@@ -17,6 +17,21 @@ abstract final class CoraSwipeTokens {
   /// 라이트는 [backdrop]이고, 01의 다크는 화면 바탕(`#0F1012`)이다.
   static const creatorBackdropDark = Color(0xFF2A2D33);
 
+  /// 카드 위쪽 진행 막대에서 아직 채우지 않은 칸: 흰색 40%. 채운 첫 칸은 테마의 `swipeProgressOn`이다.
+  static const progressIdle = Color(0x66FFFFFF);
+
+  /// 08 머리 알약에서 고른 `크리에이터` 칸. 캔버스가 라이트·다크 모두 `#FFFFFF`에 글자 `#17181C`,
+  /// 그림자 `0 2px 8px rgba(23,24,28,0.10)`이다(01의 다크는 `#F2F3F5`라서 따로 둔다).
+  static const creatorPillSelected = Color(0xFFFFFFFF);
+  static const creatorPillOn = Color(0xFF17181C);
+  static const creatorPillShadow = Color(0x1A17181C);
+
+  /// 08 알림 문구의 다크 그림자 `0 8px 24px rgba(23,24,28,0.16)`.
+  static const creatorToastShadowDark = Color(0x2917181C);
+
+  /// D1 사진 아래 160의 덮개: 위 투명 → 아래 `rgba(23,24,28,0.8)`.
+  static const detailPhotoScrim = [Color(0x0017181C), Color(0xCC17181C)];
+
   /// 아래쪽 글자 덮개: 0%, 35%, 70%, 100%에서 rgba(23,24,28)의 알파 0, 0.2, 0.48, 0.66.
   static const bottomScrim = [
     Color(0x0017181C),

@@ -45,6 +45,7 @@ class DiscoverySwipeCard extends StatelessWidget {
         tags: card.tags,
         heroTag: CoraHeroTag.of('campaign', card.campaignId),
         photoAlignment: photoAlignment,
+        semanticLabel: CreatorDiscoveryTexts.cardLabel(card.brandName),
       ),
       StoreCard() => SwipeCardFrame(
         photoUrl: card.photoUrl,
@@ -55,6 +56,7 @@ class DiscoverySwipeCard extends StatelessWidget {
         tags: card.tags,
         heroTag: CoraHeroTag.of('store', card.store.id),
         photoAlignment: photoAlignment,
+        semanticLabel: CreatorDiscoveryTexts.cardLabel(card.store.name),
       ),
     };
     final sido = card is StoreCard ? card.otherSido : null;

@@ -399,7 +399,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      // 크리에이터 흐름. 홈은 발견(08)이다. 옛 공개된 가게 목록(`StoreListPage`)은 더 이상 이 경로에 걸지 않는다.
+      // 크리에이터 흐름. 홈은 발견(08)이다.
       GoRoute(
         path: AppRoutes.creator,
         pageBuilder: (context, state) =>

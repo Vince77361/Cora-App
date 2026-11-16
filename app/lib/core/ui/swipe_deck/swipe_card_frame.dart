@@ -24,6 +24,7 @@ class SwipeCardFrame extends StatelessWidget {
     this.heroTag,
     this.bottomInset = CoraSwipeTokens.textInsetBottom,
     this.photoAlignment = CoraSwipeTokens.photoAlignment,
+    this.semanticLabel,
   });
 
   /// 사진 주소. 없거나 불러오지 못하면 바탕색만 보인다.
@@ -52,6 +53,9 @@ class SwipeCardFrame extends StatelessWidget {
 
   /// 사진 가운데 기준점(CSS `object-position`). 01은 50% 30%, 08은 62% 50%다.
   final Alignment photoAlignment;
+
+  /// 카드 전체의 접근성 이름. 비우면 `{이름}의 상세 보기`(01). 08 캔버스는 `{이름} 오퍼 상세 보기`다.
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +95,7 @@ class SwipeCardFrame extends StatelessWidget {
 
     return Semantics(
       container: true,
-      label: '$name의 상세 보기',
+      label: semanticLabel ?? '$name의 상세 보기',
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(CoraRadius.xxl),

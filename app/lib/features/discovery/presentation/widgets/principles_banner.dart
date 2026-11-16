@@ -37,6 +37,7 @@ class PrinciplesBanner extends StatelessWidget {
                 ),
               ),
               Semantics(
+                container: true,
                 button: true,
                 onTap: onTap,
                 child: ExcludeSemantics(
