@@ -120,7 +120,8 @@ function likeFields(input: DecisionInput): Partial<DecisionFields> {
 
 // 결정 한 건을 어떻게 저장할지. 순수 함수다.
 // - 결정이 바뀌면 그 결정에 속한 값(넘긴 이유, 글, 제안)은 모두 새로 시작한다.
-// - 같은 결정을 다시 보내면: 넘김과 보류는 아무것도 쓰지 않는다(보류의 "오늘"이 밀리지 않게).
+// - 같은 결정을 다시 보내면: 넘김은 아무것도 쓰지 않는다. 보류는 값은 그대로 두고 시각만 지금으로 갱신한다
+//   (방금 다시 보류한 것이 오늘의 결정이라 오늘 목록에서 빠지고, 되돌리기가 그 행을 가리킨다).
 //   관심은 글이나 제안을 보냈을 때만 그 값을 덮어쓰고, 보내지 않은 값은 지우지 않는다.
 export function planDecisionWrite(
   existing: StoredDecision | null,
@@ -135,6 +136,7 @@ export function planDecisionWrite(
     };
     return existing ? { kind: 'update', data } : { kind: 'create', data };
   }
+  if (input.decision === 'HOLD') return { kind: 'update', data: {} };
   if (!isLike) return { kind: 'none' };
   const data = likeFields(input);
   return Object.keys(data).length === 0

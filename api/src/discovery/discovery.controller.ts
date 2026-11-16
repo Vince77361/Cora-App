@@ -11,7 +11,9 @@ import {
   ApiBearerAuth,
   ApiNoContentResponse,
   ApiOkResponse,
+  ApiExtraModels,
   ApiOperation,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
@@ -24,6 +26,7 @@ import { PassReasonDto } from './dto/pass-reason.dto';
 import { PutDecisionDto } from './dto/put-decision.dto';
 
 @ApiBearerAuth()
+@ApiExtraModels(UndoneDecisionModel)
 @Controller('discovery')
 export class DiscoveryController {
   constructor(private readonly discovery: DiscoveryService) {}
@@ -65,8 +68,11 @@ export class DiscoveryController {
       '오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다.',
   })
   @ApiOkResponse({
-    type: UndoneDecisionModel,
-    description: '지운 결정의 대상. 되돌릴 것이 없으면 본문이 없다.',
+    schema: {
+      nullable: true,
+      allOf: [{ $ref: getSchemaPath(UndoneDecisionModel) }],
+    },
+    description: '지운 결정의 대상. 되돌릴 것이 없으면 본문이 없다(null).',
   })
   undoLastDecision(
     @CurrentUser() user: AuthUser,

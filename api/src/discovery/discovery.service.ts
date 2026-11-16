@@ -139,11 +139,15 @@ export class DiscoveryService {
     if (existing?.decision !== 'PASS') {
       throw new AppError('CONFLICT', '넘긴 카드에만 이유를 남길 수 있어요.');
     }
-    await this.repository.setPassReason(
+    const saved = await this.repository.setPassReason(
       existing.id,
       input.reason,
       existing.updatedAt,
     );
+    // 읽은 뒤 되돌리기가 먼저 그 행을 지웠다.
+    if (!saved) {
+      throw new AppError('CONFLICT', '넘긴 카드에만 이유를 남길 수 있어요.');
+    }
   }
 
   // 오늘(한국 날짜) 내가 가장 나중에 한 결정을 행째 지운다(넘긴 이유와 브랜드의 제안도 함께).
@@ -156,22 +160,30 @@ export class DiscoveryService {
         '브랜드나 크리에이터 계정만 쓸 수 있어요.',
       );
     }
-    const last = await this.repository.findLastSince(
-      userId,
-      startOfKstDay(this.clock.now()),
-    );
-    if (!last) return null;
-    const pair = this.pairOf(userId, last);
+    const since = startOfKstDay(this.clock.now());
+    const first = await this.repository.findLastSince(userId, since);
+    if (!first) return null;
     return this.repository.transaction(async (tx) => {
+      let target = first;
+      let pair = this.pairOf(userId, target);
       if (pair) await this.repository.lock(pairLockKey(...pair), tx);
-      // 기다리는 사이에 다른 요청이 지웠거나 서로 관심이 닿았을 수 있어 잠근 뒤에 다시 본다.
-      const current = await this.repository.findDecisionById(last.id, tx);
-      if (!current) return null;
+      // 고른 뒤 잠그는 사이에 같은 사용자의 새 결정이 들어왔을 수 있어 잠근 뒤에 마지막 결정을 다시 고른다.
+      const latest = await this.repository.findLastSince(userId, since, tx);
+      if (!latest) return null;
+      if (latest.id !== target.id) {
+        target = latest;
+        pair = this.pairOf(userId, target);
+        if (pair) await this.repository.lock(pairLockKey(...pair), tx);
+        // 새로 잠근 쌍에서도 그 사이에 지워졌을 수 있다.
+        if (!(await this.repository.findDecisionById(target.id, tx))) {
+          return null;
+        }
+      }
       if (pair && (await this.repository.findMatch(pair[0], pair[1], tx))) {
         throw alreadyMatched();
       }
-      await this.repository.deleteDecision(current.id, tx);
-      return { targetKind: current.targetKind, targetId: current.targetId };
+      await this.repository.deleteDecision(target.id, tx);
+      return { targetKind: target.targetKind, targetId: target.targetId };
     });
   }
 

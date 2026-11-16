@@ -882,27 +882,87 @@ describe('discovery decisions', () => {
   });
 
   describe('the hold of the day', () => {
-    it('does not make yesterdays hold look like todays when the same hold is saved again', async () => {
+    it('counts a hold saved again today as todays hold and hides it from the list of the day', async () => {
       await bothSides();
       await brandLike({ decision: 'HOLD' }).expect(200);
       const [first] = await decisionRows();
       expect(first.updatedAt).toEqual(NOON);
 
+      // 다음 날 어제의 보류가 목록에 다시 나온다.
       clock.set(NEXT_DAY);
+      const list = async () =>
+        (
+          (
+            await request(server)
+              .get('/recommendations/creators')
+              .set(authBrand)
+              .expect(200)
+          ).body as { cards: { creatorId: string }[] }
+        ).cards.map((c) => c.creatorId);
+      expect(await list()).toEqual([OTHER]);
+
+      // 같은 보류를 다시 저장하면 오늘의 결정이다: 시각만 Clock의 지금으로 갱신되고 다른 값은 그대로다.
       await brandLike({ decision: 'HOLD' }).expect(200);
-      const [again] = await decisionRows();
-      // 벽시계가 아니라 처음 쓴 시각 그대로다(결정이 바뀌지 않았으니 쓰지 않는다).
-      expect(again.updatedAt).toEqual(NOON);
-      // 어제의 보류는 오늘 목록에 다시 나온다.
-      const list = await request(server)
-        .get('/recommendations/creators')
+      const rows = await decisionRows();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ id: first.id, decision: 'HOLD' });
+      expect(rows[0].updatedAt).toEqual(NEXT_DAY);
+      expect(await list()).toEqual([]);
+    });
+
+    it('undoes the hold that was just saved again and not the pass made earlier today', async () => {
+      await bothSides();
+      const otherCreator = randomUUID();
+      await prisma.user.create({ data: { id: otherCreator, role: 'CREATOR' } });
+      await prisma.creatorProfile.create({
+        data: {
+          userId: otherCreator,
+          displayName: '다른 크리에이터',
+          ...REGION,
+        },
+      });
+      await prisma.creatorPrinciples.create({
+        data: {
+          creatorId: otherCreator,
+          fields: ['ACCESSORY'],
+          blockedIndustries: [],
+          faceOk: true,
+          scriptOk: true,
+          honestReview: true,
+          feeBand: 'W300K',
+          trialDays: 'ANY',
+        },
+      });
+      // 어제 보류한 카드 Y.
+      await brandLike({ decision: 'HOLD' }).expect(200);
+      clock.set(NEXT_DAY);
+      // 오늘 다른 카드 X를 이유와 함께 넘긴다.
+      clock.advance(60_000);
+      await put(authBrand, {
+        targetKind: 'CREATOR',
+        targetId: otherCreator,
+        decision: 'PASS',
+      }).expect(200);
+      await request(server)
+        .put('/discovery/decisions/pass-reason')
+        .set(authBrand)
+        .send({ targetKind: 'CREATOR', targetId: otherCreator, reason: 'MOOD' })
+        .expect(204);
+      // Y를 다시 보류하고 바로 되돌린다.
+      clock.advance(60_000);
+      await brandLike({ decision: 'HOLD' }).expect(200);
+      const res = await request(server)
+        .delete('/discovery/decisions/last')
         .set(authBrand)
         .expect(200);
-      expect(
-        (list.body as { cards: { creatorId: string }[] }).cards.map(
-          (c) => c.creatorId,
-        ),
-      ).toEqual([OTHER]);
+      expect(res.body).toEqual({ targetKind: 'CREATOR', targetId: OTHER });
+      const rows = await decisionRows();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        targetId: otherCreator,
+        decision: 'PASS',
+        passReason: 'MOOD',
+      });
     });
 
     it('stamps every decision write with the injected clock', async () => {

@@ -59,10 +59,10 @@ describe('planDecisionWrite', () => {
     });
   });
 
-  it('writes nothing for the same hold or the same pass', () => {
+  it('only refreshes the time for the same hold and writes nothing for the same pass', () => {
     expect(
       planDecisionWrite(stored({ decision: 'HOLD' }), { decision: 'HOLD' }),
-    ).toEqual({ kind: 'none' });
+    ).toEqual({ kind: 'update', data: {} });
     expect(
       planDecisionWrite(stored({ decision: 'PASS', passReason: 'FEE' }), {
         decision: 'PASS',

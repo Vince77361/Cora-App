@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   Collaboration,
   CollaborationStage,
+  Prisma,
   TermsVersion,
 } from '@prisma/client';
 import { BrandsService } from '../brands/brands.service';
@@ -136,29 +137,36 @@ export class NegotiationService {
       );
       if (!applied) return { row: latest, applied };
       if (fresh.stage === 'MATCHED') {
-        await this.collaborations.advance(
+        await this.advanceOrFail(
           collaboration.id,
           'MATCHED',
           'NEGOTIATING',
-          {},
           tx,
         );
       }
       const after = (await this.terms.latest(collaboration.id, tx)) ?? latest;
       if (after.brandConfirmedAt && after.creatorConfirmedAt) {
-        await this.collaborations.advance(
-          collaboration.id,
-          'NEGOTIATING',
-          'AGREED',
-          {},
-          tx,
-        );
+        await this.advanceOrFail(collaboration.id, 'NEGOTIATING', 'AGREED', tx);
       }
       return { row: after, applied };
     });
 
     if (applied) await this.notifyConfirmed(collaboration, userId, row);
     return toTermsVersionModel(row, collaboration.commissionerId);
+  }
+
+  // 잠금 안이라 실패할 길이 없지만, 실패하면 확인만 남고 단계가 안 움직인 채 끝나므로 트랜잭션째 되돌린다.
+  private async advanceOrFail(
+    collaborationId: string,
+    from: CollaborationStage,
+    to: CollaborationStage,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    if (
+      !(await this.collaborations.advance(collaborationId, from, to, {}, tx))
+    ) {
+      throw new AppError('CONFLICT', '지금은 조건을 확인할 수 없어요.');
+    }
   }
 
   // 커밋 뒤에 상대에게 알린다. 실패해도 이미 저장된 확인은 유효하다(원장 판단 R22).

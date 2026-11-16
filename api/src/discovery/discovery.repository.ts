@@ -87,15 +87,17 @@ export class DiscoveryRepository {
   }
 
   // 넘긴 이유는 새 결정이 아니라서 결정의 시각(updatedAt)을 그대로 둔다("마지막 결정" 판정이 밀리지 않게).
-  setPassReason(
+  // 되돌리기와 겹쳐 행이 먼저 지워졌으면 false다(P2025로 500이 되지 않게 updateMany로 쓴다).
+  async setPassReason(
     id: string,
     reason: PassReason,
     keepUpdatedAt: Date,
-  ): Promise<SwipeDecision> {
-    return this.prisma.swipeDecision.update({
-      where: { id },
+  ): Promise<boolean> {
+    const { count } = await this.prisma.swipeDecision.updateMany({
+      where: { id, decision: 'PASS', deletedAt: null },
       data: { passReason: reason, updatedAt: keepUpdatedAt },
     });
+    return count === 1;
   }
 
   // 오늘(한국 날짜 시작 시각 이후) 내가 가장 나중에 한 결정.
@@ -137,6 +139,9 @@ export class DiscoveryRepository {
     },
     tx: Prisma.TransactionClient,
   ): Promise<Match> {
-    return tx.match.create({ data });
+    // @updatedAt은 벽시계라서 Clock의 시각을 직접 적는다.
+    return tx.match.create({
+      data: { ...data, createdAt: data.matchedAt, updatedAt: data.matchedAt },
+    });
   }
 }

@@ -5929,11 +5929,16 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UndoneDecisionModel"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/UndoneDecisionModel"
+                    }
+                  ],
+                  "nullable": true
                 }
               }
             },
-            "description": "지운 결정의 대상. 되돌릴 것이 없으면 본문이 없다."
+            "description": "지운 결정의 대상. 되돌릴 것이 없으면 본문이 없다(null)."
           }
         },
         "security": [
