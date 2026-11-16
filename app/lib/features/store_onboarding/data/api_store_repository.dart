@@ -1,4 +1,5 @@
 import 'package:cora_api/api.dart' as api;
+import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_error.dart';
 import '../../offer_terms/data/offer_terms_from_wire.dart';
@@ -138,6 +139,14 @@ class ApiStoreRepository implements StoreRepository {
 
   StoreFailure _failure(Object error) {
     final parsed = ApiError.from(error);
+    // 사용자에게는 같은 실패지만 원인을 알 수 있게 종류와 상태 코드만 남긴다(응답 본문과 문구는
+    // 남기지 않는다).
+    if (kDebugMode) {
+      debugPrint(
+        '[store] 읽기 실패: 종류=${error.runtimeType} '
+        '상태=${parsed.status} 코드=${parsed.code}',
+      );
+    }
     return StoreFailure(
       isConflict: parsed.isConflict,
       isRateLimited: parsed.isRateLimited,

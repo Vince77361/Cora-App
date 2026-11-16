@@ -3,6 +3,7 @@ import 'package:cora/features/onboarding/domain/me.dart';
 import 'package:cora/features/onboarding/domain/me_repository.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora_api/api.dart' as api;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
@@ -72,6 +73,28 @@ void main() {
         _repo(fake).updateRole(UserRole.store),
         throwsA(isA<MeFailure>()),
       );
+    },
+  );
+
+  test(
+    'a failure logs only its kind, status and code, never the response body',
+    () async {
+      final logs = <String>[];
+      final original = debugPrint;
+      debugPrint = (message, {wrapWidth}) => logs.add(message ?? '');
+      addTearDown(() => debugPrint = original);
+      final fake = FakeHttpClient()
+        ..statusCode = 500
+        ..body =
+            '{"error":{"code":"INTERNAL","message":"secret detail","details":null}}';
+
+      await expectLater(_repo(fake).fetchMe(), throwsA(isA<MeFailure>()));
+
+      final line = logs.singleWhere((l) => l.startsWith('[me]'));
+      expect(line, contains('ApiException'));
+      expect(line, contains('상태=500'));
+      expect(line, contains('코드=INTERNAL'));
+      expect(line, isNot(contains('secret detail')));
     },
   );
 

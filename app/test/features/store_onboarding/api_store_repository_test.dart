@@ -9,6 +9,7 @@ import 'package:cora/features/store_onboarding/domain/my_store.dart';
 import 'package:cora/features/store_onboarding/domain/source_link.dart';
 import 'package:cora/features/store_onboarding/domain/store_repository.dart';
 import 'package:cora_api/api.dart' as api;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
@@ -137,6 +138,31 @@ void main() {
         throwsA(isA<StoreFailure>()),
       );
     });
+
+    test(
+      'a failed read logs only its kind, status and code, never the body',
+      () async {
+        final logs = <String>[];
+        final original = debugPrint;
+        debugPrint = (message, {wrapWidth}) => logs.add(message ?? '');
+        addTearDown(() => debugPrint = original);
+        final fake = FakeHttpClient()
+          ..statusCode = 500
+          ..body =
+              '{"error":{"code":"INTERNAL","message":"secret detail","details":null}}';
+
+        await expectLater(
+          _stores(fake).fetchMine(),
+          throwsA(isA<StoreFailure>()),
+        );
+
+        final line = logs.singleWhere((l) => l.startsWith('[store]'));
+        expect(line, contains('ApiException'));
+        expect(line, contains('상태=500'));
+        expect(line, contains('코드=INTERNAL'));
+        expect(line, isNot(contains('secret detail')));
+      },
+    );
 
     test('analyze sends the links and maps the result', () async {
       final fake = FakeHttpClient()

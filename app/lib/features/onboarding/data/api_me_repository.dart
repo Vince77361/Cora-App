@@ -1,7 +1,10 @@
 import 'dart:convert';
 
 import 'package:cora_api/api.dart' as api;
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' show Response;
+
+import '../../../core/network/api_error.dart';
 
 import '../domain/me.dart';
 import '../domain/me_repository.dart';
@@ -28,6 +31,12 @@ class ApiMeRepository implements MeRepository {
     try {
       final response = await call();
       if (response.statusCode >= 400 || response.statusCode == 204) {
+        _log(
+          api.ApiException(
+            response.statusCode,
+            utf8.decode(response.bodyBytes),
+          ),
+        );
         throw const MeFailure();
       }
       final json = jsonDecode(utf8.decode(response.bodyBytes));
@@ -38,9 +47,21 @@ class ApiMeRepository implements MeRepository {
       return Me(id: id, role: _fromWire(json['role']));
     } on MeFailure {
       rethrow;
-    } catch (_) {
+    } catch (error) {
+      _log(error);
       throw const MeFailure();
     }
+  }
+
+  /// 로그인 직후 첫 요청이 왜 실패했는지 알 수 있게 종류와 상태 코드만 남긴다(응답 본문과 문구는
+  /// 남기지 않는다). 사용자에게는 어떤 실패든 같은 [MeFailure]다.
+  static void _log(Object error) {
+    if (!kDebugMode) return;
+    final parsed = ApiError.from(error);
+    debugPrint(
+      '[me] 읽기 실패: 종류=${error.runtimeType} '
+      '상태=${parsed.status} 코드=${parsed.code}',
+    );
   }
 
   static api.UserRole _toWire(UserRole role) => switch (role) {
