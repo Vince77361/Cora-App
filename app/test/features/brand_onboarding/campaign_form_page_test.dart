@@ -4,6 +4,8 @@ import 'package:cora/features/brand_onboarding/domain/brand_repository.dart';
 import 'package:cora/features/brand_onboarding/domain/campaign.dart';
 import 'package:cora/features/brand_onboarding/domain/campaign_repository.dart';
 import 'package:cora/features/brand_onboarding/presentation/pages/campaign_form_page.dart';
+import 'package:cora/features/collaboration/domain/collaboration.dart';
+import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/discovery/presentation/pages/brand_discovery_page.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart'
     show ContentFormat;
@@ -17,6 +19,7 @@ import '../../support/fake_clock.dart';
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
 import '../auth/fake_auth_repository.dart';
+import '../collaboration/fake_collaboration_repository.dart';
 import '../onboarding/fake_me_repository.dart';
 import 'fake_brand_repository.dart';
 import 'fake_campaign_repository.dart';
@@ -33,6 +36,7 @@ void _useTallPhone(WidgetTester tester) {
 Future<void> _pump(
   WidgetTester tester, {
   required FakeCampaignRepository campaigns,
+  FakeCollaborationRepository? collaborations,
 }) async {
   _useTallPhone(tester);
   await pumpCoraApp(
@@ -44,6 +48,8 @@ Future<void> _pump(
         FakeBrandRepository(profile: defaultBrandProfile),
       ),
       campaignRepositoryProvider.overrideWithValue(campaigns),
+      if (collaborations != null)
+        collaborationRepositoryProvider.overrideWithValue(collaborations),
       clockProvider.overrideWithValue(_clock()),
     ],
   );
@@ -228,6 +234,24 @@ void main() {
     expect(campaigns.closeCalls, 1);
     // 진행 중인 캠페인이 없으니 캠페인 만들기가 열린다.
     expect(find.text('캠페인 시작하기'), findsOneWidget);
+  });
+
+  testWidgets('closing with an active collaboration opens the collaborations '
+      'tab instead of a new campaign', (tester) async {
+    final campaigns = FakeCampaignRepository(active: defaultCampaign);
+    final collaborations = FakeCollaborationRepository(
+      active: [collaboration(kind: CollaborationKind.brandContract)],
+    );
+    await _pump(tester, campaigns: campaigns, collaborations: collaborations);
+    routerOf(tester).push('/brand/campaign/edit');
+    await tester.pumpAndSettle();
+
+    await _tap(tester, '캠페인 마감');
+    await _tap(tester, '마감하기');
+
+    expect(campaigns.closeCalls, 1);
+    expect(find.text('캠페인 시작하기'), findsNothing);
+    expect(routerOf(tester).state.uri.path, '/brand/collaborations');
   });
 
   testWidgets(

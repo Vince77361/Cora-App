@@ -316,6 +316,39 @@ void main() {
     expect(env.opened, ['/brand/interests/compare?a=c1&b=c2']);
   });
 
+  testWidgets('returning from 04 after a proposal matched refreshes the '
+      'list', (tester) async {
+    final repo = _three();
+    await _pump(tester, repo);
+    expect(find.text('서로 관심 1'), findsOneWidget);
+    expect(find.text('보낸 관심 1'), findsOneWidget);
+
+    await tester.tap(find.text('선택한 2명 비교하기'));
+    await tester.pumpAndSettle();
+    expect(find.text('opened /brand/interests/compare?a=c1&b=c2'), findsOne);
+
+    // 04에서 제안을 보내 민과 서로 관심이 닿았다.
+    repo.cards = [
+      for (final c in repo.cards)
+        if (c.id == 'c2')
+          brandCard(
+            'c2',
+            name: '민의 옷장 기록',
+            state: InterestState.mutual,
+            fee: 350000,
+          )
+        else
+          c,
+    ];
+    tester
+        .element(find.text('opened /brand/interests/compare?a=c1&b=c2'))
+        .pop();
+    await tester.pumpAndSettle();
+
+    expect(find.text('서로 관심 2'), findsOneWidget);
+    expect(find.text('보낸 관심 0'), findsOneWidget);
+  });
+
   testWidgets('compare is off and explains itself unless two are selected', (
     tester,
   ) async {

@@ -93,11 +93,12 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
       return;
     }
     if (!widget.isBrand) {
-      context.push(AppRoutes.creatorCampaign(card.id));
+      await context.push(AppRoutes.creatorCampaign(card.id));
+      await _refreshAfterReturn();
       return;
     }
     final band = card.feeBand;
-    context.push(
+    await context.push(
       AppRoutes.brandCreator(card.id),
       // 상세는 카드를 받으면 오늘 목록을 뒤지지 않는다(이미 결정한 카드는 오늘 목록에 없다).
       extra: band == null
@@ -110,6 +111,12 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
               feeBand: band,
             ),
     );
+    await _refreshAfterReturn();
+  }
+
+  /// 04·상세·06에서 돌아오면 그 사이 바뀐 결정(서로 관심 등)이 03에 보이도록 목록을 다시 읽는다.
+  Future<void> _refreshAfterReturn() async {
+    if (mounted) await _vm.refresh();
   }
 
   Future<void> _decideHeld(InterestCard card, SwipeOutcome outcome) async {
@@ -133,10 +140,11 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
     }
   }
 
-  void _compare(InterestsState state) {
+  Future<void> _compare(InterestsState state) async {
     if (!state.canCompare) return;
     final [a, b] = state.selected;
-    context.push(AppRoutes.brandCompare(a, b));
+    await context.push(AppRoutes.brandCompare(a, b));
+    await _refreshAfterReturn();
   }
 
   @override
@@ -170,9 +178,11 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
         isBrand: widget.isBrand,
         onTapCard: _openCard,
         onTogglePick: (card) => _vm.togglePick(card),
-        onOpenTerms: (card) {
+        onOpenTerms: (card) async {
           final id = card.collaborationId;
-          if (id != null) context.push(AppRoutes.collaborationTerms(id));
+          if (id == null) return;
+          await context.push(AppRoutes.collaborationTerms(id));
+          await _refreshAfterReturn();
         },
       );
     }

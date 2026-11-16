@@ -14,8 +14,8 @@ import 'app_routes.dart';
 ///   `/store/onboarding/page`(PAGE)·`/store/onboarding/drafts`(DRAFTS)·`/store/onboarding/terms`
 ///   (TERMS), 공개됐으면 `/store`.
 /// - 크리에이터: 프로필이 없으면 `/creator/profile/setup`, 있으면 `/creator`.
-/// - 브랜드: 프로필이 없으면 `/brand/profile/setup`, 진행 중인 캠페인이 없으면 `/brand/campaign/new`,
-///   있으면 `/brand`(발견).
+/// - 브랜드: 프로필이 없으면 `/brand/profile/setup`, 진행 중인 캠페인이 없으면 `/brand/campaign/new`
+///   (단, 진행 중인 브랜드 협업이 있으면 `/brand/collaborations`), 있으면 `/brand`(발견).
 ///
 /// 판단에 필요한 조회는 가게(`storeEntryPath`)·크리에이터(`creatorEntryPath`)·브랜드(`brandEntryPath`)가 각 기능의 provider로
 /// 한다. 라우터는 이 함수가 던진 오류를 역할 선택 화면으로 보낸다.
