@@ -6,6 +6,7 @@ import 'package:cora/features/view_report/domain/view_report.dart';
 import 'package:cora/features/view_report/domain/view_report_repository.dart';
 import 'package:cora/features/view_report/presentation/pages/view_report_page.dart';
 import 'package:flutter/material.dart' hide StepState;
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
@@ -221,6 +222,66 @@ void main() {
     expect(
       tester.getTopRight(find.text('60,000원 · 상한 안')).dx,
       closeTo(width - 34, 0.5),
+    );
+  });
+
+  testWidgets('keeps the view pay term on one line when the formula is long', (
+    tester,
+  ) async {
+    await pumpOwnerReport(
+      tester,
+      reports: FakeViewReportRepository(
+        report: sampleReport(
+          calc: const ViewReportCalc(
+            ratePerThousand: 2000,
+            cap: 60000,
+            capApplied: false,
+            fixedCash: 0,
+            viewPay: 16000,
+            refund: 44000,
+            payout: 16000,
+          ),
+          views: 8000,
+        ),
+      ),
+    );
+
+    final termHeight = tester.getSize(find.text('조회수 수당')).height;
+    // 같은 글꼴의 짧은 항목 이름(한 줄)과 높이가 같아야 글자 중간에서 줄바꿈되지 않은 것이다.
+    expect(termHeight, tester.getSize(find.text('1인 상한')).height);
+    // 긴 수식은 값 쪽이 여러 줄이 된다(이 시험이 실제로 좁은 경우인지 확인).
+    final formula = find.text('8,000회 × 1,000회당 2,000원 = 16,000원');
+    expect(
+      tester.getSize(formula).height,
+      greaterThan(tester.getSize(find.text('60,000원 · 상한 안')).height),
+    );
+    // 값은 오른쪽 끝에 붙고 항목 이름은 왼쪽 끝에 붙는다(상자 안쪽: 16 + 18).
+    final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    expect(tester.getTopRight(formula).dx, closeTo(width - 34, 0.5));
+    expect(tester.getTopLeft(find.text('조회수 수당')).dx, closeTo(34, 0.5));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('ends a long post link with an ellipsis on one line', (
+    tester,
+  ) async {
+    await pumpOwnerReport(
+      tester,
+      reports: FakeViewReportRepository(
+        report: sampleReport(
+          postUrl: 'https://www.instagram.com/reel/${'AbCdEfGh' * 12}/',
+        ),
+      ),
+    );
+
+    final link = find.textContaining('instagram.com/reel/AbCdEfGh');
+    final paragraph = tester.renderObject<RenderParagraph>(link);
+    expect(paragraph.didExceedMaxLines, isTrue);
+    expect(tester.widget<Text>(link).overflow, TextOverflow.ellipsis);
+    // 같은 글꼴의 값(한 줄)과 높이가 같다.
+    expect(
+      tester.getSize(link).height,
+      tester.getSize(find.text('연결 계정')).height,
     );
   });
 

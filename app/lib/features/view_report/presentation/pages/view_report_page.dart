@@ -260,7 +260,7 @@ class _DataBox extends StatelessWidget {
               value: postLinkLabel(report.postUrl),
               first: true,
               onTapValue: onOpenPost,
-              // 실제 게시 링크는 캔버스의 자리 글(`[게시 링크]`)보다 길다. 항목 이름이 줄어들지 않게 링크를 한 줄로
+              // 실제 게시 링크는 캔버스의 자리 글(`[게시 링크]`)보다 길다. 링크를 한 줄로 두고 넘치면 끝을 `…`로
               // 줄여 보인다.
               singleLineValue: true,
             ),
@@ -418,9 +418,9 @@ class _CountingBox extends StatelessWidget {
 }
 
 /// 항목 한 줄(캔버스 `dl > div`): 위아래 10, 첫 줄 말고는 위에 선, 왼쪽 항목(13, 보조색)과 오른쪽 값(15/500,
-/// 오른쪽 정렬) 사이 12. 첫 줄은 [first]다. 캔버스는 CSS flex라 두 글자가 한 줄에 안 들어가면 각자의
-/// 본래 너비에 비례해 줄어든다(항목이 두 줄이 되기도 한다). 같은 모양이 되도록 본래 너비를 재서 그
-/// 비율로 칸을 나눈다.
+/// 오른쪽 정렬) 사이 12. 첫 줄은 [first]다. 항목 이름은 캔버스에 정해진 짧은 문구라 줄어들지 않고 본래
+/// 너비를 그대로 쓴다. 남는 너비를 값이 쓰고, 넘치면 값만 오른쪽 정렬로 여러 줄이 된다. 항목 이름까지 같이
+/// 줄이면 `조회수 수당`처럼 글자 중간에서 끊긴다.
 class _KeyValueRow extends StatelessWidget {
   const _KeyValueRow({
     required this.term,
@@ -439,19 +439,10 @@ class _KeyValueRow extends StatelessWidget {
   /// 값을 누르면 하는 일(게시 링크를 연다). 없으면 글자일 뿐이다.
   final VoidCallback? onTapValue;
 
-  /// 값을 한 줄로 두고 길면 말줄임표로 줄인다(항목 이름은 줄어들지 않는다).
+  /// 값을 한 줄로 두고 길면 말줄임표로 줄인다.
   final bool singleLineValue;
 
   static const double _gap = 12;
-
-  double _width(BuildContext context, String text, TextStyle style) {
-    final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
-      textScaler: MediaQuery.textScalerOf(context),
-    )..layout();
-    return painter.width;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -460,14 +451,6 @@ class _KeyValueRow extends StatelessWidget {
     final valueStyle =
         (bold ? CoraTextStyles.amountSmall : CoraTextStyles.buttonMedium)
             .copyWith(color: c.text);
-    final termFlex = math.max(
-      1,
-      (_width(context, term, termStyle) * 100).round(),
-    );
-    final valueFlex = math.max(
-      1,
-      (_width(context, value, valueStyle) * 100).round(),
-    );
     Widget valueText = Text(
       value,
       textAlign: TextAlign.right,
@@ -492,23 +475,14 @@ class _KeyValueRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: MergeSemantics(
           child: Row(
-            // 둘이 한 줄에 들어가면 양 끝에 붙고, 넘치면 본래 너비 비율로 줄어든다.
+            // 둘이 한 줄에 들어가면 양 끝에 붙는다. 넘치면 값만 줄어든다.
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              if (singleLineValue) ...[
-                Text(term, style: termStyle),
-                const SizedBox(width: _gap),
-                Flexible(child: valueText),
-              ] else ...[
-                Flexible(
-                  flex: termFlex,
-                  child: Text(term, style: termStyle),
-                ),
-                const SizedBox(width: _gap),
-                Flexible(flex: valueFlex, child: valueText),
-              ],
+              Text(term, style: termStyle),
+              const SizedBox(width: _gap),
+              Flexible(child: valueText),
             ],
           ),
         ),
