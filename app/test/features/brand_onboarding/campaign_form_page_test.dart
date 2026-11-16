@@ -246,4 +246,24 @@ void main() {
       expect(find.text('저장'), findsOneWidget);
     },
   );
+
+  testWidgets('the format and trial chips sit side by side, not full width', (
+    tester,
+  ) async {
+    await _pump(tester, campaigns: FakeCampaignRepository());
+
+    final reels = tester.getRect(
+      find
+          .ancestor(of: find.text('릴스'), matching: find.byType(DecoratedBox))
+          .first,
+    );
+    final shorts = tester.getRect(
+      find
+          .ancestor(of: find.text('쇼츠'), matching: find.byType(DecoratedBox))
+          .first,
+    );
+    expect(reels.width, lessThan(150));
+    expect(reels.top, shorts.top);
+    expect(reels.left, greaterThan(shorts.right));
+  });
 }

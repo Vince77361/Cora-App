@@ -41,7 +41,7 @@ class BrandFormTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(CoraRadius.field),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: Row(
               children: [
                 Expanded(
@@ -50,15 +50,15 @@ class BrandFormTile extends StatelessWidget {
                     children: [
                       Text(
                         label,
-                        style: CoraTextStyles.label.copyWith(
+                        style: CoraTextStyles.fieldLabel.copyWith(
                           color: c.textSecondary,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         value ?? placeholder,
-                        style: CoraTextStyles.body.copyWith(
-                          height: CoraTextStyles.bodySmall.height,
+                        style: CoraTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w400,
                           color: value == null ? c.textSecondary : c.text,
                         ),
                       ),
@@ -135,14 +135,14 @@ class BrandPhotoTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(CoraRadius.field),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
                       label,
-                      style: CoraTextStyles.body.copyWith(
-                        height: CoraTextStyles.bodySmall.height,
+                      style: CoraTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w400,
                         color: photo == null ? c.textSecondary : c.text,
                       ),
                     ),
@@ -207,14 +207,14 @@ class BrandSwitchTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(CoraRadius.field),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
                       label,
-                      style: CoraTextStyles.body.copyWith(
-                        height: CoraTextStyles.bodySmall.height,
+                      style: CoraTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w400,
                         color: c.text,
                       ),
                     ),
@@ -327,18 +327,25 @@ class _Chip extends StatelessWidget {
       child: ExcludeSemantics(
         child: CoraPressable(
           onTap: onTap,
-          child: Container(
-            height: 38,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            alignment: Alignment.center,
+          child: DecoratedBox(
             decoration: BoxDecoration(
               color: selected ? c.notifyTabSelected : c.surface,
               borderRadius: BorderRadius.circular(CoraRadius.pill),
             ),
-            child: Text(
-              label,
-              maxLines: 1,
-              style: CoraTextStyles.label.copyWith(color: c.text),
+            // `alignment`를 주면 알약이 가로로 늘어난다. 글자 너비만큼만 두고 세로로만 가운데에 둔다.
+            child: SizedBox(
+              height: 38,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Center(
+                  widthFactor: 1,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: CoraTextStyles.label.copyWith(color: c.text),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
