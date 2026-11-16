@@ -15,6 +15,10 @@ abstract final class AppRoutes {
   /// 역할 선택(A1). 역할이 있어도 홈의 "역할 다시 고르기"로 다시 열 수 있다.
   static const role = '/role';
 
+  /// 등록 없이 먼저 둘러보기(A1 → 01 둘러보기). 역할이 없는 로그인 사용자만 머문다. 역할이 있으면
+  /// 그 역할의 첫 화면으로 보낸다. A1 위에 밀려 들어오고, 돌아가면 A1이다.
+  static const browse = '/browse';
+
   /// 역할별 홈. 가게(`/store`)와 크리에이터(`/creator`)는 홈에 들어올 수 있는 상태(공개된
   /// 가게, 프로필이 있는 크리에이터)일 때만 열리고, 아니면 역할별 진입 규칙이 다른 곳으로 보낸다.
   static const store = '/store';

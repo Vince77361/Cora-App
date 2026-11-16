@@ -109,6 +109,27 @@ void main() {
     expect(find.text('팔로워가 적어도 누구나 시작할 수 있어요'), findsOneWidget);
   });
 
+  testWidgets('shows the browse-first link under the role button like the '
+      'canvas', (tester) async {
+    await _pumpA1(tester);
+
+    final link = find.text('등록 없이 먼저 둘러보기');
+    expect(link, findsOneWidget);
+    // 캔버스: 글자 14 / 500, 라이트 #5C6068, 버튼 아래 6, 높이 44.
+    final style = _styleOf(tester, link);
+    expect(style.fontSize, 14);
+    expect(style.fontWeight, FontWeight.w500);
+    expect(style.color, CoraColors.light.textSecondary);
+    final button = tester.getRect(find.byType(CoraPrimaryButton));
+    final row = tester.getRect(
+      find.ancestor(of: link, matching: find.byType(SizedBox)).first,
+    );
+    expect(row.height, 44);
+    expect(row.top - button.bottom, 6);
+    // 역할 선택은 그대로다(둘러보기가 역할을 바꾸지 않는다).
+    expect(find.text('가게 링크로 시작하기'), findsOneWidget);
+  });
+
   testWidgets('starts with the store card selected and its button', (
     tester,
   ) async {
@@ -362,7 +383,8 @@ void main() {
     final lastCard = tester.getRect(_card(_creatorTitle));
     final button = tester.getRect(find.byType(CoraPrimaryButton));
     expect(lastCard.bottom, lessThanOrEqualTo(button.top));
-    expect(button.bottom, 640 - 32);
+    // 버튼 아래에 `등록 없이 먼저 둘러보기` 줄(6 + 44)이 있다.
+    expect(button.bottom, 640 - 32 - 50);
     expect(button.left, 16);
     expect(tester.takeException(), isNull);
 
@@ -381,8 +403,11 @@ void main() {
     await pumpCoraApp(tester, auth: _signedIn());
 
     final button = tester.getRect(find.byType(CoraPrimaryButton));
-    // 화면은 393 x 852다. 홈 표시줄 34가 32보다 크므로 34를 비운다(E1과 같은 규칙).
-    expect(button.bottom, closeTo(852 - 34, 0.5));
+    // 화면은 393 x 852다. 홈 표시줄 34가 32보다 크므로 34를 비운다(E1과 같은 규칙). 버튼 아래에
+    // 둘러보기 줄(6 + 44)이 있다.
+    expect(button.bottom, closeTo(852 - 34 - 50, 0.5));
+    final link = tester.getRect(find.text('등록 없이 먼저 둘러보기'));
+    expect(link.bottom, lessThanOrEqualTo(852 - 34));
     expect(tester.takeException(), isNull);
   });
 
@@ -429,12 +454,23 @@ void main() {
     for (final card in [store, brand, creator]) {
       expect(card.height, closeTo(107.5, 1));
     }
-    // 아래 버튼: 좌우 16, 높이 58, 맨 아래가 화면 아래에서 32.
+    // 아래 버튼: 좌우 16, 높이 58. 그 아래에 둘러보기 줄(6 + 높이 44)이 있고 줄의 맨 아래가 화면 아래에서
+    // 32다(2026-11-12 캔버스. 줄이 생기기 전에는 버튼이 754였다).
     final button = tester.getRect(find.byType(CoraPrimaryButton));
     expect([button.left, button.right], [16, 374]);
     expect(button.height, 58);
-    expect(button.bottom, 844 - 32);
-    expect(button.top, 754);
+    expect(button.bottom, 844 - 32 - 50);
+    expect(button.top, 704);
+    final browseRow = tester.getRect(
+      find
+          .ancestor(
+            of: find.text('등록 없이 먼저 둘러보기'),
+            matching: find.byType(SizedBox),
+          )
+          .first,
+    );
+    expect([browseRow.left, browseRow.right], [16, 374]);
+    expect(browseRow.bottom, 844 - 32);
     expect(creator.bottom, lessThan(button.top));
 
     // 카드 안: 안쪽 여백 18·20, 원 24가 오른쪽 끝에서 20.

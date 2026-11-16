@@ -657,6 +657,7 @@ void main() {
       expect(
         paths,
         containsAll([
+          '/browse',
           '/store/onboarding/links',
           '/store/onboarding/page',
           '/store/onboarding/edit',

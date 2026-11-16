@@ -14,6 +14,7 @@ class SwipeActionButtons extends StatelessWidget {
     required this.onPass,
     required this.onHold,
     required this.onLike,
+    this.showUndo = true,
   });
 
   final bool canUndo;
@@ -22,6 +23,9 @@ class SwipeActionButtons extends StatelessWidget {
   final VoidCallback onHold;
   final VoidCallback onLike;
 
+  /// 둘러보기(9A)에는 되돌릴 결정이 없어 되돌리기를 그리지 않는다.
+  final bool showUndo;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -29,15 +33,16 @@ class SwipeActionButtons extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       spacing: 16,
       children: [
-        _ActionButton(
-          label: DiscoveryTexts.undoLabel,
-          box: 52,
-          // 되돌릴 결정이 없으면 흐리게(캔버스 opacity 0.45).
-          opacity: canUndo ? 1 : 0.45,
-          onTap: onUndo,
-          icon: const _IconSpec(size: 28, kind: _IconKind.undo),
-          color: const Color(0xFFFFFFFF),
-        ),
+        if (showUndo)
+          _ActionButton(
+            label: DiscoveryTexts.undoLabel,
+            box: 52,
+            // 되돌릴 결정이 없으면 흐리게(캔버스 opacity 0.45).
+            opacity: canUndo ? 1 : 0.45,
+            onTap: onUndo,
+            icon: const _IconSpec(size: 28, kind: _IconKind.undo),
+            color: const Color(0xFFFFFFFF),
+          ),
         _ActionButton(
           label: DiscoveryTexts.passLabel,
           box: 64,

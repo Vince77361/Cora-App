@@ -48,6 +48,13 @@ abstract final class DiscoveryTexts {
   static const reasonUndo = '되돌리기';
   static const undoTooLate = '되돌릴 수 없어요. 내일 추천에 다시 나올 수 있어요.';
 
+  // 등록 없이 먼저 둘러보기(9A, 계획·설계의 문구. 캔버스에 없다). 알약만 01의 머리를 따른다.
+  static const previewPill = '둘러보는 중';
+  static const chooseRole = '역할 고르기';
+  static const previewDoneTitle = '여기까지 둘러봤어요.';
+  static const previewDoneBody = '역할을 고르면 나에게 맞는 추천을 받아요.';
+  static const previewEmptyTitle = '아직 둘러볼 크리에이터가 없어요.';
+
   // 크리에이터 상세(계획)
   static const fitTitle = '잘 맞는 점';
   static const detailPass = '넘기기';

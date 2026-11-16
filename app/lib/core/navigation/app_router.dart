@@ -18,6 +18,7 @@ import '../../features/dev/presentation/pages/motion_gallery_page.dart';
 import '../../features/discovery/domain/discovery_card.dart';
 import '../../features/discovery/presentation/pages/brand_discovery_page.dart';
 import '../../features/discovery/presentation/pages/creator_card_detail_page.dart';
+import '../../features/discovery/presentation/pages/preview_discovery_page.dart';
 import '../../features/notification_settings/presentation/pages/notification_settings_page.dart';
 import '../../features/notifications/presentation/notification_routes.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
@@ -115,6 +116,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             CoraTransitions.fade(const RoleSelectPage(), key: state.pageKey),
       ),
+      // 등록 없이 먼저 둘러보기. A1 위로 밀려 들어오고 돌아가면 A1이다.
+      GoRoute(
+        path: AppRoutes.browse,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const PreviewDiscoveryPage(),
+          key: state.pageKey,
+        ),
+      ),
       // 브랜드 흐름. 홈은 발견(01)이고, 프로필이 없으면 프로필 만들기, 진행 중인 캠페인이 없으면
       // 캠페인 만들기가 진입 경로다(`brandEntryPath`).
       GoRoute(
@@ -155,10 +164,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // 하단 메뉴의 `프로필`은 계정·설정 계획이 만든다. 그때까지 역할 다시 고르기와 로그아웃이 있는 자리 화면이다.
       GoRoute(
         path: AppRoutes.brandProfile,
-        pageBuilder: (context, state) => _entryPage(
-          state,
-          const RoleHomePlaceholderPage(title: '프로필'),
-        ),
+        pageBuilder: (context, state) =>
+            _entryPage(state, const RoleHomePlaceholderPage(title: '프로필')),
       ),
       // 03·05(관심)와 07(협업)은 10·11번 작업이 등록한다. 대화·프로필은 뒤 계획의 몫이다.
       GoRoute(
@@ -541,7 +548,8 @@ class _RouterRefresh extends ChangeNotifier {
 /// - 세션이 있고 내 정보를 불러오는 중이면 빈 첫 화면에서 기다린다. 역할을 알기 전에
 ///   역할 선택이나 홈을 먼저 띄우면 잘못된 화면이 깜빡인다.
 /// - 내 정보를 불러오지 못하면 `/role`로 보낸다. 거기서 오류와 "다시 시도"를 보여 준다.
-/// - 역할이 없으면 `/role`. `/role`은 역할이 있어도 열린다(홈의 "역할 다시 고르기").
+/// - 역할이 없으면 `/role`. 다만 `/browse`(등록 없이 먼저 둘러보기)는 역할이 없는 사용자가 머문다.
+///   `/role`은 역할이 있어도 열린다(홈의 "역할 다시 고르기").
 /// - 역할이 있으면 진입 경로([RoleEntryResolver])로 보낸다. 로그인 화면·첫 화면·자기 역할의
 ///   홈·다른 역할의 화면을 열었을 때다. 이미 그 안쪽 화면에 있으면 그대로 둔다.
 /// - 개발 환경의 `/dev/…`는 로그인과 상관없이 연다(E1의 로고를 길게 눌러 모션 갤러리로 들어간다).
@@ -572,11 +580,17 @@ Future<String?> _redirect(
   }
 
   final role = profile.role;
-  if (role == null) return path == AppRoutes.role ? null : AppRoutes.role;
+  if (role == null) {
+    return path == AppRoutes.role || path == AppRoutes.browse
+        ? null
+        : AppRoutes.role;
+  }
   final owner = roleOwningPath(path);
+  // 둘러보기는 역할이 없는 사용자의 길이라서 역할이 있으면 자기 첫 화면으로 보낸다.
   final needsEntry =
       onLoginScreen ||
       path == AppRoutes.splash ||
+      path == AppRoutes.browse ||
       path == roleHomePath(role) ||
       (owner != null && owner != role);
   if (!needsEntry) return null;

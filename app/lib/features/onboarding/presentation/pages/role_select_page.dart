@@ -10,10 +10,12 @@ import '../../../../core/navigation/role_entry.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_logo.dart';
+import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_select_card.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../auth/domain/auth_repository_provider.dart';
+import '../../../discovery/presentation/widgets/discovery_toast.dart';
 import '../../domain/user_role.dart';
 import '../viewmodels/me_view_model.dart';
 import '../viewmodels/role_select_view_model.dart';
@@ -30,6 +32,13 @@ class RoleSelectPage extends ConsumerWidget {
 
   /// 캔버스에 없는 문구(오류 화면의 로그아웃 단추). 소유자 확인 전의 임시 문구다.
   static const signOutLabel = '로그아웃';
+
+  /// 캔버스 A1의 역할 버튼 아래 줄. 누르면 역할이 없는 채로 발견 화면을 읽기만 한다(공통 규칙 23장).
+  static const browseFirst = '등록 없이 먼저 둘러보기';
+
+  /// 둘러보기에서 관심·보류·카드 열기처럼 역할이 있어야 하는 동작을 눌러 돌아왔을 때 한 번 보인다
+  /// (캔버스에 없는 문구, 설계의 문구).
+  static const browseHint = '역할을 고르면 관심을 보낼 수 있어요.';
 
   /// 캔버스 A1: 위 여백 72, 로고 → 36 → 제목 → 12 → 설명 → 32 → 카드(간격 10).
   static const _top = 72.0;
@@ -105,19 +114,36 @@ const _roles = [
   ),
 ];
 
-class _Content extends ConsumerWidget {
+class _Content extends ConsumerStatefulWidget {
   const _Content({required this.state});
 
   final RoleSelectState state;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Content> createState() => _ContentState();
+}
+
+class _ContentState extends ConsumerState<_Content> {
+  /// 둘러보기에서 돌아와 안내를 보이는 중이면 그 안내를 센 번호(0이면 없음). 번호가 달라야 3초를 다시 센다.
+  int _hintSerial = 0;
+
+  RoleSelectState get state => widget.state;
+
+  Future<void> _browse() async {
+    // 역할이 있어야 하는 동작을 눌러 돌아오면 true를 받는다. 그냥 `역할 고르기`로 돌아오면 안내가 없다.
+    final hint = await context.push<bool>(AppRoutes.browse);
+    if (!mounted || hint != true) return;
+    setState(() => _hintSerial++);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.colors;
     final vm = ref.read(roleSelectViewModelProvider.notifier);
     final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
     final current = _roles.firstWhere((r) => r.role == state.selected);
 
-    return Column(
+    final column = Column(
       children: [
         // 카드 목록은 스크롤된다. 글자가 커져도 넘치지 않고, 아래 버튼은 그대로 고정이다.
         // 스크롤 영역이 버튼 위에서 끝나므로 내용이 버튼 밑에 가려지지 않는다.
@@ -199,7 +225,50 @@ class _Content extends ConsumerWidget {
                 // 캔버스(NRole, DarkNRole)의 시작 버튼은 다크에서도 라임이다.
                 look: CoraPrimaryButtonLook.accent,
               ),
+              // 캔버스: 버튼 아래 6, 높이 44, 글자 14 / 500, 보조 글자색.
+              const SizedBox(height: 6),
+              Semantics(
+                container: true,
+                button: true,
+                label: RoleSelectPage.browseFirst,
+                onTap: _browse,
+                child: ExcludeSemantics(
+                  child: CoraPressable(
+                    onTap: _browse,
+                    child: SizedBox(
+                      height: 44,
+                      child: Center(
+                        child: Text(
+                          RoleSelectPage.browseFirst,
+                          style: CoraTextStyles.bodySmall.copyWith(
+                            fontWeight: FontWeight.w500,
+                            color: c.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
+          ),
+        ),
+      ],
+    );
+    if (_hintSerial == 0) return column;
+    return Stack(
+      children: [
+        Positioned.fill(child: column),
+        Positioned(
+          top: 12,
+          left: 22,
+          right: 22,
+          child: DiscoveryToastBanner(
+            key: ValueKey(_hintSerial),
+            message: RoleSelectPage.browseHint,
+            onDismiss: () {
+              if (mounted) setState(() => _hintSerial = 0);
+            },
           ),
         ),
       ],

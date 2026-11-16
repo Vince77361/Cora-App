@@ -16,6 +16,11 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
   List<CreatorCard> cards;
   int total;
 
+  /// 둘러보기(9A)의 카드와 실패, 읽은 횟수.
+  List<PreviewCard> previewCards = [];
+  bool failPreview = false;
+  int previewFetchCalls = 0;
+
   bool failFetch = false;
   bool failDecide = false;
   bool failSetReason = false;
@@ -81,7 +86,11 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
   }
 
   @override
-  Future<List<PreviewCard>> fetchPreviewCards() async => const [];
+  Future<List<PreviewCard>> fetchPreviewCards() async {
+    previewFetchCalls++;
+    if (failPreview) throw const DiscoveryFailure();
+    return previewCards;
+  }
 
   @override
   Future<void> setPassReason(DiscoveryTarget target, PassReason reason) async {
@@ -112,6 +121,20 @@ CreatorCard creatorCard(
   feeBand: feeBand,
   tags: tags,
   reasons: reasons,
+);
+
+PreviewCard previewCard(
+  String id, {
+  String name = '서윤의 작은 취향',
+  String? headline = '출근 전 30초, 오늘의 손목 루틴',
+  FeeBand feeBand = FeeBand.w300k,
+  List<String> tags = const ['얼굴출연없음', '소품'],
+}) => PreviewCard(
+  creatorId: id,
+  displayName: name,
+  headline: headline,
+  feeBand: feeBand,
+  tags: tags,
 );
 
 /// 테스트용 대상 모양을 짧게 만든다.

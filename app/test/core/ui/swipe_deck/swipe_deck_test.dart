@@ -12,6 +12,7 @@ Future<void> _pumpDeck(
   required List<String> items,
   required Future<void> Function(String, SwipeOutcome) onSwiped,
   VoidCallback? onTap,
+  VoidCallback? onRejected,
   SwipeDeckController? controller,
   bool disableAnimations = false,
 }) {
@@ -29,6 +30,7 @@ Future<void> _pumpDeck(
                 items: items,
                 controller: controller,
                 onTap: onTap,
+                onRejected: onRejected,
                 cardBuilder: (context, item) => Center(child: Text(item)),
                 onSwiped: onSwiped,
                 empty: const Center(child: Text('empty')),
@@ -212,6 +214,40 @@ void main() {
     expect(attempts, 2);
     expect(find.text('B'), findsOneWidget);
   });
+
+  testWidgets(
+    'a rejected swipe returns the card quietly and then calls onRejected',
+    (tester) async {
+      final controller = SwipeDeckController();
+      addTearDown(controller.dispose);
+      var rejected = 0;
+      var rejectedWhileBusy = true;
+      var rejectedOffset = 0.0;
+      await _pumpDeck(
+        tester,
+        items: const ['A', 'B'],
+        controller: controller,
+        onSwiped: (item, outcome) async => throw const SwipeRejected(),
+        onRejected: () {
+          rejected++;
+          rejectedWhileBusy = controller.busy;
+          rejectedOffset = tester.getCenter(find.text('A')).dx;
+        },
+      );
+      final home = tester.getCenter(find.text('A'));
+
+      await tester.drag(find.text('A'), const Offset(200, 0));
+      await tester.pumpAndSettle();
+
+      // 예상된 거절이라 Flutter 오류로 알리지 않는다. 카드가 제자리로 돌아온 뒤에 불린다.
+      expect(tester.takeException(), isNull);
+      expect(rejected, 1);
+      expect(rejectedWhileBusy, isFalse);
+      expect(rejectedOffset, closeTo(home.dx, 0.5));
+      expect(find.text('A'), findsOneWidget);
+      expect(tester.getCenter(find.text('A')).dx, closeTo(home.dx, 0.5));
+    },
+  );
 
   testWidgets('shows the empty widget after the last card', (tester) async {
     await _pumpDeck(
