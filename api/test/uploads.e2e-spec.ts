@@ -162,6 +162,25 @@ describe('uploads', () => {
     expect(storage.uploadUrlBuckets).toEqual(['photos']);
   });
 
+  it('issues a public bucket brands path for a brand photo and requires the BRAND role', async () => {
+    await setRole('CREATOR');
+    const denied = await request(server)
+      .post('/uploads/photos')
+      .set(auth)
+      .send(body({ purpose: 'BRAND_PHOTO' }))
+      .expect(403);
+    expect(codeOf(denied)).toBe('FORBIDDEN');
+    await setRole('BRAND');
+    const ok = await request(server)
+      .post('/uploads/photos')
+      .set(auth)
+      .send(body({ purpose: 'BRAND_PHOTO' }))
+      .expect(201);
+    const path = (ok.body as { path: string }).path;
+    expect(path.startsWith(`brands/${USER_A}/`)).toBe(true);
+    expect(storage.uploadUrlBuckets).toEqual(['photos']);
+  });
+
   it('issues a private bucket upload url under the creator id for a view evidence capture', async () => {
     await setRole('CREATOR');
     const res = await request(server)

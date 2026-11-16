@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { AppConfigModule } from './app-config/app-config.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { AuthModule } from './auth/auth.module';
+import { BrandsModule } from './brands/brands.module';
+import { CampaignsModule } from './campaigns/campaigns.module';
 import { CollaborationsApiModule } from './collaborations/collaborations-api.module';
 import { CommonModule } from './common/common.module';
 import { ContentDraftsModule } from './content-drafts/content-drafts.module';
@@ -42,6 +44,8 @@ import { WalletModule } from './wallet/wallet.module';
     UploadsModule,
     CreatorsModule,
     PrinciplesModule,
+    BrandsModule,
+    CampaignsModule,
     StoresModule,
     ContentDraftsModule,
     ApplicationsModule,

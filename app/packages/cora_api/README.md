@@ -64,6 +64,12 @@ Class | Method | HTTP request | Description
 *ApplicationsApi* | [**listMyStoreApplicants**](doc//ApplicationsApi.md#listmystoreapplicants) | **GET** /stores/me/applications | 
 *ApplicationsApi* | [**listRecommendedApplicants**](doc//ApplicationsApi.md#listrecommendedapplicants) | **GET** /stores/me/applications/recommended | 
 *ApplicationsApi* | [**skipRecommendedApplicant**](doc//ApplicationsApi.md#skiprecommendedapplicant) | **POST** /stores/me/applications/{id}/skip | 
+*BrandsApi* | [**getMyBrand**](doc//BrandsApi.md#getmybrand) | **GET** /brands/me | 
+*BrandsApi* | [**upsertMyBrand**](doc//BrandsApi.md#upsertmybrand) | **PUT** /brands/me | 
+*CampaignsApi* | [**closeCampaign**](doc//CampaignsApi.md#closecampaign) | **POST** /campaigns/{id}/close | 
+*CampaignsApi* | [**createCampaign**](doc//CampaignsApi.md#createcampaign) | **POST** /campaigns | 
+*CampaignsApi* | [**getMyActiveCampaign**](doc//CampaignsApi.md#getmyactivecampaign) | **GET** /campaigns/mine/active | 
+*CampaignsApi* | [**updateCampaign**](doc//CampaignsApi.md#updatecampaign) | **PATCH** /campaigns/{id} | 
 *CollaborationsApi* | [**acceptCollaborationCancel**](doc//CollaborationsApi.md#acceptcollaborationcancel) | **POST** /collaborations/{id}/cancel-requests/{requestId}/accept | 크리에이터가 사장님의 취소 요청에 동의한다(직접 그만두는 것과 같은 처리).
 *CollaborationsApi* | [**cancelCollaboration**](doc//CollaborationsApi.md#cancelcollaboration) | **POST** /collaborations/{id}/cancel | 크리에이터가 링크를 제출하기 전에 협업을 그만둔다(수수료까지 전액 환급).
 *CollaborationsApi* | [**getCollaboration**](doc//CollaborationsApi.md#getcollaboration) | **GET** /collaborations/{id} | 
@@ -147,6 +153,9 @@ Class | Method | HTTP request | Description
  - [ApplicationStatus](doc//ApplicationStatus.md)
  - [ApplyDto](doc//ApplyDto.md)
  - [BankModel](doc//BankModel.md)
+ - [BrandProfileModel](doc//BrandProfileModel.md)
+ - [CampaignModel](doc//CampaignModel.md)
+ - [CampaignStatus](doc//CampaignStatus.md)
  - [CancelRequestModel](doc//CancelRequestModel.md)
  - [CollaborationCounterpartModel](doc//CollaborationCounterpartModel.md)
  - [CollaborationKind](doc//CollaborationKind.md)
@@ -165,6 +174,7 @@ Class | Method | HTTP request | Description
  - [ContentDraftModel](doc//ContentDraftModel.md)
  - [ContentFormat](doc//ContentFormat.md)
  - [CoraSideModel](doc//CoraSideModel.md)
+ - [CreateCampaignDto](doc//CreateCampaignDto.md)
  - [CreateCreatorSeriesDto](doc//CreateCreatorSeriesDto.md)
  - [CreatePaymentDto](doc//CreatePaymentDto.md)
  - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
@@ -189,6 +199,7 @@ Class | Method | HTTP request | Description
  - [MyApplicationStatus](doc//MyApplicationStatus.md)
  - [MyOpenOfferModel](doc//MyOpenOfferModel.md)
  - [MyStoreModel](doc//MyStoreModel.md)
+ - [NotRequired](doc//NotRequired.md)
  - [NotificationActorModel](doc//NotificationActorModel.md)
  - [NotificationGlyph](doc//NotificationGlyph.md)
  - [NotificationModel](doc//NotificationModel.md)
@@ -257,9 +268,11 @@ Class | Method | HTTP request | Description
  - [TrialInfoModel](doc//TrialInfoModel.md)
  - [TrialSideModel](doc//TrialSideModel.md)
  - [UnreadCountModel](doc//UnreadCountModel.md)
+ - [UpdateCampaignDto](doc//UpdateCampaignDto.md)
  - [UpdateNotificationSettingsDto](doc//UpdateNotificationSettingsDto.md)
  - [UpdateRoleDto](doc//UpdateRoleDto.md)
  - [UpdateStoreDto](doc//UpdateStoreDto.md)
+ - [UpsertBrandProfileDto](doc//UpsertBrandProfileDto.md)
  - [UpsertCreatorProfileDto](doc//UpsertCreatorProfileDto.md)
  - [UpsertPayoutAccountDto](doc//UpsertPayoutAccountDto.md)
  - [UpsertPrinciplesDto](doc//UpsertPrinciplesDto.md)

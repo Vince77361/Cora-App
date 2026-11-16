@@ -141,6 +141,18 @@ describe('UploadsService', () => {
       );
     });
 
+    it('issues a brands path for a brand photo', async () => {
+      users.role = 'BRAND';
+      const res = await service.createPhotoUpload(USER, {
+        purpose: 'BRAND_PHOTO',
+        contentType: 'image/jpeg',
+        sizeBytes: 10,
+      });
+      expect(res.path).toMatch(
+        new RegExp(`^brands/${USER}/[0-9a-f-]{36}\\.jpg$`),
+      );
+    });
+
     it('uses a fresh server-made file name every time', async () => {
       const a = await service.createPhotoUpload(USER, storeCover);
       const b = await service.createPhotoUpload(USER, storeCover);
@@ -330,6 +342,19 @@ describe('UploadsService', () => {
             'CREATOR_CARD',
           ),
         ),
+      ).toBe('FORBIDDEN');
+    });
+
+    it('accepts the brands folder only for a brand photo', () => {
+      const photo = `brands/${USER}/${UUID}.jpg`;
+      expect(() =>
+        service.assertOwnedPath(USER, photo, 'BRAND_PHOTO'),
+      ).not.toThrow();
+      expect(
+        syncCodeOf(() => service.assertOwnedPath(USER, photo, 'STORE_COVER')),
+      ).toBe('FORBIDDEN');
+      expect(
+        syncCodeOf(() => service.assertOwnedPath(USER, own, 'BRAND_PHOTO')),
       ).toBe('FORBIDDEN');
     });
 

@@ -177,6 +177,129 @@
         ],
         "type": "object"
       },
+      "BrandProfileModel": {
+        "properties": {
+          "industry": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IndustryCategory"
+              }
+            ]
+          },
+          "name": {
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "tagline": {
+            "maxLength": 40,
+            "nullable": true,
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "tagline",
+          "industry",
+          "photoUrl"
+        ],
+        "type": "object"
+      },
+      "CampaignModel": {
+        "properties": {
+          "budget": {
+            "description": "이 캠페인에 쓰려는 현금의 합(원). 브랜드만 보는 값이라 크리에이터가 받는 응답에는 넣지 않는다.",
+            "type": "integer"
+          },
+          "fee": {
+            "description": "크리에이터 한 명에게 주는 현금 고정비의 기본값(원).",
+            "type": "integer"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "headline": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "mustInclude": {
+            "description": "꼭 담을 것. 줄마다 20자까지.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "type": "array"
+          },
+          "notRequired": {
+            "description": "요구하지 않는 것.",
+            "items": {
+              "$ref": "#/components/schemas/NotRequired"
+            },
+            "type": "array"
+          },
+          "productProvided": {
+            "type": "boolean"
+          },
+          "startFrom": {
+            "example": "2026-11-20",
+            "format": "date",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CampaignStatus"
+              }
+            ]
+          },
+          "trialDays": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProductTrialDays"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "headline",
+          "fee",
+          "budget",
+          "productProvided",
+          "format",
+          "startFrom",
+          "trialDays",
+          "mustInclude",
+          "notRequired"
+        ],
+        "type": "object"
+      },
+      "CampaignStatus": {
+        "enum": [
+          "ACTIVE",
+          "CLOSED"
+        ],
+        "type": "string"
+      },
       "CancelRequestModel": {
         "properties": {
           "expiresAt": {
@@ -631,6 +754,79 @@
         ],
         "type": "object"
       },
+      "CreateCampaignDto": {
+        "properties": {
+          "budget": {
+            "description": "캠페인 예산(원). 1만 원 단위, 제작비 이상.",
+            "maximum": 100000000,
+            "minimum": 10000,
+            "multipleOf": 10000,
+            "type": "integer"
+          },
+          "fee": {
+            "description": "제작비(원). 1만 원 단위.",
+            "maximum": 10000000,
+            "minimum": 10000,
+            "multipleOf": 10000,
+            "type": "integer"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "headline": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "mustInclude": {
+            "description": "꼭 담을 것. 최대 3줄, 줄마다 1~20자.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "type": "array"
+          },
+          "notRequired": {
+            "description": "요구하지 않는 것.",
+            "items": {
+              "$ref": "#/components/schemas/NotRequired"
+            },
+            "type": "array"
+          },
+          "productProvided": {
+            "type": "boolean"
+          },
+          "startFrom": {
+            "description": "시작 가능한 날(YYYY-MM-DD). 한국 시간 오늘 이후.",
+            "example": "2026-11-20",
+            "format": "date",
+            "type": "string"
+          },
+          "trialDays": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProductTrialDays"
+              }
+            ]
+          }
+        },
+        "required": [
+          "headline",
+          "fee",
+          "budget",
+          "productProvided",
+          "format",
+          "startFrom",
+          "trialDays",
+          "mustInclude",
+          "notRequired"
+        ],
+        "type": "object"
+      },
       "CreateCreatorSeriesDto": {
         "properties": {
           "format": {
@@ -687,6 +883,7 @@
               "STORE_COVER",
               "CREATOR_PHOTO",
               "CREATOR_CARD",
+              "BRAND_PHOTO",
               "VIEW_EVIDENCE"
             ],
             "type": "string"
@@ -1319,6 +1516,15 @@
           "sourceLinks"
         ],
         "type": "object"
+      },
+      "NotRequired": {
+        "description": "요구하지 않는 것.",
+        "enum": [
+          "FACE",
+          "FIXED_LINES",
+          "SCRIPT_READING"
+        ],
+        "type": "string"
       },
       "NotificationActorModel": {
         "properties": {
@@ -3203,6 +3409,64 @@
         ],
         "type": "object"
       },
+      "UpdateCampaignDto": {
+        "properties": {
+          "budget": {
+            "description": "고친 뒤에도 제작비 이상이어야 한다.",
+            "maximum": 100000000,
+            "minimum": 10000,
+            "multipleOf": 10000,
+            "type": "integer"
+          },
+          "fee": {
+            "maximum": 10000000,
+            "minimum": 10000,
+            "multipleOf": 10000,
+            "type": "integer"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "headline": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "mustInclude": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "type": "array"
+          },
+          "notRequired": {
+            "items": {
+              "$ref": "#/components/schemas/NotRequired"
+            },
+            "type": "array"
+          },
+          "productProvided": {
+            "type": "boolean"
+          },
+          "startFrom": {
+            "description": "바꿀 때만 한국 시간 오늘 이후여야 한다. 그대로 보내면 통과한다.",
+            "format": "date",
+            "type": "string"
+          },
+          "trialDays": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProductTrialDays"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
       "UpdateNotificationSettingsDto": {
         "properties": {
           "messages": {
@@ -3331,6 +3595,35 @@
             "type": "array"
           }
         },
+        "type": "object"
+      },
+      "UpsertBrandProfileDto": {
+        "properties": {
+          "industry": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IndustryCategory"
+              }
+            ]
+          },
+          "name": {
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          },
+          "photoPath": {
+            "description": "대표 사진 경로. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.",
+            "type": "string"
+          },
+          "tagline": {
+            "maxLength": 40,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "industry"
+        ],
         "type": "object"
       },
       "UpsertCreatorProfileDto": {
@@ -3908,6 +4201,214 @@
   },
   "openapi": "3.0.0",
   "paths": {
+    "/brands/me": {
+      "get": {
+        "operationId": "getMyBrand",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandProfileModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Brands"
+        ]
+      },
+      "put": {
+        "operationId": "upsertMyBrand",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertBrandProfileDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandProfileModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Brands"
+        ]
+      }
+    },
+    "/campaigns": {
+      "post": {
+        "operationId": "createCampaign",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCampaignDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Campaigns"
+        ]
+      }
+    },
+    "/campaigns/mine/active": {
+      "get": {
+        "operationId": "getMyActiveCampaign",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Campaigns"
+        ]
+      }
+    },
+    "/campaigns/{id}": {
+      "patch": {
+        "operationId": "updateCampaign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCampaignDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Campaigns"
+        ]
+      }
+    },
+    "/campaigns/{id}/close": {
+      "post": {
+        "operationId": "closeCampaign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Campaigns"
+        ]
+      }
+    },
     "/collaborations": {
       "get": {
         "operationId": "listCollaborations",

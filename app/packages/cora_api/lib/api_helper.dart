@@ -71,6 +71,9 @@ String parameterToString(dynamic value) {
   if (value is ApplicationStatus) {
     return ApplicationStatusTypeTransformer().encode(value).toString();
   }
+  if (value is CampaignStatus) {
+    return CampaignStatusTypeTransformer().encode(value).toString();
+  }
   if (value is CollaborationKind) {
     return CollaborationKindTypeTransformer().encode(value).toString();
   }
@@ -108,6 +111,9 @@ String parameterToString(dynamic value) {
   }
   if (value is MyApplicationStatus) {
     return MyApplicationStatusTypeTransformer().encode(value).toString();
+  }
+  if (value is NotRequired) {
+    return NotRequiredTypeTransformer().encode(value).toString();
   }
   if (value is NotificationGlyph) {
     return NotificationGlyphTypeTransformer().encode(value).toString();

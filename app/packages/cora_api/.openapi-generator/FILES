@@ -14,6 +14,11 @@ doc/ApplicationStatus.md
 doc/ApplicationsApi.md
 doc/ApplyDto.md
 doc/BankModel.md
+doc/BrandProfileModel.md
+doc/BrandsApi.md
+doc/CampaignModel.md
+doc/CampaignStatus.md
+doc/CampaignsApi.md
 doc/CancelRequestModel.md
 doc/CollaborationCounterpartModel.md
 doc/CollaborationKind.md
@@ -34,6 +39,7 @@ doc/ContentDraftModel.md
 doc/ContentDraftsApi.md
 doc/ContentFormat.md
 doc/CoraSideModel.md
+doc/CreateCampaignDto.md
 doc/CreateCreatorSeriesDto.md
 doc/CreatePaymentDto.md
 doc/CreatePhotoUploadDto.md
@@ -61,6 +67,7 @@ doc/MeModel.md
 doc/MyApplicationStatus.md
 doc/MyOpenOfferModel.md
 doc/MyStoreModel.md
+doc/NotRequired.md
 doc/NotificationActorModel.md
 doc/NotificationGlyph.md
 doc/NotificationModel.md
@@ -140,10 +147,12 @@ doc/TrialInfoDto.md
 doc/TrialInfoModel.md
 doc/TrialSideModel.md
 doc/UnreadCountModel.md
+doc/UpdateCampaignDto.md
 doc/UpdateNotificationSettingsDto.md
 doc/UpdateRoleDto.md
 doc/UpdateStoreDto.md
 doc/UploadsApi.md
+doc/UpsertBrandProfileDto.md
 doc/UpsertCreatorProfileDto.md
 doc/UpsertPayoutAccountDto.md
 doc/UpsertPrinciplesDto.md
@@ -167,6 +176,8 @@ doc/WalletNextPayoutModel.md
 lib/api.dart
 lib/api/app_config_api.dart
 lib/api/applications_api.dart
+lib/api/brands_api.dart
+lib/api/campaigns_api.dart
 lib/api/collaborations_api.dart
 lib/api/content_drafts_api.dart
 lib/api/creators_api.dart
@@ -206,6 +217,9 @@ lib/model/application_model.dart
 lib/model/application_status.dart
 lib/model/apply_dto.dart
 lib/model/bank_model.dart
+lib/model/brand_profile_model.dart
+lib/model/campaign_model.dart
+lib/model/campaign_status.dart
 lib/model/cancel_request_model.dart
 lib/model/collaboration_counterpart_model.dart
 lib/model/collaboration_kind.dart
@@ -224,6 +238,7 @@ lib/model/content_draft_kind.dart
 lib/model/content_draft_model.dart
 lib/model/content_format.dart
 lib/model/cora_side_model.dart
+lib/model/create_campaign_dto.dart
 lib/model/create_creator_series_dto.dart
 lib/model/create_payment_dto.dart
 lib/model/create_photo_upload_dto.dart
@@ -248,6 +263,7 @@ lib/model/me_model.dart
 lib/model/my_application_status.dart
 lib/model/my_open_offer_model.dart
 lib/model/my_store_model.dart
+lib/model/not_required.dart
 lib/model/notification_actor_model.dart
 lib/model/notification_glyph.dart
 lib/model/notification_model.dart
@@ -316,9 +332,11 @@ lib/model/trial_info_dto.dart
 lib/model/trial_info_model.dart
 lib/model/trial_side_model.dart
 lib/model/unread_count_model.dart
+lib/model/update_campaign_dto.dart
 lib/model/update_notification_settings_dto.dart
 lib/model/update_role_dto.dart
 lib/model/update_store_dto.dart
+lib/model/upsert_brand_profile_dto.dart
 lib/model/upsert_creator_profile_dto.dart
 lib/model/upsert_payout_account_dto.dart
 lib/model/upsert_principles_dto.dart
@@ -350,6 +368,11 @@ test/application_status_test.dart
 test/applications_api_test.dart
 test/apply_dto_test.dart
 test/bank_model_test.dart
+test/brand_profile_model_test.dart
+test/brands_api_test.dart
+test/campaign_model_test.dart
+test/campaign_status_test.dart
+test/campaigns_api_test.dart
 test/cancel_request_model_test.dart
 test/collaboration_counterpart_model_test.dart
 test/collaboration_kind_test.dart
@@ -370,6 +393,7 @@ test/content_draft_model_test.dart
 test/content_drafts_api_test.dart
 test/content_format_test.dart
 test/cora_side_model_test.dart
+test/create_campaign_dto_test.dart
 test/create_creator_series_dto_test.dart
 test/create_payment_dto_test.dart
 test/create_photo_upload_dto_test.dart
@@ -397,6 +421,7 @@ test/me_model_test.dart
 test/my_application_status_test.dart
 test/my_open_offer_model_test.dart
 test/my_store_model_test.dart
+test/not_required_test.dart
 test/notification_actor_model_test.dart
 test/notification_glyph_test.dart
 test/notification_model_test.dart
@@ -476,10 +501,12 @@ test/trial_info_dto_test.dart
 test/trial_info_model_test.dart
 test/trial_side_model_test.dart
 test/unread_count_model_test.dart
+test/update_campaign_dto_test.dart
 test/update_notification_settings_dto_test.dart
 test/update_role_dto_test.dart
 test/update_store_dto_test.dart
 test/uploads_api_test.dart
+test/upsert_brand_profile_dto_test.dart
 test/upsert_creator_profile_dto_test.dart
 test/upsert_payout_account_dto_test.dart
 test/upsert_principles_dto_test.dart

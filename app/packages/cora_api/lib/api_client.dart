@@ -226,6 +226,12 @@ class ApiClient {
           return ApplyDto.fromJson(value);
         case 'BankModel':
           return BankModel.fromJson(value);
+        case 'BrandProfileModel':
+          return BrandProfileModel.fromJson(value);
+        case 'CampaignModel':
+          return CampaignModel.fromJson(value);
+        case 'CampaignStatus':
+          return CampaignStatusTypeTransformer().decode(value);
         case 'CancelRequestModel':
           return CancelRequestModel.fromJson(value);
         case 'CollaborationCounterpartModel':
@@ -262,6 +268,8 @@ class ApiClient {
           return ContentFormatTypeTransformer().decode(value);
         case 'CoraSideModel':
           return CoraSideModel.fromJson(value);
+        case 'CreateCampaignDto':
+          return CreateCampaignDto.fromJson(value);
         case 'CreateCreatorSeriesDto':
           return CreateCreatorSeriesDto.fromJson(value);
         case 'CreatePaymentDto':
@@ -310,6 +318,8 @@ class ApiClient {
           return MyOpenOfferModel.fromJson(value);
         case 'MyStoreModel':
           return MyStoreModel.fromJson(value);
+        case 'NotRequired':
+          return NotRequiredTypeTransformer().decode(value);
         case 'NotificationActorModel':
           return NotificationActorModel.fromJson(value);
         case 'NotificationGlyph':
@@ -446,12 +456,16 @@ class ApiClient {
           return TrialSideModel.fromJson(value);
         case 'UnreadCountModel':
           return UnreadCountModel.fromJson(value);
+        case 'UpdateCampaignDto':
+          return UpdateCampaignDto.fromJson(value);
         case 'UpdateNotificationSettingsDto':
           return UpdateNotificationSettingsDto.fromJson(value);
         case 'UpdateRoleDto':
           return UpdateRoleDto.fromJson(value);
         case 'UpdateStoreDto':
           return UpdateStoreDto.fromJson(value);
+        case 'UpsertBrandProfileDto':
+          return UpsertBrandProfileDto.fromJson(value);
         case 'UpsertCreatorProfileDto':
           return UpsertCreatorProfileDto.fromJson(value);
         case 'UpsertPayoutAccountDto':
