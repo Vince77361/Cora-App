@@ -358,6 +358,35 @@ describe('discovery decisions', () => {
       expect(row.proposedPerfCap).toBe(60000);
     });
 
+    it('treats explicit nulls for the note and the proposal as not sent', async () => {
+      const campaignId = await bothSides();
+      // 생성된 클라이언트는 비운 선택 칸을 명시적 null로 보낸다.
+      const first = await brandLike({ note: null, proposal: null }).expect(200);
+      expect(resultOf(first).decision).toBe('LIKE');
+      let [row] = await decisionRows();
+      expect(row).toMatchObject({ note: null, proposedFee: null });
+
+      // 저장된 글과 제안은 null을 다시 보내도 지워지거나 덮이지 않는다.
+      await brandLike({ note: '좋았어요', proposal: PROPOSAL }).expect(200);
+      await brandLike({ note: null, proposal: null }).expect(200);
+      [row] = await decisionRows();
+      expect(row).toMatchObject({
+        note: '좋았어요',
+        proposedFee: 450000,
+        proposedPerfCap: 60000,
+      });
+      // 넘김과 보류에도 null 제안은 그냥 받는다.
+      await brandLike({ decision: 'PASS', note: null, proposal: null }).expect(
+        200,
+      );
+      // 크리에이터도 같다.
+      await creatorLike(campaignId, { note: null, proposal: null }).expect(200);
+      const creatorRow = (await decisionRows()).find(
+        (r) => r.actorId === OTHER,
+      );
+      expect(creatorRow).toMatchObject({ decision: 'LIKE', note: null });
+    });
+
     it('rejects a proposal from a creator', async () => {
       const campaignId = await bothSides();
       const res = await creatorLike(campaignId, {

@@ -497,11 +497,12 @@ export class DiscoveryService {
   }
 
   // 글은 앞뒤 공백을 걷어 내고 빈 글은 null로 본다. 보내지 않았으면 undefined(저장된 글을 그대로 둔다).
+  // 생성된 클라이언트는 비운 선택 칸을 명시적 null로 보내므로 null도 보내지 않은 것이다.
   private cleanNote(
-    value: string | undefined,
+    value: string | null | undefined,
     max: number,
   ): string | null | undefined {
-    if (value === undefined) return undefined;
+    if (value === undefined || value === null) return undefined;
     const text = value.trim();
     if (text.length > max) {
       throw new AppError(

@@ -83,6 +83,7 @@ export class PutDecisionDto {
 
   @ApiProperty({
     required: false,
+    nullable: true,
     maxLength: NOTE_MAX.BRAND,
     description:
       'LIKE에 붙이는 글. 크리에이터는 40자(조건 버전의 제목), 브랜드는 100자(좋아한 점).',
@@ -91,11 +92,12 @@ export class PutDecisionDto {
   @Transform(trim)
   @IsString()
   @MaxLength(NOTE_MAX.BRAND)
-  note?: string;
+  note?: string | null;
 
   @ApiProperty({
     type: BrandProposalDto,
     required: false,
+    nullable: true,
     description:
       '브랜드의 LIKE에만 붙인다(크리에이터가 보내면 400). 이미 LIKE인 결정에 다시 보내면 값만 덮어쓴다.',
   })
@@ -103,5 +105,5 @@ export class PutDecisionDto {
   @IsObject()
   @ValidateNested()
   @Type(() => BrandProposalDto)
-  proposal?: BrandProposalDto;
+  proposal?: BrandProposalDto | null;
 }

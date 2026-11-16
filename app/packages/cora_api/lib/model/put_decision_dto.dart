@@ -23,21 +23,9 @@ class PutDecisionDto {
   SwipeDecisionKind decision;
 
   /// LIKE에 붙이는 글. 크리에이터는 40자(조건 버전의 제목), 브랜드는 100자(좋아한 점).
-  ///
-  /// Please note: This property should have been non-nullable! Since the specification file
-  /// does not include a default value (using the "default:" property), however, the generated
-  /// source code must fall back to having a nullable type.
-  /// Consider adding a "default:" property in the specification file to hide this note.
-  ///
-  String? note;
+  Object? note;
 
   /// 브랜드의 LIKE에만 붙인다(크리에이터가 보내면 400). 이미 LIKE인 결정에 다시 보내면 값만 덮어쓴다.
-  ///
-  /// Please note: This property should have been non-nullable! Since the specification file
-  /// does not include a default value (using the "default:" property), however, the generated
-  /// source code must fall back to having a nullable type.
-  /// Consider adding a "default:" property in the specification file to hide this note.
-  ///
   BrandProposalDto? proposal;
 
   /// 크리에이터(사용자) 또는 캠페인의 id.
@@ -115,7 +103,7 @@ class PutDecisionDto {
 
       return PutDecisionDto(
         decision: SwipeDecisionKind.fromJson(json[r'decision'])!,
-        note: mapValueOfType<String>(json, r'note'),
+        note: mapValueOfType<Object>(json, r'note'),
         proposal: BrandProposalDto.fromJson(json[r'proposal']),
         targetId: mapValueOfType<String>(json, r'targetId')!,
         targetKind: DecisionTargetKind.fromJson(json[r'targetKind'])!,

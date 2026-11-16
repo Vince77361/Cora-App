@@ -22,7 +22,7 @@ void main() {
     });
 
     // LIKE에 붙이는 글. 크리에이터는 40자(조건 버전의 제목), 브랜드는 100자(좋아한 점).
-    // String note
+    // Object note
     test('to test the property `note`', () async {
       // TODO
     });

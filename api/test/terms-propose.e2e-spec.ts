@@ -222,6 +222,30 @@ describe('proposing a new terms version (proposeReward)', () => {
       });
     });
 
+    it('reads an explicit null performance as no bonus and an absent one the same', async () => {
+      const id = await matchUp(await makeBoth());
+      await propose(
+        authBrand,
+        id,
+        same({ fee: 450000, performance: PERFORMANCE }),
+      ).expect(201);
+      // 명시적 null은 "성과 추가 없음"이라는 값이다(앞 판본의 성과 추가를 끈다).
+      const off = await propose(
+        authCreator,
+        id,
+        same({ baseVersion: 2, fee: 450000, performance: null }),
+      ).expect(201);
+      expect((off.body as TermsBody).performance).toBeNull();
+      expect((off.body as TermsBody).version).toBe(3);
+      // 안 보낸 칸도 같다.
+      const absent = await propose(authBrand, id, {
+        baseVersion: 3,
+        fee: 460000,
+        productProvided: true,
+      }).expect(201);
+      expect((absent.body as TermsBody).performance).toBeNull();
+    });
+
     it('lets the creator propose too and reads whose turn it is', async () => {
       const id = await matchUp(await makeBoth());
       await connectInstagram();
