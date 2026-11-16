@@ -508,6 +508,26 @@ describe('discovery decisions', () => {
       });
     });
 
+    it('drops the performance bonus from version 1 when the campaign became a blog after the like', async () => {
+      const campaignId = await bothSides();
+      // 릴스일 때 성과 추가가 붙은 관심을 보낸 뒤 브랜드가 형식을 블로그로 바꾼다.
+      await brandLike({ proposal: PROPOSAL }).expect(200);
+      await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set(authBrand)
+        .send({ format: 'BLOG' })
+        .expect(200);
+      await creatorLike(campaignId).expect(200);
+      const [version] = await prisma.termsVersion.findMany();
+      expect(version).toMatchObject({
+        format: 'BLOG',
+        fee: 450000,
+        productProvided: false,
+        perfRatePerThousand: null,
+        perfCap: null,
+      });
+    });
+
     it('leaves version 1 unconfirmed by both sides even when it came from a brand proposal', async () => {
       const campaignId = await bothSides();
       await brandLike({ proposal: PROPOSAL }).expect(200);

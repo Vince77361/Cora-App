@@ -71,4 +71,19 @@ describe('draftTerms', () => {
     expect(terms.perfRatePerThousand).toBeNull();
     expect(terms.perfCap).toBeNull();
   });
+
+  it('drops the performance bonus but keeps fee and benefit when the campaign is now BLOG', () => {
+    const terms = draftTerms({ ...campaign, format: 'BLOG' }, creator, null, {
+      fee: 450000,
+      productProvided: false,
+      performance: { ratePer1000: 2000, cap: 60000 },
+    });
+    expect(terms).toMatchObject({
+      format: 'BLOG',
+      fee: 450000,
+      productProvided: false,
+      perfRatePerThousand: null,
+      perfCap: null,
+    });
+  });
 });

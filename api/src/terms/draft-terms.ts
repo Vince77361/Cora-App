@@ -39,6 +39,8 @@ export const DRAFT_PAYOUT_DAYS = 7;
 // 서로 관심이 닿을 때 서버가 만드는 조건 버전 1. 순수 함수다.
 // 제목: 크리에이터가 "내가 만들고 싶은 콘텐츠 한 줄"을 썼으면 그것, 없으면 캠페인 한 줄.
 // 돈과 혜택: 브랜드의 제안이 붙어 있으면 그 값, 없으면 캠페인 값(성과 추가 없음).
+// 제안은 관심을 보낼 때의 형식으로 검사받았으므로, 그 뒤 캠페인이 블로그로 바뀌었으면
+// (proposalProblem: 블로그 글에는 조회수 수당 불가) 성과 추가만 빼고 제작비와 혜택은 지킨다.
 // 어느 쪽이든 만든 사람(proposedById)이 없고 양쪽 모두 아직 확인하지 않았다.
 // creator.cardHeadline은 버전 1의 제목에 쓰지 않는다(카드 한 줄은 크리에이터가 관심에 붙이는 글이 아니다).
 export function draftTerms(
@@ -51,6 +53,8 @@ export function draftTerms(
   proposal: BrandProposal | null,
 ): TermsValues {
   const note = creatorNote?.trim() ?? '';
+  const performance =
+    campaign.format === 'BLOG' ? null : (proposal?.performance ?? null);
   return {
     proposedById: null,
     title: note !== '' ? note : campaign.headline,
@@ -62,8 +66,8 @@ export function draftTerms(
     revisionScope: DRAFT_REVISION_SCOPE,
     usageRights: DRAFT_USAGE_RIGHTS,
     payoutDays: DRAFT_PAYOUT_DAYS,
-    perfRatePerThousand: proposal?.performance?.ratePer1000 ?? null,
-    perfCap: proposal?.performance?.cap ?? null,
+    perfRatePerThousand: performance?.ratePer1000 ?? null,
+    perfCap: performance?.cap ?? null,
     brandConfirmedAt: null,
     creatorConfirmedAt: null,
   };
