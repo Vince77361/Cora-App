@@ -22,7 +22,8 @@ class PrincipleQuestion {
     required this.hint,
     required this.options,
     this.optional = false,
-  });
+    String? summaryLabel,
+  }) : summaryLabel = summaryLabel ?? kicker;
 
   final PrincipleId id;
 
@@ -31,6 +32,9 @@ class PrincipleQuestion {
 
   /// 카드 맨 위 머리말.
   final String kicker;
+
+  /// 요약 칸의 이름. 캔버스는 2번만 머리말(`제안받지 않을 업종`)과 다르게 `피하는 업종`이라 부른다.
+  final String summaryLabel;
   final String title;
   final String hint;
   final List<PrincipleOption> options;
@@ -101,6 +105,7 @@ final List<PrincipleQuestion> principleQuestions = List.unmodifiable([
     multi: true,
     optional: true,
     kicker: '제안받지 않을 업종',
+    summaryLabel: '피하는 업종',
     title: '피하고 싶은\n업종이 있나요?',
     hint: '고른 업종의 브랜드에게는 내 프로필이 보이지 않아요.',
     options: [

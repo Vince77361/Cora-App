@@ -84,6 +84,8 @@ class PrinciplesPage extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: CoraGlassCard(
+                  // 아래 여백은 스크롤 안쪽 끝에 둔다. 선택지가 카드의 둥근 모서리에서 잘리게 한다.
+                  padding: const EdgeInsets.fromLTRB(18, 22, 18, 0),
                   child: state != null
                       ? _CardBody(state: state, onPick: vm.pick)
                       : async.hasError
@@ -282,9 +284,16 @@ class _CardBody extends StatelessWidget {
         ),
         Expanded(
           child: SingleChildScrollView(
-            child: state.asking
-                ? _Question(state: state, onPick: onPick)
-                : _Summary(state: state),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                state.asking
+                    ? _Question(state: state, onPick: onPick)
+                    : _Summary(state: state),
+                // 카드 아래 안쪽 여백 18(캔버스 `padding: 22px 18px 18px`).
+                const SizedBox(height: 18),
+              ],
+            ),
           ),
         ),
       ],
@@ -484,7 +493,7 @@ class _Summary extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _SummaryCell(
-                      label: questions[i].kicker,
+                      label: questions[i].summaryLabel,
                       value: state.answers.summaryOf(questions[i]),
                     ),
                   ),
@@ -492,7 +501,7 @@ class _Summary extends StatelessWidget {
                   Expanded(
                     child: i + 1 < questions.length
                         ? _SummaryCell(
-                            label: questions[i + 1].kicker,
+                            label: questions[i + 1].summaryLabel,
                             value: state.answers.summaryOf(questions[i + 1]),
                           )
                         : const SizedBox.shrink(),

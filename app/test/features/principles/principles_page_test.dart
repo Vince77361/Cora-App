@@ -167,6 +167,46 @@ void main() {
     expect(qs[6].options.map((o) => o.label), ['3일', '7일', '14일', '상관없어요']);
   });
 
+  test('summary labels follow the canvas and only question 2 differs', () {
+    final qs = principleQuestions;
+    expect(qs.map((q) => q.summaryLabel), [
+      '함께하고 싶은 분야',
+      '피하는 업종',
+      '촬영 방식',
+      '말하는 방식',
+      '후기 방식',
+      '희망 제작비',
+      '제품 사용 기간',
+    ]);
+    // 질문 화면의 머리말은 그대로다.
+    expect(qs[1].kicker, '제안받지 않을 업종');
+  });
+
+  testWidgets('question 2 keeps its kicker and the summary calls it avoided', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _tapOption(tester, '맛집·카페');
+    await _next(tester);
+
+    expect(find.text('제안받지 않을 업종'), findsOneWidget);
+    expect(find.text('피하는 업종'), findsNothing);
+  });
+
+  testWidgets('the question area is clipped at the card edge', (tester) async {
+    await _pump(tester);
+
+    // 스크롤 영역의 아래 끝이 카드 아래 끝과 같아, 선택지가 둥근 모서리에서 잘린다.
+    final card = tester.getRect(find.byType(CoraGlassCard));
+    final scroll = tester.getRect(
+      find.descendant(
+        of: find.byType(CoraGlassCard),
+        matching: find.byType(SingleChildScrollView),
+      ),
+    );
+    expect(scroll.bottom, card.bottom);
+  });
+
   testWidgets('shows the first question with the canvas header', (
     tester,
   ) async {
@@ -307,10 +347,10 @@ void main() {
     expect(find.text('프로필과 받은 제안에 이 기준이 함께 보여요.'), findsOneWidget);
     expect(find.text('다시 고르기'), findsOneWidget);
     expect(find.text('저장하고 캠페인 보기'), findsOneWidget);
-    // 일곱 칸: 머리말과 고른 값. 고르지 않은 2번은 `고르지 않음`.
+    // 일곱 칸의 이름은 캔버스 요약 글자 그대로다(2번만 머리말과 달리 `피하는 업종`).
     for (final label in [
       '함께하고 싶은 분야',
-      '제안받지 않을 업종',
+      '피하는 업종',
       '촬영 방식',
       '말하는 방식',
       '후기 방식',
@@ -319,6 +359,8 @@ void main() {
     ]) {
       expect(find.text(label), findsOneWidget);
     }
+    // 머리말 `제안받지 않을 업종`은 1번 칸 위의 질문 화면에만 있고 요약에는 없다.
+    expect(find.text('제안받지 않을 업종'), findsNothing);
     expect(find.text('뷰티·미용'), findsOneWidget);
     expect(find.text('고르지 않음'), findsOneWidget);
     expect(find.text('30만 원대'), findsOneWidget);
