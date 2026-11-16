@@ -100,6 +100,9 @@ String parameterToString(dynamic value) {
   if (value is ContentFormat) {
     return ContentFormatTypeTransformer().encode(value).toString();
   }
+  if (value is FeeBand) {
+    return FeeBandTypeTransformer().encode(value).toString();
+  }
   if (value is IndustryCategory) {
     return IndustryCategoryTypeTransformer().encode(value).toString();
   }
@@ -135,6 +138,9 @@ String parameterToString(dynamic value) {
   }
   if (value is PayoutStatus) {
     return PayoutStatusTypeTransformer().encode(value).toString();
+  }
+  if (value is ProductTrialDays) {
+    return ProductTrialDaysTypeTransformer().encode(value).toString();
   }
   if (value is ProposalEndKind) {
     return ProposalEndKindTypeTransformer().encode(value).toString();

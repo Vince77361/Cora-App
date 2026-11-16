@@ -282,6 +282,8 @@ class ApiClient {
           return EndOfferDto.fromJson(value);
         case 'EndedOfferModel':
           return EndedOfferModel.fromJson(value);
+        case 'FeeBand':
+          return FeeBandTypeTransformer().decode(value);
         case 'FeeRatesModel':
           return FeeRatesModel.fromJson(value);
         case 'FixedCashMaxModel':
@@ -356,6 +358,10 @@ class ApiClient {
           return PerViewInputDto.fromJson(value);
         case 'PhotoUploadModel':
           return PhotoUploadModel.fromJson(value);
+        case 'PrinciplesModel':
+          return PrinciplesModel.fromJson(value);
+        case 'ProductTrialDays':
+          return ProductTrialDaysTypeTransformer().decode(value);
         case 'ProposalCounterpartModel':
           return ProposalCounterpartModel.fromJson(value);
         case 'ProposalDetailModel':
@@ -450,6 +456,8 @@ class ApiClient {
           return UpsertCreatorProfileDto.fromJson(value);
         case 'UpsertPayoutAccountDto':
           return UpsertPayoutAccountDto.fromJson(value);
+        case 'UpsertPrinciplesDto':
+          return UpsertPrinciplesDto.fromJson(value);
         case 'UsageRights':
           return UsageRightsTypeTransformer().decode(value);
         case 'UserRole':

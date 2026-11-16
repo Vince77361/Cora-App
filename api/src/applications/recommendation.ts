@@ -1,5 +1,6 @@
 import type { IndustryCategory } from '@prisma/client';
 import { RECOMMEND_POLICY } from '../common/collaboration-policy';
+import { INDUSTRY_LABELS } from '../common/industry';
 
 // "주로 만드는 콘텐츠"(자유 글)가 가게의 업종 분류와 맞는지 보는 낱말 표. 글에 낱말이 하나라도 들어 있으면 맞는 것으로 본다.
 // 크리에이터의 "받고 싶은 분야"는 4번 계획이 만들면 이 판정에 더한다.
@@ -28,23 +29,6 @@ export const INDUSTRY_KEYWORDS: Record<IndustryCategory, string[]> = {
   GAMBLING: [],
   LOAN: [],
   DIET_SUPPLEMENT: ['다이어트', '영양제'],
-};
-
-// 이유 글에 쓰는 업종 분류 이름. 앱의 IndustryCategory.label과 같다.
-export const INDUSTRY_LABELS: Record<IndustryCategory, string> = {
-  FOOD_CAFE: '맛집·카페',
-  BEAUTY: '뷰티·미용',
-  FASHION: '패션',
-  ACCESSORY: '액세서리·주얼리',
-  LIVING: '리빙·소품',
-  GROCERY: '식품',
-  DIGITAL: '전자·디지털',
-  HEALTH: '건강·운동',
-  OTHER: '기타',
-  ALCOHOL: '주류',
-  GAMBLING: '도박·사행성',
-  LOAN: '대출·금융',
-  DIET_SUPPLEMENT: '다이어트 보조제',
 };
 
 // 점수 입력. 팔로워 수 칸이 없다: 팔로워는 점수에 넣지 않는다(설계 G2).

@@ -928,6 +928,15 @@
         ],
         "type": "object"
       },
+      "FeeBand": {
+        "enum": [
+          "W200K",
+          "W300K",
+          "W400K",
+          "W500K_PLUS"
+        ],
+        "type": "string"
+      },
       "FeeRatesModel": {
         "properties": {
           "bid": {
@@ -1884,6 +1893,64 @@
           "path"
         ],
         "type": "object"
+      },
+      "PrinciplesModel": {
+        "properties": {
+          "blockedIndustries": {
+            "items": {
+              "$ref": "#/components/schemas/IndustryCategory"
+            },
+            "type": "array"
+          },
+          "faceOk": {
+            "type": "boolean"
+          },
+          "feeBand": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeBand"
+              }
+            ]
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/IndustryCategory"
+            },
+            "type": "array"
+          },
+          "honestReview": {
+            "type": "boolean"
+          },
+          "scriptOk": {
+            "type": "boolean"
+          },
+          "trialDays": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProductTrialDays"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fields",
+          "blockedIndustries",
+          "faceOk",
+          "scriptOk",
+          "honestReview",
+          "feeBand",
+          "trialDays"
+        ],
+        "type": "object"
+      },
+      "ProductTrialDays": {
+        "enum": [
+          "D3",
+          "D7",
+          "D14",
+          "ANY"
+        ],
+        "type": "string"
       },
       "ProposalCounterpartModel": {
         "properties": {
@@ -3356,6 +3423,56 @@
         ],
         "type": "object"
       },
+      "UpsertPrinciplesDto": {
+        "properties": {
+          "blockedIndustries": {
+            "items": {
+              "$ref": "#/components/schemas/IndustryCategory"
+            },
+            "type": "array"
+          },
+          "faceOk": {
+            "type": "boolean"
+          },
+          "feeBand": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeBand"
+              }
+            ]
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/IndustryCategory"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "honestReview": {
+            "type": "boolean"
+          },
+          "scriptOk": {
+            "type": "boolean"
+          },
+          "trialDays": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProductTrialDays"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fields",
+          "blockedIndustries",
+          "faceOk",
+          "scriptOk",
+          "honestReview",
+          "feeBand",
+          "trialDays"
+        ],
+        "type": "object"
+      },
       "UsageRights": {
         "enum": [
           "STORE_REPOST_3M",
@@ -4392,6 +4509,68 @@
         "summary": "",
         "tags": [
           "Creators"
+        ]
+      }
+    },
+    "/creators/me/principles": {
+      "get": {
+        "operationId": "getMyPrinciples",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrinciplesModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Principles"
+        ]
+      },
+      "put": {
+        "operationId": "upsertMyPrinciples",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertPrinciplesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrinciplesModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Principles"
         ]
       }
     },

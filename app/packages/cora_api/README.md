@@ -103,6 +103,8 @@ Class | Method | HTTP request | Description
 *PayoutAccountsApi* | [**getPayoutAccount**](doc//PayoutAccountsApi.md#getpayoutaccount) | **GET** /payout-account | 
 *PayoutAccountsApi* | [**listBanks**](doc//PayoutAccountsApi.md#listbanks) | **GET** /payout-account/banks | 
 *PayoutAccountsApi* | [**upsertPayoutAccount**](doc//PayoutAccountsApi.md#upsertpayoutaccount) | **PUT** /payout-account | 
+*PrinciplesApi* | [**getMyPrinciples**](doc//PrinciplesApi.md#getmyprinciples) | **GET** /creators/me/principles | 
+*PrinciplesApi* | [**upsertMyPrinciples**](doc//PrinciplesApi.md#upsertmyprinciples) | **PUT** /creators/me/principles | 
 *ProposalsApi* | [**getProposal**](doc//ProposalsApi.md#getproposal) | **GET** /offers/{id} | 
 *ProposalsApi* | [**listProposals**](doc//ProposalsApi.md#listproposals) | **GET** /offers/proposals | 
 *StoreInsightsApi* | [**getMyStoreTrialComparison**](doc//StoreInsightsApi.md#getmystoretrialcomparison) | **GET** /stores/me/trial-comparison | 체험단 재계약 전 비교(G3). 체험단 계약 정보가 없으면 404다.
@@ -173,6 +175,7 @@ Class | Method | HTTP request | Description
  - [DraftSceneModel](doc//DraftSceneModel.md)
  - [EndOfferDto](doc//EndOfferDto.md)
  - [EndedOfferModel](doc//EndedOfferModel.md)
+ - [FeeBand](doc//FeeBand.md)
  - [FeeRatesModel](doc//FeeRatesModel.md)
  - [FixedCashMaxModel](doc//FixedCashMaxModel.md)
  - [FixedCashRangeModel](doc//FixedCashRangeModel.md)
@@ -210,6 +213,8 @@ Class | Method | HTTP request | Description
  - [PayoutStatus](doc//PayoutStatus.md)
  - [PerViewInputDto](doc//PerViewInputDto.md)
  - [PhotoUploadModel](doc//PhotoUploadModel.md)
+ - [PrinciplesModel](doc//PrinciplesModel.md)
+ - [ProductTrialDays](doc//ProductTrialDays.md)
  - [ProposalCounterpartModel](doc//ProposalCounterpartModel.md)
  - [ProposalDetailModel](doc//ProposalDetailModel.md)
  - [ProposalEndKind](doc//ProposalEndKind.md)
@@ -257,6 +262,7 @@ Class | Method | HTTP request | Description
  - [UpdateStoreDto](doc//UpdateStoreDto.md)
  - [UpsertCreatorProfileDto](doc//UpsertCreatorProfileDto.md)
  - [UpsertPayoutAccountDto](doc//UpsertPayoutAccountDto.md)
+ - [UpsertPrinciplesDto](doc//UpsertPrinciplesDto.md)
  - [UsageRights](doc//UsageRights.md)
  - [UserRole](doc//UserRole.md)
  - [ViewReportCalcModel](doc//ViewReportCalcModel.md)
