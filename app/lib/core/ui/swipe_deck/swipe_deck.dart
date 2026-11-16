@@ -174,8 +174,17 @@ class _SwipeDeckState<T> extends State<SwipeDeck<T>>
 
     try {
       await widget.onSwiped(item, outcome);
-    } catch (_) {
-      // 저장하지 못한 결정이다. 카드를 돌려놓아 다시 고르게 한다. 오류 안내는 onSwiped 쪽 몫이다.
+    } catch (error, stack) {
+      // 저장하지 못한 결정이다. 카드를 돌려놓아 다시 고르게 한다. 오류 안내는 onSwiped 쪽 몫이지만,
+      // 예상하지 못한 오류가 조용히 묻히지 않게 Flutter 오류로도 알린다.
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'swipe deck',
+          context: ErrorDescription('while saving a swiped card'),
+        ),
+      );
       if (!mounted) return;
       await _springBack();
       if (!mounted) return;
@@ -316,35 +325,46 @@ class _DeckLayer extends StatelessWidget {
       valueListenable: offset,
       child: child,
       builder: (context, value, card) {
-        if (!isTop) {
+        // 뒤 카드가 맨 위로 올라와도 카드 내용이 같은 자리에 남아 상태(불러온 사진 등)가 이어지도록,
+        // 맨 위와 뒤 카드가 같은 위젯 구조(Transform > GestureDetector > Stack > 카드)를 쓴다. 다른 것은
+        // 값뿐이다: 변환(맨 위는 이동·기울기, 뒤는 크기), 접근성·터치 무시 여부, 도장 불투명도.
+        final Matrix4 transform;
+        if (isTop) {
+          final angle = tiltFor(value.dx, width) * math.pi / 180;
+          transform = Matrix4.translationValues(value.dx, value.dy, 0)
+            ..rotateZ(angle);
+        } else {
           final scale =
               CoraMotion.swipeBehindScale +
               (1 - CoraMotion.swipeBehindScale) * swipeProgress(value);
-          return ExcludeSemantics(
-            child: IgnorePointer(
-              child: Transform.scale(scale: scale, child: card),
-            ),
-          );
+          transform = Matrix4.diagonal3Values(scale, scale, 1);
         }
-        final angle = tiltFor(value.dx, width) * math.pi / 180;
-        return Transform(
-          alignment: Alignment.center,
-          transform: Matrix4.translationValues(value.dx, value.dy, 0)
-            ..rotateZ(angle),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onTap,
-            onPanStart: onPanStart,
-            onPanUpdate: onPanUpdate,
-            onPanEnd: onPanEnd,
-            onPanCancel: onPanCancel,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                card!,
-                for (final outcome in SwipeOutcome.values)
-                  _positionedStamp(outcome, stampOpacity(value, outcome)),
-              ],
+        return ExcludeSemantics(
+          excluding: !isTop,
+          child: IgnorePointer(
+            ignoring: !isTop,
+            child: Transform(
+              alignment: Alignment.center,
+              transform: transform,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onTap,
+                onPanStart: onPanStart,
+                onPanUpdate: onPanUpdate,
+                onPanEnd: onPanEnd,
+                onPanCancel: onPanCancel,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    card!,
+                    for (final outcome in SwipeOutcome.values)
+                      _positionedStamp(
+                        outcome,
+                        isTop ? stampOpacity(value, outcome) : 0,
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         );

@@ -1,6 +1,7 @@
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/features/auth/presentation/pages/login_page.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
+import 'package:cora/features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/store_links_page.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,18 +14,19 @@ FakeAuthRepository _signedIn() =>
     FakeAuthRepository(session: FakeAuthRepository.signedInSession);
 
 void main() {
-  testWidgets('the brand role opens the brand home placeholder', (
-    tester,
-  ) async {
+  testWidgets('the brand profile menu opens the placeholder', (tester) async {
     usePhone(tester);
     await pumpCoraApp(
       tester,
       auth: _signedIn(),
       me: FakeMeRepository(role: UserRole.brand),
     );
-
-    expect(find.text('브랜드 홈'), findsOneWidget);
     expect(currentPath(tester), AppRoutes.brand);
+
+    await openBrandProfile(tester);
+
+    expect(find.text('프로필'), findsOneWidget);
+    expect(find.byType(RoleHomePlaceholderPage), findsOneWidget);
     expect(find.text('역할 다시 고르기'), findsOneWidget);
     expect(find.text('로그아웃'), findsOneWidget);
   });
@@ -35,7 +37,8 @@ void main() {
     usePhone(tester);
     final me = FakeMeRepository(role: UserRole.brand);
     await pumpCoraApp(tester, auth: _signedIn(), me: me);
-    expect(find.text('브랜드 홈'), findsOneWidget);
+    await openBrandProfile(tester);
+    expect(find.text('프로필'), findsOneWidget);
 
     await tester.tap(find.text('역할 다시 고르기'));
     await tester.pumpAndSettle();
@@ -61,6 +64,7 @@ void main() {
       auth: auth,
       me: FakeMeRepository(role: UserRole.brand),
     );
+    await openBrandProfile(tester);
 
     await tester.tap(find.text('로그아웃'));
     await tester.pumpAndSettle();
@@ -75,6 +79,7 @@ void main() {
     usePhone(tester);
     final me = FakeMeRepository(role: UserRole.brand);
     await pumpCoraApp(tester, auth: _signedIn(), me: me);
+    await openBrandProfile(tester);
     await tester.tap(find.text('로그아웃'));
     await tester.pumpAndSettle();
 

@@ -199,6 +199,8 @@ void main() {
     await tester.drag(find.text('A'), const Offset(200, 0));
     await tester.pumpAndSettle();
 
+    // 삼키지 않고 Flutter 오류로도 알린다.
+    expect(tester.takeException(), isA<StateError>());
     expect(attempts, 1);
     expect(find.text('A'), findsOneWidget);
     expect(tester.getCenter(find.text('A')).dx, closeTo(home.dx, 0.5));
@@ -381,4 +383,57 @@ void main() {
     expect(find.text('B'), findsOneWidget);
     expect(find.text('A'), findsNothing);
   });
+
+  testWidgets('keeps the card state when the back card becomes the top card', (
+    tester,
+  ) async {
+    final created = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: coraLightTheme,
+        home: Scaffold(
+          body: SizedBox(
+            width: 366,
+            height: 680,
+            child: SwipeDeck<String>(
+              items: const ['A', 'B'],
+              cardBuilder: (context, item) =>
+                  _Probe(item, onCreate: created.add),
+              onSwiped: (item, outcome) async {},
+              empty: const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(created, unorderedEquals(['A', 'B']));
+
+    await tester.drag(find.text('A'), const Offset(200, 0));
+    await tester.pumpAndSettle();
+
+    // B는 뒤에서 맨 위로 올라왔지만 상태를 새로 만들지 않았다(사진이 깜빡이지 않는다).
+    expect(created, unorderedEquals(['A', 'B']));
+    expect(find.text('B'), findsOneWidget);
+  });
+}
+
+class _Probe extends StatefulWidget {
+  const _Probe(this.label, {required this.onCreate});
+
+  final String label;
+  final void Function(String) onCreate;
+
+  @override
+  State<_Probe> createState() => _ProbeState();
+}
+
+class _ProbeState extends State<_Probe> {
+  @override
+  void initState() {
+    super.initState();
+    widget.onCreate(widget.label);
+  }
+
+  @override
+  Widget build(BuildContext context) => Center(child: Text(widget.label));
 }

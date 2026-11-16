@@ -6,6 +6,7 @@ import 'package:cora/features/auth/domain/auth_repository_provider.dart';
 import 'package:cora/features/brand_onboarding/domain/brand_repository.dart';
 import 'package:cora/features/brand_onboarding/domain/campaign_repository.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
+import 'package:cora/features/discovery/domain/discovery_repository.dart';
 import 'package:cora/features/notification_settings/domain/notification_settings_repository.dart';
 import 'package:cora/features/notifications/domain/notification_repository.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
@@ -26,6 +27,7 @@ import '../features/auth/fake_auth_repository.dart';
 import '../features/brand_onboarding/fake_brand_repository.dart';
 import '../features/brand_onboarding/fake_campaign_repository.dart';
 import '../features/collaboration/fake_collaboration_repository.dart';
+import '../features/discovery/fake_discovery_repository.dart';
 import '../features/notification_settings/fake_notification_settings_repository.dart';
 import '../features/notifications/fake_notification_repository.dart';
 import '../features/onboarding/fake_me_repository.dart';
@@ -109,6 +111,10 @@ Widget coraAppWith(
         campaignRepositoryProvider.overrideWithValue(
           FakeCampaignRepository(active: defaultCampaign),
         ),
+      if (!_overrides(overrides, discoveryRepositoryProvider))
+        discoveryRepositoryProvider.overrideWithValue(
+          FakeDiscoveryRepository(),
+        ),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(
           FakeContentDraftRepository(),
@@ -165,6 +171,12 @@ void useSmallPhoneWithLargeText(WidgetTester tester) {
 }
 
 /// Android의 시스템 뒤로 가기(버튼·제스처)를 엔진이 보내는 그대로 보낸다.
+/// 브랜드 발견(01) 아래 메뉴의 `프로필`을 눌러 자리 화면(역할 다시 고르기, 로그아웃)을 연다.
+Future<void> openBrandProfile(WidgetTester tester) async {
+  await tester.tap(find.text('프로필'));
+  await tester.pumpAndSettle();
+}
+
 Future<void> systemBack(WidgetTester tester) async {
   final message = const JSONMethodCodec().encodeMethodCall(
     const MethodCall('popRoute'),

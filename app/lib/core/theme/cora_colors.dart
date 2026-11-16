@@ -70,6 +70,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
     this.reportBadge = const Color(0xFFFFFFFF),
     this.nextAction = const Color(0xFFC6FF3D),
     this.onNextAction = const Color(0xFF1F2A00),
+    this.swipeProgressOn = const Color(0xFFFFFFFF),
+    this.toastSurface = const Color(0xFFFFFFFF),
+    this.onToast = const Color(0xFF17181C),
+    this.toastShadow = const Color(0x2917181C),
   });
 
   final Color background;
@@ -207,6 +211,16 @@ class CoraColors extends ThemeExtension<CoraColors> {
   /// 기본 버튼(`primaryAction`)과 채움은 같지만 다크의 글자가 #17181C가 아니라 #0F1012다.
   final Color nextAction;
   final Color onNextAction;
+
+  /// 01 발견 카드 위쪽 작은 진행 막대의 채워진 칸. 라이트는 흰색, 다크는 배경색(`#0F1012`)이다
+  /// (DarkMain). 채워지지 않은 칸은 두 모드 모두 흰색 40%라 토큰이 필요 없다.
+  final Color swipeProgressOn;
+
+  /// 01·08 카드 위에 3초 뜨는 알림 문구의 바탕·글자·그림자. 라이트는 흰 바탕에 그림자, 다크는
+  /// `#2A2D33` 바탕에 흰 글자, 그림자 없음(DarkMain).
+  final Color toastSurface;
+  final Color onToast;
+  final Color toastShadow;
 
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
@@ -352,6 +366,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
     reportBadge: Color(0xFF2A2D33),
     nextAction: Color(0xFFF2F3F5),
     onNextAction: Color(0xFF0F1012),
+    swipeProgressOn: Color(0xFF0F1012),
+    toastSurface: Color(0xFF2A2D33),
+    onToast: Color(0xFFFFFFFF),
+    toastShadow: Color(0x0017181C),
   );
 
   @override
@@ -422,6 +440,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? reportBadge,
     Color? nextAction,
     Color? onNextAction,
+    Color? swipeProgressOn,
+    Color? toastSurface,
+    Color? onToast,
+    Color? toastShadow,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -491,6 +513,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
       reportBadge: reportBadge ?? this.reportBadge,
       nextAction: nextAction ?? this.nextAction,
       onNextAction: onNextAction ?? this.onNextAction,
+      swipeProgressOn: swipeProgressOn ?? this.swipeProgressOn,
+      toastSurface: toastSurface ?? this.toastSurface,
+      onToast: onToast ?? this.onToast,
+      toastShadow: toastShadow ?? this.toastShadow,
     );
   }
 
@@ -568,6 +594,10 @@ class CoraColors extends ThemeExtension<CoraColors> {
       reportBadge: mix(reportBadge, other.reportBadge),
       nextAction: mix(nextAction, other.nextAction),
       onNextAction: mix(onNextAction, other.onNextAction),
+      swipeProgressOn: mix(swipeProgressOn, other.swipeProgressOn),
+      toastSurface: mix(toastSurface, other.toastSurface),
+      onToast: mix(onToast, other.onToast),
+      toastShadow: mix(toastShadow, other.toastShadow),
     );
   }
 }

@@ -163,6 +163,7 @@ void main() {
       auth: fake,
       me: FakeMeRepository(role: UserRole.brand),
     );
+    await openBrandProfile(tester);
 
     await tester.tap(find.text('로그아웃'));
     await tester.pumpAndSettle();
@@ -675,6 +676,9 @@ void main() {
           '/brand/profile/setup',
           '/brand/campaign/new',
           '/brand/campaign/edit',
+          '/brand/creators/:id',
+          '/brand/profile',
+          '/brand/coming-soon/:title',
         ]),
       );
     });

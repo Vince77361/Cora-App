@@ -4,10 +4,10 @@ import 'package:cora/features/brand_onboarding/domain/brand_repository.dart';
 import 'package:cora/features/brand_onboarding/domain/campaign.dart';
 import 'package:cora/features/brand_onboarding/domain/campaign_repository.dart';
 import 'package:cora/features/brand_onboarding/presentation/pages/campaign_form_page.dart';
+import 'package:cora/features/discovery/presentation/pages/brand_discovery_page.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart'
     show ContentFormat;
 import 'package:cora/features/onboarding/domain/user_role.dart';
-import 'package:cora/features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import 'package:cora/features/principles/domain/principles.dart'
     show ProductTrialDays;
 import 'package:flutter/material.dart';
@@ -154,7 +154,7 @@ void main() {
       expect(input.mustInclude, ['제품 로고']);
       expect(input.notRequired, [NotRequired.face, NotRequired.scriptReading]);
       // 캠페인이 있으니 발견(01)이 열린다.
-      expect(find.byType(RoleHomePlaceholderPage), findsOneWidget);
+      expect(find.byType(BrandDiscoveryPage), findsOneWidget);
     },
   );
 
@@ -203,7 +203,7 @@ void main() {
       expect(campaigns.lastInput!.budget, 2000000);
       expect(campaigns.lastInput!.headline, '나만의 아침 루틴 속 작은 포인트');
       // 저장하면 온 곳(발견)으로 돌아간다.
-      expect(find.byType(RoleHomePlaceholderPage), findsOneWidget);
+      expect(find.byType(BrandDiscoveryPage), findsOneWidget);
     },
   );
 

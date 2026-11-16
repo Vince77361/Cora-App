@@ -103,6 +103,34 @@ abstract final class AppRoutes {
   /// 진행 중인 캠페인 고치기·마감.
   static const brandCampaignEdit = '/brand/campaign/edit';
 
+  /// 크리에이터 [creatorId]의 상세(임시, 7번 계획의 B5가 대신한다). 카드를 누르면 열린다.
+  static String brandCreator(String creatorId) =>
+      '/brand/creators/${Uri.encodeComponent(creatorId)}';
+
+  /// [brandCreator]의 라우트 패턴.
+  static const brandCreatorPattern = '/brand/creators/:id';
+
+  /// 관심·보류 목록(03). 10번 작업이 화면을 등록한다. 그 전에는 등록된 화면이 없다.
+  static const brandInterests = '/brand/interests';
+
+  /// 03의 저장 탭. 01의 `저장한 후보 보기`가 연다.
+  static const brandSaved = '$brandInterests?tab=saved';
+
+  /// 서로 관심 확인(05). 03 화면이 시트로 여는 것이라 `match` 쿼리로 협업 [collaborationId]를 알린다
+  /// (알림 가는 곳 `MATCH`와 같은 모양이다). 10번 작업이 등록한다.
+  static String brandMatch(String collaborationId) =>
+      '$brandInterests?match=${Uri.encodeQueryComponent(collaborationId)}';
+
+  /// 브랜드의 협업(07). 11번 작업이 등록한다.
+  static const brandCollaborations = '/brand/collaborations';
+
+  /// 브랜드 하단 메뉴의 `프로필`. 계정·설정 계획이 만들기 전까지 역할 다시 고르기와 로그아웃만 있는 자리 화면이다.
+  static const brandProfile = '/brand/profile';
+
+  /// 아직 만들지 않은 브랜드 쪽 화면(대화, 프로필, 그리고 10·11번 작업이 등록하기 전의 관심·협업).
+  static String brandComingSoon(String title) =>
+      '/brand/coming-soon/${Uri.encodeComponent(title)}';
+
   // 크리에이터 흐름
   static const creatorProfileSetup = '/creator/profile/setup';
 

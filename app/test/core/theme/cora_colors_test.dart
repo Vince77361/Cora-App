@@ -340,4 +340,29 @@ void main() {
   test('lerp with a different extension type returns this', () {
     expect(CoraColors.light.lerp(null, 0.5), same(CoraColors.light));
   });
+
+  test('01 discovery tokens match Main and DarkMain', () {
+    // 카드 위쪽 진행 막대의 채워진 칸: 라이트 흰색, 다크 배경색.
+    expect(CoraColors.light.swipeProgressOn, const Color(0xFFFFFFFF));
+    expect(CoraColors.dark.swipeProgressOn, const Color(0xFF0F1012));
+    // 알림 문구: 라이트 흰 바탕+그림자, 다크 #2A2D33 바탕·흰 글자·그림자 없음.
+    expect(CoraColors.light.toastSurface, const Color(0xFFFFFFFF));
+    expect(CoraColors.light.onToast, const Color(0xFF17181C));
+    expect(CoraColors.light.toastShadow, const Color(0x2917181C));
+    expect(CoraColors.dark.toastSurface, const Color(0xFF2A2D33));
+    expect(CoraColors.dark.onToast, const Color(0xFFFFFFFF));
+    expect(CoraColors.dark.toastShadow.a, 0);
+
+    final mixed = CoraColors.light.lerp(CoraColors.dark, 1);
+    expect(mixed.swipeProgressOn, CoraColors.dark.swipeProgressOn);
+    expect(mixed.toastSurface, CoraColors.dark.toastSurface);
+    final changed = CoraColors.light.copyWith(
+      swipeProgressOn: const Color(0xFF123456),
+      toastSurface: const Color(0xFF111111),
+      onToast: const Color(0xFF222222),
+      toastShadow: const Color(0xFF333333),
+    );
+    expect(changed.swipeProgressOn, const Color(0xFF123456));
+    expect(changed.toastShadow, const Color(0xFF333333));
+  });
 }

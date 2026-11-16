@@ -9,13 +9,14 @@ import '../../../../core/ui/cora_logo.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../auth/domain/auth_repository_provider.dart';
 
-/// 임시 화면: 브랜드 홈 자리만 잡아 둔다. 브랜드 홈을 만드는 계획이 이 파일을 실제 홈으로
-/// 바꾼다(가게와 크리에이터 홈은 각자의 흐름이 있다). 그때까지 역할을 다시 고르거나
-/// 로그아웃할 수 있어야 계정을 바꿔 가며 확인할 수 있다.
+/// 임시 화면. 브랜드 홈은 발견(01)이 되었고, 이 화면은 브랜드 하단 메뉴의 `프로필`(뒤 계획의 몫) 자리를
+/// 잡아 둔다. 그때까지 역할을 다시 고르거나 로그아웃할 수 있어야 계정을 바꿔 가며 확인할 수 있다.
 class RoleHomePlaceholderPage extends ConsumerWidget {
-  const RoleHomePlaceholderPage({super.key});
+  const RoleHomePlaceholderPage({super.key, this.title = defaultTitle});
 
-  static const title = '브랜드 홈';
+  static const defaultTitle = '브랜드 홈';
+
+  final String title;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

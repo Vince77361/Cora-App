@@ -15,6 +15,9 @@ import '../../features/collaboration/presentation/pages/submit_link_page.dart';
 import '../../features/collaboration/presentation/pages/voucher_page.dart';
 import '../../features/creator_profile/presentation/pages/creator_profile_setup_page.dart';
 import '../../features/dev/presentation/pages/motion_gallery_page.dart';
+import '../../features/discovery/domain/discovery_card.dart';
+import '../../features/discovery/presentation/pages/brand_discovery_page.dart';
+import '../../features/discovery/presentation/pages/creator_card_detail_page.dart';
 import '../../features/notification_settings/presentation/pages/notification_settings_page.dart';
 import '../../features/notifications/presentation/notification_routes.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
@@ -112,12 +115,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             CoraTransitions.fade(const RoleSelectPage(), key: state.pageKey),
       ),
-      // 브랜드 흐름. 프로필이 없으면 프로필 만들기, 진행 중인 캠페인이 없으면 캠페인 만들기가 진입
-      // 경로다(`brandEntryPath`). 홈은 아직 임시 화면이고 발견(01)이 대신한다.
+      // 브랜드 흐름. 홈은 발견(01)이고, 프로필이 없으면 프로필 만들기, 진행 중인 캠페인이 없으면
+      // 캠페인 만들기가 진입 경로다(`brandEntryPath`).
       GoRoute(
         path: AppRoutes.brand,
         pageBuilder: (context, state) =>
-            _entryPage(state, const RoleHomePlaceholderPage()),
+            _entryPage(state, const BrandDiscoveryPage()),
       ),
       GoRoute(
         path: AppRoutes.brandProfileSetup,
@@ -134,6 +137,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CoraTransitions.push(
           const CampaignFormPage(editing: true),
           key: state.pageKey,
+        ),
+      ),
+      // 크리에이터 상세(임시). 01의 카드를 누르면 사진이 이어지며 열린다. 카드는 `extra`로 받는다.
+      GoRoute(
+        path: AppRoutes.brandCreatorPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          CreatorCardDetailPage(
+            creatorId: state.pathParameters['id']!,
+            card: state.extra is CreatorCard
+                ? state.extra! as CreatorCard
+                : null,
+          ),
+          key: state.pageKey,
+        ),
+      ),
+      // 하단 메뉴의 `프로필`은 계정·설정 계획이 만든다. 그때까지 역할 다시 고르기와 로그아웃이 있는 자리 화면이다.
+      GoRoute(
+        path: AppRoutes.brandProfile,
+        pageBuilder: (context, state) => _entryPage(
+          state,
+          const RoleHomePlaceholderPage(title: '프로필'),
+        ),
+      ),
+      // 03·05(관심)와 07(협업)은 10·11번 작업이 등록한다. 대화·프로필은 뒤 계획의 몫이다.
+      GoRoute(
+        path: '/brand/coming-soon/:title',
+        pageBuilder: (context, state) => _entryPage(
+          state,
+          CoraComingSoonPage(title: state.pathParameters['title']!),
         ),
       ),
       // 가게 사장님 흐름.

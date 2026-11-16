@@ -14,6 +14,7 @@ import 'package:cora/features/onboarding/data/api_me_repository.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_home_placeholder_page.dart';
+import 'package:cora/features/discovery/presentation/pages/brand_discovery_page.dart';
 import 'package:cora/features/onboarding/presentation/pages/role_select_page.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/store_links_page.dart';
 import 'package:flutter/material.dart';
@@ -267,7 +268,7 @@ void main() {
     await tester.tap(find.text('다시 시도'));
     await tester.pumpAndSettle();
 
-    expect(find.text('브랜드 홈'), findsOneWidget);
+    expect(find.byType(BrandDiscoveryPage), findsOneWidget);
   });
 
   testWidgets('keeps the selection and shows a message when saving fails', (
@@ -290,7 +291,7 @@ void main() {
     me.failSave = false;
     await tester.tap(find.text('크리에이터 둘러보기'));
     await tester.pumpAndSettle();
-    expect(find.text('브랜드 홈'), findsOneWidget);
+    expect(find.byType(BrandDiscoveryPage), findsOneWidget);
   });
 
   testWidgets('the failure message goes away when another role is picked', (
