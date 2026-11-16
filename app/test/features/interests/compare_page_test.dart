@@ -312,6 +312,51 @@ void main() {
     expect(repo.compared, hasLength(2));
   });
 
+  testWidgets('reopening a saved proposal keeps its rate and cap', (
+    tester,
+  ) async {
+    final discovery = FakeDiscoveryRepository();
+    final repo = FakeInterestsRepository(
+      compareResult: CompareResult(
+        sides: [
+          compareSide('c1', name: '서윤의 작은 취향', shortName: '서윤'),
+          // 단가 3,000원, 상한 90,000원으로 보낸 제안(기본 단가 2,000원과 다르다).
+          compareSide(
+            'c2',
+            name: '민의 옷장 기록',
+            shortName: '민',
+            fee: 350000,
+            perfRate: 3000,
+            perfCap: 90000,
+          ),
+        ],
+        differs: const {},
+      ),
+    );
+    await _pump(tester, repo, discovery: discovery);
+
+    await tester.tap(find.text('민에게 제안'));
+    await tester.pumpAndSettle();
+    expect(find.text('1,000회당 3,000원'), findsOneWidget);
+    expect(find.text('최대 90,000원'), findsOneWidget);
+    // 제작비만 고쳐 다시 보내도 저장된 단가가 그대로 간다.
+    await tester.tap(find.text('50만 원'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('검토하고 보내기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('이 조건으로 보내기'));
+    await tester.pumpAndSettle();
+
+    expect(
+      discovery.decisions.single.proposal,
+      const RewardProposal(
+        fee: 500000,
+        productProvided: true,
+        performance: (ratePer1000: 3000, cap: 90000),
+      ),
+    );
+  });
+
   testWidgets('the proposal starts from the campaign when none was made yet', (
     tester,
   ) async {

@@ -5,7 +5,6 @@ import '../../../brand_onboarding/domain/campaign_repository.dart';
 import '../../../negotiation/domain/brand_usage_rights.dart';
 import '../../../offer_terms/domain/offer_terms.dart' show ViewPay;
 import '../../../offer_terms/domain/proposal_draft.dart';
-import '../../../server_config/presentation/viewmodels/server_config_view_model.dart';
 import '../../domain/interests_repository.dart';
 import '../reward_proposal_entry.dart';
 
@@ -33,9 +32,9 @@ final rewardProposalSetupProvider = FutureProvider.autoDispose
           if (campaign == null || brand == null) {
             throw StateError('제안할 캠페인이나 브랜드가 없다');
           }
-          final config = await ref.watch(serverConfigViewModelProvider.future);
           final current = target.current;
-          // 04의 표는 성과 추가의 상한만 안다. 단가는 서버 설정의 기본값으로 채운다.
+          // 04가 이미 만든 제안의 단가와 상한을 함께 넘기므로 저장된 값 그대로 시작한다(기본값으로 덮지 않는다).
+          final perfRate = current?.perfRate;
           final perfCap = current?.perfCap;
           return RewardProposalSetup(
             recipientPhotoUrl: target.recipientPhotoUrl,
@@ -47,12 +46,9 @@ final rewardProposalSetupProvider = FutureProvider.autoDispose
               startFee: current?.fee ?? campaign.fee,
               startProductProvided:
                   current?.productProvided ?? campaign.productProvided,
-              startPerformance: perfCap == null
+              startPerformance: perfRate == null || perfCap == null
                   ? null
-                  : ViewPay(
-                      ratePerThousand: config.reward.viewRate.defaultValue,
-                      cap: perfCap,
-                    ),
+                  : ViewPay(ratePerThousand: perfRate, cap: perfCap),
             ),
           );
         case AfterMatch():

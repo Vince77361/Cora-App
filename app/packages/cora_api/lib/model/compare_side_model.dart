@@ -21,6 +21,7 @@ class CompareSideModel {
     required this.format,
     required this.name,
     required this.perfCap,
+    required this.perfRate,
     required this.photoUrl,
     required this.pieces,
     required this.productProvided,
@@ -49,6 +50,9 @@ class CompareSideModel {
 
   int? perfCap;
 
+  /// 성과 추가의 단가(1,000회당 원). perfCap과 같은 출처(최신 판본, 내 제안, 없으면 null).
+  int? perfRate;
+
   String? photoUrl;
 
   int pieces;
@@ -76,6 +80,7 @@ class CompareSideModel {
           other.format == format &&
           other.name == name &&
           other.perfCap == perfCap &&
+          other.perfRate == perfRate &&
           other.photoUrl == photoUrl &&
           other.pieces == pieces &&
           other.productProvided == productProvided &&
@@ -95,6 +100,7 @@ class CompareSideModel {
       (format.hashCode) +
       (name.hashCode) +
       (perfCap == null ? 0 : perfCap!.hashCode) +
+      (perfRate == null ? 0 : perfRate!.hashCode) +
       (photoUrl == null ? 0 : photoUrl!.hashCode) +
       (pieces.hashCode) +
       (productProvided.hashCode) +
@@ -105,7 +111,7 @@ class CompareSideModel {
 
   @override
   String toString() =>
-      'CompareSideModel[collaborationId=$collaborationId, creatorId=$creatorId, faceOk=$faceOk, fee=$fee, feeBand=$feeBand, format=$format, name=$name, perfCap=$perfCap, photoUrl=$photoUrl, pieces=$pieces, productProvided=$productProvided, shortName=$shortName, startDate=$startDate, state=$state, usageRights=$usageRights]';
+      'CompareSideModel[collaborationId=$collaborationId, creatorId=$creatorId, faceOk=$faceOk, fee=$fee, feeBand=$feeBand, format=$format, name=$name, perfCap=$perfCap, perfRate=$perfRate, photoUrl=$photoUrl, pieces=$pieces, productProvided=$productProvided, shortName=$shortName, startDate=$startDate, state=$state, usageRights=$usageRights]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -128,6 +134,11 @@ class CompareSideModel {
       json[r'perfCap'] = this.perfCap;
     } else {
       json[r'perfCap'] = null;
+    }
+    if (this.perfRate != null) {
+      json[r'perfRate'] = this.perfRate;
+    } else {
+      json[r'perfRate'] = null;
     }
     if (this.photoUrl != null) {
       json[r'photoUrl'] = this.photoUrl;
@@ -184,6 +195,8 @@ class CompareSideModel {
             'Required key "CompareSideModel[name]" has a null value in JSON.');
         assert(json.containsKey(r'perfCap'),
             'Required key "CompareSideModel[perfCap]" is missing from JSON.');
+        assert(json.containsKey(r'perfRate'),
+            'Required key "CompareSideModel[perfRate]" is missing from JSON.');
         assert(json.containsKey(r'photoUrl'),
             'Required key "CompareSideModel[photoUrl]" is missing from JSON.');
         assert(json.containsKey(r'pieces'),
@@ -220,6 +233,7 @@ class CompareSideModel {
         format: ContentFormat.fromJson(json[r'format'])!,
         name: mapValueOfType<String>(json, r'name')!,
         perfCap: mapValueOfType<int>(json, r'perfCap'),
+        perfRate: mapValueOfType<int>(json, r'perfRate'),
         photoUrl: mapValueOfType<String>(json, r'photoUrl'),
         pieces: mapValueOfType<int>(json, r'pieces')!,
         productProvided: mapValueOfType<bool>(json, r'productProvided')!,
@@ -291,6 +305,7 @@ class CompareSideModel {
     'format',
     'name',
     'perfCap',
+    'perfRate',
     'photoUrl',
     'pieces',
     'productProvided',

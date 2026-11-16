@@ -16,6 +16,7 @@ Name | Type | Description | Notes
 **format** | [**ContentFormat**](ContentFormat.md) |  | 
 **name** | **String** |  | 
 **perfCap** | **int** |  | 
+**perfRate** | **int** | 성과 추가의 단가(1,000회당 원). perfCap과 같은 출처(최신 판본, 내 제안, 없으면 null). | 
 **photoUrl** | **String** |  | 
 **pieces** | **int** |  | 
 **productProvided** | **bool** |  | 

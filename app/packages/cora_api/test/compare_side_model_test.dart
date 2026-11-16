@@ -59,6 +59,12 @@ void main() {
       // TODO
     });
 
+    // 성과 추가의 단가(1,000회당 원). perfCap과 같은 출처(최신 판본, 내 제안, 없으면 null).
+    // int perfRate
+    test('to test the property `perfRate`', () async {
+      // TODO
+    });
+
     // String photoUrl
     test('to test the property `photoUrl`', () async {
       // TODO

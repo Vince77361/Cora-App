@@ -51,6 +51,7 @@ interface Side {
   productProvided: boolean;
   fee: number | null;
   feeBand: string;
+  perfRate: number | null;
   perfCap: number | null;
   usageRights: string;
   startDate: string | null;
@@ -193,6 +194,7 @@ describe('candidate comparison', () => {
       productProvided: true,
       fee: 300000,
       feeBand: 'W300K',
+      perfRate: null,
       perfCap: null,
       usageRights: 'REPOST_ONLY',
       startDate: '2026-11-20',
@@ -210,6 +212,8 @@ describe('candidate comparison', () => {
       productProvided: false,
       fee: 350000,
       feeBand: 'W400K',
+      // 단가는 상한과 같은 출처(내 제안)에서 오고, 다시 열 때 저장된 값을 지키는 데 쓴다.
+      perfRate: 2000,
       perfCap: 60000,
       usageRights: 'REPOST_ONLY',
       startDate: null,
@@ -236,6 +240,7 @@ describe('candidate comparison', () => {
       expect(side).toMatchObject({
         fee: null,
         productProvided: true,
+        perfRate: null,
         perfCap: null,
         usageRights: 'REPOST_ONLY',
         startDate: null,

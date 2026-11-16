@@ -19,6 +19,8 @@ export interface CompareValues {
   productProvided: boolean;
   fee: number | null;
   feeBand: FeeBand;
+  // 성과 추가 단가(1,000회당 원). 화면 줄은 아니고(상한만 견준다) 04가 이미 만든 제안을 다시 열 때 쓴다.
+  perfRate: number | null;
   perfCap: number | null;
   usageRights: BrandUsageRights;
   startDate: string | null;

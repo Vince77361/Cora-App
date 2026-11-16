@@ -72,6 +72,7 @@ class _ComparePageState extends ConsumerState<ComparePage> {
                   fee: fee,
                   productProvided: side.productProvided,
                   perfCap: side.perfCap,
+                  perfRate: side.perfRate,
                 ),
         ),
       );

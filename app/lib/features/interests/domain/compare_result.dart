@@ -21,6 +21,7 @@ class CompareSide {
     required this.faceOk,
     this.photoUrl,
     this.fee,
+    this.perfRate,
     this.perfCap,
     this.startDate,
     this.collaborationId,
@@ -42,6 +43,9 @@ class CompareSide {
   /// 서로 관심이면 최신 판본의 제작비, 아니면 내 제안의 금액. 없으면 null이고 [feeBand]를 보여 준다.
   final int? fee;
   final FeeBand feeBand;
+
+  /// 성과 추가의 단가(1,000회당 원). 표에는 없지만 이미 만든 제안을 다시 열 때 저장된 값을 지키려고 둔다.
+  final int? perfRate;
   final int? perfCap;
   final BrandUsageRights usageRights;
 

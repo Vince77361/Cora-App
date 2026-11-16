@@ -245,6 +245,7 @@ class ApiInterestsRepository implements InterestsRepository {
     productProvided: s.productProvided,
     fee: s.fee,
     feeBand: _feeBand(s.feeBand),
+    perfRate: s.perfRate,
     perfCap: s.perfCap,
     usageRights: _usage(s.usageRights),
     startDate: _dateOnly(s.startDate),

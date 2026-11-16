@@ -11,16 +11,18 @@ sealed class RewardProposalTarget {
   const RewardProposalTarget();
 }
 
-/// 내가 이미 크리에이터에게 만들어 둔 제안의 값(04의 표가 아는 값). 단가는 표에 없어서 성과 추가의 상한만 안다.
+/// 내가 이미 크리에이터에게 만들어 둔 제안의 값(04의 표가 아는 값). 성과 추가는 단가와 상한이 함께 있을 때만 켜져 있다.
 class CurrentProposal {
   const CurrentProposal({
     required this.fee,
     required this.productProvided,
+    this.perfRate,
     this.perfCap,
   });
 
   final int fee;
   final bool productProvided;
+  final int? perfRate;
   final int? perfCap;
 
   @override
@@ -28,10 +30,11 @@ class CurrentProposal {
       other is CurrentProposal &&
       other.fee == fee &&
       other.productProvided == productProvided &&
+      other.perfRate == perfRate &&
       other.perfCap == perfCap;
 
   @override
-  int get hashCode => Object.hash(fee, productProvided, perfCap);
+  int get hashCode => Object.hash(fee, productProvided, perfRate, perfCap);
 }
 
 /// 서로 관심 전: [creatorId]에게 보내는 관심에 제안을 붙인다. [recipientName]과 [recipientPhotoUrl]은 F2의

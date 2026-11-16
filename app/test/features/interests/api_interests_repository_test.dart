@@ -244,6 +244,7 @@ void main() {
       'feeBand': 'W400K',
       'format': 'REELS',
       'name': '이름 $id',
+      'perfRate': id == 'c1' ? null : 3000,
       'perfCap': id == 'c1' ? null : 60000,
       'photoUrl': null,
       'pieces': 1,
@@ -276,6 +277,7 @@ void main() {
     final right = result.sides.last;
     expect(right.fee, isNull);
     expect(right.feeBand, FeeBand.w400k);
+    expect(right.perfRate, 3000);
     expect(right.perfCap, 60000);
     expect(right.usageRights, BrandUsageRights.adsToo);
     expect(right.faceOk, isTrue);

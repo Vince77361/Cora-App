@@ -59,6 +59,14 @@ export class CompareSideModel {
   })
   feeBand!: FeeBand;
 
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    description:
+      '성과 추가의 단가(1,000회당 원). perfCap과 같은 출처(최신 판본, 내 제안, 없으면 null).',
+  })
+  perfRate!: number | null;
+
   @ApiProperty({ type: 'integer', nullable: true })
   perfCap!: number | null;
 

@@ -6,6 +6,7 @@ const base: CompareValues = {
   productProvided: true,
   fee: 300000,
   feeBand: 'W300K',
+  perfRate: null,
   perfCap: null,
   usageRights: 'REPOST_ONLY',
   startDate: '2026-11-16',
@@ -13,6 +14,10 @@ const base: CompareValues = {
 };
 
 describe('compareDiff', () => {
+  it('does not show the performance rate as its own row', () => {
+    expect(compareDiff(base, { ...base, perfRate: 3000 })).toEqual([]);
+  });
+
   it('returns nothing for two identical candidates', () => {
     expect(compareDiff(base, { ...base })).toEqual([]);
   });
