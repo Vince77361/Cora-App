@@ -5,7 +5,12 @@ import { AppError } from '../common/errors/app-error';
 import { StoragePort } from '../integrations/storage/storage.port';
 import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
-import { CreatorProfileRow, CreatorsRepository } from './creators.repository';
+import {
+  CreatorCardRow,
+  CreatorProfileRow,
+  CreatorsRepository,
+} from './creators.repository';
+import { CreatorCardSource } from './dto/creator-card-source';
 import { CreateCreatorSeriesDto } from './dto/create-creator-series.dto';
 import { CreatorSeriesModel } from './dto/creator-series.model';
 import {
@@ -130,6 +135,21 @@ export class CreatorsService {
     return row ? this.toSummary(row) : null;
   }
 
+  // 브랜드에게 보여 주는 카드의 재료(하루 추천, 둘러보기). 활동 중인 크리에이터 전부를 최근 가입 순으로 준다.
+  // 협업 원칙과 피하는 업종은 여기서 모른다: 읽는 쪽이 VisibilityService로 거른다.
+  async listCardSources(): Promise<CreatorCardSource[]> {
+    return (await this.creators.listForCards()).map((row) =>
+      this.toCardSource(row),
+    );
+  }
+
+  // 저장된 목록의 크리에이터만 다시 읽는다. 탈퇴했거나 프로필이 지워졌으면 빠진다.
+  async findCardSources(ids: string[]): Promise<CreatorCardSource[]> {
+    return (await this.creators.listForCards(ids)).map((row) =>
+      this.toCardSource(row),
+    );
+  }
+
   // 알림이 상대의 이름과 사진 경로를 사본으로 저장할 때 쓴다. 프로필이 없거나 지워졌으면 null.
   async getActor(userId: string): Promise<{
     userId: string;
@@ -155,6 +175,19 @@ export class CreatorsService {
     if ((await this.users.getRole(userId)) !== 'CREATOR') {
       throw new AppError('FORBIDDEN', '크리에이터 계정만 쓸 수 있어요.');
     }
+  }
+
+  // 사진은 카드용 사진이 없으면 프로필 사진으로 대신한다.
+  private toCardSource(row: CreatorCardRow): CreatorCardSource {
+    const path = row.cardPhotoPath ?? row.photoPath;
+    return {
+      userId: row.userId,
+      displayName: row.displayName,
+      instagramHandle: row.instagramHandle,
+      headline: row.cardHeadline,
+      photoUrl: path ? this.storage.publicUrl(path) : null,
+      joinedAt: row.joinedAt,
+    };
   }
 
   private toSummary(row: CreatorProfileRow): CreatorSummaryModel {

@@ -228,8 +228,14 @@ class ApiClient {
           return BankModel.fromJson(value);
         case 'BrandProfileModel':
           return BrandProfileModel.fromJson(value);
+        case 'CampaignListCardKind':
+          return CampaignListCardKindTypeTransformer().decode(value);
+        case 'CampaignListCardModel':
+          return CampaignListCardModel.fromJson(value);
         case 'CampaignModel':
           return CampaignModel.fromJson(value);
+        case 'CampaignRecommendationsModel':
+          return CampaignRecommendationsModel.fromJson(value);
         case 'CampaignStatus':
           return CampaignStatusTypeTransformer().decode(value);
         case 'CancelRequestModel':
@@ -276,8 +282,12 @@ class ApiClient {
           return CreatePaymentDto.fromJson(value);
         case 'CreatePhotoUploadDto':
           return CreatePhotoUploadDto.fromJson(value);
+        case 'CreatorCardModel':
+          return CreatorCardModel.fromJson(value);
         case 'CreatorProfileModel':
           return CreatorProfileModel.fromJson(value);
+        case 'CreatorRecommendationsModel':
+          return CreatorRecommendationsModel.fromJson(value);
         case 'CreatorSeriesModel':
           return CreatorSeriesModel.fromJson(value);
         case 'CreatorSummaryModel':
@@ -310,6 +320,8 @@ class ApiClient {
           return ManualBranchDto.fromJson(value);
         case 'ManualStoreDto':
           return ManualStoreDto.fromJson(value);
+        case 'MatchReason':
+          return MatchReasonTypeTransformer().decode(value);
         case 'MeModel':
           return MeModel.fromJson(value);
         case 'MyApplicationStatus':
@@ -368,6 +380,10 @@ class ApiClient {
           return PerViewInputDto.fromJson(value);
         case 'PhotoUploadModel':
           return PhotoUploadModel.fromJson(value);
+        case 'PreviewCardModel':
+          return PreviewCardModel.fromJson(value);
+        case 'PreviewCardsModel':
+          return PreviewCardsModel.fromJson(value);
         case 'PrinciplesModel':
           return PrinciplesModel.fromJson(value);
         case 'ProductTrialDays':

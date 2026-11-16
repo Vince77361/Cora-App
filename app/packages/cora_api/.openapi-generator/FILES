@@ -16,7 +16,10 @@ doc/ApplyDto.md
 doc/BankModel.md
 doc/BrandProfileModel.md
 doc/BrandsApi.md
+doc/CampaignListCardKind.md
+doc/CampaignListCardModel.md
 doc/CampaignModel.md
+doc/CampaignRecommendationsModel.md
 doc/CampaignStatus.md
 doc/CampaignsApi.md
 doc/CancelRequestModel.md
@@ -43,7 +46,9 @@ doc/CreateCampaignDto.md
 doc/CreateCreatorSeriesDto.md
 doc/CreatePaymentDto.md
 doc/CreatePhotoUploadDto.md
+doc/CreatorCardModel.md
 doc/CreatorProfileModel.md
+doc/CreatorRecommendationsModel.md
 doc/CreatorSeriesModel.md
 doc/CreatorSummaryModel.md
 doc/CreatorsApi.md
@@ -63,6 +68,7 @@ doc/InstagramConnectUrlModel.md
 doc/InstagramConnectionModel.md
 doc/ManualBranchDto.md
 doc/ManualStoreDto.md
+doc/MatchReason.md
 doc/MeModel.md
 doc/MyApplicationStatus.md
 doc/MyOpenOfferModel.md
@@ -97,6 +103,8 @@ doc/PayoutAccountsApi.md
 doc/PayoutStatus.md
 doc/PerViewInputDto.md
 doc/PhotoUploadModel.md
+doc/PreviewCardModel.md
+doc/PreviewCardsModel.md
 doc/PrinciplesApi.md
 doc/PrinciplesModel.md
 doc/ProductTrialDays.md
@@ -113,6 +121,7 @@ doc/ProposeVersionDto.md
 doc/QuietHours.md
 doc/ReceivedOfferModel.md
 doc/ReceivedOfferTab.md
+doc/RecommendationsApi.md
 doc/RecommendedApplicantModel.md
 doc/RecommendedApplicantsModel.md
 doc/RewardConfigModel.md
@@ -190,6 +199,7 @@ lib/api/payments_api.dart
 lib/api/payout_accounts_api.dart
 lib/api/principles_api.dart
 lib/api/proposals_api.dart
+lib/api/recommendations_api.dart
 lib/api/store_insights_api.dart
 lib/api/store_result_api.dart
 lib/api/stores_api.dart
@@ -218,7 +228,10 @@ lib/model/application_status.dart
 lib/model/apply_dto.dart
 lib/model/bank_model.dart
 lib/model/brand_profile_model.dart
+lib/model/campaign_list_card_kind.dart
+lib/model/campaign_list_card_model.dart
 lib/model/campaign_model.dart
+lib/model/campaign_recommendations_model.dart
 lib/model/campaign_status.dart
 lib/model/cancel_request_model.dart
 lib/model/collaboration_counterpart_model.dart
@@ -242,7 +255,9 @@ lib/model/create_campaign_dto.dart
 lib/model/create_creator_series_dto.dart
 lib/model/create_payment_dto.dart
 lib/model/create_photo_upload_dto.dart
+lib/model/creator_card_model.dart
 lib/model/creator_profile_model.dart
+lib/model/creator_recommendations_model.dart
 lib/model/creator_series_model.dart
 lib/model/creator_summary_model.dart
 lib/model/dispute_view_report_dto.dart
@@ -259,6 +274,7 @@ lib/model/instagram_connect_url_model.dart
 lib/model/instagram_connection_model.dart
 lib/model/manual_branch_dto.dart
 lib/model/manual_store_dto.dart
+lib/model/match_reason.dart
 lib/model/me_model.dart
 lib/model/my_application_status.dart
 lib/model/my_open_offer_model.dart
@@ -288,6 +304,8 @@ lib/model/payout_account_model.dart
 lib/model/payout_status.dart
 lib/model/per_view_input_dto.dart
 lib/model/photo_upload_model.dart
+lib/model/preview_card_model.dart
+lib/model/preview_cards_model.dart
 lib/model/principles_model.dart
 lib/model/product_trial_days.dart
 lib/model/proposal_counterpart_model.dart
@@ -370,7 +388,10 @@ test/apply_dto_test.dart
 test/bank_model_test.dart
 test/brand_profile_model_test.dart
 test/brands_api_test.dart
+test/campaign_list_card_kind_test.dart
+test/campaign_list_card_model_test.dart
 test/campaign_model_test.dart
+test/campaign_recommendations_model_test.dart
 test/campaign_status_test.dart
 test/campaigns_api_test.dart
 test/cancel_request_model_test.dart
@@ -397,7 +418,9 @@ test/create_campaign_dto_test.dart
 test/create_creator_series_dto_test.dart
 test/create_payment_dto_test.dart
 test/create_photo_upload_dto_test.dart
+test/creator_card_model_test.dart
 test/creator_profile_model_test.dart
+test/creator_recommendations_model_test.dart
 test/creator_series_model_test.dart
 test/creator_summary_model_test.dart
 test/creators_api_test.dart
@@ -417,6 +440,7 @@ test/instagram_connect_url_model_test.dart
 test/instagram_connection_model_test.dart
 test/manual_branch_dto_test.dart
 test/manual_store_dto_test.dart
+test/match_reason_test.dart
 test/me_model_test.dart
 test/my_application_status_test.dart
 test/my_open_offer_model_test.dart
@@ -451,6 +475,8 @@ test/payout_accounts_api_test.dart
 test/payout_status_test.dart
 test/per_view_input_dto_test.dart
 test/photo_upload_model_test.dart
+test/preview_card_model_test.dart
+test/preview_cards_model_test.dart
 test/principles_api_test.dart
 test/principles_model_test.dart
 test/product_trial_days_test.dart
@@ -467,6 +493,7 @@ test/propose_version_dto_test.dart
 test/quiet_hours_test.dart
 test/received_offer_model_test.dart
 test/received_offer_tab_test.dart
+test/recommendations_api_test.dart
 test/recommended_applicant_model_test.dart
 test/recommended_applicants_model_test.dart
 test/reward_config_model_test.dart

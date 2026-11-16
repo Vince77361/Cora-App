@@ -38,6 +38,19 @@ export class CampaignsRepository {
     });
   }
 
+  // 진행 중인 캠페인 전부(ids를 주면 그 가운데서만), 최근 만든 순. 크리에이터의 하루 추천이 읽는다.
+  listActive(ids?: string[]): Promise<Campaign[]> {
+    if (ids?.length === 0) return Promise.resolve([]);
+    return this.prisma.campaign.findMany({
+      where: {
+        status: 'ACTIVE',
+        deletedAt: null,
+        ...(ids ? { id: { in: ids } } : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    });
+  }
+
   findActiveByBrand(brandId: string): Promise<Campaign | null> {
     return this.prisma.campaign.findFirst({
       where: { brandId, status: 'ACTIVE', deletedAt: null },

@@ -71,6 +71,9 @@ String parameterToString(dynamic value) {
   if (value is ApplicationStatus) {
     return ApplicationStatusTypeTransformer().encode(value).toString();
   }
+  if (value is CampaignListCardKind) {
+    return CampaignListCardKindTypeTransformer().encode(value).toString();
+  }
   if (value is CampaignStatus) {
     return CampaignStatusTypeTransformer().encode(value).toString();
   }
@@ -108,6 +111,9 @@ String parameterToString(dynamic value) {
   }
   if (value is IndustryCategory) {
     return IndustryCategoryTypeTransformer().encode(value).toString();
+  }
+  if (value is MatchReason) {
+    return MatchReasonTypeTransformer().encode(value).toString();
   }
   if (value is MyApplicationStatus) {
     return MyApplicationStatusTypeTransformer().encode(value).toString();

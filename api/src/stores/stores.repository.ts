@@ -121,6 +121,18 @@ export class StoresRepository {
     });
   }
 
+  // 저장된 오늘 목록의 가게를 다시 읽는다. 공개가 내려갔거나 지워진 가게는 빠진다. 최근 공개 순.
+  findPublishedByIds(ids: string[]): Promise<Store[]> {
+    if (ids.length === 0) return Promise.resolve([]);
+    return this.prisma.store.findMany({
+      where: { ...PUBLISHED, id: { in: ids } },
+      orderBy: [
+        { publishedAt: { sort: 'desc', nulls: 'last' } },
+        { id: 'asc' },
+      ],
+    });
+  }
+
   // 지원 모듈을 import하면 모듈이 순환하므로, 내 지원 상태는 관계로 함께 읽는다.
   // 열린 오퍼: 기한 전의 SENT, 협업이 끝나지 않은(closedAt 없는) ACCEPTED, 방금 거절해 아직 되돌릴 수 있는 DECLINED.
   // 결제 기한이 지난 ACCEPTED는 곧 만료로 저장되므로 뺀다. 마지막 것은 제안(proposeToStore)이 열린 오퍼로 보아 409를 내는 것과 같은 기준이다.

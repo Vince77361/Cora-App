@@ -56,6 +56,14 @@ export class BrandsService {
     return this.toModel(row);
   }
 
+  // 크리에이터에게 보이는 캠페인 카드가 브랜드 이름·사진·업종을 붙일 때 쓴다. 프로필이 없는 브랜드는 맵에 없다.
+  async findProfiles(
+    userIds: string[],
+  ): Promise<Map<string, BrandProfileModel>> {
+    const rows = await this.brands.findActiveByUserIds(userIds);
+    return new Map(rows.map((row) => [row.userId, this.toModel(row)]));
+  }
+
   private async assertBrand(userId: string): Promise<void> {
     if ((await this.users.getRole(userId)) !== 'BRAND') {
       throw new AppError('FORBIDDEN', '브랜드 계정만 쓸 수 있어요.');

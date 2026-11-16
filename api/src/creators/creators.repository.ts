@@ -26,6 +26,9 @@ export type CreatorProfileRow = CreatorProfile & {
   instagram: { handle: string; followers: number | null } | null;
 };
 
+// 카드로 보여 줄 때 필요한 프로필 열과 가입 시각(최근 가입 순 정렬).
+export type CreatorCardRow = CreatorProfile & { joinedAt: Date };
+
 // 크리에이터 조회는 모두 여기를 거친다. 4번 계획이 목록 조건(피하는 업종 등)을 이곳에 끼운다.
 @Injectable()
 export class CreatorsRepository {
@@ -55,6 +58,25 @@ export class CreatorsRepository {
           ? { handle: connection.handle, followers: connection.followers }
           : null,
     };
+  }
+
+  // 카드를 만들 활동 중인 크리에이터. 탈퇴(지워진 계정)와 지워진 프로필은 없는 것이다. 최근 가입 순.
+  // ids를 주면 그 가운데서만 읽는다(저장된 오늘 목록을 다시 펼칠 때).
+  async listForCards(ids?: string[]): Promise<CreatorCardRow[]> {
+    if (ids?.length === 0) return [];
+    const rows = await this.prisma.creatorProfile.findMany({
+      where: {
+        deletedAt: null,
+        ...(ids ? { userId: { in: ids } } : {}),
+        user: { role: 'CREATOR', deletedAt: null },
+      },
+      include: { user: { select: { createdAt: true } } },
+      orderBy: [{ user: { createdAt: 'desc' } }, { userId: 'asc' }],
+    });
+    return rows.map(({ user, ...profile }) => ({
+      ...profile,
+      joinedAt: user.createdAt,
+    }));
   }
 
   // 프로필이 없어도 연결은 있을 수 있다(연결을 먼저 한 크리에이터). 프로필을 저장할 때 연결된 아이디를 따르려고 따로 읽는다.

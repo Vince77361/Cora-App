@@ -113,6 +113,9 @@ Class | Method | HTTP request | Description
 *PrinciplesApi* | [**upsertMyPrinciples**](doc//PrinciplesApi.md#upsertmyprinciples) | **PUT** /creators/me/principles | 
 *ProposalsApi* | [**getProposal**](doc//ProposalsApi.md#getproposal) | **GET** /offers/{id} | 
 *ProposalsApi* | [**listProposals**](doc//ProposalsApi.md#listproposals) | **GET** /offers/proposals | 
+*RecommendationsApi* | [**listCampaignRecommendations**](doc//RecommendationsApi.md#listcampaignrecommendations) | **GET** /recommendations/campaigns | 크리에이터의 오늘 캠페인·가게 추천
+*RecommendationsApi* | [**listCreatorRecommendations**](doc//RecommendationsApi.md#listcreatorrecommendations) | **GET** /recommendations/creators | 브랜드의 오늘 크리에이터 추천(진행 중인 캠페인 필요)
+*RecommendationsApi* | [**listPreviewCards**](doc//RecommendationsApi.md#listpreviewcards) | **GET** /recommendations/preview | 역할이 없는 사용자의 둘러보기 카드(읽기 전용)
 *StoreInsightsApi* | [**getMyStoreTrialComparison**](doc//StoreInsightsApi.md#getmystoretrialcomparison) | **GET** /stores/me/trial-comparison | 체험단 재계약 전 비교(G3). 체험단 계약 정보가 없으면 404다.
 *StoreResultApi* | [**getStoreResult**](doc//StoreResultApi.md#getstoreresult) | **GET** /collaborations/{id}/result | 사장님의 7일 결과(G1). 끝난 협업의 지급·환불과 평소 조회수 대비 배수를 돌려준다.
 *StoresApi* | [**advanceMyStoreOnboarding**](doc//StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
@@ -154,7 +157,10 @@ Class | Method | HTTP request | Description
  - [ApplyDto](doc//ApplyDto.md)
  - [BankModel](doc//BankModel.md)
  - [BrandProfileModel](doc//BrandProfileModel.md)
+ - [CampaignListCardKind](doc//CampaignListCardKind.md)
+ - [CampaignListCardModel](doc//CampaignListCardModel.md)
  - [CampaignModel](doc//CampaignModel.md)
+ - [CampaignRecommendationsModel](doc//CampaignRecommendationsModel.md)
  - [CampaignStatus](doc//CampaignStatus.md)
  - [CancelRequestModel](doc//CancelRequestModel.md)
  - [CollaborationCounterpartModel](doc//CollaborationCounterpartModel.md)
@@ -178,7 +184,9 @@ Class | Method | HTTP request | Description
  - [CreateCreatorSeriesDto](doc//CreateCreatorSeriesDto.md)
  - [CreatePaymentDto](doc//CreatePaymentDto.md)
  - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
+ - [CreatorCardModel](doc//CreatorCardModel.md)
  - [CreatorProfileModel](doc//CreatorProfileModel.md)
+ - [CreatorRecommendationsModel](doc//CreatorRecommendationsModel.md)
  - [CreatorSeriesModel](doc//CreatorSeriesModel.md)
  - [CreatorSummaryModel](doc//CreatorSummaryModel.md)
  - [DisputeViewReportDto](doc//DisputeViewReportDto.md)
@@ -195,6 +203,7 @@ Class | Method | HTTP request | Description
  - [InstagramConnectionModel](doc//InstagramConnectionModel.md)
  - [ManualBranchDto](doc//ManualBranchDto.md)
  - [ManualStoreDto](doc//ManualStoreDto.md)
+ - [MatchReason](doc//MatchReason.md)
  - [MeModel](doc//MeModel.md)
  - [MyApplicationStatus](doc//MyApplicationStatus.md)
  - [MyOpenOfferModel](doc//MyOpenOfferModel.md)
@@ -224,6 +233,8 @@ Class | Method | HTTP request | Description
  - [PayoutStatus](doc//PayoutStatus.md)
  - [PerViewInputDto](doc//PerViewInputDto.md)
  - [PhotoUploadModel](doc//PhotoUploadModel.md)
+ - [PreviewCardModel](doc//PreviewCardModel.md)
+ - [PreviewCardsModel](doc//PreviewCardsModel.md)
  - [PrinciplesModel](doc//PrinciplesModel.md)
  - [ProductTrialDays](doc//ProductTrialDays.md)
  - [ProposalCounterpartModel](doc//ProposalCounterpartModel.md)

@@ -3,6 +3,7 @@ import { Campaign } from '@prisma/client';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { kstDateString } from '../common/kst';
+import { BrandProfileModel } from '../brands/dto/brand-profile.model';
 import { BrandsService } from '../brands/brands.service';
 import { UsersService } from '../users/users.service';
 import { CampaignChanges, CampaignsRepository } from './campaigns.repository';
@@ -147,6 +148,22 @@ export class CampaignsService {
   // 진행 중인 캠페인만 찾는다. 마감했거나 없으면 null.
   async findActiveById(id: string): Promise<Campaign | null> {
     return UUID.test(id) ? this.campaigns.findActiveById(id) : null;
+  }
+
+  // 진행 중인 캠페인과 그 브랜드의 프로필(최근 만든 순). 크리에이터에게 보이는 카드의 재료다.
+  // ids를 주면 그 캠페인만 읽는다. 브랜드 프로필이 없는 캠페인은 빠진다.
+  // 돌려주는 행에는 예산이 있다: 크리에이터가 받는 응답에 그대로 넣지 말고 필요한 값만 골라 담는다.
+  async listActiveWithBrand(
+    ids?: string[],
+  ): Promise<{ campaign: Campaign; brand: BrandProfileModel }[]> {
+    const rows = await this.campaigns.listActive(
+      ids?.filter((id) => UUID.test(id)),
+    );
+    const brands = await this.brands.findProfiles(rows.map((r) => r.brandId));
+    return rows.flatMap((campaign) => {
+      const brand = brands.get(campaign.brandId);
+      return brand ? [{ campaign, brand }] : [];
+    });
   }
 
   // 남의 캠페인과 없는 캠페인을 구별하지 않는다.

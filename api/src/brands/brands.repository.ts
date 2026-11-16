@@ -20,6 +20,14 @@ export class BrandsRepository {
     });
   }
 
+  // 여러 브랜드의 프로필을 한 번에. 프로필이 없는 브랜드는 빠진다.
+  findActiveByUserIds(userIds: string[]): Promise<BrandProfile[]> {
+    if (userIds.length === 0) return Promise.resolve([]);
+    return this.prisma.brandProfile.findMany({
+      where: { userId: { in: userIds }, deletedAt: null },
+    });
+  }
+
   // 같은 브랜드의 요청이 동시에 와도 유니크 때문에 줄은 하나다. 지워진 줄이 있으면 되살려 덮어쓴다.
   upsert(userId: string, data: BrandProfileData): Promise<BrandProfile> {
     const values = { ...data, deletedAt: null };

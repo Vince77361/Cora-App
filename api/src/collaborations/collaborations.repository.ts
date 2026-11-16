@@ -200,6 +200,60 @@ export class CollaborationsRepository {
     });
   }
 
+  // 맡긴 쪽 하나와 끝나지 않은 협업(진행 중이거나 멈춘 것)이 있는 크리에이터. 하루 추천이 이미 일하는 사이를 뺄 때 쓴다.
+  async listOpenCreatorIds(
+    commissionerId: string,
+    creatorIds: string[],
+  ): Promise<Set<string>> {
+    if (creatorIds.length === 0) return new Set();
+    const rows = await this.prisma.collaboration.findMany({
+      where: {
+        commissionerId,
+        creatorId: { in: creatorIds },
+        stage: { notIn: COLLABORATION_DONE_STAGES },
+        deletedAt: null,
+      },
+      select: { creatorId: true },
+    });
+    return new Set(rows.map((r) => r.creatorId));
+  }
+
+  // 그 캠페인에서 중도에 그만둔(DROPPED) 크리에이터. 같은 캠페인에서는 다시 추천하지 않는다.
+  async listDroppedCreatorIds(
+    campaignId: string,
+    creatorIds: string[],
+  ): Promise<Set<string>> {
+    if (creatorIds.length === 0) return new Set();
+    const rows = await this.prisma.collaboration.findMany({
+      where: {
+        campaignId,
+        creatorId: { in: creatorIds },
+        stage: 'DROPPED',
+        deletedAt: null,
+      },
+      select: { creatorId: true },
+    });
+    return new Set(rows.map((r) => r.creatorId));
+  }
+
+  // 크리에이터와 끝나지 않은 협업이 있는 맡긴 쪽(브랜드·가게 주인). listOpenCreatorIds의 반대쪽이다.
+  async listOpenCommissionerIds(
+    creatorId: string,
+    commissionerIds: string[],
+  ): Promise<Set<string>> {
+    if (commissionerIds.length === 0) return new Set();
+    const rows = await this.prisma.collaboration.findMany({
+      where: {
+        creatorId,
+        commissionerId: { in: commissionerIds },
+        stage: { notIn: COLLABORATION_DONE_STAGES },
+        deletedAt: null,
+      },
+      select: { commissionerId: true },
+    });
+    return new Set(rows.map((r) => r.commissionerId));
+  }
+
   // 가게의 협업 가운데 이 단계들에 있는 것의 수.
   countForStore(
     storeId: string,

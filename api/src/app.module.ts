@@ -21,6 +21,7 @@ import { PaymentsDevModule } from './payments/payments-dev.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PayoutAccountsModule } from './payout-accounts/payout-accounts.module';
 import { PrinciplesModule } from './principles/principles.module';
+import { RecommendationsModule } from './recommendations/recommendations.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SettlementsModule } from './settlements/settlements.module';
 import { StoreInsightsModule } from './store-insights/store-insights.module';
@@ -46,6 +47,7 @@ import { WalletModule } from './wallet/wallet.module';
     PrinciplesModule,
     BrandsModule,
     CampaignsModule,
+    RecommendationsModule,
     StoresModule,
     ContentDraftsModule,
     ApplicationsModule,

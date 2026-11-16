@@ -25,6 +25,7 @@ import { ManualStoreDto } from './dto/manual-store.dto';
 import { OfferTermsModel } from './dto/offer-terms.model';
 import { StoreBranchModel } from './dto/store-branch.model';
 import { SetDefaultTermsDto } from './dto/set-default-terms.dto';
+import { StoreCardSource } from './dto/store-card-source';
 import { StoreDetailModel, StoreSummaryModel } from './dto/store-public.model';
 import { TrialInfoDto } from './dto/trial-info.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -351,6 +352,29 @@ export class StoresService {
       .map(({ row }) => this.toSummary(row));
   }
 
+  // 크리에이터의 하루 추천이 쓰는 공개 가게 카드의 재료. listPublished와 같은 조건(내 가게와 피하는 업종은 빠진다)이고
+  // 지역 순서는 매기지 않는다(추천이 점수로 정한다). 최근 공개 순.
+  async listPublishedCards(creatorId: string): Promise<StoreCardSource[]> {
+    return this.toCardSources(
+      await this.stores.listPublished(creatorId),
+      creatorId,
+    );
+  }
+
+  // 저장된 오늘 목록의 가게를 다시 읽는다. 읽을 때마다 피하는 업종을 다시 거른다.
+  async findPublishedCards(
+    ids: string[],
+    creatorId: string,
+  ): Promise<StoreCardSource[]> {
+    const rows = await this.stores.findPublishedByIds(
+      ids.filter((id) => UUID.test(id)),
+    );
+    return this.toCardSources(
+      rows.filter((row) => row.ownerId !== creatorId),
+      creatorId,
+    );
+  }
+
   // 내 가게여도 공개된 것만 보인다(미리 보기). 등록 중인 가게와, 내가 피하는 업종의 가게는 404다.
   async getPublished(
     userId: string,
@@ -605,6 +629,20 @@ export class StoresService {
         summary: link.summary,
       })),
     };
+  }
+
+  private async toCardSources(
+    rows: Store[],
+    creatorId: string,
+  ): Promise<StoreCardSource[]> {
+    const visible = await this.visibility.filterCommissioners(rows, creatorId);
+    return visible.map((row) => ({
+      ownerId: row.ownerId,
+      summary: this.toSummary(row),
+      intro: row.intro,
+      recruitLine: row.recruitLine,
+      publishedAt: row.publishedAt,
+    }));
   }
 
   // 공개 조건(이름, 기본 조건)은 조회 쿼리와 공개 규칙이 보장한다. 어긋나면 데이터 문제라 500이다.
