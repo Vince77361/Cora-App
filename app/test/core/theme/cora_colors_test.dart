@@ -366,6 +366,19 @@ void main() {
     expect(changed.toastShadow, const Color(0xFF333333));
   });
 
+  test('the terms bar shadow matches Terms and DarkTerms', () {
+    expect(CoraColors.light.termsBarShadow, const Color(0x0F17181C));
+    expect(CoraColors.dark.termsBarShadow, const Color(0x73000000));
+
+    final mixed = CoraColors.light.lerp(CoraColors.dark, 1);
+    expect(mixed.termsBarShadow, CoraColors.dark.termsBarShadow);
+    final changed = CoraColors.light.copyWith(
+      termsBarShadow: const Color(0xFF070707),
+    );
+    expect(changed.termsBarShadow, const Color(0xFF070707));
+    expect(changed.text, CoraColors.light.text);
+  });
+
   test(
     '03, 04 and 05 tokens match Likes, Compare, Match and their dark twins',
     () {

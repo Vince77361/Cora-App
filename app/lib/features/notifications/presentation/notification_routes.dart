@@ -72,6 +72,10 @@ String? locationFor(String targetKind, String? targetId, UserRole role) {
         UserRole.creator => AppRoutes.creatorMatch(id),
         UserRole.store => null,
       };
+    case 'TERMS':
+      // 협업의 조건 판본이 새로 왔거나 상대가 확인했다. 서버는 협업 id를 주고, 브랜드와 크리에이터가 06을 연다.
+      if (id == null) return null;
+      return role == UserRole.store ? null : AppRoutes.collaborationTerms(id);
     case 'WALLET':
       return role == UserRole.creator ? NotificationRoutes.wallet : null;
   }

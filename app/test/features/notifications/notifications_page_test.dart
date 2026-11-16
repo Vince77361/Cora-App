@@ -217,6 +217,22 @@ void main() {
     },
   );
 
+  test(
+    'a terms notification goes to the terms screen of brand and creator',
+    () {
+      expect(
+        locationFor('TERMS', 'col-1', UserRole.brand),
+        '/collaborations/col-1/terms',
+      );
+      expect(
+        locationFor('TERMS', 'col-1', UserRole.creator),
+        '/collaborations/col-1/terms',
+      );
+      expect(locationFor('TERMS', null, UserRole.brand), isNull);
+      expect(locationFor('TERMS', 'col-1', UserRole.store), isNull);
+    },
+  );
+
   testWidgets('a mutual interest notification opens the match sheet', (
     tester,
   ) async {

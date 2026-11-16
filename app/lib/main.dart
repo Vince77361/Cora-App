@@ -33,6 +33,8 @@ import 'features/discovery/data/api_discovery_repository.dart';
 import 'features/discovery/domain/discovery_repository.dart';
 import 'features/interests/data/api_interests_repository.dart';
 import 'features/interests/domain/interests_repository.dart';
+import 'features/negotiation/data/api_negotiation_repository.dart';
+import 'features/negotiation/domain/negotiation_repository.dart';
 import 'features/principles/data/api_principles_repository.dart';
 import 'features/principles/domain/principles_repository.dart';
 import 'features/instagram_connect/data/api_instagram_repository.dart';
@@ -185,6 +187,9 @@ Future<void> main() async {
         ),
         collaborationRepositoryProvider.overrideWith(
           (ref) => ApiCollaborationRepository(ref.watch(apiClientProvider)),
+        ),
+        negotiationRepositoryProvider.overrideWith(
+          (ref) => ApiNegotiationRepository(ref.watch(apiClientProvider)),
         ),
         notificationRepositoryProvider.overrideWith(
           (ref) => ApiNotificationRepository(ref.watch(apiClientProvider)),

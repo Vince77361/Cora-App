@@ -8,6 +8,7 @@ import 'package:cora/features/brand_onboarding/domain/campaign_repository.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/discovery/domain/discovery_repository.dart';
 import 'package:cora/features/interests/domain/interests_repository.dart';
+import 'package:cora/features/negotiation/domain/negotiation_repository.dart';
 import 'package:cora/features/notification_settings/domain/notification_settings_repository.dart';
 import 'package:cora/features/notifications/domain/notification_repository.dart';
 import 'package:cora/features/principles/domain/principles_repository.dart';
@@ -31,6 +32,7 @@ import '../features/brand_onboarding/fake_campaign_repository.dart';
 import '../features/collaboration/fake_collaboration_repository.dart';
 import '../features/discovery/fake_discovery_repository.dart';
 import '../features/interests/fake_interests_repository.dart';
+import '../features/negotiation/fake_negotiation_repository.dart';
 import '../features/notification_settings/fake_notification_settings_repository.dart';
 import '../features/notifications/fake_notification_repository.dart';
 import '../features/onboarding/fake_me_repository.dart';
@@ -128,6 +130,11 @@ Widget coraAppWith(
       if (!_overrides(overrides, interestsRepositoryProvider))
         interestsRepositoryProvider.overrideWithValue(
           FakeInterestsRepository(),
+        ),
+      // 06 조건 협의가 협업의 최신 조건 판본을 읽는다. 기본은 아무도 확인하지 않은 판본 1이다.
+      if (!_overrides(overrides, negotiationRepositoryProvider))
+        negotiationRepositoryProvider.overrideWithValue(
+          FakeNegotiationRepository(),
         ),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(

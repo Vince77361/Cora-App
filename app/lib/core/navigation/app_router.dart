@@ -20,6 +20,7 @@ import '../../features/discovery/presentation/pages/brand_discovery_page.dart';
 import '../../features/discovery/presentation/pages/campaign_detail_page.dart';
 import '../../features/discovery/presentation/pages/creator_discovery_page.dart';
 import '../../features/interests/presentation/pages/compare_page.dart';
+import '../../features/negotiation/presentation/pages/draft_terms_page.dart';
 import '../../features/interests/presentation/pages/interests_page.dart';
 import '../../features/interests/presentation/viewmodels/interests_view_model.dart'
     show InterestTab;
@@ -201,6 +202,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ComparePage(
             a: state.uri.queryParameters['a']!,
             b: state.uri.queryParameters['b']!,
+          ),
+          key: state.pageKey,
+        ),
+      ),
+      // 조건 협의(06). 브랜드와 크리에이터가 함께 쓴다(알림과 05, 07이 연다). 07에서 열면 `extra`로 알려 준다.
+      GoRoute(
+        path: AppRoutes.collaborationTermsPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          DraftTermsPage(
+            collaborationId: state.pathParameters['id']!,
+            fromProgress: state.extra == AppRoutes.fromProgress,
           ),
           key: state.pageKey,
         ),

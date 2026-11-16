@@ -146,10 +146,15 @@ abstract final class AppRoutes {
   static String creatorMatch(String collaborationId) =>
       '$creatorInterests?$matchParam=${Uri.encodeQueryComponent(collaborationId)}';
 
-  /// 조건 협의(06). 가게와 브랜드 모두 협업 [collaborationId]의 최신 조건 판본을 여기서 본다.
-  /// 11번 작업이 등록한다.
+  /// 조건 협의(06). 브랜드와 크리에이터 모두 협업 [collaborationId]의 최신 조건 판본을 여기서 본다.
   static String collaborationTerms(String collaborationId) =>
       '/collaborations/${Uri.encodeComponent(collaborationId)}/terms';
+
+  /// [collaborationTerms]의 라우트 패턴.
+  static const collaborationTermsPattern = '/collaborations/:id/terms';
+
+  /// 07에서 06을 열 때 `extra`로 넘긴다. 06에서 수락하면 07을 새로 쌓지 않고 07로 돌아간다.
+  static const fromProgress = 'fromProgress';
 
   /// 캠페인 상세(D1). 크리에이터의 08·03 카드를 누르면 열린다.
   static String creatorCampaign(String campaignId) =>
@@ -158,7 +163,14 @@ abstract final class AppRoutes {
   /// [creatorCampaign]의 라우트 패턴.
   static const creatorCampaignPattern = '/creator/campaigns/:id';
 
-  /// 브랜드의 협업(07). 11번 작업이 등록한다.
+  /// 진행 단계(07). 브랜드와 크리에이터 모두 브랜드 협업 [collaborationId]의 여섯 단계를 여기서 본다.
+  static String collaborationProgress(String collaborationId) =>
+      '/collaborations/${Uri.encodeComponent(collaborationId)}/progress';
+
+  /// [collaborationProgress]의 라우트 패턴.
+  static const collaborationProgressPattern = '/collaborations/:id/progress';
+
+  /// 브랜드의 협업 탭. 진행 중인 브랜드 협업이 하나면 곧바로 07이고, 여럿이면 목록이다.
   static const brandCollaborations = '/brand/collaborations';
 
   /// 브랜드 하단 메뉴의 `프로필`. 계정·설정 계획이 만들기 전까지 역할 다시 고르기와 로그아웃만 있는 자리 화면이다.

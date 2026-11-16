@@ -1,7 +1,12 @@
+import 'package:cora/features/discovery/domain/discovery_card.dart'
+    show MatchReason;
 import 'package:cora/features/negotiation/domain/brand_usage_rights.dart';
+import 'package:cora/features/negotiation/domain/terms_version.dart';
 import 'package:cora/features/negotiation/presentation/terms_text.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart'
-    show ContentFormat;
+    show ContentFormat, ViewPay;
+import 'package:cora/features/offer_terms/presentation/offer_terms_text.dart'
+    show won;
 import 'package:cora/features/principles/domain/principles.dart' show FeeBand;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -54,5 +59,93 @@ void main() {
     expect(compareUsageLabel(BrandUsageRights.repostOnly), '브랜드 계정 재게시');
     expect(compareUsageLabel(BrandUsageRights.adsToo), '재게시 + 광고');
     expect(compareUsageLabel(BrandUsageRights.none), '사용 안 함');
+  });
+
+  group('06 terms labels', () {
+    test('labels terms the way the canvas does', () {
+      expect(revisionLabel(RevisionScope.none), '없음');
+      expect(revisionLabel(RevisionScope.guideOnce), '기획안 기준 1회');
+      expect(revisionLabel(RevisionScope.draftOnce), '초안 기준 1회');
+      expect(revisionLabel(RevisionScope.draftTwice), '초안 기준 2회');
+      expect(usageLabel(BrandUsageRights.repostOnly), '브랜드 계정 재게시만');
+      expect(usageLabel(BrandUsageRights.adsToo), '광고 소재로도 사용');
+      expect(usageLabel(BrandUsageRights.none), '사용 안 함');
+      expect(payoutLabel(7), '최종 게시 후 7일 이내');
+      expect(payoutLabel(14), '최종 게시 후 14일 이내');
+      expect(deliverableLabel(ContentFormat.reels, 1), '릴스 1편');
+      expect(deliverableLabel(ContentFormat.cardNews, 3), '카드뉴스 3편');
+      expect(startFromLabel(DateTime(2026, 11, 16)), '11월 16일 이후');
+      expect(reasonLabel(MatchReason.field), '분야가 맞아요');
+      expect(reasonLabel(MatchReason.trial), '제품 사용 기간이 맞아요');
+    });
+
+    test('the money labels cut at ten thousand won or spell the amount', () {
+      expect(won(300000), '30만 원');
+      expect(wonLabel(350000), '350,000원');
+      expect(wonLabel(300000), '300,000원');
+      expect(wonLabel(0), '0원');
+      expect(perfLabel(null), '없음');
+      expect(
+        perfLabel(const ViewPay(ratePerThousand: 2000, cap: 60000)),
+        '최대 6만 원',
+      );
+      expect(
+        perfLabel(const ViewPay(ratePerThousand: 2000, cap: 65000)),
+        '최대 65,000원',
+      );
+    });
+
+    test('the re-post and ads rows follow the usage rights', () {
+      expect(repostValueLabel(BrandUsageRights.repostOnly), '브랜드 계정만');
+      expect(repostValueLabel(BrandUsageRights.adsToo), '브랜드 계정만');
+      expect(repostValueLabel(BrandUsageRights.none), '사용 안 함');
+      expect(adsValueLabel(BrandUsageRights.repostOnly), '별도 협의');
+      expect(adsValueLabel(BrandUsageRights.adsToo), '포함');
+      expect(adsValueLabel(BrandUsageRights.none), '별도 협의');
+    });
+
+    test('followers get thousands separators', () {
+      expect(followersLabel(8200), '8,200명');
+      expect(followersLabel(950), '950명');
+      expect(followersLabel(1250000), '1,250,000명');
+    });
+
+    test('the accept note adds the refund sentence only for a performance '
+        'add-on', () {
+      expect(
+        termsAcceptNote(300000, hasPerformance: false),
+        '수락하면 이 판본 조건으로 계약 준비를 시작해요. 최대 현금 부담 30만 원.',
+      );
+      expect(
+        termsAcceptNote(360000, hasPerformance: true),
+        '수락하면 이 판본 조건으로 계약 준비를 시작해요. 최대 현금 부담 36만 원. '
+        '성과 추가는 조회수만큼, 남으면 환불해요.',
+      );
+    });
+
+    test('termsHeader follows my turn, who made the version and whether both '
+        'agreed', () {
+      expect(
+        termsHeader(version: 1, myTurn: true, mine: false, agreed: false),
+        const TermsHeader('받은 제안 · 판본 1', '내가 응답할 차례', highlighted: true),
+      );
+      // 내가 아직 확인하지 않은 판본은 누가 냈든 내 차례다.
+      expect(
+        termsHeader(version: 2, myTurn: true, mine: true, agreed: false),
+        const TermsHeader('받은 제안 · 판본 2', '내가 응답할 차례', highlighted: true),
+      );
+      expect(
+        termsHeader(version: 2, myTurn: false, mine: true, agreed: false),
+        const TermsHeader('보낸 제안 · 판본 2', '상대 대기'),
+      );
+      expect(
+        termsHeader(version: 3, myTurn: false, mine: false, agreed: false),
+        const TermsHeader('받은 제안 · 판본 3', '상대 대기'),
+      );
+      expect(
+        termsHeader(version: 3, myTurn: false, mine: true, agreed: true),
+        const TermsHeader('합의한 조건 · 판본 3', '합의 완료'),
+      );
+    });
   });
 }
