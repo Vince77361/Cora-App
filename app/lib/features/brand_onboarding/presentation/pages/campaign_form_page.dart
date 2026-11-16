@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
+import '../../../../core/time/clock.dart';
+import '../../../../core/time/kst.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_field_box.dart';
 import '../../../../core/ui/cora_primary_button.dart';
@@ -98,7 +100,8 @@ class _CampaignFormPageState extends ConsumerState<CampaignFormPage> {
   }
 
   Future<void> _chooseStartFrom(CampaignFormState s) async {
-    final today = s.today ?? DateTime.now();
+    // 시각은 주입받은 Clock에서 한국 시간으로 읽는다(`today`는 만들 때 채워져 있어 보통 그 값을 쓴다).
+    final today = s.today ?? _kstToday(ref.read(clockProvider).now());
     final days = [
       for (var i = 0; i < 60; i++)
         DateTime(today.year, today.month, today.day + i),
@@ -363,5 +366,10 @@ class _CampaignFormPageState extends ConsumerState<CampaignFormPage> {
 const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
 /// `11월 20일 (금)`.
+DateTime _kstToday(DateTime now) {
+  final kst = toKst(now);
+  return DateTime(kst.year, kst.month, kst.day);
+}
+
 String _dayLabel(DateTime day) =>
     '${day.month}월 ${day.day}일 (${_weekdays[day.weekday - 1]})';

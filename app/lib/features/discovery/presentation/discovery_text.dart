@@ -20,7 +20,7 @@ abstract final class DiscoveryTexts {
       '${josa(name, JosaPair.gwaWa)} 서로 관심이 닿았어요.';
 
   // 카드(캔버스 01, 계획)
-  static String badge(int position, int total) => '운영자 추천 $position/$total';
+  static String badge(int position, int total) => '운영자 추천 $position / $total';
   static const noHeadline = '대표 콘텐츠를 준비 중이에요';
   static String feeBandLabel(FeeBand band) => switch (band) {
     FeeBand.w200k => '20만 원대',

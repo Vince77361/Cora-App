@@ -101,9 +101,9 @@ void main() {
   testWidgets('shows the badge with position and total', (tester) async {
     await _pump(tester, _three());
 
-    expect(find.text('운영자 추천 1/3'), findsOneWidget);
+    expect(find.text('운영자 추천 1 / 3'), findsOneWidget);
     // 뒤 카드도 자기 순번을 달고 있다.
-    expect(find.text('운영자 추천 2/3', skipOffstage: false), findsOneWidget);
+    expect(find.text('운영자 추천 2 / 3', skipOffstage: false), findsOneWidget);
     expect(find.text('서윤의 작은 취향'), findsOneWidget);
     expect(find.text('출근 전 30초, 오늘의 손목 루틴'), findsOneWidget);
     expect(find.text('30만 원대'), findsWidgets);
@@ -120,7 +120,7 @@ void main() {
     );
     await _pump(tester, repo);
 
-    expect(find.text('운영자 추천 3/3'), findsOneWidget);
+    expect(find.text('운영자 추천 3 / 3'), findsOneWidget);
   });
 
   testWidgets('a card without a headline says it is being prepared', (
@@ -174,7 +174,7 @@ void main() {
     expect(repo.decisions.single.outcome, SwipeOutcome.like);
     expect(repo.decisions.single.target.id, 'c1');
     expect(find.text('관심을 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
-    expect(find.text('운영자 추천 2/3'), findsOneWidget);
+    expect(find.text('운영자 추천 2 / 3'), findsOneWidget);
 
     await tester.tap(find.text('관심 목록'));
     await tester.pumpAndSettle();
@@ -356,7 +356,7 @@ void main() {
       final repo = _three();
       await _pump(tester, repo);
       await _swipe(tester, '서윤의 작은 취향', const Offset(-300, 0));
-      expect(find.text('운영자 추천 2/3'), findsOneWidget);
+      expect(find.text('운영자 추천 2 / 3'), findsOneWidget);
 
       await tester.tap(find.text('이유 남기기'));
       await tester.pumpAndSettle();
@@ -366,7 +366,7 @@ void main() {
       expect(repo.undoCalls, 1);
       expect(find.text('넘겼어요. 이유를 남길까요?'), findsNothing);
       // 넘겼던 카드가 맨 앞에 다시 있다.
-      expect(find.text('운영자 추천 1/3'), findsOneWidget);
+      expect(find.text('운영자 추천 1 / 3'), findsOneWidget);
       expect(find.text('서윤의 작은 취향'), findsOneWidget);
     },
   );
@@ -387,7 +387,7 @@ void main() {
     expect(find.text('되돌릴 수 없어요. 내일 추천에 다시 나올 수 있어요.'), findsOneWidget);
     // 시트는 열려 있고 넘긴 카드는 그대로 넘겨져 있다.
     expect(find.text('넘겼어요. 이유를 남길까요?'), findsOneWidget);
-    expect(find.text('운영자 추천 1/3'), findsNothing);
+    expect(find.text('운영자 추천 1 / 3'), findsNothing);
   });
 
   testWidgets(
@@ -421,7 +421,7 @@ void main() {
 
     expect(find.text('오늘 추천을 모두 봤어요'), findsNothing);
     expect(find.text('서윤의 작은 취향'), findsOneWidget);
-    expect(find.text('운영자 추천 1/1'), findsOneWidget);
+    expect(find.text('운영자 추천 1 / 1'), findsOneWidget);
   });
 
   testWidgets('undo after a restart reads today again and shows the card', (
@@ -491,7 +491,7 @@ void main() {
     expect(tester.takeException(), isA<DiscoveryFailure>());
     expect(find.text('잠시 뒤 다시 시도해 주세요.'), findsOneWidget);
     expect(find.text('서윤의 작은 취향'), findsOneWidget);
-    expect(find.text('운영자 추천 1/3'), findsOneWidget);
+    expect(find.text('운영자 추천 1 / 3'), findsOneWidget);
     expect(repo.decisions, isEmpty);
   });
 

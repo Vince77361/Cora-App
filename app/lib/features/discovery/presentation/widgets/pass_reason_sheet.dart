@@ -56,6 +56,8 @@ class _PassReasonSheetState extends State<PassReasonSheet> {
   String? _message;
 
   Future<void> _primary() async {
+    // 저장하는 동안의 연타가 두 번 저장하거나 시트를 두 번 닫지 않게 한다.
+    if (_busy) return;
     final reason = _picked;
     if (reason == null) {
       Navigator.of(context).pop();
@@ -79,6 +81,7 @@ class _PassReasonSheetState extends State<PassReasonSheet> {
   }
 
   Future<void> _undo() async {
+    if (_busy) return;
     setState(() {
       _busy = true;
       _message = null;
