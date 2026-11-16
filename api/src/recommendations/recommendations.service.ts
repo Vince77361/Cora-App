@@ -19,6 +19,8 @@ import { principleTags, storeHeadline, storeRewardLine } from './card-text';
 import {
   DAILY_CARD_COUNT,
   decidedTargetIds,
+  lapsedOfferStoreIds,
+  openOfferStoreIds,
   PREVIEW_CARD_COUNT,
   rankCandidates,
   RankInput,
@@ -150,13 +152,21 @@ export class RecommendationsService {
 
     const campaignIds = idsOf(items, 'CAMPAIGN');
     const storeIds = idsOf(items, 'STORE');
-    const [campaignRows, storeRows, campaignDecisions, storeDecisions] =
-      await Promise.all([
-        this.campaigns.listActiveWithBrand(campaignIds),
-        this.stores.findPublishedCards(storeIds, userId),
-        this.repository.listDecisions(userId, 'CAMPAIGN'),
-        this.repository.listDecisions(userId, 'STORE'),
-      ]);
+    const [
+      campaignRows,
+      storeRows,
+      campaignDecisions,
+      storeDecisions,
+      offerStates,
+      liveApplicationStores,
+    ] = await Promise.all([
+      this.campaigns.listActiveWithBrand(campaignIds),
+      this.stores.findPublishedCards(storeIds, userId),
+      this.repository.listDecisions(userId, 'CAMPAIGN'),
+      this.repository.listDecisions(userId, 'STORE'),
+      this.repository.listOfferStates(userId),
+      this.repository.listLiveApplicationStoreIds(userId),
+    ]);
     // 가게는 findPublishedCards가 이미 거른다. 캠페인은 여기서 거른다.
     const visibleCampaigns = await this.visibility.filterCommissioners(
       campaignRows.map((row) => ({
@@ -172,6 +182,11 @@ export class RecommendationsService {
     const storeById = new Map(storeRows.map((s) => [s.summary.id, s]));
     const startOfToday = startOfKstDay(now);
     const decidedCampaigns = decidedTargetIds(campaignDecisions, startOfToday);
+    // 오늘 목록이 만들어진 뒤에 지원했거나 오퍼가 오간 가게도 이미 관계가 생긴 것이라 바로 뺀다.
+    const relatedStores = new Set([
+      ...openOfferStoreIds(offerStates, now),
+      ...liveApplicationStores,
+    ]);
     const decidedStores = decidedTargetIds(storeDecisions, startOfToday);
 
     const valid: {
@@ -190,7 +205,7 @@ export class RecommendationsService {
         const source = storeById.get(item.id);
         if (!source) continue;
         valid.push({
-          decided: decidedStores.has(item.id),
+          decided: decidedStores.has(item.id) || relatedStores.has(item.id),
           card: toStoreCard(source, mine),
         });
       }
@@ -304,9 +319,8 @@ export class RecommendationsService {
       campaignDecisions,
       storeDecisions,
       openCommissioners,
-      openOfferStores,
+      offerStates,
       liveApplicationStores,
-      lapsedOfferStores,
       likedByCampaign,
     ] = await Promise.all([
       this.repository.listDecisions(userId, 'CAMPAIGN'),
@@ -315,13 +329,14 @@ export class RecommendationsService {
         ...brandIds,
         ...storeRows.map((s) => s.ownerId),
       ]),
-      this.repository.listOpenOfferStoreIds(userId, now),
+      this.repository.listOfferStates(userId),
       this.repository.listLiveApplicationStoreIds(userId),
-      this.repository.listLapsedOfferStoreIds(userId),
       this.repository.listCampaignIdsThatLiked(userId, brandIds),
     ]);
     const settledCampaigns = settledTargetIds(campaignDecisions);
     const settledStores = settledTargetIds(storeDecisions);
+    const openOfferStores = openOfferStoreIds(offerStates, now);
+    const lapsedOfferStores = lapsedOfferStoreIds(offerStates, now);
 
     const candidates: (RankInput & StoredItem)[] = [];
     for (const { row } of visibleCampaigns) {

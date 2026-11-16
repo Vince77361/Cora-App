@@ -1,6 +1,9 @@
 import {
   decidedTargetIds,
   DecisionRow,
+  lapsedOfferStoreIds,
+  OfferStateRow,
+  openOfferStoreIds,
   rankCandidates,
   settledTargetIds,
 } from './candidate-rules';
@@ -78,5 +81,63 @@ describe('decision sets', () => {
       'liked',
       'passed',
     ]);
+  });
+});
+
+describe('offer states by the same rule as offer-rules', () => {
+  const now = new Date('2026-11-11T03:00:00Z');
+  const row = (
+    over: Partial<OfferStateRow> & { storeId: string },
+  ): OfferStateRow => ({
+    initiatedBy: 'STORE',
+    status: 'SENT',
+    expiresAt: new Date('2026-11-20T00:00:00Z'),
+    paymentDueAt: null,
+    declinedAt: null,
+    closedAt: null,
+    ...over,
+  });
+
+  it('treats a SENT offer past its deadline as lapsed, not open', () => {
+    const rows = [
+      row({ storeId: 'fresh' }),
+      row({
+        storeId: 'stale-sent',
+        expiresAt: new Date('2026-11-11T03:00:00Z'),
+      }),
+    ];
+    expect([...openOfferStoreIds(rows, now)]).toEqual(['fresh']);
+    expect([...lapsedOfferStoreIds(rows, now)]).toEqual(['stale-sent']);
+  });
+
+  it('treats an accepted offer past its payment deadline as lapsed', () => {
+    const rows = [
+      row({
+        storeId: 'waiting-payment',
+        status: 'ACCEPTED',
+        paymentDueAt: new Date('2026-11-12T00:00:00Z'),
+      }),
+      row({
+        storeId: 'payment-late',
+        status: 'ACCEPTED',
+        paymentDueAt: new Date('2026-11-10T00:00:00Z'),
+      }),
+    ];
+    expect([...openOfferStoreIds(rows, now)]).toEqual(['waiting-payment']);
+    expect([...lapsedOfferStoreIds(rows, now)]).toEqual(['payment-late']);
+  });
+
+  it('does not count a closed offer, a declined one or one the creator started as open or lapsed', () => {
+    const rows = [
+      row({ storeId: 'closed', status: 'ACCEPTED', closedAt: now }),
+      row({ storeId: 'declined', status: 'DECLINED' }),
+      row({
+        storeId: 'mine-lapsed',
+        initiatedBy: 'CREATOR',
+        expiresAt: new Date('2026-11-01T00:00:00Z'),
+      }),
+    ];
+    expect([...openOfferStoreIds(rows, now)]).toEqual([]);
+    expect([...lapsedOfferStoreIds(rows, now)]).toEqual([]);
   });
 });

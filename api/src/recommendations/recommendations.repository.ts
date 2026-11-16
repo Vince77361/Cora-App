@@ -6,7 +6,7 @@ import {
   SwipeTargetKind,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { DecisionRow } from './candidate-rules';
+import { DecisionRow, OfferStateRow } from './candidate-rules';
 
 export type StoredItem = {
   kind: 'CREATOR' | 'CAMPAIGN' | 'STORE';
@@ -147,25 +147,20 @@ export class RecommendationsRepository {
     return new Set(rows.flatMap((r) => (r.campaignId ? [r.campaignId] : [])));
   }
 
-  // 지금 열려 있는 오퍼(기한 전의 SENT, 협업이 끝나지 않은 ACCEPTED)를 보낸 가게.
-  // 이미 오퍼가 오간 가게를 다시 카드로 올리지 않으려는 것이다.
-  async listOpenOfferStoreIds(
-    creatorId: string,
-    now: Date,
-  ): Promise<Set<string>> {
-    const rows = await this.prisma.offer.findMany({
-      where: {
-        creatorId,
-        deletedAt: null,
-        closedAt: null,
-        OR: [
-          { status: 'SENT', expiresAt: { gt: now } },
-          { status: 'ACCEPTED' },
-        ],
+  // 이 크리에이터의 오퍼 전부(상태 판단용). 열렸는지·기한이 지났는지는 시각이 필요해서 순수 규칙(candidate-rules)이 가린다.
+  async listOfferStates(creatorId: string): Promise<OfferStateRow[]> {
+    return this.prisma.offer.findMany({
+      where: { creatorId, deletedAt: null },
+      select: {
+        storeId: true,
+        initiatedBy: true,
+        status: true,
+        expiresAt: true,
+        paymentDueAt: true,
+        declinedAt: true,
+        closedAt: true,
       },
-      select: { storeId: true },
     });
-    return new Set(rows.map((r) => r.storeId));
   }
 
   // 지금 살아 있는 지원(APPLIED, OFFERED)을 낸 가게. 오른쪽으로 밀어 지원한 가게는 다시 나오지 않는다.
@@ -174,20 +169,6 @@ export class RecommendationsRepository {
       where: {
         creatorId,
         status: { in: ['APPLIED', 'OFFERED'] },
-        deletedAt: null,
-      },
-      select: { storeId: true },
-    });
-    return new Set(rows.map((r) => r.storeId));
-  }
-
-  // 가게가 오퍼를 보냈지만 내가 답하지 못하고 기한이 지난 가게(관심을 보인 적이 있는 가게).
-  async listLapsedOfferStoreIds(creatorId: string): Promise<Set<string>> {
-    const rows = await this.prisma.offer.findMany({
-      where: {
-        creatorId,
-        initiatedBy: 'STORE',
-        status: 'EXPIRED',
         deletedAt: null,
       },
       select: { storeId: true },

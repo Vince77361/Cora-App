@@ -810,6 +810,89 @@ describe('recommendations', () => {
       expect(res.text).not.toMatch(/passReason|PASS/);
     });
 
+    it('drops a store from the saved list once I apply to it, but not once the application is closed', async () => {
+      const applied = await seedStore('지원할 가게');
+      const closed = await seedStore('닫힌 지원의 가게');
+      const kept = await seedStore('남는 가게');
+      const before = await campaignList();
+      expect(before.cards.map((c) => c.store?.id).sort()).toEqual(
+        [applied.id, closed.id, kept.id].sort(),
+      );
+
+      await request(server)
+        .post(`/stores/${applied.id}/applications`)
+        .set(authB)
+        .send()
+        .expect(201);
+      await prisma.application.create({
+        data: { storeId: closed.id, creatorId: OTHER, status: 'CLOSED' },
+      });
+
+      const after = await campaignList();
+      expect(after.cards.map((c) => c.store?.id).sort()).toEqual(
+        [closed.id, kept.id].sort(),
+      );
+
+      // 지원을 거두면(CANCELLED) 다시 나온다.
+      await request(server)
+        .delete(`/stores/${applied.id}/applications/mine`)
+        .set(authB)
+        .expect(204);
+      expect(
+        (await campaignList()).cards.map((c) => c.store?.id).sort(),
+      ).toEqual([applied.id, closed.id, kept.id].sort());
+    });
+
+    it('does not build a new list with a store I applied to', async () => {
+      const applied = await seedStore('지원한 가게');
+      const kept = await seedStore('남는 가게');
+      await prisma.application.create({
+        data: { storeId: applied.id, creatorId: OTHER, status: 'OFFERED' },
+      });
+      const list = await campaignList();
+      expect(list.cards.map((c) => c.store?.id)).toEqual([kept.id]);
+    });
+
+    it('treats a SENT offer past its deadline as lapsed: it is not open and comes back first', async () => {
+      const lapsed = await seedStore('저장은 SENT인 가게', {
+        sigungu: '마포구',
+      });
+      await seedStore('가까운 가게');
+      await createOffer(prisma, {
+        storeId: lapsed.id,
+        creatorId: OTHER,
+        status: 'SENT',
+        initiatedBy: 'STORE',
+        expiresAt: new Date('2026-11-10T00:00:00Z'),
+        voucherName: '식사권',
+      });
+      const list = await campaignList();
+      expect(list.cards[0].store?.id).toBe(lapsed.id);
+    });
+
+    it('drops a store from the saved list when a live offer arrives, but keeps one whose offer already lapsed', async () => {
+      const live = await seedStore('오퍼가 올 가게');
+      const stale = await seedStore('기한이 지난 가게');
+      await campaignList();
+      await createOffer(prisma, {
+        storeId: live.id,
+        creatorId: OTHER,
+        status: 'SENT',
+        expiresAt: new Date('2026-11-20T00:00:00Z'),
+        voucherName: '식사권',
+      });
+      await createOffer(prisma, {
+        storeId: stale.id,
+        creatorId: OTHER,
+        status: 'SENT',
+        expiresAt: new Date('2026-11-10T00:00:00Z'),
+        voucherName: '식사권',
+      });
+      expect((await campaignList()).cards.map((c) => c.store?.id)).toEqual([
+        stale.id,
+      ]);
+    });
+
     it('lets a store whose offer lapsed come back first', async () => {
       const lapsed = await seedStore('기한 지난 가게', { sigungu: '마포구' });
       await seedStore('가까운 가게');
