@@ -135,9 +135,12 @@ class _ReviewSendPageState extends ConsumerState<ReviewSendPage> {
     final readsViewsByInstagram =
         terms.format == ContentFormat.reels ||
         terms.format == ContentFormat.cardNews;
-    if (widget.target is! CounterTarget ||
-        terms.reward.viewPay == null ||
-        !readsViewsByInstagram) {
+    final target = widget.target;
+    // 크리에이터가 내는 제안: 역제안(F6)과 서로 관심 뒤에 크리에이터가 먼저 내는 브랜드 계약 판본.
+    final byCreator =
+        target is CounterTarget ||
+        (target is BrandProposalTarget && !target.proposedByBrand);
+    if (!byCreator || terms.reward.viewPay == null || !readsViewsByInstagram) {
       return false;
     }
     final connection = ref.watch(instagramConnectViewModelProvider);
@@ -289,7 +292,7 @@ class _Body extends StatelessWidget {
               label: BrandProposalCopy.reviewViewPayLabel,
               value: reward.viewPay == null
                   ? ReviewSendPage.none
-                  : viewPayLine(reward.viewPay!),
+                  : brandViewPayLine(reward.viewPay!),
             ),
             // 사용권은 그 판본의 값이라 고치지 못한다(줄을 눌러도 열리지 않는다).
             TermsRow(

@@ -82,12 +82,39 @@ class AfterMatch extends RewardProposalTarget {
   int get hashCode => Object.hash(collaborationId, baseVersion);
 }
 
-/// 보상·예산 설정(F1)에서 보내기 전 검토(F2)로 이어지는 흐름을 여는 한 곳. 보냈으면 true다.
+/// [openRewardProposal]이 어떻게 끝났는가.
+sealed class ProposalOutcome {
+  const ProposalOutcome();
+}
+
+/// 제안을 보냈다.
+class ProposalSent extends ProposalOutcome {
+  const ProposalSent();
+}
+
+/// 서로 관심 전에 보낸 제안이 곧바로 서로 관심이 됐다(상대가 이미 관심을 보낸 후보).
+class ProposalMatched extends ProposalOutcome {
+  const ProposalMatched(this.collaborationId);
+
+  final String collaborationId;
+}
+
+/// 그사이 더 새 판본이 나와 보내지 못했고, F8의 옛 판본 화면을 보였다.
+class ProposalStale extends ProposalOutcome {
+  const ProposalStale();
+}
+
+/// 보내지 않고 닫았다.
+class ProposalDismissed extends ProposalOutcome {
+  const ProposalDismissed();
+}
+
+/// 보상·예산 설정(F1)에서 보내기 전 검토(F2)로 이어지는 흐름을 여는 한 곳.
 ///
 /// 흐름은 하나의 경로(F1) 위에 F2가 쌓이는 모양이고, 보내면 둘을 함께 닫는다. 서로 관심 뒤에 내는 판본이 그사이
-/// 옛 판본이 됐으면(409 `STALE_VERSION`) 흐름을 닫고 F8의 `이전 판본이라 수락할 수 없어요` 화면을 연다(false).
-/// 부르는 쪽(04·05)은 결과로 `보냈어요` 문구와 이동을 정한다.
-Future<bool> openRewardProposal(
+/// 옛 판본이 됐으면(409 `STALE_VERSION`) 흐름을 닫고 F8의 `이전 판본이라 수락할 수 없어요` 화면을 연다
+/// ([ProposalStale]). 부르는 쪽(04·05)은 결과로 `보냈어요` 문구와 이동을 정한다.
+Future<ProposalOutcome> openRewardProposal(
   BuildContext context,
   RewardProposalTarget target,
 ) async {
@@ -98,17 +125,22 @@ Future<bool> openRewardProposal(
       RewardProposalFlowPage(target: target),
     ).createRoute(context),
   );
-  if (result == null) return false;
-  if (result.stale && context.mounted && target is AfterMatch) {
-    await navigator.push<void>(
-      CoraTransitions.push<void>(
-        StaleProposalPage(
-          latestVersion: result.latestVersion ?? target.baseVersion + 1,
-          onOpen: () =>
-              router.push(AppRoutes.collaborationTerms(target.collaborationId)),
-        ),
-      ).createRoute(context),
-    );
+  if (result == null) return const ProposalDismissed();
+  if (result.stale) {
+    if (context.mounted && target is AfterMatch) {
+      await navigator.push<void>(
+        CoraTransitions.push<void>(
+          StaleProposalPage(
+            latestVersion: result.latestVersion ?? target.baseVersion + 1,
+            onOpen: () => router.push(
+              AppRoutes.collaborationTerms(target.collaborationId),
+            ),
+          ),
+        ).createRoute(context),
+      );
+    }
+    return const ProposalStale();
   }
-  return result.sent;
+  final matched = result.matchedCollaborationId;
+  return matched == null ? const ProposalSent() : ProposalMatched(matched);
 }

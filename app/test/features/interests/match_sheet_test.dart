@@ -1,5 +1,6 @@
 import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/features/discovery/domain/reward_proposal.dart';
+import 'package:cora/features/instagram_connect/domain/instagram_repository.dart';
 import 'package:cora/features/interests/domain/interests_repository.dart';
 import 'package:cora/features/server_config/domain/server_config_repository.dart';
 import 'package:cora/features/interests/domain/match_info.dart';
@@ -11,6 +12,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
+import '../instagram_connect/fake_instagram_repository.dart';
 import '../server_config/fake_server_config_repository.dart';
 import 'fake_interests_repository.dart';
 
@@ -52,6 +54,7 @@ Future<({List<String> opened, List<MatchSheetResult> results})> _pump(
       // 보낸 제안은 07(진행 단계)로 이어진다. 두 경로는 Task 11이 등록하므로 여기서는 위치만 기록한다.
       GoRoute(path: '/brand/collaborations', builder: (c, s) => stub(s)),
       GoRoute(path: '/creator/offers', builder: (c, s) => stub(s)),
+      GoRoute(path: '/creator/instagram', builder: (c, s) => stub(s)),
     ],
   );
   addTearDown(router.dispose);
@@ -63,6 +66,9 @@ Future<({List<String> opened, List<MatchSheetResult> results})> _pump(
         ),
         serverConfigRepositoryProvider.overrideWithValue(
           FakeServerConfigRepository(),
+        ),
+        instagramRepositoryProvider.overrideWithValue(
+          FakeInstagramRepository(),
         ),
       ],
       child: MaterialApp.router(
@@ -221,6 +227,49 @@ void main() {
 
     expect(repo.proposed.single.proposal.productProvided, isFalse);
     expect(env.opened, ['/creator/offers']);
+  });
+
+  testWidgets('a creator turning on view pay is asked to connect instagram', (
+    tester,
+  ) async {
+    final repo = FakeInterestsRepository()
+      ..proposalBase = proposalBase(proposedByBrand: false);
+    final env = await _pump(
+      tester,
+      matchInfo(isBrand: false),
+      start: '/creator/interests',
+      repo: repo,
+    );
+
+    await tester.tap(find.text('내가 먼저 제안하기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('성과 추가'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('검토하고 보내기'));
+    await tester.pumpAndSettle();
+
+    // 연동이 없으면 보내기 대신 `연동하기`가 있다.
+    expect(find.text('인스타그램을 연동하면 수락할 수 있어요'), findsOneWidget);
+    expect(find.text('이 조건으로 보내기'), findsNothing);
+    await tester.tap(find.text('연동하기'));
+    await tester.pumpAndSettle();
+    expect(env.opened, ['/creator/instagram']);
+    expect(repo.proposed, isEmpty);
+  });
+
+  testWidgets('a brand is never asked to connect instagram', (tester) async {
+    final repo = FakeInterestsRepository()..proposalBase = proposalBase();
+    await _pump(tester, matchInfo(), repo: repo);
+
+    await tester.tap(find.text('내가 먼저 제안하기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('성과 추가'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('검토하고 보내기'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('인스타그램'), findsNothing);
+    expect(find.text('이 조건으로 보내기'), findsOneWidget);
   });
 
   testWidgets('a newer version shows the stale-version screen with its '

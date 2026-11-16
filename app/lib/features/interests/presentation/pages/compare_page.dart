@@ -11,6 +11,7 @@ import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_state_view.dart';
+import '../../../discovery/presentation/discovery_text.dart';
 import '../../../discovery/presentation/widgets/discovery_toast.dart';
 import '../../../negotiation/presentation/terms_text.dart';
 import '../../domain/compare_result.dart';
@@ -71,18 +72,20 @@ class _ComparePageState extends ConsumerState<ComparePage> {
               : CurrentProposal(
                   fee: fee,
                   productProvided: side.productProvided,
-                  perfCap: side.perfCap,
                   perfRate: side.perfRate,
+                  perfCap: side.perfCap,
                 ),
         ),
       );
-      if (!sent || !mounted) return;
-      setState(
-        () => _notice = (
-          message: InterestsTexts.proposalSent(side.name),
-          serial: ++_serial,
-        ),
-      );
+      if (!mounted) return;
+      // 상대가 이미 관심을 보낸 후보면 이 제안으로 바로 서로 관심이 닿았다(01과 같은 문구).
+      final message = switch (sent) {
+        ProposalSent() => InterestsTexts.proposalSent(side.name),
+        ProposalMatched() => DiscoveryTexts.matchToast(side.name),
+        ProposalStale() || ProposalDismissed() => null,
+      };
+      if (message == null) return;
+      setState(() => _notice = (message: message, serial: ++_serial));
       await _vm.refresh();
     } finally {
       _opening = false;

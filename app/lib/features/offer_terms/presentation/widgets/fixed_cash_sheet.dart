@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/navigation/cora_transitions.dart';
+import '../../../../core/text/josa.dart';
 import '../../../../core/ui/cora_field_box.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../offer_terms_text.dart';
@@ -14,11 +15,12 @@ Future<int?> showFixedCashSheet(
   required int initial,
   required int max,
   required int step,
+  String name = FixedCashSheet.title,
 }) {
   FocusManager.instance.primaryFocus?.unfocus();
   return Navigator.of(context, rootNavigator: true).push<int>(
     CoraTransitions.sheet<int>(
-      FixedCashSheet(initial: initial, max: max, step: step),
+      FixedCashSheet(initial: initial, max: max, step: step, name: name),
     ).createRoute(context),
   );
 }
@@ -29,18 +31,22 @@ class FixedCashSheet extends StatefulWidget {
     required this.initial,
     required this.max,
     required this.step,
+    this.name = title,
   });
 
   final int initial;
   final int max;
   final int step;
 
+  /// 시트의 이름이자 범위 안내 문장의 주어. 가게는 `고정 현금`, 브랜드는 `현금 고정비`(캔버스 밖)다.
+  final String name;
+
   static const title = '고정 현금';
   static const valueLabel = '금액 (원)';
   static const saveLabel = '저장';
   static const valueKey = ValueKey<String>('fixedCash.value');
-  static String rangeMessage(int step, int max) =>
-      '고정 현금은 ${wonExact(step)} 단위로, ${wonExact(max)}까지 적어 주세요.';
+  static String rangeMessage(int step, int max, {String name = title}) =>
+      '${josa(name, JosaPair.eunNeun)} ${wonExact(step)} 단위로, ${wonExact(max)}까지 적어 주세요.';
 
   @override
   State<FixedCashSheet> createState() => _FixedCashSheetState();
@@ -65,7 +71,11 @@ class _FixedCashSheetState extends State<FixedCashSheet> {
         value > widget.max ||
         value % widget.step != 0) {
       setState(
-        () => _error = FixedCashSheet.rangeMessage(widget.step, widget.max),
+        () => _error = FixedCashSheet.rangeMessage(
+          widget.step,
+          widget.max,
+          name: widget.name,
+        ),
       );
       return;
     }
@@ -76,7 +86,7 @@ class _FixedCashSheetState extends State<FixedCashSheet> {
   @override
   Widget build(BuildContext context) {
     return OfferSheetFrame(
-      title: FixedCashSheet.title,
+      title: widget.name,
       error: _error,
       fields: [
         CoraFieldBox(

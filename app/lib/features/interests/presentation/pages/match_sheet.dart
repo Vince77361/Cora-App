@@ -97,7 +97,7 @@ class _MatchSheetState extends State<MatchSheet>
       context,
       AfterMatch(info.collaborationId, info.baseVersion),
     );
-    if (!sent || !mounted) return;
+    if (sent is! ProposalSent || !mounted) return;
     // 보낸 제안은 07(진행 단계)에서 이어서 본다.
     navigator.pop(MatchSheetResult.moved);
     router.go(

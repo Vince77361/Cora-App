@@ -82,6 +82,11 @@ String capLabel(int cap) => '최대 ${wonExact(cap)}';
 String viewPayLine(ViewPay viewPay) =>
     '${rateLabel(viewPay.ratePerThousand)} · 1인 ${capLabel(viewPay.cap)}';
 
+/// 브랜드 제안의 성과 추가 한 줄. 브랜드 계약은 크리에이터 한 명과 맺어서 `1인`이 없다(캔버스 밖).
+/// `1,000회당 2,000원 · 최대 60,000원`.
+String brandViewPayLine(ViewPay viewPay) =>
+    '${rateLabel(viewPay.ratePerThousand)} · ${capLabel(viewPay.cap)}';
+
 /// 쉼표로 이은 조회수 수당. `1,000회당 2,000원, 최대 60,000원`.
 String viewPayLineComma(ViewPay viewPay) =>
     '${rateLabel(viewPay.ratePerThousand)}, ${capLabel(viewPay.cap)}';

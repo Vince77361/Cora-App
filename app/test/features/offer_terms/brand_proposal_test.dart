@@ -136,6 +136,11 @@ void main() {
       );
       await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
+      // 시트 이름과 안내도 브랜드 줄 이름(`현금 고정비`)을 쓴다.
+      expect(
+        find.text('현금 고정비는 10,000원 단위로, 10,000,000원까지 적어 주세요.'),
+        findsOneWidget,
+      );
       expect(find.textContaining('10,000,000원까지'), findsOneWidget);
     });
 
@@ -193,7 +198,7 @@ void main() {
         '현금 고정비',
         '300,000원',
         '성과 추가',
-        '1,000회당 2,000원 · 1인 최대 60,000원',
+        '1,000회당 2,000원 · 최대 60,000원',
         '사용권',
         '브랜드 계정 재게시',
         '최대 현금 부담',

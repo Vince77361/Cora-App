@@ -15,16 +15,25 @@ import '../../domain/interests_repository.dart';
 import '../reward_proposal_entry.dart';
 import '../viewmodels/reward_proposal_setup.dart';
 
-/// 흐름이 어떻게 끝났는가. [sent]이면 보냈다. [stale]이면 옛 판본이라 보내지 못했다([latestVersion]은 서버가 알려
-/// 준 최신 판본 번호).
+/// 흐름이 어떻게 끝났는가. 보냈거나([sent]), 보내다가 서로 관심이 닿았거나([matchedCollaborationId]가 있음),
+/// 옛 판본이라 보내지 못했다([stale], [latestVersion]은 서버가 알려 준 최신 판본 번호).
 class RewardProposalFlowResult {
-  const RewardProposalFlowResult.sent() : stale = false, latestVersion = null;
-  const RewardProposalFlowResult.stale(this.latestVersion) : stale = true;
+  const RewardProposalFlowResult.sent()
+    : stale = false,
+      latestVersion = null,
+      matchedCollaborationId = null;
+  const RewardProposalFlowResult.matched(String this.matchedCollaborationId)
+    : stale = false,
+      latestVersion = null;
+  const RewardProposalFlowResult.stale(this.latestVersion)
+    : stale = true,
+      matchedCollaborationId = null;
 
   final bool stale;
   final int? latestVersion;
 
-  bool get sent => !stale;
+  /// 서로 관심 전에 보낸 제안이 곧바로 서로 관심이 됐을 때 그 협업의 id.
+  final String? matchedCollaborationId;
 }
 
 /// F1(보상·예산 설정)을 여는 경로. 시작값을 읽는 동안은 불러오는 중, 읽지 못하면 다시 시도를 보이고, 읽으면 F1이
@@ -60,13 +69,19 @@ class _RewardProposalFlowPageState
     try {
       switch (target) {
         case BeforeMatch(:final creatorId):
-          await ref
+          final decision = await ref
               .read(discoveryRepositoryProvider)
               .decide(
                 DiscoveryTarget.creator(creatorId),
                 SwipeOutcome.like,
                 proposal: proposal,
               );
+          // 상대가 이미 관심을 보낸 후보면 이 제안으로 곧바로 서로 관심이 닿는다.
+          final collaborationId = decision.collaborationId;
+          if (decision.matched && collaborationId != null) {
+            _finish(RewardProposalFlowResult.matched(collaborationId));
+            return;
+          }
         case AfterMatch(:final collaborationId, :final baseVersion):
           await ref
               .read(interestsRepositoryProvider)

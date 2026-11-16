@@ -397,6 +397,27 @@ void main() {
     expect(find.textContaining('제안을 보냈어요'), findsNothing);
   });
 
+  testWidgets('a proposal that makes an instant mutual interest says so', (
+    tester,
+  ) async {
+    // 상대가 이미 관심을 보낸 후보라 이 제안으로 바로 서로 관심이 닿는다.
+    final discovery = FakeDiscoveryRepository()..matchOn.add('c2');
+    final repo = _canvas();
+    await _pump(tester, repo, discovery: discovery);
+
+    await tester.tap(find.text('민에게 제안'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('검토하고 보내기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('이 조건으로 보내기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('민의 옷장 기록과 서로 관심이 닿았어요.'), findsOneWidget);
+    expect(find.textContaining('상대도 고르면'), findsNothing);
+    // 표를 다시 읽는다.
+    expect(repo.compared, hasLength(2));
+  });
+
   testWidgets('with the same state on both sides the left candidate gets the '
       'strong button', (tester) async {
     final repo = FakeInterestsRepository(

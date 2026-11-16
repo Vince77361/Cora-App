@@ -259,6 +259,9 @@ class RewardEditor extends ConsumerWidget {
       initial: terms.reward.fixedCash,
       max: target is BrandProposalTarget ? limits.brandMax : limits.storeMax,
       step: limits.step,
+      name: target is BrandProposalTarget
+          ? BrandProposalCopy.fixedCashLabel
+          : FixedCashSheet.title,
     );
     if (amount == null) return;
     _vm(ref).setFixedCash(amount);
