@@ -178,6 +178,8 @@ describe('CreatorsService', () => {
       regionSigungu: null,
       instagramConnected: false,
       followers: null,
+      cardHeadline: null,
+      cardPhotoUrl: null,
     });
   });
 
@@ -206,6 +208,23 @@ describe('CreatorsService', () => {
       await codeOf(service.upsertMine(USER, { ...input, photoPath: path })),
     ).toBe('FORBIDDEN');
     expect(repo.rows.size).toBe(0);
+  });
+
+  it('builds the card photo url and checks the card photo folder', async () => {
+    const card = `creator-cards/${USER}/44444444-4444-4444-8444-444444444444.jpg`;
+    const saved = await service.upsertMine(USER, {
+      ...input,
+      cardHeadline: '  카페 릴스 전문 ',
+      cardPhotoPath: card,
+    });
+    expect(saved.cardHeadline).toBe('카페 릴스 전문');
+    expect(saved.cardPhotoUrl).toBe(`https://fake-storage.test/public/${card}`);
+    // 프로필 사진 폴더의 경로는 카드 사진으로 못 쓴다.
+    expect(
+      await codeOf(
+        service.upsertMine(USER, { ...input, cardPhotoPath: PHOTO }),
+      ),
+    ).toBe('FORBIDDEN');
   });
 
   it('requires the CREATOR role for reading and writing', async () => {

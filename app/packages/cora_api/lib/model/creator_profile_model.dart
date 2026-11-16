@@ -13,6 +13,8 @@ part of cora_api;
 class CreatorProfileModel {
   /// Returns a new [CreatorProfileModel] instance.
   CreatorProfileModel({
+    required this.cardHeadline,
+    required this.cardPhotoUrl,
     required this.contentFocus,
     required this.displayName,
     required this.followers,
@@ -23,6 +25,10 @@ class CreatorProfileModel {
     required this.regionSigungu,
     required this.userId,
   });
+
+  String? cardHeadline;
+
+  String? cardPhotoUrl;
 
   String? contentFocus;
 
@@ -48,6 +54,8 @@ class CreatorProfileModel {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is CreatorProfileModel &&
+          other.cardHeadline == cardHeadline &&
+          other.cardPhotoUrl == cardPhotoUrl &&
           other.contentFocus == contentFocus &&
           other.displayName == displayName &&
           other.followers == followers &&
@@ -61,6 +69,8 @@ class CreatorProfileModel {
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
+      (cardHeadline == null ? 0 : cardHeadline!.hashCode) +
+      (cardPhotoUrl == null ? 0 : cardPhotoUrl!.hashCode) +
       (contentFocus == null ? 0 : contentFocus!.hashCode) +
       (displayName.hashCode) +
       (followers == null ? 0 : followers!.hashCode) +
@@ -73,10 +83,20 @@ class CreatorProfileModel {
 
   @override
   String toString() =>
-      'CreatorProfileModel[contentFocus=$contentFocus, displayName=$displayName, followers=$followers, instagramConnected=$instagramConnected, instagramHandle=$instagramHandle, photoUrl=$photoUrl, regionSido=$regionSido, regionSigungu=$regionSigungu, userId=$userId]';
+      'CreatorProfileModel[cardHeadline=$cardHeadline, cardPhotoUrl=$cardPhotoUrl, contentFocus=$contentFocus, displayName=$displayName, followers=$followers, instagramConnected=$instagramConnected, instagramHandle=$instagramHandle, photoUrl=$photoUrl, regionSido=$regionSido, regionSigungu=$regionSigungu, userId=$userId]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    if (this.cardHeadline != null) {
+      json[r'cardHeadline'] = this.cardHeadline;
+    } else {
+      json[r'cardHeadline'] = null;
+    }
+    if (this.cardPhotoUrl != null) {
+      json[r'cardPhotoUrl'] = this.cardPhotoUrl;
+    } else {
+      json[r'cardPhotoUrl'] = null;
+    }
     if (this.contentFocus != null) {
       json[r'contentFocus'] = this.contentFocus;
     } else {
@@ -120,6 +140,10 @@ class CreatorProfileModel {
       // Note 1: the values aren't checked for validity beyond being non-null.
       // Note 2: this code is stripped in release mode!
       assert(() {
+        assert(json.containsKey(r'cardHeadline'),
+            'Required key "CreatorProfileModel[cardHeadline]" is missing from JSON.');
+        assert(json.containsKey(r'cardPhotoUrl'),
+            'Required key "CreatorProfileModel[cardPhotoUrl]" is missing from JSON.');
         assert(json.containsKey(r'contentFocus'),
             'Required key "CreatorProfileModel[contentFocus]" is missing from JSON.');
         assert(json.containsKey(r'displayName'),
@@ -150,6 +174,8 @@ class CreatorProfileModel {
       }());
 
       return CreatorProfileModel(
+        cardHeadline: mapValueOfType<String>(json, r'cardHeadline'),
+        cardPhotoUrl: mapValueOfType<String>(json, r'cardPhotoUrl'),
         contentFocus: mapValueOfType<String>(json, r'contentFocus'),
         displayName: mapValueOfType<String>(json, r'displayName')!,
         followers: mapValueOfType<int>(json, r'followers'),
@@ -215,6 +241,8 @@ class CreatorProfileModel {
 
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
+    'cardHeadline',
+    'cardPhotoUrl',
     'contentFocus',
     'displayName',
     'followers',

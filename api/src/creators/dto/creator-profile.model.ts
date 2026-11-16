@@ -34,4 +34,10 @@ export class CreatorSummaryModel {
 export class CreatorProfileModel extends CreatorSummaryModel {
   @ApiProperty({ type: String, nullable: true })
   instagramHandle!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, maxLength: 40 })
+  cardHeadline!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  cardPhotoUrl!: string | null;
 }

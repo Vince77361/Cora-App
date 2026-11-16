@@ -180,6 +180,7 @@ function collaboration(over: Partial<Collaboration> = {}): Collaboration {
     creatorId: CREATOR,
     offerId: OFFER,
     storeId: STORE,
+    campaignId: null,
     terms: {
       format: 'REELS',
       rewardType: 'BOTH',

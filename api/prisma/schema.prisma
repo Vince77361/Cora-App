@@ -41,6 +41,14 @@ model User {
   viewEvidences              ViewEvidence[]
   settlementDisputes         SettlementDispute[]
 
+  creatorPrinciples     CreatorPrinciples?
+  brandProfile          BrandProfile?
+  campaigns             Campaign[]
+  swipeDecisions        SwipeDecision[]
+  creatorMatches        Match[]
+  dailyRecommendations  DailyRecommendation[]
+  proposedTermsVersions TermsVersion[]
+
   @@map("users")
 }
 
@@ -240,6 +248,9 @@ model CreatorProfile {
   photoPath       String?   @map("photo_path")
   regionSido      String    @map("region_sido")
   regionSigungu   String?   @map("region_sigungu")
+  // 브랜드가 넘겨 보는 카드의 한 줄(40자까지)과 사진. 없으면 null.
+  cardHeadline    String?   @map("card_headline")
+  cardPhotoPath   String?   @map("card_photo_path")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
@@ -475,6 +486,9 @@ model Collaboration {
   // 오퍼 하나에 협업 하나. null은 브랜드 계약처럼 오퍼 없이 생기는 협업이다.
   offerId          String?             @unique @map("offer_id") @db.Uuid
   storeId          String?             @map("store_id") @db.Uuid
+  // 브랜드 협업이 나온 캠페인. 같은 캠페인·크리에이터의 브랜드 협업은 하나뿐이다.
+  // 이 제약은 부분 유니크 인덱스라 Prisma 스키마로 적을 수 없어 마이그레이션의 직접 SQL에 있다.
+  campaignId       String?             @map("campaign_id") @db.Uuid
   // 수락할 때의 조건(OfferTermsModel) 사본. 이후 가게 기본 조건이 바뀌어도 이 협업은 그대로다.
   terms            Json
   settlementMethod SettlementMethod    @map("settlement_method")
@@ -489,11 +503,14 @@ model Collaboration {
   updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt        DateTime?           @map("deleted_at") @db.Timestamptz(3)
 
-  commissioner User   @relation("CollaborationCommissioner", fields: [commissionerId], references: [id])
-  creator      User   @relation("CollaborationCreator", fields: [creatorId], references: [id])
-  offer        Offer? @relation(fields: [offerId], references: [id])
-  store        Store? @relation(fields: [storeId], references: [id])
+  commissioner User      @relation("CollaborationCommissioner", fields: [commissionerId], references: [id])
+  creator      User      @relation("CollaborationCreator", fields: [creatorId], references: [id])
+  offer        Offer?    @relation(fields: [offerId], references: [id])
+  store        Store?    @relation(fields: [storeId], references: [id])
+  campaign     Campaign? @relation(fields: [campaignId], references: [id])
 
+  match          Match?
+  termsVersions  TermsVersion[]
   payments       Payment[]
   ledgerEntries  LedgerEntry[]
   viewSnapshots  ViewSnapshot[]
@@ -509,6 +526,7 @@ model Collaboration {
   @@index([creatorId, stage])
   @@index([commissionerId, stage])
   @@index([stage, countingEndsAt])
+  @@index([campaignId])
   @@map("collaborations")
 }
 
@@ -898,4 +916,263 @@ model NotificationSetting {
   user User @relation(fields: [userId], references: [id])
 
   @@map("notification_settings")
+}
+
+// ---- 브랜드 탐색·매칭 (4번 계획) ----
+
+enum FeeBand {
+  W200K
+  W300K
+  W400K
+  W500K_PLUS
+
+  @@map("fee_band")
+}
+
+// 제품을 받고 써 보는 기간. ANY는 상관없음.
+enum ProductTrialDays {
+  D3
+  D7
+  D14
+  ANY
+
+  @@map("product_trial_days")
+}
+
+enum CampaignStatus {
+  ACTIVE
+  CLOSED
+
+  @@map("campaign_status")
+}
+
+enum SwipeDecisionKind {
+  LIKE
+  PASS
+  HOLD
+
+  @@map("swipe_decision_kind")
+}
+
+// 넘긴 이유(선택). 표현 분위기, 지역·방문, 금액, 분야. 이유를 남기지 않으면 null이다.
+enum PassReason {
+  MOOD
+  REGION
+  FEE
+  FIELD
+
+  @@map("pass_reason")
+}
+
+enum SwipeTargetKind {
+  CREATOR
+  CAMPAIGN
+  STORE
+
+  @@map("swipe_target_kind")
+}
+
+// 캠페인에서 크리에이터에게 요구하지 않는 것.
+enum NotRequired {
+  FACE
+  FIXED_LINES
+  SCRIPT_READING
+
+  @@map("not_required")
+}
+
+enum RecommendationScope {
+  BRAND
+  CREATOR
+
+  @@map("recommendation_scope")
+}
+
+// 조건 버전의 수정 범위. 기존 UsageRights(가게 오퍼용)와는 따로 둔다.
+enum RevisionScope {
+  NONE
+  GUIDE_1
+  DRAFT_1
+  DRAFT_2
+
+  @@map("revision_scope")
+}
+
+enum BrandUsageRights {
+  REPOST_ONLY
+  ADS_TOO
+  NONE
+
+  @@map("brand_usage_rights")
+}
+
+// 크리에이터의 협업 원칙. 없으면 브랜드에게 보이지 않는다.
+model CreatorPrinciples {
+  id                String             @id @default(uuid()) @db.Uuid
+  creatorId         String             @unique @map("creator_id") @db.Uuid
+  fields            IndustryCategory[]
+  blockedIndustries IndustryCategory[] @map("blocked_industries")
+  faceOk            Boolean            @map("face_ok")
+  scriptOk          Boolean            @map("script_ok")
+  honestReview      Boolean            @map("honest_review")
+  feeBand           FeeBand            @map("fee_band")
+  trialDays         ProductTrialDays   @map("trial_days")
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt         DateTime?          @map("deleted_at") @db.Timestamptz(3)
+
+  creator User @relation(fields: [creatorId], references: [id])
+
+  @@map("creator_principles")
+}
+
+model BrandProfile {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @unique @map("user_id") @db.Uuid
+  name      String
+  tagline   String?
+  industry  IndustryCategory
+  photoPath String?          @map("photo_path")
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime?        @map("deleted_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("brand_profiles")
+}
+
+// 브랜드가 크리에이터를 모집하는 캠페인. 브랜드마다 진행 중(ACTIVE)은 하나뿐이다.
+// 이 제약은 부분 유니크 인덱스라 Prisma 스키마로 적을 수 없어 마이그레이션의 직접 SQL에 있다.
+// 예산은 1만 원 단위이고 제작비 이상 100,000,000 이하다(DB CHECK).
+model Campaign {
+  id              String           @id @default(uuid()) @db.Uuid
+  brandId         String           @map("brand_id") @db.Uuid
+  status          CampaignStatus
+  headline        String
+  fee             Int
+  budget          Int
+  productProvided Boolean          @map("product_provided")
+  format          ContentFormat
+  startFrom       DateTime         @map("start_from") @db.Date
+  trialDays       ProductTrialDays @map("trial_days")
+  // 꼭 넣어 달라는 것(최대 3개).
+  mustInclude     String[]         @map("must_include")
+  notRequired     NotRequired[]    @map("not_required")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?        @map("deleted_at") @db.Timestamptz(3)
+
+  brand                User                  @relation(fields: [brandId], references: [id])
+  swipeDecisions       SwipeDecision[]
+  matches              Match[]
+  dailyRecommendations DailyRecommendation[]
+  collaborations       Collaboration[]
+
+  @@index([brandId, status])
+  @@map("campaigns")
+}
+
+// 넘김과 넘긴 이유는 본인의 응답과 추천 계산에만 쓰고 상대에게 내려 주지 않는다.
+// (actor, target_kind, target_id, campaign_id)는 유일하다. campaign_id가 null일 수 있어
+// 이 제약은 NULL인 경우와 아닌 경우의 부분 유니크 인덱스 둘로 마이그레이션의 직접 SQL에 있다.
+model SwipeDecision {
+  id                      String            @id @default(uuid()) @db.Uuid
+  actorId                 String            @map("actor_id") @db.Uuid
+  targetKind              SwipeTargetKind   @map("target_kind")
+  // targetKind에 따라 사용자, 캠페인, 가게를 가리킨다. 한 열이 여러 테이블을 가리켜 외래 키는 없다.
+  targetId                String            @map("target_id") @db.Uuid
+  // 브랜드가 크리에이터를 볼 때 그 캠페인, 크리에이터가 캠페인을 볼 때 그 캠페인.
+  campaignId              String?           @map("campaign_id") @db.Uuid
+  decision                SwipeDecisionKind
+  passReason              PassReason?       @map("pass_reason")
+  note                    String?
+  contentTitle            String?           @map("content_title")
+  contentPhotoPath        String?           @map("content_photo_path")
+  // 브랜드의 제안(좋아요에 붙인 조건). perfRate는 1,000회당 원이다.
+  proposedFee             Int?              @map("proposed_fee")
+  proposedProductProvided Boolean?          @map("proposed_product_provided")
+  proposedPerfRate        Int?              @map("proposed_perf_rate")
+  proposedPerfCap         Int?              @map("proposed_perf_cap")
+  createdAt               DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt               DateTime?         @map("deleted_at") @db.Timestamptz(3)
+
+  actor    User      @relation(fields: [actorId], references: [id])
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+
+  @@index([targetKind, targetId])
+  @@map("swipe_decisions")
+}
+
+model Match {
+  id              String    @id @default(uuid()) @db.Uuid
+  campaignId      String    @map("campaign_id") @db.Uuid
+  creatorId       String    @map("creator_id") @db.Uuid
+  collaborationId String    @unique @map("collaboration_id") @db.Uuid
+  matchedAt       DateTime  @map("matched_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  campaign      Campaign      @relation(fields: [campaignId], references: [id])
+  creator       User          @relation(fields: [creatorId], references: [id])
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+
+  @@unique([campaignId, creatorId])
+  @@index([creatorId])
+  @@map("matches")
+}
+
+// 하루에 한 번 만드는 추천 목록. items는 { kind, id }[] 이다.
+// (user_id, scope, campaign_id, day)는 유일하다. campaign_id가 null일 수 있어
+// 이 제약은 부분 유니크 인덱스 둘로 마이그레이션의 직접 SQL에 있다.
+model DailyRecommendation {
+  id         String              @id @default(uuid()) @db.Uuid
+  userId     String              @map("user_id") @db.Uuid
+  scope      RecommendationScope
+  campaignId String?             @map("campaign_id") @db.Uuid
+  day        DateTime            @db.Date
+  items      Json
+  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt  DateTime?           @map("deleted_at") @db.Timestamptz(3)
+
+  user     User      @relation(fields: [userId], references: [id])
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+
+  @@map("daily_recommendations")
+}
+
+// 협업 조건의 한 판본. 만들기만 하고 고치지 않는다(확인한 시각만 채운다). 바꾸려면 새 판본을 낸다.
+// 성과 추가(조회수 단가와 상한)는 둘 다 있거나 둘 다 없다(DB CHECK).
+model TermsVersion {
+  id                  String           @id @default(uuid()) @db.Uuid
+  collaborationId     String           @map("collaboration_id") @db.Uuid
+  version             Int
+  // 버전 1은 서로 관심이 닿을 때 서버가 만들어 제안한 사람이 없다.
+  proposedById        String?          @map("proposed_by_id") @db.Uuid
+  title               String
+  fee                 Int
+  startDate           DateTime         @map("start_date") @db.Date
+  format              ContentFormat
+  pieces              Int
+  productProvided     Boolean          @map("product_provided")
+  revisionScope       RevisionScope    @map("revision_scope")
+  usageRights         BrandUsageRights @map("usage_rights")
+  // 정산까지 걸리는 날(7 또는 14).
+  payoutDays          Int              @map("payout_days")
+  perfRatePerThousand Int?             @map("perf_rate_per_thousand")
+  perfCap             Int?             @map("perf_cap")
+  brandConfirmedAt    DateTime?        @map("brand_confirmed_at") @db.Timestamptz(3)
+  creatorConfirmedAt  DateTime?        @map("creator_confirmed_at") @db.Timestamptz(3)
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?        @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+  proposedBy    User?         @relation(fields: [proposedById], references: [id])
+
+  @@unique([collaborationId, version])
+  @@map("terms_versions")
 }

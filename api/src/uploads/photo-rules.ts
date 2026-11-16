@@ -15,6 +15,7 @@ export const PHOTO_CONTENT_TYPES = Object.keys(
 export const PHOTO_PURPOSES = [
   'STORE_COVER',
   'CREATOR_PHOTO',
+  'CREATOR_CARD',
   'VIEW_EVIDENCE',
 ] as const;
 export type PhotoPurpose = (typeof PHOTO_PURPOSES)[number];

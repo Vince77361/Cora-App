@@ -58,6 +58,23 @@ export class UpsertCreatorProfileDto {
   @IsString()
   photoPath?: string;
 
+  @ApiProperty({
+    required: false,
+    maxLength: 40,
+    description: '브랜드가 보는 카드의 한 줄. 비우면 저장하지 않는다.',
+  })
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(40)
+  cardHeadline?: string;
+
+  // POST /uploads/photos(CREATOR_CARD)가 준 경로. 서버가 소유자를 다시 확인한다.
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  cardPhotoPath?: string;
+
   // 한글 값이라 enum으로 노출하면 Dart 생성기가 열거형 이름을 만들지 못한다. 문자열로 두고 서버가 검증한다.
   @ApiProperty({ description: '시·도 고정 목록(SIDO_LIST) 중 하나.' })
   @IsIn(SIDO_LIST)

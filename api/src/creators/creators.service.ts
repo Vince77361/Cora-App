@@ -53,6 +53,10 @@ export class CreatorsService {
     if (photoPath) {
       this.uploads.assertOwnedPath(userId, photoPath, 'CREATOR_PHOTO');
     }
+    const cardPhotoPath = blankToNull(input.cardPhotoPath);
+    if (cardPhotoPath) {
+      this.uploads.assertOwnedPath(userId, cardPhotoPath, 'CREATOR_CARD');
+    }
     const handle = blankToNull(input.instagramHandle);
     // 연결된 계정이 있으면 프로필의 인스타그램 아이디는 항상 그 계정이다. 직접 적은 값(없는 값 포함)은 무시한다.
     // 정산이 읽는 조회수와 가게가 보는 아이디가 어긋나지 않게 하려는 것이다.
@@ -65,6 +69,8 @@ export class CreatorsService {
       photoPath,
       regionSido: input.regionSido,
       regionSigungu: blankToNull(input.regionSigungu),
+      cardHeadline: blankToNull(input.cardHeadline),
+      cardPhotoPath,
     });
     return this.toProfile(row);
   }
@@ -165,6 +171,13 @@ export class CreatorsService {
   }
 
   private toProfile(row: CreatorProfileRow): CreatorProfileModel {
-    return { ...this.toSummary(row), instagramHandle: row.instagramHandle };
+    return {
+      ...this.toSummary(row),
+      instagramHandle: row.instagramHandle,
+      cardHeadline: row.cardHeadline,
+      cardPhotoUrl: row.cardPhotoPath
+        ? this.storage.publicUrl(row.cardPhotoPath)
+        : null,
+    };
   }
 }

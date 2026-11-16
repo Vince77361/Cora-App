@@ -10,6 +10,8 @@ export interface CreatorProfileData {
   photoPath: string | null;
   regionSido: string;
   regionSigungu: string | null;
+  cardHeadline: string | null;
+  cardPhotoPath: string | null;
 }
 
 export interface CreatorSeriesData {

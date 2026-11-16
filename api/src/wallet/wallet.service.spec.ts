@@ -145,6 +145,7 @@ function collaboration(over: Partial<Collaboration> = {}): Collaboration {
     creatorId: CREATOR,
     offerId: null,
     storeId: 'store-ramen',
+    campaignId: null,
     terms: {
       format: 'REELS',
       voucherName: null,

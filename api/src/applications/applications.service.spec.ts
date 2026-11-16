@@ -216,6 +216,8 @@ class FakeCreatorsService extends CreatorsService {
       instagramHandle: null,
       instagramConnected: false,
       followers: null,
+      cardHeadline: null,
+      cardPhotoUrl: null,
     });
   }
 

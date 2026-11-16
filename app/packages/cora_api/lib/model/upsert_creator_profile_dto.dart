@@ -13,6 +13,8 @@ part of cora_api;
 class UpsertCreatorProfileDto {
   /// Returns a new [UpsertCreatorProfileDto] instance.
   UpsertCreatorProfileDto({
+    this.cardHeadline,
+    this.cardPhotoPath,
     this.contentFocus,
     required this.displayName,
     this.instagramHandle,
@@ -20,6 +22,23 @@ class UpsertCreatorProfileDto {
     required this.regionSido,
     this.regionSigungu,
   });
+
+  /// 브랜드가 보는 카드의 한 줄. 비우면 저장하지 않는다.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? cardHeadline;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? cardPhotoPath;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -63,6 +82,8 @@ class UpsertCreatorProfileDto {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is UpsertCreatorProfileDto &&
+          other.cardHeadline == cardHeadline &&
+          other.cardPhotoPath == cardPhotoPath &&
           other.contentFocus == contentFocus &&
           other.displayName == displayName &&
           other.instagramHandle == instagramHandle &&
@@ -73,6 +94,8 @@ class UpsertCreatorProfileDto {
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
+      (cardHeadline == null ? 0 : cardHeadline!.hashCode) +
+      (cardPhotoPath == null ? 0 : cardPhotoPath!.hashCode) +
       (contentFocus == null ? 0 : contentFocus!.hashCode) +
       (displayName.hashCode) +
       (instagramHandle == null ? 0 : instagramHandle!.hashCode) +
@@ -82,10 +105,20 @@ class UpsertCreatorProfileDto {
 
   @override
   String toString() =>
-      'UpsertCreatorProfileDto[contentFocus=$contentFocus, displayName=$displayName, instagramHandle=$instagramHandle, photoPath=$photoPath, regionSido=$regionSido, regionSigungu=$regionSigungu]';
+      'UpsertCreatorProfileDto[cardHeadline=$cardHeadline, cardPhotoPath=$cardPhotoPath, contentFocus=$contentFocus, displayName=$displayName, instagramHandle=$instagramHandle, photoPath=$photoPath, regionSido=$regionSido, regionSigungu=$regionSigungu]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    if (this.cardHeadline != null) {
+      json[r'cardHeadline'] = this.cardHeadline;
+    } else {
+      json[r'cardHeadline'] = null;
+    }
+    if (this.cardPhotoPath != null) {
+      json[r'cardPhotoPath'] = this.cardPhotoPath;
+    } else {
+      json[r'cardPhotoPath'] = null;
+    }
     if (this.contentFocus != null) {
       json[r'contentFocus'] = this.contentFocus;
     } else {
@@ -134,6 +167,8 @@ class UpsertCreatorProfileDto {
       }());
 
       return UpsertCreatorProfileDto(
+        cardHeadline: mapValueOfType<String>(json, r'cardHeadline'),
+        cardPhotoPath: mapValueOfType<String>(json, r'cardPhotoPath'),
         contentFocus: mapValueOfType<String>(json, r'contentFocus'),
         displayName: mapValueOfType<String>(json, r'displayName')!,
         instagramHandle: mapValueOfType<String>(json, r'instagramHandle'),

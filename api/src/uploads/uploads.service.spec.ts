@@ -129,6 +129,18 @@ describe('UploadsService', () => {
       );
     });
 
+    it('issues a creator-cards path for a creator card photo', async () => {
+      users.role = 'CREATOR';
+      const res = await service.createPhotoUpload(USER, {
+        purpose: 'CREATOR_CARD',
+        contentType: 'image/jpeg',
+        sizeBytes: 10,
+      });
+      expect(res.path).toMatch(
+        new RegExp(`^creator-cards/${USER}/[0-9a-f-]{36}\\.jpg$`),
+      );
+    });
+
     it('uses a fresh server-made file name every time', async () => {
       const a = await service.createPhotoUpload(USER, storeCover);
       const b = await service.createPhotoUpload(USER, storeCover);
@@ -297,6 +309,25 @@ describe('UploadsService', () => {
             id,
             `stores/${id.toUpperCase()}/${UUID}.jpg`,
             'STORE_COVER',
+          ),
+        ),
+      ).toBe('FORBIDDEN');
+    });
+
+    it('accepts the creator-cards folder only for a creator card', () => {
+      const card = `creator-cards/${USER}/${UUID}.jpg`;
+      expect(() =>
+        service.assertOwnedPath(USER, card, 'CREATOR_CARD'),
+      ).not.toThrow();
+      expect(
+        syncCodeOf(() => service.assertOwnedPath(USER, card, 'CREATOR_PHOTO')),
+      ).toBe('FORBIDDEN');
+      expect(
+        syncCodeOf(() =>
+          service.assertOwnedPath(
+            USER,
+            `creators/${USER}/${UUID}.jpg`,
+            'CREATOR_CARD',
           ),
         ),
       ).toBe('FORBIDDEN');

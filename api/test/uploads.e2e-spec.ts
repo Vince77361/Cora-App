@@ -143,6 +143,25 @@ describe('uploads', () => {
     expect(path.endsWith('.heic')).toBe(true);
   });
 
+  it('issues a public bucket creator-cards path for a creator card photo and requires the CREATOR role', async () => {
+    await setRole('STORE');
+    const denied = await request(server)
+      .post('/uploads/photos')
+      .set(auth)
+      .send(body({ purpose: 'CREATOR_CARD' }))
+      .expect(403);
+    expect(codeOf(denied)).toBe('FORBIDDEN');
+    await setRole('CREATOR');
+    const ok = await request(server)
+      .post('/uploads/photos')
+      .set(auth)
+      .send(body({ purpose: 'CREATOR_CARD' }))
+      .expect(201);
+    const path = (ok.body as { path: string }).path;
+    expect(path.startsWith(`creator-cards/${USER_A}/`)).toBe(true);
+    expect(storage.uploadUrlBuckets).toEqual(['photos']);
+  });
+
   it('issues a private bucket upload url under the creator id for a view evidence capture', async () => {
     await setRole('CREATOR');
     const res = await request(server)

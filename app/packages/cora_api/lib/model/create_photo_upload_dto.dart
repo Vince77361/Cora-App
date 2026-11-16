@@ -234,6 +234,7 @@ class CreatePhotoUploadDtoContentTypeEnumTypeTransformer {
 enum CreatePhotoUploadDtoPurposeEnum {
   STORE_COVER._(r'STORE_COVER'),
   CREATOR_PHOTO._(r'CREATOR_PHOTO'),
+  CREATOR_CARD._(r'CREATOR_CARD'),
   VIEW_EVIDENCE._(r'VIEW_EVIDENCE'),
   ;
 
@@ -303,6 +304,8 @@ class CreatePhotoUploadDtoPurposeEnumTypeTransformer {
           return CreatePhotoUploadDtoPurposeEnum.STORE_COVER;
         case r'CREATOR_PHOTO':
           return CreatePhotoUploadDtoPurposeEnum.CREATOR_PHOTO;
+        case r'CREATOR_CARD':
+          return CreatePhotoUploadDtoPurposeEnum.CREATOR_CARD;
         case r'VIEW_EVIDENCE':
           return CreatePhotoUploadDtoPurposeEnum.VIEW_EVIDENCE;
         default:

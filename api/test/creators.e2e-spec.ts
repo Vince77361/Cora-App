@@ -7,6 +7,7 @@ import { OTHER, USER_A } from './support/fake-token-verifier';
 
 const auth = { Authorization: 'Bearer user-a' };
 const PHOTO = `creators/${USER_A}/33333333-3333-4333-8333-333333333333.jpg`;
+const CARD = `creator-cards/${USER_A}/44444444-4444-4444-8444-444444444444.jpg`;
 
 describe('creators', () => {
   let app: INestApplication;
@@ -66,6 +67,8 @@ describe('creators', () => {
       regionSigungu: '마포구',
       instagramConnected: false,
       followers: null,
+      cardHeadline: null,
+      cardPhotoUrl: null,
     });
     // 전체 교체라서 빠진 선택 항목은 null이 된다.
     const updated = await put({
@@ -82,10 +85,53 @@ describe('creators', () => {
       regionSigungu: null,
       instagramConnected: false,
       followers: null,
+      cardHeadline: null,
+      cardPhotoUrl: null,
     });
     const got = await request(server).get('/creators/me').set(auth).expect(200);
     expect(got.body).toEqual(updated.body);
     expect(await prisma.creatorProfile.count()).toBe(1);
+  });
+
+  it('saves the card headline and photo and clears them on a full replace', async () => {
+    const saved = await put({
+      cardHeadline: '  카페 릴스 전문  ',
+      cardPhotoPath: CARD,
+    }).expect(200);
+    expect(saved.body).toMatchObject({
+      cardHeadline: '카페 릴스 전문',
+      cardPhotoUrl: `https://fake-storage.test/public/${CARD}`,
+    });
+    const got = await request(server).get('/creators/me').set(auth).expect(200);
+    expect(got.body).toEqual(saved.body);
+    const row = await prisma.creatorProfile.findFirstOrThrow();
+    expect(row).toMatchObject({
+      cardHeadline: '카페 릴스 전문',
+      cardPhotoPath: CARD,
+    });
+    // 전체 교체라서 빠뜨리면 지워진다. 공백뿐인 한 줄도 같다.
+    const cleared = await put({ cardHeadline: '   ' }).expect(200);
+    expect(cleared.body).toMatchObject({
+      cardHeadline: null,
+      cardPhotoUrl: null,
+    });
+  });
+
+  it('rejects a card headline longer than 40 characters', async () => {
+    await put({ cardHeadline: 'a'.repeat(41) }).expect(400);
+    await put({ cardHeadline: 'a'.repeat(40) }).expect(200);
+  });
+
+  it('rejects a card photo path under another user id or from the profile photo folder', async () => {
+    const other = await put({
+      cardPhotoPath: CARD.replace(USER_A, OTHER),
+    }).expect(403);
+    expect(codeOf(other)).toBe('FORBIDDEN');
+    const profilePhoto = await put({ cardPhotoPath: PHOTO }).expect(403);
+    expect(codeOf(profilePhoto)).toBe('FORBIDDEN');
+    // 프로필 사진 자리에 카드 사진 경로도 못 쓴다.
+    await put({ photoPath: CARD }).expect(403);
+    expect(await prisma.creatorProfile.count()).toBe(0);
   });
 
   it('requires the CREATOR role', async () => {

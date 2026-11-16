@@ -8,6 +8,8 @@ import 'package:cora_api/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**cardHeadline** | **String** |  | 
+**cardPhotoUrl** | **String** |  | 
 **contentFocus** | **String** |  | 
 **displayName** | **String** |  | 
 **followers** | **int** | 연결한 계정의 팔로워 수. 연결이 없거나 읽지 못했으면 null. | 

@@ -16,6 +16,16 @@ void main() {
   // final instance = CreatorProfileModel();
 
   group('test CreatorProfileModel', () {
+    // String cardHeadline
+    test('to test the property `cardHeadline`', () async {
+      // TODO
+    });
+
+    // String cardPhotoUrl
+    test('to test the property `cardPhotoUrl`', () async {
+      // TODO
+    });
+
     // String contentFocus
     test('to test the property `contentFocus`', () async {
       // TODO
