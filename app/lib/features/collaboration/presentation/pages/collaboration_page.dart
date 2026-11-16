@@ -364,8 +364,8 @@ class _HeldBox extends StatelessWidget {
       label: headline,
       big: big,
       // 돈이 걸린 협업(고정 현금이나 조회수 수당)에서만 혜택을 보관액 아래에 덧붙인다.
-      note: co.terms.reward.maxCashBurden > 0 && co.hasVoucher && !settled
-          ? heldVoucherNote(co.terms.reward.voucher!)
+      note: co.offerTerms.reward.maxCashBurden > 0 && co.hasVoucher && !settled
+          ? heldVoucherNote(co.offerTerms.reward.voucher!)
           : null,
       lower: lower,
     );

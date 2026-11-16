@@ -91,8 +91,8 @@ class CollaborationModel {
 
   String? submittedUrl;
 
-  /// 수락할 때의 조건(사본).
-  OfferTermsModel terms;
+  /// 수락할 때의 조건(사본). 가게 오퍼에만 있고 브랜드 계약은 null이다(브랜드 계약의 조건은 조건 판본이 담는다).
+  OfferTermsModel? terms;
 
   /// 조회 자료 확인 단계. NONE: 조회수 수당이 없거나 링크 제출 전, COUNTING: 집계 중, UNCONFIRMED: 계산이 나와 확인을 기다림, CONFIRMED: 확인됨, DISPUTED: 이의 중.
   CollaborationViewReportStatus viewReportStatus;
@@ -147,7 +147,7 @@ class CollaborationModel {
       (store == null ? 0 : store!.hashCode) +
       (submitDueAt == null ? 0 : submitDueAt!.hashCode) +
       (submittedUrl == null ? 0 : submittedUrl!.hashCode) +
-      (terms.hashCode) +
+      (terms == null ? 0 : terms!.hashCode) +
       (viewReportStatus.hashCode);
 
   @override
@@ -217,7 +217,11 @@ class CollaborationModel {
     } else {
       json[r'submittedUrl'] = null;
     }
-    json[r'terms'] = this.terms;
+    if (this.terms != null) {
+      json[r'terms'] = this.terms;
+    } else {
+      json[r'terms'] = null;
+    }
     json[r'viewReportStatus'] = this.viewReportStatus;
     return json;
   }
@@ -295,8 +299,6 @@ class CollaborationModel {
             'Required key "CollaborationModel[submittedUrl]" is missing from JSON.');
         assert(json.containsKey(r'terms'),
             'Required key "CollaborationModel[terms]" is missing from JSON.');
-        assert(json[r'terms'] != null,
-            'Required key "CollaborationModel[terms]" has a null value in JSON.');
         assert(json.containsKey(r'viewReportStatus'),
             'Required key "CollaborationModel[viewReportStatus]" is missing from JSON.');
         assert(json[r'viewReportStatus'] != null,
@@ -326,7 +328,7 @@ class CollaborationModel {
         store: StoreSummaryModel.fromJson(json[r'store']),
         submitDueAt: mapDateTime(json, r'submitDueAt', r''),
         submittedUrl: mapValueOfType<String>(json, r'submittedUrl'),
-        terms: OfferTermsModel.fromJson(json[r'terms'])!,
+        terms: OfferTermsModel.fromJson(json[r'terms']),
         viewReportStatus:
             CollaborationViewReportStatus.fromJson(json[r'viewReportStatus'])!,
       );

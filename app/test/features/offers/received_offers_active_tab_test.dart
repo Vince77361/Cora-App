@@ -61,6 +61,36 @@ void main() {
     expect(find.text('집계 중 · 7일 남음'), findsOneWidget);
   });
 
+  testWidgets('leaves brand contracts off the store offer list', (
+    tester,
+  ) async {
+    final collaborations = FakeCollaborationRepository(
+      active: [
+        collaboration(),
+        collaboration(
+          kind: CollaborationKind.brandContract,
+          id: 'b0b0b0b0-0000-0000-0000-000000000009',
+          storeName: '느린결',
+          stage: CollaborationStage.other,
+        ),
+      ],
+      done: [
+        collaboration(
+          kind: CollaborationKind.brandContract,
+          id: 'b0b0b0b0-0000-0000-0000-000000000010',
+          storeName: '새벽 로스터스',
+          stage: CollaborationStage.settled,
+          payoutStatus: PayoutStatus.needsAccount,
+        ),
+      ],
+    );
+    await _openActiveTab(tester, collaborations);
+
+    expect(find.text('한그릇 라멘'), findsOneWidget);
+    expect(find.text('느린결'), findsNothing);
+    expect(find.text('새벽 로스터스'), findsNothing);
+  });
+
   testWidgets('opens the collaboration screen from a row', (tester) async {
     final collaborations = FakeCollaborationRepository(
       active: [collaboration()],

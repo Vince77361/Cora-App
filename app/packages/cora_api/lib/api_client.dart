@@ -228,6 +228,8 @@ class ApiClient {
           return BankModel.fromJson(value);
         case 'BrandProfileModel':
           return BrandProfileModel.fromJson(value);
+        case 'BrandProposalDto':
+          return BrandProposalDto.fromJson(value);
         case 'CampaignListCardKind':
           return CampaignListCardKindTypeTransformer().decode(value);
         case 'CampaignListCardModel':
@@ -292,6 +294,10 @@ class ApiClient {
           return CreatorSeriesModel.fromJson(value);
         case 'CreatorSummaryModel':
           return CreatorSummaryModel.fromJson(value);
+        case 'DecisionResultModel':
+          return DecisionResultModel.fromJson(value);
+        case 'DecisionTargetKind':
+          return DecisionTargetKindTypeTransformer().decode(value);
         case 'DisputeViewReportDto':
           return DisputeViewReportDto.fromJson(value);
         case 'DraftSceneModel':
@@ -362,6 +368,10 @@ class ApiClient {
           return OfferVersionSeriesModel.fromJson(value);
         case 'OfferView':
           return OfferViewTypeTransformer().decode(value);
+        case 'PassReason':
+          return PassReasonTypeTransformer().decode(value);
+        case 'PassReasonDto':
+          return PassReasonDto.fromJson(value);
         case 'PaymentCreatedModel':
           return PaymentCreatedModel.fromJson(value);
         case 'PaymentMethod':
@@ -396,6 +406,8 @@ class ApiClient {
           return ProposalEndKindTypeTransformer().decode(value);
         case 'ProposalGroup':
           return ProposalGroupTypeTransformer().decode(value);
+        case 'ProposalPerformanceDto':
+          return ProposalPerformanceDto.fromJson(value);
         case 'ProposalPersonModel':
           return ProposalPersonModel.fromJson(value);
         case 'ProposalRowModel':
@@ -406,6 +418,8 @@ class ApiClient {
           return ProposalTabTypeTransformer().decode(value);
         case 'ProposeVersionDto':
           return ProposeVersionDto.fromJson(value);
+        case 'PutDecisionDto':
+          return PutDecisionDto.fromJson(value);
         case 'QuietHours':
           return QuietHoursTypeTransformer().decode(value);
         case 'ReceivedOfferModel':
@@ -460,6 +474,10 @@ class ApiClient {
           return SubmitContentDto.fromJson(value);
         case 'SubmitViewEvidenceDto':
           return SubmitViewEvidenceDto.fromJson(value);
+        case 'SwipeDecisionKind':
+          return SwipeDecisionKindTypeTransformer().decode(value);
+        case 'SwipeTargetKind':
+          return SwipeTargetKindTypeTransformer().decode(value);
         case 'TrialBanner':
           return TrialBannerTypeTransformer().decode(value);
         case 'TrialComparisonModel':
@@ -470,6 +488,8 @@ class ApiClient {
           return TrialInfoModel.fromJson(value);
         case 'TrialSideModel':
           return TrialSideModel.fromJson(value);
+        case 'UndoneDecisionModel':
+          return UndoneDecisionModel.fromJson(value);
         case 'UnreadCountModel':
           return UnreadCountModel.fromJson(value);
         case 'UpdateCampaignDto':

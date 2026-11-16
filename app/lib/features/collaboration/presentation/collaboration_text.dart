@@ -23,16 +23,16 @@ String? stepSubtitle(Collaboration c, StepKey key) => switch (key) {
   StepKey.submit => c.submitDueAt == null ? null : dueLabel(c.submitDueAt!),
   // 상한은 조건에서 읽는다: 결제 전에는 보관액이 0이다.
   StepKey.settle =>
-    c.hasPerView ? '최대 ${won(c.terms.reward.viewPay!.cap)}' : null,
+    c.hasPerView ? '최대 ${won(c.offerTerms.reward.viewPay!.cap)}' : null,
 };
 
 /// 보관 상자의 큰 글씨. 돈이 보관 중이면 그 보관액 그대로, 결제 전이면 최대 현금 부담(고정 현금 + 조회수
 /// 수당 상한), 현금이 없는 식사권만이면 식사권 이름이다.
 String heldLabel(Collaboration c) {
   if (c.hasEscrow) return wonExact(c.escrowAmount);
-  final burden = c.terms.reward.maxCashBurden;
+  final burden = c.offerTerms.reward.maxCashBurden;
   if (burden > 0) return wonExact(burden);
-  return c.terms.reward.voucher?.name ?? '';
+  return c.offerTerms.reward.voucher?.name ?? '';
 }
 
 /// 보관 상자 아래 한 줄. `+ 식사권 40,000원 · 2인 (방문 때 사용)`.

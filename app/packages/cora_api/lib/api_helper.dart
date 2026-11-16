@@ -106,6 +106,9 @@ String parameterToString(dynamic value) {
   if (value is ContentFormat) {
     return ContentFormatTypeTransformer().encode(value).toString();
   }
+  if (value is DecisionTargetKind) {
+    return DecisionTargetKindTypeTransformer().encode(value).toString();
+  }
   if (value is FeeBand) {
     return FeeBandTypeTransformer().encode(value).toString();
   }
@@ -141,6 +144,9 @@ String parameterToString(dynamic value) {
   }
   if (value is OfferView) {
     return OfferViewTypeTransformer().encode(value).toString();
+  }
+  if (value is PassReason) {
+    return PassReasonTypeTransformer().encode(value).toString();
   }
   if (value is PaymentMethod) {
     return PaymentMethodTypeTransformer().encode(value).toString();
@@ -180,6 +186,12 @@ String parameterToString(dynamic value) {
   }
   if (value is StoreStatus) {
     return StoreStatusTypeTransformer().encode(value).toString();
+  }
+  if (value is SwipeDecisionKind) {
+    return SwipeDecisionKindTypeTransformer().encode(value).toString();
+  }
+  if (value is SwipeTargetKind) {
+    return SwipeTargetKindTypeTransformer().encode(value).toString();
   }
   if (value is TrialBanner) {
     return TrialBannerTypeTransformer().encode(value).toString();

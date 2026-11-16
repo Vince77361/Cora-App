@@ -38,7 +38,10 @@ export class WalletService {
     }
     const now = this.clock.now();
     const [collaborations, payouts, account] = await Promise.all([
-      this.collaborations.listByCreator(userId),
+      // 지갑은 가게 오퍼의 돈만 보인다. 브랜드 계약의 조건은 terms_versions에 있고 돈 흐름은 5번 계획이 이어서 켠다.
+      this.collaborations
+        .listByCreator(userId)
+        .then((rows) => rows.filter((c) => c.kind === 'STORE_OFFER')),
       this.settlements.payoutsOfCreator(userId),
       this.accounts.findMine(userId),
     ]);

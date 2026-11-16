@@ -30,6 +30,7 @@ const _bothTerms = OfferTerms(
 
 /// 캔버스 A7의 견본 협업: 한그릇 라멘, 보관 100,000원 + 2인 식사권, 방문·촬영 단계, 11월 23일까지 제출.
 Collaboration collaboration({
+  CollaborationKind kind = CollaborationKind.storeOffer,
   String id = 'c0ffee11-aaaa-bbbb-cccc-000000000001',
   String storeName = '한그릇 라멘',
   CollaborationRole role = CollaborationRole.creator,
@@ -53,14 +54,17 @@ Collaboration collaboration({
   ViewReportStatus? viewReportStatus,
 }) => Collaboration(
   id: id,
+  kind: kind,
   role: role,
   stage: stage,
   counterpartName: storeName,
-  terms: terms,
+  // 브랜드 계약은 조건 사본이 없다.
+  terms: kind == CollaborationKind.brandContract ? null : terms,
   // 서버처럼: 결제 전과 식사권만 있는 협업은 보관액이 0이다.
   escrowAmount:
       escrowAmount ??
       (stage == CollaborationStage.awaitingPayment ||
+              kind == CollaborationKind.brandContract ||
               terms.reward.maxCashBurden == 0
           ? 0
           : 100000),
@@ -85,6 +89,7 @@ Collaboration collaboration({
 /// 사장님이 취소를 요청한 뒤의 협업(서버처럼 요청이 생기고 다시 요청할 수 없다).
 Collaboration withOwnerCancelRequest(Collaboration c) => Collaboration(
   id: c.id,
+  kind: c.kind,
   role: c.role,
   stage: c.stage,
   counterpartName: c.counterpartName,

@@ -64,6 +64,16 @@ export class BrandsService {
     return new Map(rows.map((row) => [row.userId, this.toModel(row)]));
   }
 
+  // 알림이 상대의 이름과 사진 경로를 사본으로 저장할 때 쓴다. 프로필이 없으면 null.
+  async getActor(userId: string): Promise<{
+    userId: string;
+    name: string;
+    photoPath: string | null;
+  } | null> {
+    const row = await this.brands.findActiveByUserId(userId);
+    return row ? { userId, name: row.name, photoPath: row.photoPath } : null;
+  }
+
   private async assertBrand(userId: string): Promise<void> {
     if ((await this.users.getRole(userId)) !== 'BRAND') {
       throw new AppError('FORBIDDEN', '브랜드 계정만 쓸 수 있어요.');

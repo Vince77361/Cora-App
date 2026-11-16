@@ -119,9 +119,11 @@ export class CollaborationModel {
 
   @ApiProperty({
     type: OfferTermsModel,
-    description: '수락할 때의 조건(사본).',
+    nullable: true,
+    description:
+      '수락할 때의 조건(사본). 가게 오퍼에만 있고 브랜드 계약은 null이다(브랜드 계약의 조건은 조건 판본이 담는다).',
   })
-  terms!: OfferTermsModel;
+  terms!: OfferTermsModel | null;
 
   @ApiProperty({ type: [CollaborationStepModel] })
   steps!: CollaborationStepModel[];

@@ -9,6 +9,7 @@ import { CollaborationsApiModule } from './collaborations/collaborations-api.mod
 import { CommonModule } from './common/common.module';
 import { ContentDraftsModule } from './content-drafts/content-drafts.module';
 import { CreatorsModule } from './creators/creators.module';
+import { DiscoveryModule } from './discovery/discovery.module';
 import { loadEnv } from './config/env';
 import { HealthModule } from './health/health.module';
 import { InstagramModule } from './instagram/instagram.module';
@@ -48,6 +49,7 @@ import { WalletModule } from './wallet/wallet.module';
     BrandsModule,
     CampaignsModule,
     RecommendationsModule,
+    DiscoveryModule,
     StoresModule,
     ContentDraftsModule,
     ApplicationsModule,

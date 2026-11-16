@@ -130,7 +130,7 @@ void main() {
       // TODO
     });
 
-    // 수락할 때의 조건(사본).
+    // 수락할 때의 조건(사본). 가게 오퍼에만 있고 브랜드 계약은 null이다(브랜드 계약의 조건은 조건 판본이 담는다).
     // OfferTermsModel terms
     test('to test the property `terms`', () async {
       // TODO

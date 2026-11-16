@@ -14,7 +14,7 @@ String storeStepTitle(StepKey key) => switch (key) {
 };
 
 /// 조회수당 지급이 있는 조건인가. 돈이 지금 보관 중인지와는 다르다(결제 전에는 보관액이 0이다).
-bool hasPerViewReward(Collaboration c) => c.terms.reward.viewPay != null;
+bool hasPerViewReward(Collaboration c) => c.offerTerms.reward.viewPay != null;
 
 /// 단계 아래 작은 글씨. A7에서 크리에이터에게 하는 말(식사권은 방문 때 보여주세요 등)은 빼고
 /// 날짜·기한·상한 같은 값만 남긴다. 상한은 조건(`perViewCap`)에서 읽는다.
@@ -26,7 +26,7 @@ String? storeStepSubtitle(Collaboration c, StepKey key) {
     case StepKey.submit:
       return c.submitDueAt == null ? null : dueLabel(c.submitDueAt!);
     case StepKey.settle:
-      final viewPay = c.terms.reward.viewPay;
+      final viewPay = c.offerTerms.reward.viewPay;
       return viewPay == null ? null : '최대 ${won(viewPay.cap)}';
     case StepKey.paid:
     case StepKey.visit:

@@ -83,6 +83,9 @@ class ApiCollaborationRepository implements CollaborationRepository {
 
   static Collaboration _fromModel(api.CollaborationModel m) => Collaboration(
     id: m.id,
+    kind: m.kind == api.CollaborationKind.BRAND_CONTRACT
+        ? CollaborationKind.brandContract
+        : CollaborationKind.storeOffer,
     role: m.role == api.CollaborationRole.COMMISSIONER
         ? CollaborationRole.commissioner
         : CollaborationRole.creator,
@@ -99,7 +102,7 @@ class ApiCollaborationRepository implements CollaborationRepository {
     },
     counterpartName: m.counterpart.name,
     counterpartPhotoUrl: m.counterpart.photoUrl,
-    terms: offerTermsFromWire(m.terms),
+    terms: m.terms == null ? null : offerTermsFromWire(m.terms!),
     escrowAmount: m.escrowAmount,
     steps: [
       for (final s in m.steps)

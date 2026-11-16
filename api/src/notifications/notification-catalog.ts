@@ -20,7 +20,9 @@ export type NotificationTarget = {
     // 7일 결과(G1, id = 협업 id). 사장님의 정산 완료 알림이 간다.
     | 'STORE_RESULT'
     // 조회 자료 확인(F4, id = 협업 id). 집계가 끝난 알림이 간다.
-    | 'VIEW_REPORT';
+    | 'VIEW_REPORT'
+    // 서로 관심(id = 협업 id). 앱이 05 시트를 연다.
+    | 'MATCH';
   id: string | null;
 };
 
@@ -61,6 +63,7 @@ function won(value: string | number | undefined): string {
 // 이름이 없을 때(상대가 지워졌을 때)의 대신 글자.
 const CREATOR_FALLBACK = '크리에이터';
 const STORE_FALLBACK = '가게';
+const OTHER_FALLBACK = '상대';
 
 // 종류마다 탭·스위치·그림·문구를 정한다. 근거는 설계 account-notify-settings 3.2의 표(줄 이름을 주석에 적는다).
 // "끌 수 없음"은 ESSENTIAL, 정산 종류의 그림은 WON이다.
@@ -307,6 +310,16 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     needsActor: true,
     render: ({ actorName }) =>
       `${actorName ?? CREATOR_FALLBACK}님과의 제안이 종료됐어요.`,
+  },
+  // 표 "서로 관심": 매칭 / 서로 관심 / 사진. 캔버스 E3 문구. 양쪽이 받고, 이름은 상대(브랜드 이름 또는 크리에이터의 활동 이름)다.
+  MUTUAL_INTEREST: {
+    tab: 'MATCHING',
+    switch: 'MUTUAL_INTEREST',
+    glyph: null,
+    requiredParams: {},
+    needsActor: true,
+    render: ({ actorName }) =>
+      `${josa(actorName ?? OTHER_FALLBACK, '과/와')} 서로 관심이 닿았어요.`,
   },
 };
 

@@ -1,3 +1,4 @@
+import { BrandsService } from '../brands/brands.service';
 import { Logger } from '@nestjs/common';
 import { CancelRequest, Collaboration, Refund } from '@prisma/client';
 import { FakeClock } from '../../test/support/fake-clock';
@@ -288,6 +289,7 @@ function build() {
     offers,
     stores,
     creators,
+    {} as unknown as BrandsService,
     notifications,
     scheduler,
     clock,

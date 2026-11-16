@@ -75,13 +75,43 @@ void main() {
     expect(c.steps.last.state, StepState.now);
     expect(c.steps.first.at, DateTime.utc(2026, 11, 10, 3));
     expect(
-      c.terms.reward,
+      c.terms!.reward,
       const Reward(
         voucher: Voucher(name: '식사권', value: 40000, people: 2),
         viewPay: ViewPay(ratePerThousand: 10000, cap: 100000),
       ),
     );
     expect(c.payoutStatus, PayoutStatus.none);
+  });
+
+  test('fetch maps a brand contract without a terms copy', () async {
+    final fake = FakeHttpClient()
+      ..body = jsonEncode({
+        ..._json(stage: 'MATCHED'),
+        'kind': 'BRAND_CONTRACT',
+        'terms': null,
+        'role': 'COMMISSIONER',
+        'counterpart': {'name': '하루 한 컵', 'photoUrl': null},
+      });
+
+    final c = await _repo(fake).fetch('col-1');
+
+    expect(c.kind, CollaborationKind.brandContract);
+    expect(c.isStoreOffer, isFalse);
+    expect(c.terms, isNull);
+    expect(c.stage, CollaborationStage.other);
+    expect(c.hasVoucher, isFalse);
+    expect(c.hasPerView, isFalse);
+    expect(() => c.offerTerms, throwsStateError);
+  });
+
+  test('fetch maps a store offer to the store offer kind', () async {
+    final fake = FakeHttpClient()..body = jsonEncode(_json());
+
+    final c = await _repo(fake).fetch('col-1');
+
+    expect(c.kind, CollaborationKind.storeOffer);
+    expect(c.isStoreOffer, isTrue);
   });
 
   test('fetch maps the view report status, NONE to null', () async {

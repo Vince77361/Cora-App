@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CancelRequest, Collaboration } from '@prisma/client';
+import { BrandsService } from '../brands/brands.service';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
@@ -49,6 +50,7 @@ interface Context {
   pending: Map<string, CancelRequest>;
   stores: Map<string, Awaited<ReturnType<StoresService['getOfferCard']>>>;
   creators: Map<string, Awaited<ReturnType<CreatorsService['getSummary']>>>;
+  brands: Map<string, Awaited<ReturnType<BrandsService['findProfiles']>>>;
   accounts: Map<string, boolean>;
 }
 
@@ -69,6 +71,7 @@ export class CollaborationsService {
     private readonly offers: OffersService,
     private readonly stores: StoresService,
     private readonly creators: CreatorsService,
+    private readonly brands: BrandsService,
     private readonly notifications: NotificationsService,
     private readonly jobs: JobScheduler,
     private readonly clock: Clock,
@@ -485,6 +488,7 @@ export class CollaborationsService {
       pending,
       stores: new Map(),
       creators: new Map(),
+      brands: new Map(),
       accounts: new Map(),
     };
     const models: CollaborationModel[] = [];
@@ -499,6 +503,8 @@ export class CollaborationsService {
     c: Context,
   ): Promise<CollaborationModel> {
     const role = row.creatorId === userId ? 'CREATOR' : 'COMMISSIONER';
+    // 브랜드 계약의 조건은 협업 행이 아니라 조건 판본에 있다(행의 terms 열은 비어 있다). readTerms를 부르기 전에 가른다.
+    if (row.kind === 'BRAND_CONTRACT') return this.toBrandModel(row, role, c);
     const terms = readTerms(row.terms);
     const settlement = c.settlements.get(row.id) ?? null;
     // 확인 전의 계산은 "정산"으로 보이지 않게 한다(돈은 아직 보관 중이다).
@@ -589,6 +595,65 @@ export class CollaborationsService {
         : null,
       canCancel: funded && role === 'CREATOR',
       canRequestCancel: funded && role === 'COMMISSIONER' && !pendingRequest,
+    };
+  }
+
+  // 브랜드 계약. 돈·정산·취소 칸은 이 계획 범위 밖이라 비어 있다(결제와 계약 이후는 5번 계획이 켠다).
+  private async toBrandModel(
+    row: Collaboration,
+    role: CollaborationModel['role'],
+    c: Context,
+  ): Promise<CollaborationModel> {
+    return {
+      id: row.id,
+      kind: row.kind,
+      stage: row.stage,
+      role,
+      counterpart:
+        role === 'CREATOR'
+          ? await this.brandCounterpart(row.commissionerId, c)
+          : await this.creatorCounterpart(row.creatorId, c),
+      store: null,
+      terms: null,
+      steps: buildSteps({
+        kind: row.kind,
+        stage: row.stage,
+        stageBeforeHalt: row.stageBeforeHalt,
+        settlementMethod: row.settlementMethod,
+        acceptedAt: row.createdAt,
+        fundedAt: row.fundedAt,
+        submittedAt: row.submittedAt,
+        settledAt: null,
+      }).map((step) => ({
+        key: step.key,
+        state: step.state,
+        at: step.at?.toISOString() ?? null,
+      })),
+      escrowAmount: 0,
+      submitDueAt: row.submitDueAt?.toISOString() ?? null,
+      submittedUrl: row.submittedUrl,
+      countingEndsAt: row.countingEndsAt?.toISOString() ?? null,
+      currentViews: null,
+      earnedSoFar: null,
+      expectedRefund: null,
+      settlement: null,
+      viewReportStatus: 'NONE',
+      payoutStatus: 'NONE',
+      payoutScheduledFor: null,
+      cancelRequest: null,
+      canCancel: false,
+      canRequestCancel: false,
+    };
+  }
+
+  private async brandCounterpart(brandUserId: string, c: Context) {
+    if (!c.brands.has(brandUserId)) {
+      c.brands.set(brandUserId, await this.brands.findProfiles([brandUserId]));
+    }
+    const profile = c.brands.get(brandUserId)?.get(brandUserId);
+    return {
+      name: profile?.name ?? '브랜드',
+      photoUrl: profile?.photoUrl ?? null,
     };
   }
 

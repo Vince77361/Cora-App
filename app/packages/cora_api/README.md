@@ -81,6 +81,10 @@ Class | Method | HTTP request | Description
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
 *CreatorsApi* | [**listMyCreatorSeries**](doc//CreatorsApi.md#listmycreatorseries) | **GET** /creators/me/series | 
 *CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
+*DiscoveryApi* | [**putDecision**](doc//DiscoveryApi.md#putdecision) | **PUT** /discovery/decisions | 관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.
+*DiscoveryApi* | [**putPassReason**](doc//DiscoveryApi.md#putpassreason) | **PUT** /discovery/decisions/pass-reason | 넘긴 카드에 이유를 남긴다. 이유 없이 넘기는 것은 이 호출을 하지 않는 것이다.
+*DiscoveryApi* | [**putStorePass**](doc//DiscoveryApi.md#putstorepass) | **PUT** /discovery/store-passes/{storeId} | 가게 카드를 넘긴다(가게 카드의 관심은 지원 API로 보낸다).
+*DiscoveryApi* | [**undoLastDecision**](doc//DiscoveryApi.md#undolastdecision) | **DELETE** /discovery/decisions/last | 오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다.
 *HealthApi* | [**getHealth**](doc//HealthApi.md#gethealth) | **GET** /health | 
 *InstagramApi* | [**beginInstagramConnect**](doc//InstagramApi.md#begininstagramconnect) | **POST** /instagram/connect | 
 *InstagramApi* | [**completeInstagramConnect**](doc//InstagramApi.md#completeinstagramconnect) | **POST** /instagram/connect/complete | 
@@ -157,6 +161,7 @@ Class | Method | HTTP request | Description
  - [ApplyDto](doc//ApplyDto.md)
  - [BankModel](doc//BankModel.md)
  - [BrandProfileModel](doc//BrandProfileModel.md)
+ - [BrandProposalDto](doc//BrandProposalDto.md)
  - [CampaignListCardKind](doc//CampaignListCardKind.md)
  - [CampaignListCardModel](doc//CampaignListCardModel.md)
  - [CampaignModel](doc//CampaignModel.md)
@@ -189,6 +194,8 @@ Class | Method | HTTP request | Description
  - [CreatorRecommendationsModel](doc//CreatorRecommendationsModel.md)
  - [CreatorSeriesModel](doc//CreatorSeriesModel.md)
  - [CreatorSummaryModel](doc//CreatorSummaryModel.md)
+ - [DecisionResultModel](doc//DecisionResultModel.md)
+ - [DecisionTargetKind](doc//DecisionTargetKind.md)
  - [DisputeViewReportDto](doc//DisputeViewReportDto.md)
  - [DraftSceneModel](doc//DraftSceneModel.md)
  - [EndOfferDto](doc//EndOfferDto.md)
@@ -224,6 +231,8 @@ Class | Method | HTTP request | Description
  - [OfferVersionModel](doc//OfferVersionModel.md)
  - [OfferVersionSeriesModel](doc//OfferVersionSeriesModel.md)
  - [OfferView](doc//OfferView.md)
+ - [PassReason](doc//PassReason.md)
+ - [PassReasonDto](doc//PassReasonDto.md)
  - [PaymentCreatedModel](doc//PaymentCreatedModel.md)
  - [PaymentMethod](doc//PaymentMethod.md)
  - [PaymentQuoteModel](doc//PaymentQuoteModel.md)
@@ -241,11 +250,13 @@ Class | Method | HTTP request | Description
  - [ProposalDetailModel](doc//ProposalDetailModel.md)
  - [ProposalEndKind](doc//ProposalEndKind.md)
  - [ProposalGroup](doc//ProposalGroup.md)
+ - [ProposalPerformanceDto](doc//ProposalPerformanceDto.md)
  - [ProposalPersonModel](doc//ProposalPersonModel.md)
  - [ProposalRowModel](doc//ProposalRowModel.md)
  - [ProposalStoreModel](doc//ProposalStoreModel.md)
  - [ProposalTab](doc//ProposalTab.md)
  - [ProposeVersionDto](doc//ProposeVersionDto.md)
+ - [PutDecisionDto](doc//PutDecisionDto.md)
  - [QuietHours](doc//QuietHours.md)
  - [ReceivedOfferModel](doc//ReceivedOfferModel.md)
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)
@@ -273,11 +284,14 @@ Class | Method | HTTP request | Description
  - [StoreSummaryModel](doc//StoreSummaryModel.md)
  - [SubmitContentDto](doc//SubmitContentDto.md)
  - [SubmitViewEvidenceDto](doc//SubmitViewEvidenceDto.md)
+ - [SwipeDecisionKind](doc//SwipeDecisionKind.md)
+ - [SwipeTargetKind](doc//SwipeTargetKind.md)
  - [TrialBanner](doc//TrialBanner.md)
  - [TrialComparisonModel](doc//TrialComparisonModel.md)
  - [TrialInfoDto](doc//TrialInfoDto.md)
  - [TrialInfoModel](doc//TrialInfoModel.md)
  - [TrialSideModel](doc//TrialSideModel.md)
+ - [UndoneDecisionModel](doc//UndoneDecisionModel.md)
  - [UnreadCountModel](doc//UnreadCountModel.md)
  - [UpdateCampaignDto](doc//UpdateCampaignDto.md)
  - [UpdateNotificationSettingsDto](doc//UpdateNotificationSettingsDto.md)

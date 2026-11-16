@@ -214,6 +214,33 @@
         ],
         "type": "object"
       },
+      "BrandProposalDto": {
+        "properties": {
+          "fee": {
+            "description": "제작비(원). 1만 원 단위, 10000~10000000.",
+            "type": "integer"
+          },
+          "performance": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProposalPerformanceDto"
+              }
+            ],
+            "description": "성과 추가. 없으면 null. 캠페인 형식이 블로그 글이면 받지 않는다.",
+            "nullable": true,
+            "type": "object"
+          },
+          "productProvided": {
+            "description": "제품 제공 여부.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "fee",
+          "productProvided"
+        ],
+        "type": "object"
+      },
       "CampaignListCardKind": {
         "enum": [
           "CAMPAIGN",
@@ -587,7 +614,9 @@
                 "$ref": "#/components/schemas/OfferTermsModel"
               }
             ],
-            "description": "수락할 때의 조건(사본)."
+            "description": "수락할 때의 조건(사본). 가게 오퍼에만 있고 브랜드 계약은 null이다(브랜드 계약의 조건은 조건 판본이 담는다).",
+            "nullable": true,
+            "type": "object"
           },
           "viewReportStatus": {
             "allOf": [
@@ -1234,6 +1263,41 @@
           "followers"
         ],
         "type": "object"
+      },
+      "DecisionResultModel": {
+        "properties": {
+          "collaborationId": {
+            "description": "서로 관심으로 생긴 협업의 id. 닿지 않았으면 null.",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "decision": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SwipeDecisionKind"
+              }
+            ]
+          },
+          "matched": {
+            "description": "이 결정으로 서로 관심이 닿았는가.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decision",
+          "matched",
+          "collaborationId"
+        ],
+        "type": "object"
+      },
+      "DecisionTargetKind": {
+        "description": "브랜드는 CREATOR만, 크리에이터는 CAMPAIGN만 보낸다.",
+        "enum": [
+          "CREATOR",
+          "CAMPAIGN"
+        ],
+        "type": "string"
       },
       "DisputeViewReportDto": {
         "properties": {
@@ -2102,6 +2166,43 @@
         ],
         "type": "string"
       },
+      "PassReason": {
+        "enum": [
+          "MOOD",
+          "REGION",
+          "FEE",
+          "FIELD"
+        ],
+        "type": "string"
+      },
+      "PassReasonDto": {
+        "properties": {
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PassReason"
+              }
+            ]
+          },
+          "targetId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "targetKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SwipeTargetKind"
+              }
+            ]
+          }
+        },
+        "required": [
+          "targetKind",
+          "targetId",
+          "reason"
+        ],
+        "type": "object"
+      },
       "PaymentCreatedModel": {
         "properties": {
           "checkoutUrl": {
@@ -2572,6 +2673,23 @@
         ],
         "type": "string"
       },
+      "ProposalPerformanceDto": {
+        "properties": {
+          "cap": {
+            "description": "조회수 수당 상한(원).",
+            "type": "integer"
+          },
+          "ratePer1000": {
+            "description": "조회수 단가(1,000회당 원). 500원 단위.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ratePer1000",
+          "cap"
+        ],
+        "type": "object"
+      },
       "ProposalPersonModel": {
         "properties": {
           "name": {
@@ -2742,6 +2860,49 @@
         "required": [
           "format",
           "reward"
+        ],
+        "type": "object"
+      },
+      "PutDecisionDto": {
+        "properties": {
+          "decision": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SwipeDecisionKind"
+              }
+            ]
+          },
+          "note": {
+            "description": "LIKE에 붙이는 글. 크리에이터는 40자(조건 버전의 제목), 브랜드는 100자(좋아한 점).",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "proposal": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BrandProposalDto"
+              }
+            ],
+            "description": "브랜드의 LIKE에만 붙인다(크리에이터가 보내면 400). 이미 LIKE인 결정에 다시 보내면 값만 덮어쓴다."
+          },
+          "targetId": {
+            "description": "크리에이터(사용자) 또는 캠페인의 id.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "targetKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DecisionTargetKind"
+              }
+            ],
+            "description": "브랜드는 CREATOR만, 크리에이터는 CAMPAIGN만 보낸다."
+          }
+        },
+        "required": [
+          "targetKind",
+          "targetId",
+          "decision"
         ],
         "type": "object"
       },
@@ -3562,6 +3723,22 @@
         ],
         "type": "object"
       },
+      "SwipeDecisionKind": {
+        "enum": [
+          "LIKE",
+          "PASS",
+          "HOLD"
+        ],
+        "type": "string"
+      },
+      "SwipeTargetKind": {
+        "enum": [
+          "CREATOR",
+          "CAMPAIGN",
+          "STORE"
+        ],
+        "type": "string"
+      },
       "TrialBanner": {
         "description": "COMPARE: 종료일이 30일 안이라 비교를 보여 준다. HINT: 계약 정보를 넣으면 비교해 준다는 안내를 한 번 보여 준다.",
         "enum": [
@@ -3660,6 +3837,26 @@
           "endsOn",
           "postCount",
           "spent"
+        ],
+        "type": "object"
+      },
+      "UndoneDecisionModel": {
+        "properties": {
+          "targetId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "targetKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SwipeTargetKind"
+              }
+            ]
+          }
+        },
+        "required": [
+          "targetKind",
+          "targetId"
         ],
         "type": "object"
       },
@@ -5403,6 +5600,129 @@
         "summary": "",
         "tags": [
           "Creators"
+        ]
+      }
+    },
+    "/discovery/decisions": {
+      "put": {
+        "operationId": "putDecision",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutDecisionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionResultModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.",
+        "tags": [
+          "Discovery"
+        ]
+      }
+    },
+    "/discovery/decisions/last": {
+      "delete": {
+        "operationId": "undoLastDecision",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UndoneDecisionModel"
+                }
+              }
+            },
+            "description": "지운 결정의 대상. 되돌릴 것이 없으면 본문이 없다."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다.",
+        "tags": [
+          "Discovery"
+        ]
+      }
+    },
+    "/discovery/decisions/pass-reason": {
+      "put": {
+        "operationId": "putPassReason",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PassReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "넘긴 카드에 이유를 남긴다. 이유 없이 넘기는 것은 이 호출을 하지 않는 것이다.",
+        "tags": [
+          "Discovery"
+        ]
+      }
+    },
+    "/discovery/store-passes/{storeId}": {
+      "put": {
+        "operationId": "putStorePass",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "가게 카드를 넘긴다(가게 카드의 관심은 지원 API로 보낸다).",
+        "tags": [
+          "Discovery"
         ]
       }
     },

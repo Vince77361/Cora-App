@@ -162,6 +162,18 @@ export class CreatorsService {
       : null;
   }
 
+  // 브랜드가 글을 붙여 관심을 보낼 때 저장하는 콘텐츠 사본(카드 한 줄과 카드 사진 경로).
+  // 경로는 응답에 내리지 않는 값이라 이 서비스가 따로 꺼내 준다. 프로필이 없으면 null.
+  async getCardCopy(userId: string): Promise<{
+    headline: string | null;
+    photoPath: string | null;
+  } | null> {
+    const row = await this.creators.findActiveByUserId(userId);
+    return row
+      ? { headline: row.cardHeadline, photoPath: row.cardPhotoPath }
+      : null;
+  }
+
   // 지원처럼 프로필이 있어야 하는 동작이 앞에서 부른다.
   async requireProfile(userId: string): Promise<CreatorProfileModel> {
     const row = await this.creators.findActiveByUserId(userId);

@@ -28,7 +28,7 @@ Name | Type | Description | Notes
 **store** | [**StoreSummaryModel**](StoreSummaryModel.md) | 가게 오퍼의 가게. 브랜드 계약이거나 가게를 읽을 수 없으면 null. | 
 **submitDueAt** | [**DateTime**](DateTime.md) | 링크 제출 기한(결제 뒤 14일). | 
 **submittedUrl** | **String** |  | 
-**terms** | [**OfferTermsModel**](OfferTermsModel.md) | 수락할 때의 조건(사본). | 
+**terms** | [**OfferTermsModel**](OfferTermsModel.md) | 수락할 때의 조건(사본). 가게 오퍼에만 있고 브랜드 계약은 null이다(브랜드 계약의 조건은 조건 판본이 담는다). | 
 **viewReportStatus** | [**CollaborationViewReportStatus**](CollaborationViewReportStatus.md) | 조회 자료 확인 단계. NONE: 조회수 수당이 없거나 링크 제출 전, COUNTING: 집계 중, UNCONFIRMED: 계산이 나와 확인을 기다림, CONFIRMED: 확인됨, DISPUTED: 이의 중. | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

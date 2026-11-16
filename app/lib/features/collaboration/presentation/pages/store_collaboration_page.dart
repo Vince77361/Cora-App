@@ -209,7 +209,8 @@ class _Content extends StatelessWidget {
   /// 7일 결과(G1)가 있는 협업이다: 정산이 끝났고, 식사권만 있던 협업이 아니며(서버는 404), 게시 링크가 있다.
   bool get _hasResult =>
       collaboration.stage == CollaborationStage.settled &&
-      (collaboration.hasPerView || collaboration.terms.reward.fixedCash > 0) &&
+      (collaboration.hasPerView ||
+          collaboration.offerTerms.reward.fixedCash > 0) &&
       (collaboration.submittedUrl ?? '').isNotEmpty;
 
   @override
@@ -349,7 +350,7 @@ class _HeldBox extends StatelessWidget {
       case CollaborationStage.funded:
       case CollaborationStage.counting:
       case CollaborationStage.halted:
-        final voucher = co.terms.reward.voucher;
+        final voucher = co.offerTerms.reward.voucher;
         if (!co.hasEscrow) {
           // 식사권만 있는 협업: 맡긴 돈이 없다.
           return CollaborationBox(

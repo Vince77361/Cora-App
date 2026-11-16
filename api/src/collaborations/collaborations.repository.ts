@@ -28,6 +28,8 @@ export interface NewCollaboration {
   creatorId: string;
   offerId: string | null;
   storeId: string | null;
+  // 브랜드 계약이 나온 캠페인. 가게 오퍼는 생략한다.
+  campaignId?: string | null;
   terms: Prisma.InputJsonValue;
   settlementMethod: SettlementMethod;
   fundedAt: Date | null;
@@ -55,6 +57,17 @@ export class CollaborationsRepository {
   ): Promise<Collaboration | null> {
     return this.client(tx).collaboration.findFirst({
       where: { id, deletedAt: null },
+    });
+  }
+
+  // 같은 캠페인·크리에이터의 브랜드 협업(하나뿐이다).
+  findBrandContract(
+    campaignId: string,
+    creatorId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Collaboration | null> {
+    return this.client(tx).collaboration.findFirst({
+      where: { kind: 'BRAND_CONTRACT', campaignId, creatorId, deletedAt: null },
     });
   }
 

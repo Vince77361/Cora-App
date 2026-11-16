@@ -14,6 +14,9 @@ enum CollaborationStage {
   other,
 }
 
+/// 협업의 종류. 가게 오퍼 화면은 [storeOffer]만 그리고, 브랜드 계약은 조건 판본이 조건을 담는다.
+enum CollaborationKind { storeOffer, brandContract }
+
 /// 내가 이 협업에서 맡은 쪽. A7은 크리에이터 화면이다.
 enum CollaborationRole { commissioner, creator }
 
@@ -72,6 +75,7 @@ class Collaboration {
     required this.terms,
     required this.escrowAmount,
     required this.steps,
+    this.kind = CollaborationKind.storeOffer,
     this.counterpartPhotoUrl,
     this.earnedSoFar,
     this.currentViews,
@@ -89,13 +93,22 @@ class Collaboration {
   });
 
   final String id;
+  final CollaborationKind kind;
   final CollaborationRole role;
   final CollaborationStage stage;
 
   /// 크리에이터에게는 가게 이름, 사장님에게는 크리에이터의 활동 이름.
   final String counterpartName;
   final String? counterpartPhotoUrl;
-  final OfferTerms terms;
+
+  /// 수락할 때의 조건 사본. 가게 오퍼에만 있고 브랜드 계약은 null이다.
+  final OfferTerms? terms;
+
+  /// 가게 오퍼 화면이 읽는 조건. 브랜드 계약에는 없으므로 그 화면에 브랜드 협업이 들어오면 바로 드러나게 던진다.
+  OfferTerms get offerTerms =>
+      terms ?? (throw StateError('가게 오퍼가 아닌 협업이에요: $id'));
+
+  bool get isStoreOffer => kind == CollaborationKind.storeOffer;
 
   /// Cora가 보관하는 금액(원). 식사권만 있는 협업은 0이다.
   final int escrowAmount;
@@ -124,10 +137,10 @@ class Collaboration {
   /// 협업 번호의 앞 8자리. 식사권 화면과 문의 메일 제목에 쓴다.
   String get shortId => id.length <= 8 ? id : id.substring(0, 8);
 
-  bool get hasVoucher => terms.reward.voucher != null;
+  bool get hasVoucher => terms?.reward.voucher != null;
 
   /// 조건에 조회수당 지급이 있다. 결제 전에도 참이다(보관액 `escrowAmount`는 결제 전에 0이다).
-  bool get hasPerView => terms.reward.viewPay != null;
+  bool get hasPerView => terms?.reward.viewPay != null;
 
   /// 돈이 지금 실제로 보관돼 있다(결제 뒤이고 조회수당 지급이 있는 협업). 조건이 아니라 서버가 준
   /// `escrowAmount`로 따진다: 결제 전과 식사권만 있는 협업은 0이다.
