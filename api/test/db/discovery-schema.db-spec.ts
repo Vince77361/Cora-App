@@ -6,6 +6,17 @@ const BRAND_2 = '66666666-6666-4666-8666-666666666662';
 const CREATOR = '66666666-6666-4666-8666-666666666663';
 const CREATOR_2 = '66666666-6666-4666-8666-666666666664';
 
+// 거절 이유까지 확인한다. 아무 오류나 통과하면 검증 오류나 외래 키 오류로도 테스트가 통과해 버린다.
+// 유일 제약 위반은 Prisma가 P2002와 위반한 인덱스의 열(meta.target)로 알려 준다.
+function uniqueOn(...columns: string[]) {
+  return { code: 'P2002', meta: { target: columns } };
+}
+// CHECK 위반은 Prisma가 코드 있는 오류로 바꾸지 않아, Postgres의 문장에 든 제약 이름으로 가린다.
+// 오류 문장 안에서 따옴표가 \"로 이스케이프되어 있어 백슬래시는 있어도 없어도 맞게 한다.
+function violatesCheck(name: string): RegExp {
+  return new RegExp(`violates check constraint \\\\?"${name}\\\\?"`);
+}
+
 beforeEach(async () => {
   // 각 테스트 전에 setup-db가 모든 테이블을 비우므로 기준 데이터를 여기서 다시 만든다.
   await prisma.user.createMany({
@@ -59,7 +70,7 @@ async function createBrandCollaboration(
 describe('campaigns', () => {
   it('allows only one active campaign per brand', async () => {
     await createCampaign();
-    await expect(createCampaign()).rejects.toThrow();
+    await expect(createCampaign()).rejects.toMatchObject(uniqueOn('brand_id'));
     // 다른 브랜드는 영향이 없다.
     await expect(createCampaign({ brandId: BRAND_2 })).resolves.toBeDefined();
   });
@@ -82,34 +93,41 @@ describe('campaigns', () => {
   });
 
   it('requires a campaign budget', async () => {
-    const data = {
-      brandId: BRAND,
-      headline: '예산 없음',
-      fee: 300000,
-      productProvided: false,
-      format: 'REELS',
-      startFrom: new Date('2026-12-01'),
-      trialDays: 'ANY',
-    };
-    // 타입을 우회해 budget 없이 넣어 본다. NOT NULL이라 거절돼야 한다.
-    await expect(
-      prisma.campaign.create({
-        data: data as unknown as Prisma.CampaignUncheckedCreateInput,
-      }),
-    ).rejects.toThrow();
+    // Prisma 클라이언트는 budget이 없으면 DB에 가기 전에 막으므로, NOT NULL은 직접 INSERT로 확인한다.
+    const insert = (budget: number | null) => prisma.$executeRaw`
+      INSERT INTO campaigns (
+        id, brand_id, status, headline, fee, budget, product_provided, format,
+        start_from, trial_days, must_include, not_required, updated_at
+      ) VALUES (
+        gen_random_uuid(), ${BRAND}::uuid, 'CLOSED', '예산 없음', 300000,
+        ${budget}, false, 'REELS', '2026-12-01', 'ANY', ARRAY[]::text[],
+        ARRAY[]::not_required[], now())`;
+    // 예산만 다른 같은 INSERT가 성공하니, 거절 이유는 budget이 비어서다(23502는 NOT NULL 위반).
+    await expect(insert(300000)).resolves.toBe(1);
+    await expect(insert(null)).rejects.toMatchObject({
+      code: 'P2010',
+      meta: { code: '23502' },
+    });
   });
 
   it('keeps the budget in 10,000 won steps from the fee up to 100,000,000', async () => {
-    await expect(createCampaign({ budget: 299999 })).rejects.toThrow();
-    await expect(createCampaign({ budget: 305000 })).rejects.toThrow();
-    await expect(createCampaign({ budget: 100010000 })).rejects.toThrow();
+    const budgetRange = violatesCheck('campaigns_budget_range');
+    await expect(createCampaign({ budget: 299999 })).rejects.toThrow(
+      budgetRange,
+    );
+    await expect(createCampaign({ budget: 305000 })).rejects.toThrow(
+      budgetRange,
+    );
+    await expect(createCampaign({ budget: 100010000 })).rejects.toThrow(
+      budgetRange,
+    );
     await expect(createCampaign({ budget: 300000 })).resolves.toBeDefined();
   });
 
   it('keeps at most three must-include lines', async () => {
     await expect(
       createCampaign({ brandId: BRAND_2, mustInclude: ['a', 'b', 'c', 'd'] }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(violatesCheck('campaigns_must_include_max'));
     await expect(
       createCampaign({ brandId: BRAND_2, mustInclude: ['a', 'b', 'c'] }),
     ).resolves.toBeDefined();
@@ -129,7 +147,7 @@ describe('swipe_decisions', () => {
     await prisma.swipeDecision.create({ data: { ...base, campaignId: null } });
     await expect(
       prisma.swipeDecision.create({ data: { ...base, campaignId: null } }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject(uniqueOn('actor_id', 'target_kind', 'target_id'));
 
     // 캠페인이 있는 결정은 같은 캠페인에서만 겹친다.
     const campaign = await createCampaign();
@@ -141,7 +159,9 @@ describe('swipe_decisions', () => {
       prisma.swipeDecision.create({
         data: { ...base, campaignId: campaign.id },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject(
+      uniqueOn('actor_id', 'target_kind', 'target_id', 'campaign_id'),
+    );
     // 같은 대상이라도 다른 캠페인이거나 캠페인이 없으면 따로 센다.
     await expect(
       prisma.swipeDecision.create({
@@ -177,6 +197,27 @@ describe('swipe_decisions', () => {
       proposedPerfCap: 100000,
       passReason: null,
     });
+  });
+
+  it('rejects a brand proposal that has only the performance rate or only the cap', async () => {
+    const campaign = await createCampaign();
+    const pair = violatesCheck('swipe_decisions_proposed_perf_pair');
+    await expect(
+      prisma.swipeDecision.create({
+        data: { ...base, campaignId: campaign.id, proposedPerfRate: 2000 },
+      }),
+    ).rejects.toThrow(pair);
+    await expect(
+      prisma.swipeDecision.create({
+        data: { ...base, campaignId: campaign.id, proposedPerfCap: 100000 },
+      }),
+    ).rejects.toThrow(pair);
+    // 둘 다 없으면 된다(조건 없이 좋아요만 한 경우).
+    await expect(
+      prisma.swipeDecision.create({
+        data: { ...base, campaignId: campaign.id },
+      }),
+    ).resolves.toBeDefined();
   });
 
   it('stores a pass reason and allows none', async () => {
@@ -217,7 +258,7 @@ describe('matches', () => {
           matchedAt: new Date('2026-12-01T00:00:00Z'),
         },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject(uniqueOn('campaign_id', 'creator_id'));
     // 한 협업에는 매칭이 하나뿐이다.
     await expect(
       prisma.match.create({
@@ -228,7 +269,7 @@ describe('matches', () => {
           matchedAt: new Date('2026-12-01T00:00:00Z'),
         },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject(uniqueOn('collaboration_id'));
   });
 });
 
@@ -236,7 +277,9 @@ describe('collaborations of a brand campaign', () => {
   it('rejects a second brand collaboration for the same campaign and creator', async () => {
     const campaign = await createCampaign();
     await createBrandCollaboration(campaign.id);
-    await expect(createBrandCollaboration(campaign.id)).rejects.toThrow();
+    await expect(createBrandCollaboration(campaign.id)).rejects.toMatchObject(
+      uniqueOn('campaign_id', 'creator_id'),
+    );
     // 같은 캠페인의 다른 크리에이터는 된다.
     await expect(
       createBrandCollaboration(campaign.id, CREATOR_2),
@@ -273,11 +316,15 @@ describe('daily_recommendations', () => {
       });
     // 캠페인이 없는 줄(크리에이터 쪽 추천)은 NULL이라 부분 유니크 인덱스로 막는다.
     await make(null, 'CREATOR');
-    await expect(make(null, 'CREATOR')).rejects.toThrow();
+    await expect(make(null, 'CREATOR')).rejects.toMatchObject(
+      uniqueOn('user_id', 'scope', 'day'),
+    );
 
     const campaign = await createCampaign();
     await make(campaign.id, 'BRAND');
-    await expect(make(campaign.id, 'BRAND')).rejects.toThrow();
+    await expect(make(campaign.id, 'BRAND')).rejects.toMatchObject(
+      uniqueOn('user_id', 'scope', 'campaign_id', 'day'),
+    );
     // 날짜가 다르면 새 줄이다.
     await expect(
       prisma.dailyRecommendation.create({
@@ -306,7 +353,9 @@ describe('creator_principles and brand_profiles', () => {
       trialDays: 'D7' as const,
     };
     await prisma.creatorPrinciples.create({ data });
-    await expect(prisma.creatorPrinciples.create({ data })).rejects.toThrow();
+    await expect(
+      prisma.creatorPrinciples.create({ data }),
+    ).rejects.toMatchObject(uniqueOn('creator_id'));
   });
 
   it('keeps one brand profile per user', async () => {
@@ -316,7 +365,9 @@ describe('creator_principles and brand_profiles', () => {
       industry: 'FOOD_CAFE' as const,
     };
     await prisma.brandProfile.create({ data });
-    await expect(prisma.brandProfile.create({ data })).rejects.toThrow();
+    await expect(prisma.brandProfile.create({ data })).rejects.toMatchObject(
+      uniqueOn('user_id'),
+    );
   });
 });
 
@@ -364,8 +415,9 @@ describe('terms_versions', () => {
   }
 
   it('stores a performance bonus on a terms version only as a rate and cap pair', async () => {
-    await expect(version({ perfRatePerThousand: 2000 })).rejects.toThrow();
-    await expect(version({ perfCap: 100000 })).rejects.toThrow();
+    const pair = violatesCheck('terms_versions_perf_pair');
+    await expect(version({ perfRatePerThousand: 2000 })).rejects.toThrow(pair);
+    await expect(version({ perfCap: 100000 })).rejects.toThrow(pair);
     const both = await version({
       perfRatePerThousand: 2000,
       perfCap: 100000,
@@ -402,11 +454,14 @@ describe('terms_versions', () => {
           payoutDays: 14,
         },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject(uniqueOn('collaboration_id', 'version'));
   });
 
   it('accepts only 7 or 14 payout days', async () => {
-    await expect(version({ payoutDays: 10 })).rejects.toThrow();
+    await expect(version({ payoutDays: 10 })).rejects.toThrow(
+      violatesCheck('terms_versions_payout_days'),
+    );
+    await expect(version({ payoutDays: 14 })).resolves.toBeDefined();
   });
 });
 

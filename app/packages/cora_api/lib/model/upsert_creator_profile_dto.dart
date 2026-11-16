@@ -23,7 +23,7 @@ class UpsertCreatorProfileDto {
     this.regionSigungu,
   });
 
-  /// 브랜드가 보는 카드의 한 줄. 비우면 저장하지 않는다.
+  /// 브랜드가 보는 카드의 한 줄. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated
@@ -32,6 +32,7 @@ class UpsertCreatorProfileDto {
   ///
   String? cardHeadline;
 
+  /// 브랜드가 보는 카드의 사진 경로. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated

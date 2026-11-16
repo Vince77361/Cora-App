@@ -3269,11 +3269,12 @@
       "UpsertCreatorProfileDto": {
         "properties": {
           "cardHeadline": {
-            "description": "브랜드가 보는 카드의 한 줄. 비우면 저장하지 않는다.",
+            "description": "브랜드가 보는 카드의 한 줄. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.",
             "maxLength": 40,
             "type": "string"
           },
           "cardPhotoPath": {
+            "description": "브랜드가 보는 카드의 사진 경로. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.",
             "type": "string"
           },
           "contentFocus": {

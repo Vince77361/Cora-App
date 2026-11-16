@@ -61,7 +61,8 @@ export class UpsertCreatorProfileDto {
   @ApiProperty({
     required: false,
     maxLength: 40,
-    description: '브랜드가 보는 카드의 한 줄. 비우면 저장하지 않는다.',
+    description:
+      '브랜드가 보는 카드의 한 줄. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.',
   })
   @IsOptional()
   @Transform(trim)
@@ -70,7 +71,11 @@ export class UpsertCreatorProfileDto {
   cardHeadline?: string;
 
   // POST /uploads/photos(CREATOR_CARD)가 준 경로. 서버가 소유자를 다시 확인한다.
-  @ApiProperty({ required: false })
+  @ApiProperty({
+    required: false,
+    description:
+      '브랜드가 보는 카드의 사진 경로. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.',
+  })
   @IsOptional()
   @IsString()
   cardPhotoPath?: string;

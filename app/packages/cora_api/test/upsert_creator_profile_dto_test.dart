@@ -16,12 +16,13 @@ void main() {
   // final instance = UpsertCreatorProfileDto();
 
   group('test UpsertCreatorProfileDto', () {
-    // 브랜드가 보는 카드의 한 줄. 비우면 저장하지 않는다.
+    // 브랜드가 보는 카드의 한 줄. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.
     // String cardHeadline
     test('to test the property `cardHeadline`', () async {
       // TODO
     });
 
+    // 브랜드가 보는 카드의 사진 경로. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.
     // String cardPhotoPath
     test('to test the property `cardPhotoPath`', () async {
       // TODO
