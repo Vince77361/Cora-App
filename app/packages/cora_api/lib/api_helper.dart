@@ -71,6 +71,9 @@ String parameterToString(dynamic value) {
   if (value is ApplicationStatus) {
     return ApplicationStatusTypeTransformer().encode(value).toString();
   }
+  if (value is BrandProgressNote) {
+    return BrandProgressNoteTypeTransformer().encode(value).toString();
+  }
   if (value is BrandUsageRights) {
     return BrandUsageRightsTypeTransformer().encode(value).toString();
   }
@@ -82,6 +85,9 @@ String parameterToString(dynamic value) {
   }
   if (value is CollaborationKind) {
     return CollaborationKindTypeTransformer().encode(value).toString();
+  }
+  if (value is CollaborationNextAction) {
+    return CollaborationNextActionTypeTransformer().encode(value).toString();
   }
   if (value is CollaborationRole) {
     return CollaborationRoleTypeTransformer().encode(value).toString();

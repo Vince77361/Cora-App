@@ -13,6 +13,9 @@ part of cora_api;
 class CollaborationModel {
   /// Returns a new [CollaborationModel] instance.
   CollaborationModel({
+    required this.brandProgress,
+    required this.campaign,
+    required this.campaignBudgetLeft,
     required this.canCancel,
     required this.canRequestCancel,
     required this.cancelRequest,
@@ -24,9 +27,11 @@ class CollaborationModel {
     required this.expectedRefund,
     required this.id,
     required this.kind,
+    required this.nextAction,
     required this.payoutScheduledFor,
     required this.payoutStatus,
     required this.role,
+    required this.securedAmount,
     required this.settlement,
     required this.stage,
     this.steps = const [],
@@ -34,8 +39,18 @@ class CollaborationModel {
     required this.submitDueAt,
     required this.submittedUrl,
     required this.terms,
+    required this.title,
     required this.viewReportStatus,
   });
+
+  /// 브랜드 계약의 여섯 단계 진행. 멈춘 협업은 멈추기 전 단계로 읽는다. 가게 오퍼이거나 진행 표에 없는 단계(INQUIRY, DROPPED)면 null.
+  BrandProgressModel? brandProgress;
+
+  /// 브랜드 계약이 나온 캠페인. 가게 오퍼이거나 캠페인을 읽을 수 없으면 null.
+  CollaborationCampaignModel? campaign;
+
+  /// 남은 캠페인 예산. 그 캠페인의 브랜드에게만 채우고 크리에이터와 가게 오퍼에는 null.
+  CampaignBudgetLeftModel? campaignBudgetLeft;
 
   /// 크리에이터가 지금 협업을 그만둘 수 있으면 true(링크를 제출하기 전).
   bool canCancel;
@@ -67,6 +82,9 @@ class CollaborationModel {
 
   CollaborationKind kind;
 
+  /// 지금 내가 할 일. RESPOND_TERMS: 최신 조건 판본을 아직 확인하지 않음, SIGN_CONTRACT: 양쪽이 합의해 계약할 차례. 그 밖은 null.
+  CollaborationNextAction? nextAction;
+
   /// 지급이 PENDING이고 계좌가 있을 때 송금할 지급일. 크리에이터에게만.
   DateTime? payoutScheduledFor;
 
@@ -76,11 +94,15 @@ class CollaborationModel {
   /// 내 쪽. COMMISSIONER는 맡긴 쪽(사장님·브랜드), CREATOR는 크리에이터.
   CollaborationRole role;
 
+  /// 이번 협업의 확보액(원) = 최신 조건 판본의 최대 현금 부담. 가게 오퍼이거나 판본이 없으면 null.
+  int? securedAmount;
+
   /// 정산이 확정된 뒤의 결과. 정산 전이거나(조회 자료 확인 전 포함) 식사권만 있으면 null.
   CollaborationSettlementModel? settlement;
 
   CollaborationStage stage;
 
+  /// 가게 오퍼의 다섯 단계. 브랜드 계약은 빈 배열이고 brandProgress가 대신한다.
   List<CollaborationStepModel> steps;
 
   /// 가게 오퍼의 가게. 브랜드 계약이거나 가게를 읽을 수 없으면 null.
@@ -94,6 +116,9 @@ class CollaborationModel {
   /// 수락할 때의 조건(사본). 가게 오퍼에만 있고 브랜드 계약은 null이다(브랜드 계약의 조건은 조건 판본이 담는다).
   OfferTermsModel? terms;
 
+  /// 브랜드 계약의 제목(최신 조건 판본의 제목). 가게 오퍼이거나 판본이 없으면 null.
+  String? title;
+
   /// 조회 자료 확인 단계. NONE: 조회수 수당이 없거나 링크 제출 전, COUNTING: 집계 중, UNCONFIRMED: 계산이 나와 확인을 기다림, CONFIRMED: 확인됨, DISPUTED: 이의 중.
   CollaborationViewReportStatus viewReportStatus;
 
@@ -101,6 +126,9 @@ class CollaborationModel {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is CollaborationModel &&
+          other.brandProgress == brandProgress &&
+          other.campaign == campaign &&
+          other.campaignBudgetLeft == campaignBudgetLeft &&
           other.canCancel == canCancel &&
           other.canRequestCancel == canRequestCancel &&
           other.cancelRequest == cancelRequest &&
@@ -112,9 +140,11 @@ class CollaborationModel {
           other.expectedRefund == expectedRefund &&
           other.id == id &&
           other.kind == kind &&
+          other.nextAction == nextAction &&
           other.payoutScheduledFor == payoutScheduledFor &&
           other.payoutStatus == payoutStatus &&
           other.role == role &&
+          other.securedAmount == securedAmount &&
           other.settlement == settlement &&
           other.stage == stage &&
           _deepEquality.equals(other.steps, steps) &&
@@ -122,11 +152,15 @@ class CollaborationModel {
           other.submitDueAt == submitDueAt &&
           other.submittedUrl == submittedUrl &&
           other.terms == terms &&
+          other.title == title &&
           other.viewReportStatus == viewReportStatus;
 
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
+      (brandProgress == null ? 0 : brandProgress!.hashCode) +
+      (campaign == null ? 0 : campaign!.hashCode) +
+      (campaignBudgetLeft == null ? 0 : campaignBudgetLeft!.hashCode) +
       (canCancel.hashCode) +
       (canRequestCancel.hashCode) +
       (cancelRequest == null ? 0 : cancelRequest!.hashCode) +
@@ -138,9 +172,11 @@ class CollaborationModel {
       (expectedRefund == null ? 0 : expectedRefund!.hashCode) +
       (id.hashCode) +
       (kind.hashCode) +
+      (nextAction == null ? 0 : nextAction!.hashCode) +
       (payoutScheduledFor == null ? 0 : payoutScheduledFor!.hashCode) +
       (payoutStatus.hashCode) +
       (role.hashCode) +
+      (securedAmount == null ? 0 : securedAmount!.hashCode) +
       (settlement == null ? 0 : settlement!.hashCode) +
       (stage.hashCode) +
       (steps.hashCode) +
@@ -148,14 +184,30 @@ class CollaborationModel {
       (submitDueAt == null ? 0 : submitDueAt!.hashCode) +
       (submittedUrl == null ? 0 : submittedUrl!.hashCode) +
       (terms == null ? 0 : terms!.hashCode) +
+      (title == null ? 0 : title!.hashCode) +
       (viewReportStatus.hashCode);
 
   @override
   String toString() =>
-      'CollaborationModel[canCancel=$canCancel, canRequestCancel=$canRequestCancel, cancelRequest=$cancelRequest, counterpart=$counterpart, countingEndsAt=$countingEndsAt, currentViews=$currentViews, earnedSoFar=$earnedSoFar, escrowAmount=$escrowAmount, expectedRefund=$expectedRefund, id=$id, kind=$kind, payoutScheduledFor=$payoutScheduledFor, payoutStatus=$payoutStatus, role=$role, settlement=$settlement, stage=$stage, steps=$steps, store=$store, submitDueAt=$submitDueAt, submittedUrl=$submittedUrl, terms=$terms, viewReportStatus=$viewReportStatus]';
+      'CollaborationModel[brandProgress=$brandProgress, campaign=$campaign, campaignBudgetLeft=$campaignBudgetLeft, canCancel=$canCancel, canRequestCancel=$canRequestCancel, cancelRequest=$cancelRequest, counterpart=$counterpart, countingEndsAt=$countingEndsAt, currentViews=$currentViews, earnedSoFar=$earnedSoFar, escrowAmount=$escrowAmount, expectedRefund=$expectedRefund, id=$id, kind=$kind, nextAction=$nextAction, payoutScheduledFor=$payoutScheduledFor, payoutStatus=$payoutStatus, role=$role, securedAmount=$securedAmount, settlement=$settlement, stage=$stage, steps=$steps, store=$store, submitDueAt=$submitDueAt, submittedUrl=$submittedUrl, terms=$terms, title=$title, viewReportStatus=$viewReportStatus]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    if (this.brandProgress != null) {
+      json[r'brandProgress'] = this.brandProgress;
+    } else {
+      json[r'brandProgress'] = null;
+    }
+    if (this.campaign != null) {
+      json[r'campaign'] = this.campaign;
+    } else {
+      json[r'campaign'] = null;
+    }
+    if (this.campaignBudgetLeft != null) {
+      json[r'campaignBudgetLeft'] = this.campaignBudgetLeft;
+    } else {
+      json[r'campaignBudgetLeft'] = null;
+    }
     json[r'canCancel'] = this.canCancel;
     json[r'canRequestCancel'] = this.canRequestCancel;
     if (this.cancelRequest != null) {
@@ -187,6 +239,11 @@ class CollaborationModel {
     }
     json[r'id'] = this.id;
     json[r'kind'] = this.kind;
+    if (this.nextAction != null) {
+      json[r'nextAction'] = this.nextAction;
+    } else {
+      json[r'nextAction'] = null;
+    }
     if (this.payoutScheduledFor != null) {
       json[r'payoutScheduledFor'] =
           this.payoutScheduledFor!.toUtc().toIso8601String();
@@ -195,6 +252,11 @@ class CollaborationModel {
     }
     json[r'payoutStatus'] = this.payoutStatus;
     json[r'role'] = this.role;
+    if (this.securedAmount != null) {
+      json[r'securedAmount'] = this.securedAmount;
+    } else {
+      json[r'securedAmount'] = null;
+    }
     if (this.settlement != null) {
       json[r'settlement'] = this.settlement;
     } else {
@@ -222,6 +284,11 @@ class CollaborationModel {
     } else {
       json[r'terms'] = null;
     }
+    if (this.title != null) {
+      json[r'title'] = this.title;
+    } else {
+      json[r'title'] = null;
+    }
     json[r'viewReportStatus'] = this.viewReportStatus;
     return json;
   }
@@ -237,6 +304,12 @@ class CollaborationModel {
       // Note 1: the values aren't checked for validity beyond being non-null.
       // Note 2: this code is stripped in release mode!
       assert(() {
+        assert(json.containsKey(r'brandProgress'),
+            'Required key "CollaborationModel[brandProgress]" is missing from JSON.');
+        assert(json.containsKey(r'campaign'),
+            'Required key "CollaborationModel[campaign]" is missing from JSON.');
+        assert(json.containsKey(r'campaignBudgetLeft'),
+            'Required key "CollaborationModel[campaignBudgetLeft]" is missing from JSON.');
         assert(json.containsKey(r'canCancel'),
             'Required key "CollaborationModel[canCancel]" is missing from JSON.');
         assert(json[r'canCancel'] != null,
@@ -271,6 +344,8 @@ class CollaborationModel {
             'Required key "CollaborationModel[kind]" is missing from JSON.');
         assert(json[r'kind'] != null,
             'Required key "CollaborationModel[kind]" has a null value in JSON.');
+        assert(json.containsKey(r'nextAction'),
+            'Required key "CollaborationModel[nextAction]" is missing from JSON.');
         assert(json.containsKey(r'payoutScheduledFor'),
             'Required key "CollaborationModel[payoutScheduledFor]" is missing from JSON.');
         assert(json.containsKey(r'payoutStatus'),
@@ -281,6 +356,8 @@ class CollaborationModel {
             'Required key "CollaborationModel[role]" is missing from JSON.');
         assert(json[r'role'] != null,
             'Required key "CollaborationModel[role]" has a null value in JSON.');
+        assert(json.containsKey(r'securedAmount'),
+            'Required key "CollaborationModel[securedAmount]" is missing from JSON.');
         assert(json.containsKey(r'settlement'),
             'Required key "CollaborationModel[settlement]" is missing from JSON.');
         assert(json.containsKey(r'stage'),
@@ -299,6 +376,8 @@ class CollaborationModel {
             'Required key "CollaborationModel[submittedUrl]" is missing from JSON.');
         assert(json.containsKey(r'terms'),
             'Required key "CollaborationModel[terms]" is missing from JSON.');
+        assert(json.containsKey(r'title'),
+            'Required key "CollaborationModel[title]" is missing from JSON.');
         assert(json.containsKey(r'viewReportStatus'),
             'Required key "CollaborationModel[viewReportStatus]" is missing from JSON.');
         assert(json[r'viewReportStatus'] != null,
@@ -307,6 +386,10 @@ class CollaborationModel {
       }());
 
       return CollaborationModel(
+        brandProgress: BrandProgressModel.fromJson(json[r'brandProgress']),
+        campaign: CollaborationCampaignModel.fromJson(json[r'campaign']),
+        campaignBudgetLeft:
+            CampaignBudgetLeftModel.fromJson(json[r'campaignBudgetLeft']),
         canCancel: mapValueOfType<bool>(json, r'canCancel')!,
         canRequestCancel: mapValueOfType<bool>(json, r'canRequestCancel')!,
         cancelRequest: CancelRequestModel.fromJson(json[r'cancelRequest']),
@@ -319,9 +402,11 @@ class CollaborationModel {
         expectedRefund: mapValueOfType<int>(json, r'expectedRefund'),
         id: mapValueOfType<String>(json, r'id')!,
         kind: CollaborationKind.fromJson(json[r'kind'])!,
+        nextAction: CollaborationNextAction.fromJson(json[r'nextAction']),
         payoutScheduledFor: mapDateTime(json, r'payoutScheduledFor', r''),
         payoutStatus: PayoutStatus.fromJson(json[r'payoutStatus'])!,
         role: CollaborationRole.fromJson(json[r'role'])!,
+        securedAmount: mapValueOfType<int>(json, r'securedAmount'),
         settlement: CollaborationSettlementModel.fromJson(json[r'settlement']),
         stage: CollaborationStage.fromJson(json[r'stage'])!,
         steps: CollaborationStepModel.listFromJson(json[r'steps']),
@@ -329,6 +414,7 @@ class CollaborationModel {
         submitDueAt: mapDateTime(json, r'submitDueAt', r''),
         submittedUrl: mapValueOfType<String>(json, r'submittedUrl'),
         terms: OfferTermsModel.fromJson(json[r'terms']),
+        title: mapValueOfType<String>(json, r'title'),
         viewReportStatus:
             CollaborationViewReportStatus.fromJson(json[r'viewReportStatus'])!,
       );
@@ -387,6 +473,9 @@ class CollaborationModel {
 
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
+    'brandProgress',
+    'campaign',
+    'campaignBudgetLeft',
     'canCancel',
     'canRequestCancel',
     'cancelRequest',
@@ -398,9 +487,11 @@ class CollaborationModel {
     'expectedRefund',
     'id',
     'kind',
+    'nextAction',
     'payoutScheduledFor',
     'payoutStatus',
     'role',
+    'securedAmount',
     'settlement',
     'stage',
     'steps',
@@ -408,6 +499,7 @@ class CollaborationModel {
     'submitDueAt',
     'submittedUrl',
     'terms',
+    'title',
     'viewReportStatus',
   };
 }

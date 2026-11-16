@@ -25,6 +25,21 @@ export function proposedByOf(
 }
 
 // 최대 현금 부담은 가게 흐름 개정 계획의 순수 함수(maxCashBurden)로 구한다. 화면의 어느 곳에서도 같은 숫자다.
+// 판본 응답의 maxCash와 협업 조회의 확보액이 이 함수 하나를 쓴다(같은 판본이면 같은 숫자).
+export function termsMaxCash(
+  row: Pick<TermsVersion, 'fee' | 'perfCap'>,
+): number {
+  return maxCashBurden({ fixedCash: row.fee, perViewCap: row.perfCap });
+}
+
+// 내 쪽이 이 판본을 아직 확인하지 않았다(내가 답할 차례다). 조건 조회와 협업 조회의 "지금 할 일"이 같은 정의를 쓴다.
+export function isMyTurn(
+  row: Pick<TermsVersion, 'brandConfirmedAt' | 'creatorConfirmedAt'>,
+  isCreator: boolean,
+): boolean {
+  return (isCreator ? row.creatorConfirmedAt : row.brandConfirmedAt) === null;
+}
+
 export function toTermsVersionModel(
   row: TermsVersion,
   commissionerId: string,
@@ -39,7 +54,7 @@ export function toTermsVersionModel(
     title: row.title,
     fee: row.fee,
     performance,
-    maxCash: maxCashBurden({ fixedCash: row.fee, perViewCap: row.perfCap }),
+    maxCash: termsMaxCash(row),
     startDate: row.startDate.toISOString().slice(0, 10),
     format: row.format,
     pieces: row.pieces,

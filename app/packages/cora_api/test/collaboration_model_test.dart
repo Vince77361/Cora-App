@@ -16,6 +16,24 @@ void main() {
   // final instance = CollaborationModel();
 
   group('test CollaborationModel', () {
+    // 브랜드 계약의 여섯 단계 진행. 멈춘 협업은 멈추기 전 단계로 읽는다. 가게 오퍼이거나 진행 표에 없는 단계(INQUIRY, DROPPED)면 null.
+    // BrandProgressModel brandProgress
+    test('to test the property `brandProgress`', () async {
+      // TODO
+    });
+
+    // 브랜드 계약이 나온 캠페인. 가게 오퍼이거나 캠페인을 읽을 수 없으면 null.
+    // CollaborationCampaignModel campaign
+    test('to test the property `campaign`', () async {
+      // TODO
+    });
+
+    // 남은 캠페인 예산. 그 캠페인의 브랜드에게만 채우고 크리에이터와 가게 오퍼에는 null.
+    // CampaignBudgetLeftModel campaignBudgetLeft
+    test('to test the property `campaignBudgetLeft`', () async {
+      // TODO
+    });
+
     // 크리에이터가 지금 협업을 그만둘 수 있으면 true(링크를 제출하기 전).
     // bool canCancel
     test('to test the property `canCancel`', () async {
@@ -79,6 +97,12 @@ void main() {
       // TODO
     });
 
+    // 지금 내가 할 일. RESPOND_TERMS: 최신 조건 판본을 아직 확인하지 않음, SIGN_CONTRACT: 양쪽이 합의해 계약할 차례. 그 밖은 null.
+    // CollaborationNextAction nextAction
+    test('to test the property `nextAction`', () async {
+      // TODO
+    });
+
     // 지급이 PENDING이고 계좌가 있을 때 송금할 지급일. 크리에이터에게만.
     // DateTime payoutScheduledFor
     test('to test the property `payoutScheduledFor`', () async {
@@ -97,6 +121,12 @@ void main() {
       // TODO
     });
 
+    // 이번 협업의 확보액(원) = 최신 조건 판본의 최대 현금 부담. 가게 오퍼이거나 판본이 없으면 null.
+    // int securedAmount
+    test('to test the property `securedAmount`', () async {
+      // TODO
+    });
+
     // 정산이 확정된 뒤의 결과. 정산 전이거나(조회 자료 확인 전 포함) 식사권만 있으면 null.
     // CollaborationSettlementModel settlement
     test('to test the property `settlement`', () async {
@@ -108,6 +138,7 @@ void main() {
       // TODO
     });
 
+    // 가게 오퍼의 다섯 단계. 브랜드 계약은 빈 배열이고 brandProgress가 대신한다.
     // List<CollaborationStepModel> steps (default value: const [])
     test('to test the property `steps`', () async {
       // TODO
@@ -133,6 +164,12 @@ void main() {
     // 수락할 때의 조건(사본). 가게 오퍼에만 있고 브랜드 계약은 null이다(브랜드 계약의 조건은 조건 판본이 담는다).
     // OfferTermsModel terms
     test('to test the property `terms`', () async {
+      // TODO
+    });
+
+    // 브랜드 계약의 제목(최신 조건 판본의 제목). 가게 오퍼이거나 판본이 없으면 null.
+    // String title
+    test('to test the property `title`', () async {
       // TODO
     });
 

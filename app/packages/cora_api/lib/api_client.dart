@@ -228,10 +228,16 @@ class ApiClient {
           return BankModel.fromJson(value);
         case 'BrandProfileModel':
           return BrandProfileModel.fromJson(value);
+        case 'BrandProgressModel':
+          return BrandProgressModel.fromJson(value);
+        case 'BrandProgressNote':
+          return BrandProgressNoteTypeTransformer().decode(value);
         case 'BrandProposalDto':
           return BrandProposalDto.fromJson(value);
         case 'BrandUsageRights':
           return BrandUsageRightsTypeTransformer().decode(value);
+        case 'CampaignBudgetLeftModel':
+          return CampaignBudgetLeftModel.fromJson(value);
         case 'CampaignDetailModel':
           return CampaignDetailModel.fromJson(value);
         case 'CampaignListCardKind':
@@ -246,12 +252,16 @@ class ApiClient {
           return CampaignStatusTypeTransformer().decode(value);
         case 'CancelRequestModel':
           return CancelRequestModel.fromJson(value);
+        case 'CollaborationCampaignModel':
+          return CollaborationCampaignModel.fromJson(value);
         case 'CollaborationCounterpartModel':
           return CollaborationCounterpartModel.fromJson(value);
         case 'CollaborationKind':
           return CollaborationKindTypeTransformer().decode(value);
         case 'CollaborationModel':
           return CollaborationModel.fromJson(value);
+        case 'CollaborationNextAction':
+          return CollaborationNextActionTypeTransformer().decode(value);
         case 'CollaborationRole':
           return CollaborationRoleTypeTransformer().decode(value);
         case 'CollaborationScope':

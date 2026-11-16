@@ -1,5 +1,11 @@
 import type { TermsVersion } from '@prisma/client';
-import { proposedByOf, termsNotice, toTermsVersionModel } from './terms-rules';
+import {
+  isMyTurn,
+  proposedByOf,
+  termsMaxCash,
+  termsNotice,
+  toTermsVersionModel,
+} from './terms-rules';
 
 const row = (over: Partial<TermsVersion> = {}): TermsVersion => ({
   id: 't1',
@@ -86,5 +92,25 @@ describe('toTermsVersionModel', () => {
     );
     expect(model.brandConfirmed).toBe(true);
     expect(model.creatorConfirmed).toBe(false);
+  });
+});
+
+describe('isMyTurn', () => {
+  it('is my turn while my side has not confirmed the version', () => {
+    const at = new Date('2026-11-11T04:00:00.000Z');
+    expect(isMyTurn(row(), true)).toBe(true);
+    expect(isMyTurn(row(), false)).toBe(true);
+    expect(isMyTurn(row({ creatorConfirmedAt: at }), true)).toBe(false);
+    expect(isMyTurn(row({ creatorConfirmedAt: at }), false)).toBe(true);
+    expect(isMyTurn(row({ brandConfirmedAt: at }), false)).toBe(false);
+  });
+});
+
+describe('termsMaxCash', () => {
+  it('is the fee plus the performance cap and the same number the version model shows', () => {
+    const withPerf = row({ perfRatePerThousand: 2000, perfCap: 60000 });
+    expect(termsMaxCash(row())).toBe(300000);
+    expect(termsMaxCash(withPerf)).toBe(360000);
+    expect(toTermsVersionModel(withPerf, 'brand').maxCash).toBe(360000);
   });
 });

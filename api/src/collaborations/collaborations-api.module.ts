@@ -1,5 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { BrandsModule } from '../brands/brands.module';
+import { CampaignsModule } from '../campaigns/campaigns.module';
 import { CreatorsModule } from '../creators/creators.module';
 import { JobHandlerRegistry } from '../jobs/job-handler-registry';
 import { JobsModule } from '../jobs/jobs.module';
@@ -10,6 +11,7 @@ import { PaymentsModule } from '../payments/payments.module';
 import { PayoutAccountsModule } from '../payout-accounts/payout-accounts.module';
 import { SettlementsModule } from '../settlements/settlements.module';
 import { StoresModule } from '../stores/stores.module';
+import { TermsModule } from '../terms/terms.module';
 import { CancelRequestsRepository } from './cancel-requests.repository';
 import { CollaborationsController } from './collaborations.controller';
 import { CollaborationsModule } from './collaborations.module';
@@ -36,6 +38,8 @@ import { ViewReportController } from './view-report.controller';
     StoresModule,
     CreatorsModule,
     BrandsModule,
+    CampaignsModule,
+    TermsModule,
   ],
   controllers: [
     CollaborationsController,

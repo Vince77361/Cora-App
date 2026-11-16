@@ -20,7 +20,7 @@ import { BrandProposal } from './draft-terms';
 import { ProposeRewardDto } from './dto/propose-reward.dto';
 import { TermsLatestModel, TermsVersionModel } from './dto/terms-version.model';
 import { nextTermsValues, proposalProblem, sameReward } from './proposal-rules';
-import { termsNotice, toTermsVersionModel } from './terms-rules';
+import { isMyTurn, termsNotice, toTermsVersionModel } from './terms-rules';
 import { TermsRepository } from './terms.repository';
 import { TermsService } from './terms.service';
 
@@ -85,9 +85,7 @@ export class NegotiationService {
           : [],
       trialDays: campaign.trialDays,
       followers: creator?.followers ?? null,
-      myTurn:
-        (isCreator ? latest.creatorConfirmedAt : latest.brandConfirmedAt) ===
-        null,
+      myTurn: isMyTurn(latest, isCreator),
       mine: latest.proposedById === userId,
       needsInstagram:
         isCreator &&

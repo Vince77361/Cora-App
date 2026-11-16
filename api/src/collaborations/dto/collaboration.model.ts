@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { CollaborationKind, CollaborationStage } from '@prisma/client';
 import { OfferTermsModel } from '../../stores/dto/offer-terms.model';
 import { StoreSummaryModel } from '../../stores/dto/store-public.model';
+import { NextAction } from '../collaboration-stage';
 import { CancelRequestModel } from './cancel-request.model';
 
 export const COLLABORATION_ROLES = ['COMMISSIONER', 'CREATOR'] as const;
@@ -26,6 +27,15 @@ export const PAYOUT_STATUSES = [
   'PENDING',
   'DONE',
   'FAILED',
+] as const;
+
+export const COLLABORATION_NEXT_ACTIONS = [
+  'RESPOND_TERMS',
+  'SIGN_CONTRACT',
+] as const;
+export const BRAND_PROGRESS_NOTES = [
+  'WAITING_OTHER_CONFIRM',
+  'WAITING_CONTRACT',
 ] as const;
 
 export class CollaborationCounterpartModel {
@@ -87,6 +97,59 @@ export class CollaborationSettlementModel {
   refundAmount!: number;
 }
 
+export class CollaborationCampaignModel {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ description: '캠페인 한 줄.' })
+  headline!: string;
+
+  @ApiProperty({ description: '캠페인을 낸 브랜드의 이름.' })
+  brandName!: string;
+}
+
+export class BrandProgressModel {
+  @ApiProperty({
+    type: 'integer',
+    minimum: 0,
+    maximum: 6,
+    description: '끝난 단계의 수(0~6).',
+  })
+  doneCount!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    minimum: 1,
+    maximum: 6,
+    nullable: true,
+    description: '지금 하는 단계(1~6). 모두 끝났으면 null.',
+  })
+  current!: 1 | 2 | 3 | 4 | 5 | 6 | null;
+
+  @ApiProperty({
+    enum: BRAND_PROGRESS_NOTES,
+    enumName: 'BrandProgressNote',
+    nullable: true,
+    description:
+      '현재 단계 줄의 보조 글. WAITING_OTHER_CONFIRM: 상대의 동의를 기다림, WAITING_CONTRACT: 계약을 진행해야 함.',
+  })
+  currentNote!: (typeof BRAND_PROGRESS_NOTES)[number] | null;
+}
+
+export class CampaignBudgetLeftModel {
+  @ApiProperty({
+    type: 'integer',
+    description: '남은 캠페인 예산(원). 음수가 되지 않고 0에서 멈춘다.',
+  })
+  left!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    description: '확보액이 예산을 넘은 금액(원). 넘지 않았으면 0.',
+  })
+  over!: number;
+}
+
 // 협업 한 건. 크리에이터의 A7, 사장님의 협업 화면, 진행 중 목록, 지갑이 모두 이 모양을 읽는다.
 export class CollaborationModel {
   @ApiProperty({ format: 'uuid' })
@@ -125,8 +188,61 @@ export class CollaborationModel {
   })
   terms!: OfferTermsModel | null;
 
-  @ApiProperty({ type: [CollaborationStepModel] })
+  @ApiProperty({
+    type: [CollaborationStepModel],
+    description:
+      '가게 오퍼의 다섯 단계. 브랜드 계약은 빈 배열이고 brandProgress가 대신한다.',
+  })
   steps!: CollaborationStepModel[];
+
+  @ApiProperty({
+    type: CollaborationCampaignModel,
+    nullable: true,
+    description:
+      '브랜드 계약이 나온 캠페인. 가게 오퍼이거나 캠페인을 읽을 수 없으면 null.',
+  })
+  campaign!: CollaborationCampaignModel | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      '브랜드 계약의 제목(최신 조건 판본의 제목). 가게 오퍼이거나 판본이 없으면 null.',
+  })
+  title!: string | null;
+
+  @ApiProperty({
+    type: BrandProgressModel,
+    nullable: true,
+    description:
+      '브랜드 계약의 여섯 단계 진행. 멈춘 협업은 멈추기 전 단계로 읽는다. 가게 오퍼이거나 진행 표에 없는 단계(INQUIRY, DROPPED)면 null.',
+  })
+  brandProgress!: BrandProgressModel | null;
+
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    description:
+      '이번 협업의 확보액(원) = 최신 조건 판본의 최대 현금 부담. 가게 오퍼이거나 판본이 없으면 null.',
+  })
+  securedAmount!: number | null;
+
+  @ApiProperty({
+    type: CampaignBudgetLeftModel,
+    nullable: true,
+    description:
+      '남은 캠페인 예산. 그 캠페인의 브랜드에게만 채우고 크리에이터와 가게 오퍼에는 null.',
+  })
+  campaignBudgetLeft!: CampaignBudgetLeftModel | null;
+
+  @ApiProperty({
+    enum: COLLABORATION_NEXT_ACTIONS,
+    enumName: 'CollaborationNextAction',
+    nullable: true,
+    description:
+      '지금 내가 할 일. RESPOND_TERMS: 최신 조건 판본을 아직 확인하지 않음, SIGN_CONTRACT: 양쪽이 합의해 계약할 차례. 그 밖은 null.',
+  })
+  nextAction!: NextAction | null;
 
   @ApiProperty({
     type: 'integer',

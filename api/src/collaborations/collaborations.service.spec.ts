@@ -16,6 +16,8 @@ import { PayoutAccountsService } from '../payout-accounts/payout-accounts.servic
 import { RefundsService } from '../settlements/refunds.service';
 import { SettlementsRepository } from '../settlements/settlements.repository';
 import { StoresService } from '../stores/stores.service';
+import { CampaignsService } from '../campaigns/campaigns.service';
+import { TermsService } from '../terms/terms.service';
 import { CancelRequestsRepository } from './cancel-requests.repository';
 import { CollaborationsRepository } from './collaborations.repository';
 import { CollaborationsService } from './collaborations.service';
@@ -290,6 +292,9 @@ function build() {
     stores,
     creators,
     new FakeBrandsService(),
+    // 이 스펙은 가게 오퍼만 읽는다: 브랜드 계약의 재료(판본, 캠페인)는 e2e가 본다.
+    { latestMany: () => Promise.resolve(new Map()) } as unknown as TermsService,
+    {} as unknown as CampaignsService,
     notifications,
     scheduler,
     clock,

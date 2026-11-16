@@ -1,6 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CancelRequest, Collaboration } from '@prisma/client';
+import {
+  CancelRequest,
+  Campaign,
+  Collaboration,
+  TermsVersion,
+} from '@prisma/client';
+import { BrandProfileModel } from '../brands/dto/brand-profile.model';
 import { BrandsService } from '../brands/brands.service';
+import { budgetLeft } from '../campaigns/campaign-budget';
+import { CampaignsService } from '../campaigns/campaigns.service';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
@@ -14,8 +22,11 @@ import { PayoutAccountsService } from '../payout-accounts/payout-accounts.servic
 import { RefundsService } from '../settlements/refunds.service';
 import { SettlementsRepository } from '../settlements/settlements.repository';
 import { StoresService } from '../stores/stores.service';
+import { isMyTurn, termsMaxCash } from '../terms/terms-rules';
+import { TermsService } from '../terms/terms.service';
 import { hasViewPay, readTerms } from '../stores/reward-terms';
 import { CancelRequestsRepository } from './cancel-requests.repository';
+import { brandProgress, nextActionFor } from './collaboration-stage';
 import { submissionDeadlineJobKeys } from './collaboration-jobs';
 import { CollaborationsRepository } from './collaborations.repository';
 import {
@@ -52,6 +63,11 @@ interface Context {
   creators: Map<string, Awaited<ReturnType<CreatorsService['getSummary']>>>;
   brands: Map<string, Awaited<ReturnType<BrandsService['findProfiles']>>>;
   accounts: Map<string, boolean>;
+  // 브랜드 계약 칸의 재료. 목록 전체에 한 번씩만 읽는다(행마다 읽지 않는다).
+  campaigns: Map<string, { campaign: Campaign; brand: BrandProfileModel }>;
+  latestTerms: Map<string, TermsVersion>;
+  // 캠페인마다, 확보액을 세는 브랜드 협업들의 확보액. 그 캠페인의 브랜드가 보는 행에서만 채운다.
+  securedByCampaign: Map<string, number[]>;
 }
 
 // 협업을 당사자에게 보여 주고(목록·상세), 결제 뒤에 그만두는(크리에이터의 취소, 사장님의 취소 요청과 동의) 서비스.
@@ -72,6 +88,8 @@ export class CollaborationsService {
     private readonly stores: StoresService,
     private readonly creators: CreatorsService,
     private readonly brands: BrandsService,
+    private readonly terms: TermsService,
+    private readonly campaigns: CampaignsService,
     private readonly notifications: NotificationsService,
     private readonly jobs: JobScheduler,
     private readonly clock: Clock,
@@ -81,10 +99,11 @@ export class CollaborationsService {
     userId: string,
     scope: CollaborationScope,
   ): Promise<CollaborationModel[]> {
+    // 진행 중에는 아직 서로 관심이 아닌 브랜드 협업(INQUIRY)을 주지 않는다.
     const stage =
       scope === 'done'
         ? { in: COLLABORATION_DONE_STAGES }
-        : { notIn: COLLABORATION_DONE_STAGES };
+        : { notIn: [...COLLABORATION_DONE_STAGES, 'INQUIRY' as const] };
     let rows = await this.collaborations.listForParty(userId, stage);
     // 결제 기한이 지난 오퍼는 읽을 때 만료한다(작업이 아직 안 돌았어도 목록이 맞게).
     if (await this.expireUnpaid(rows)) {
@@ -479,7 +498,9 @@ export class CollaborationsService {
       this.settlements.latestPayoutsFor(ids),
       this.cancelRequests.mapPendingFor(ids, now),
     ]);
+    const brandContext = await this.brandContext(userId, rows);
     const context: Context = {
+      ...brandContext,
       now,
       funded,
       views,
@@ -564,6 +585,12 @@ export class CollaborationsService {
         state: step.state,
         at: step.at?.toISOString() ?? null,
       })),
+      campaign: null,
+      title: null,
+      brandProgress: null,
+      securedAmount: null,
+      campaignBudgetLeft: null,
+      nextAction: null,
       escrowAmount,
       submitDueAt: row.submitDueAt?.toISOString() ?? null,
       submittedUrl: row.submittedUrl,
@@ -599,36 +626,52 @@ export class CollaborationsService {
   }
 
   // 브랜드 계약. 돈·정산·취소 칸은 이 계획 범위 밖이라 비어 있다(결제와 계약 이후는 5번 계획이 켠다).
+  // 단계 막대는 가게 오퍼의 다섯 칸이 아니라 brandProgress 여섯 단계가 맡아서 steps는 비어 있다.
   private async toBrandModel(
     row: Collaboration,
     role: CollaborationModel['role'],
     c: Context,
   ): Promise<CollaborationModel> {
+    const isCreator = role === 'CREATOR';
+    const counterpart = isCreator
+      ? await this.brandCounterpart(row.commissionerId, c)
+      : await this.creatorCounterpart(row.creatorId, c);
+    const found = row.campaignId ? c.campaigns.get(row.campaignId) : undefined;
+    const latest = c.latestTerms.get(row.id) ?? null;
+    // 멈춘 협업은 멈추기 전 단계로 읽는다(멈춘 이유는 별개의 이야기다).
+    const readStage = row.stage === 'HALTED' ? row.stageBeforeHalt : row.stage;
+    const progress = readStage ? brandProgress(readStage) : null;
     return {
       id: row.id,
       kind: row.kind,
       stage: row.stage,
       role,
-      counterpart:
-        role === 'CREATOR'
-          ? await this.brandCounterpart(row.commissionerId, c)
-          : await this.creatorCounterpart(row.creatorId, c),
+      counterpart,
       store: null,
       terms: null,
-      steps: buildSteps({
-        kind: row.kind,
-        stage: row.stage,
-        stageBeforeHalt: row.stageBeforeHalt,
-        settlementMethod: row.settlementMethod,
-        acceptedAt: row.createdAt,
-        fundedAt: row.fundedAt,
-        submittedAt: row.submittedAt,
-        settledAt: null,
-      }).map((step) => ({
-        key: step.key,
-        state: step.state,
-        at: step.at?.toISOString() ?? null,
-      })),
+      steps: [],
+      campaign: found
+        ? {
+            id: found.campaign.id,
+            headline: found.campaign.headline,
+            brandName: found.brand.name,
+          }
+        : null,
+      title: latest?.title ?? null,
+      brandProgress: progress,
+      securedAmount: latest ? termsMaxCash(latest) : null,
+      // 남은 예산은 그 캠페인의 브랜드에게만 내려 준다. 크리에이터의 응답에는 예산이 어떤 모양으로도 없다.
+      campaignBudgetLeft:
+        !isCreator && found && row.campaignId
+          ? budgetLeft(
+              found.campaign.budget,
+              c.securedByCampaign.get(row.campaignId) ?? [],
+            )
+          : null,
+      nextAction: nextActionFor(
+        row.stage,
+        latest ? isMyTurn(latest, isCreator) : false,
+      ),
       escrowAmount: 0,
       submitDueAt: row.submitDueAt?.toISOString() ?? null,
       submittedUrl: row.submittedUrl,
@@ -643,6 +686,46 @@ export class CollaborationsService {
       cancelRequest: null,
       canCancel: false,
       canRequestCancel: false,
+    };
+  }
+
+  // 브랜드 계약 칸의 재료를 목록 전체에 대해 한 번에 읽는다: 캠페인, 최신 판본, 그리고 보는 사람이 브랜드인 캠페인의 확보액들.
+  // 쿼리 수는 행 수와 상관없이 일정하다(캠페인 한 번, 확보 대상 협업 한 번, 판본 한 번).
+  private async brandContext(
+    userId: string,
+    rows: Collaboration[],
+  ): Promise<Pick<Context, 'campaigns' | 'latestTerms' | 'securedByCampaign'>> {
+    const brandRows = rows.filter((row) => row.kind === 'BRAND_CONTRACT');
+    const unique = (ids: (string | null)[]) => [
+      ...new Set(ids.filter((id): id is string => id !== null)),
+    ];
+    const campaignIds = unique(brandRows.map((row) => row.campaignId));
+    const myCampaignIds = unique(
+      brandRows
+        .filter((row) => row.commissionerId === userId)
+        .map((row) => row.campaignId),
+    );
+    const [campaigns, secured] = await Promise.all([
+      campaignIds.length > 0
+        ? this.campaigns.listWithBrand(campaignIds)
+        : Promise.resolve([]),
+      this.collaborations.listSecuredBrandContracts(myCampaignIds),
+    ]);
+    const latestTerms = await this.terms.latestMany(
+      unique([...brandRows.map((row) => row.id), ...secured.map((r) => r.id)]),
+    );
+    const securedByCampaign = new Map<string, number[]>();
+    for (const { id, campaignId } of secured) {
+      const latest = latestTerms.get(id);
+      if (!latest) continue;
+      const list = securedByCampaign.get(campaignId) ?? [];
+      list.push(termsMaxCash(latest));
+      securedByCampaign.set(campaignId, list);
+    }
+    return {
+      campaigns: new Map(campaigns.map((entry) => [entry.campaign.id, entry])),
+      latestTerms,
+      securedByCampaign,
     };
   }
 

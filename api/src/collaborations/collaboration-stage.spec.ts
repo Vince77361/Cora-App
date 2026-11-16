@@ -1,9 +1,12 @@
 import { CollaborationStage as S } from '@prisma/client';
 import {
+  brandProgress,
   canTransition,
   initialStoreOfferState,
   isMoneyHeld,
+  nextActionFor,
   storeInProgressStages,
+  UNSECURED_BRAND_STAGES,
 } from './collaboration-stage';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -213,5 +216,67 @@ describe('initialStoreOfferState', () => {
       settlementMethod: 'FIXED_AND_PER_VIEW',
       stage: 'AWAITING_PAYMENT',
     });
+  });
+});
+
+describe('brandProgress', () => {
+  it('maps every brand stage to the six step progress', () => {
+    const table: [S, number, number | null, string | null][] = [
+      [S.MATCHED, 1, 2, null],
+      [S.NEGOTIATING, 2, 3, 'WAITING_OTHER_CONFIRM'],
+      [S.AGREED, 2, 3, 'WAITING_CONTRACT'],
+      [S.CONTRACTED, 3, 4, null],
+      [S.GUIDED, 3, 4, null],
+      [S.REVIEWING, 4, 5, null],
+      [S.APPROVED, 5, 6, null],
+      [S.PUBLISHED, 5, 6, null],
+      [S.SETTLED, 6, null, null],
+    ];
+    for (const [stage, doneCount, current, currentNote] of table) {
+      expect(brandProgress(stage)).toEqual({ doneCount, current, currentNote });
+    }
+  });
+
+  it('has no progress for stages that are not on the six step line', () => {
+    for (const stage of [
+      S.INQUIRY,
+      S.DROPPED,
+      S.HALTED,
+      S.FUNDED,
+      S.REFUNDED,
+    ]) {
+      expect(brandProgress(stage)).toBeNull();
+    }
+  });
+});
+
+describe('nextActionFor', () => {
+  it('asks me to respond while I have not confirmed and to sign once agreed', () => {
+    expect(nextActionFor(S.MATCHED, true)).toBe('RESPOND_TERMS');
+    expect(nextActionFor(S.NEGOTIATING, true)).toBe('RESPOND_TERMS');
+    expect(nextActionFor(S.MATCHED, false)).toBeNull();
+    expect(nextActionFor(S.NEGOTIATING, false)).toBeNull();
+    expect(nextActionFor(S.AGREED, false)).toBe('SIGN_CONTRACT');
+    expect(nextActionFor(S.AGREED, true)).toBe('SIGN_CONTRACT');
+  });
+
+  it('has nothing to do before the first match, after the contract and when stopped', () => {
+    for (const stage of [
+      S.INQUIRY,
+      S.CONTRACTED,
+      S.GUIDED,
+      S.PUBLISHED,
+      S.SETTLED,
+      S.DROPPED,
+      S.HALTED,
+    ]) {
+      expect(nextActionFor(stage, true)).toBeNull();
+    }
+  });
+});
+
+describe('UNSECURED_BRAND_STAGES', () => {
+  it('lists the stages whose amount the campaign budget does not count', () => {
+    expect(UNSECURED_BRAND_STAGES).toEqual([S.INQUIRY, S.DROPPED, S.REFUNDED]);
   });
 });

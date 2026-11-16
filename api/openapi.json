@@ -214,6 +214,46 @@
         ],
         "type": "object"
       },
+      "BrandProgressModel": {
+        "properties": {
+          "current": {
+            "description": "지금 하는 단계(1~6). 모두 끝났으면 null.",
+            "maximum": 6,
+            "minimum": 1,
+            "nullable": true,
+            "type": "integer"
+          },
+          "currentNote": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BrandProgressNote"
+              }
+            ],
+            "description": "현재 단계 줄의 보조 글. WAITING_OTHER_CONFIRM: 상대의 동의를 기다림, WAITING_CONTRACT: 계약을 진행해야 함.",
+            "nullable": true
+          },
+          "doneCount": {
+            "description": "끝난 단계의 수(0~6).",
+            "maximum": 6,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "doneCount",
+          "current",
+          "currentNote"
+        ],
+        "type": "object"
+      },
+      "BrandProgressNote": {
+        "description": "현재 단계 줄의 보조 글. WAITING_OTHER_CONFIRM: 상대의 동의를 기다림, WAITING_CONTRACT: 계약을 진행해야 함.",
+        "enum": [
+          "WAITING_OTHER_CONFIRM",
+          "WAITING_CONTRACT"
+        ],
+        "type": "string"
+      },
       "BrandProposalDto": {
         "properties": {
           "fee": {
@@ -248,6 +288,23 @@
           "NONE"
         ],
         "type": "string"
+      },
+      "CampaignBudgetLeftModel": {
+        "properties": {
+          "left": {
+            "description": "남은 캠페인 예산(원). 음수가 되지 않고 0에서 멈춘다.",
+            "type": "integer"
+          },
+          "over": {
+            "description": "확보액이 예산을 넘은 금액(원). 넘지 않았으면 0.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "left",
+          "over"
+        ],
+        "type": "object"
       },
       "CampaignDetailModel": {
         "properties": {
@@ -574,6 +631,28 @@
         ],
         "type": "object"
       },
+      "CollaborationCampaignModel": {
+        "properties": {
+          "brandName": {
+            "description": "캠페인을 낸 브랜드의 이름.",
+            "type": "string"
+          },
+          "headline": {
+            "description": "캠페인 한 줄.",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "headline",
+          "brandName"
+        ],
+        "type": "object"
+      },
       "CollaborationCounterpartModel": {
         "properties": {
           "name": {
@@ -600,6 +679,36 @@
       },
       "CollaborationModel": {
         "properties": {
+          "brandProgress": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BrandProgressModel"
+              }
+            ],
+            "description": "브랜드 계약의 여섯 단계 진행. 멈춘 협업은 멈추기 전 단계로 읽는다. 가게 오퍼이거나 진행 표에 없는 단계(INQUIRY, DROPPED)면 null.",
+            "nullable": true,
+            "type": "object"
+          },
+          "campaign": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CollaborationCampaignModel"
+              }
+            ],
+            "description": "브랜드 계약이 나온 캠페인. 가게 오퍼이거나 캠페인을 읽을 수 없으면 null.",
+            "nullable": true,
+            "type": "object"
+          },
+          "campaignBudgetLeft": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CampaignBudgetLeftModel"
+              }
+            ],
+            "description": "남은 캠페인 예산. 그 캠페인의 브랜드에게만 채우고 크리에이터와 가게 오퍼에는 null.",
+            "nullable": true,
+            "type": "object"
+          },
           "canCancel": {
             "description": "크리에이터가 지금 협업을 그만둘 수 있으면 true(링크를 제출하기 전).",
             "type": "boolean"
@@ -657,6 +766,15 @@
               }
             ]
           },
+          "nextAction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CollaborationNextAction"
+              }
+            ],
+            "description": "지금 내가 할 일. RESPOND_TERMS: 최신 조건 판본을 아직 확인하지 않음, SIGN_CONTRACT: 양쪽이 합의해 계약할 차례. 그 밖은 null.",
+            "nullable": true
+          },
           "payoutScheduledFor": {
             "description": "지급이 PENDING이고 계좌가 있을 때 송금할 지급일. 크리에이터에게만.",
             "format": "date-time",
@@ -679,6 +797,11 @@
             ],
             "description": "내 쪽. COMMISSIONER는 맡긴 쪽(사장님·브랜드), CREATOR는 크리에이터."
           },
+          "securedAmount": {
+            "description": "이번 협업의 확보액(원) = 최신 조건 판본의 최대 현금 부담. 가게 오퍼이거나 판본이 없으면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
           "settlement": {
             "allOf": [
               {
@@ -697,6 +820,7 @@
             ]
           },
           "steps": {
+            "description": "가게 오퍼의 다섯 단계. 브랜드 계약은 빈 배열이고 brandProgress가 대신한다.",
             "items": {
               "$ref": "#/components/schemas/CollaborationStepModel"
             },
@@ -732,6 +856,11 @@
             "nullable": true,
             "type": "object"
           },
+          "title": {
+            "description": "브랜드 계약의 제목(최신 조건 판본의 제목). 가게 오퍼이거나 판본이 없으면 null.",
+            "nullable": true,
+            "type": "string"
+          },
           "viewReportStatus": {
             "allOf": [
               {
@@ -750,6 +879,12 @@
           "store",
           "terms",
           "steps",
+          "campaign",
+          "title",
+          "brandProgress",
+          "securedAmount",
+          "campaignBudgetLeft",
+          "nextAction",
           "escrowAmount",
           "submitDueAt",
           "submittedUrl",
@@ -766,6 +901,14 @@
           "canRequestCancel"
         ],
         "type": "object"
+      },
+      "CollaborationNextAction": {
+        "description": "지금 내가 할 일. RESPOND_TERMS: 최신 조건 판본을 아직 확인하지 않음, SIGN_CONTRACT: 양쪽이 합의해 계약할 차례. 그 밖은 null.",
+        "enum": [
+          "RESPOND_TERMS",
+          "SIGN_CONTRACT"
+        ],
+        "type": "string"
       },
       "CollaborationRole": {
         "description": "내 쪽. COMMISSIONER는 맡긴 쪽(사장님·브랜드), CREATOR는 크리에이터.",

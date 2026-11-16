@@ -71,6 +71,16 @@ interface CollaborationBody {
   } | null;
   canCancel: boolean;
   canRequestCancel: boolean;
+  campaign: { id: string; headline: string; brandName: string } | null;
+  title: string | null;
+  brandProgress: {
+    doneCount: number;
+    current: number | null;
+    currentNote: string | null;
+  } | null;
+  securedAmount: number | null;
+  campaignBudgetLeft: { left: number; over: number } | null;
+  nextAction: string | null;
 }
 
 interface Seeded {
@@ -96,6 +106,7 @@ describe('collaborations', () => {
   const codeOf = (res: request.Response) =>
     (res.body as { error: { code: string } }).error.code;
   const bodyOf = (res: request.Response) => res.body as CollaborationBody;
+  const listOf = (res: request.Response) => res.body as CollaborationBody[];
   const get = (id: string, auth = creatorAuth) =>
     request(server).get(`/collaborations/${id}`).set(auth);
   const list = (scope: string, auth = creatorAuth) =>
@@ -618,6 +629,283 @@ describe('collaborations', () => {
     function bodyOf2(res: request.Response): CollaborationBody[] {
       return res.body as CollaborationBody[];
     }
+  });
+
+  describe('brand contracts', () => {
+    // 브랜드는 OTHER, 크리에이터는 USER_A다. 협업은 DB에 바로 만든다(서로 관심 흐름은 discovery e2e가 본다).
+    const HEADLINE = '나만의 아침 루틴 속 작은 포인트';
+    let campaignId: string;
+
+    async function seedBrandSide(budget = 1000000): Promise<void> {
+      await prisma.user.create({ data: { id: OTHER, role: 'BRAND' } });
+      await prisma.brandProfile.create({
+        data: { userId: OTHER, name: '느린결', industry: 'ACCESSORY' },
+      });
+      const campaign = await prisma.campaign.create({
+        data: {
+          brandId: OTHER,
+          status: 'ACTIVE',
+          headline: HEADLINE,
+          fee: 300000,
+          budget,
+          productProvided: true,
+          format: 'REELS',
+          startFrom: new Date('2026-12-20T00:00:00Z'),
+          trialDays: 'D7',
+          mustInclude: [],
+          notRequired: [],
+        },
+      });
+      campaignId = campaign.id;
+      await prisma.user.create({ data: { id: USER_A, role: 'CREATOR' } });
+      await prisma.creatorProfile.create({
+        data: { userId: USER_A, displayName: '모카', ...REGION },
+      });
+    }
+
+    // 크리에이터를 하나 더 만들어(토큰 없이) 같은 캠페인의 협업을 DB에 둔다.
+    async function seedContract(
+      stage: CollaborationStage,
+      versions: { fee: number; perfCap?: number; title?: string }[] = [
+        { fee: 300000 },
+      ],
+      creatorId: string = USER_A,
+      over: { stageBeforeHalt?: CollaborationStage } = {},
+    ) {
+      if (creatorId !== USER_A) {
+        await prisma.user.create({ data: { id: creatorId, role: 'CREATOR' } });
+        await prisma.creatorProfile.create({
+          data: {
+            userId: creatorId,
+            displayName: '다른 크리에이터',
+            ...REGION,
+          },
+        });
+      }
+      const collaboration = await prisma.collaboration.create({
+        data: {
+          kind: 'BRAND_CONTRACT',
+          stage,
+          commissionerId: OTHER,
+          creatorId,
+          campaignId,
+          terms: {},
+          settlementMethod: 'FIXED',
+          createdAt: T0,
+          ...over,
+        },
+      });
+      for (const [index, version] of versions.entries()) {
+        await prisma.termsVersion.create({
+          data: {
+            collaborationId: collaboration.id,
+            version: index + 1,
+            title: version.title ?? '출근길 한 컵 이야기',
+            fee: version.fee,
+            startDate: new Date('2026-12-20T00:00:00Z'),
+            format: 'REELS',
+            pieces: 1,
+            productProvided: true,
+            revisionScope: 'GUIDE_1',
+            usageRights: 'REPOST_ONLY',
+            payoutDays: 7,
+            perfRatePerThousand: version.perfCap ? 2000 : null,
+            perfCap: version.perfCap ?? null,
+          },
+        });
+      }
+      return collaboration;
+    }
+
+    beforeEach(async () => {
+      await seedBrandSide();
+    });
+
+    it('lists a matched brand collaboration as active for both sides and never lists an inquiry', async () => {
+      const matched = await seedContract('MATCHED');
+      await seedContract('INQUIRY', [], randomUUID());
+      for (const auth of [creatorAuth, ownerAuth]) {
+        const active = listOf(await list('active', auth).expect(200));
+        expect(active.map((c) => c.id)).toEqual([matched.id]);
+        expect(active[0]).toMatchObject({ kind: 'BRAND_CONTRACT', steps: [] });
+      }
+    });
+
+    it('lists the brand stages from matched to published and a halted one as active and a dropped one as done', async () => {
+      const stages: CollaborationStage[] = [
+        'MATCHED',
+        'NEGOTIATING',
+        'AGREED',
+        'CONTRACTED',
+        'GUIDED',
+        'REVIEWING',
+        'APPROVED',
+        'PUBLISHED',
+      ];
+      const ids: string[] = [];
+      for (const stage of stages) {
+        ids.push(
+          (await seedContract(stage, [{ fee: 300000 }], randomUUID())).id,
+        );
+      }
+      const halted = await seedContract(
+        'HALTED',
+        [{ fee: 300000 }],
+        randomUUID(),
+        { stageBeforeHalt: 'GUIDED' },
+      );
+      const dropped = await seedContract('DROPPED', [], randomUUID());
+      const active = listOf(await list('active', ownerAuth).expect(200));
+      expect(active.map((c) => c.id).sort()).toEqual(
+        [...ids, halted.id].sort(),
+      );
+      const done = listOf(await list('done', ownerAuth).expect(200));
+      expect(done.map((c) => c.id)).toEqual([dropped.id]);
+      // 멈춘 협업의 진행은 멈추기 전 단계(GUIDED)로 읽는다.
+      expect(active.find((c) => c.id === halted.id)?.brandProgress).toEqual({
+        doneCount: 3,
+        current: 4,
+        currentNote: null,
+      });
+      expect(done[0].brandProgress).toBeNull();
+    });
+
+    it('maps the stage to the six step progress in the response', async () => {
+      const agreed = await seedContract('AGREED');
+      const body = bodyOf(await get(agreed.id, ownerAuth).expect(200));
+      expect(body.brandProgress).toEqual({
+        doneCount: 2,
+        current: 3,
+        currentNote: 'WAITING_CONTRACT',
+      });
+      expect(body.steps).toEqual([]);
+    });
+
+    it('returns the campaign and the latest terms title', async () => {
+      const row = await seedContract('NEGOTIATING', [
+        { fee: 300000, title: '첫 제목' },
+        { fee: 320000, title: '고친 제목' },
+      ]);
+      for (const auth of [creatorAuth, ownerAuth]) {
+        const body = bodyOf(await get(row.id, auth).expect(200));
+        expect(body.campaign).toEqual({
+          id: campaignId,
+          headline: HEADLINE,
+          brandName: '느린결',
+        });
+        expect(body.title).toBe('고친 제목');
+      }
+    });
+
+    it('reports the secured amount as the maximum cash burden of the latest version', async () => {
+      const row = await seedContract('NEGOTIATING', [
+        { fee: 300000 },
+        { fee: 320000, perfCap: 60000 },
+      ]);
+      const asCreator = bodyOf(await get(row.id, creatorAuth).expect(200));
+      const asBrand = bodyOf(await get(row.id, ownerAuth).expect(200));
+      expect(asCreator.securedAmount).toBe(380000);
+      expect(asBrand.securedAmount).toBe(380000);
+      const terms = await request(server)
+        .get(`/collaborations/${row.id}/terms/latest`)
+        .set(ownerAuth)
+        .expect(200);
+      expect((terms.body as { terms: { maxCash: number } }).terms.maxCash).toBe(
+        asBrand.securedAmount,
+      );
+    });
+
+    it('subtracts every live collaboration of the campaign from the budget and skips dropped ones', async () => {
+      const mine = await seedContract('MATCHED');
+      await seedContract(
+        'CONTRACTED',
+        [{ fee: 300000 }, { fee: 320000, perfCap: 60000 }],
+        randomUUID(),
+      );
+      await seedContract('HALTED', [{ fee: 100000 }], randomUUID(), {
+        stageBeforeHalt: 'CONTRACTED',
+      });
+      // 세지 않는 협업: 계약 전에 그만둔 것, 질문만 한 것, 환급된 것.
+      await seedContract('DROPPED', [{ fee: 900000 }], randomUUID());
+      await seedContract('INQUIRY', [{ fee: 900000 }], randomUUID());
+      await seedContract('REFUNDED', [{ fee: 900000 }], randomUUID());
+      const body = bodyOf(await get(mine.id, ownerAuth).expect(200));
+      // 1,000,000 - (300,000 + 380,000 + 100,000)
+      expect(body.campaignBudgetLeft).toEqual({ left: 220000, over: 0 });
+      const rows = listOf(await list('active', ownerAuth).expect(200));
+      for (const row of rows) {
+        expect(row.campaignBudgetLeft).toEqual({ left: 220000, over: 0 });
+      }
+    });
+
+    it('reports zero left and the overrun when the secured total exceeds the budget', async () => {
+      await prisma.campaign.update({
+        where: { id: campaignId },
+        data: { budget: 500000 },
+      });
+      const mine = await seedContract('MATCHED', [{ fee: 300000 }]);
+      await seedContract('NEGOTIATING', [{ fee: 300000 }], randomUUID());
+      const body = bodyOf(await get(mine.id, ownerAuth).expect(200));
+      expect(body.campaignBudgetLeft).toEqual({ left: 0, over: 100000 });
+    });
+
+    it('never sends the campaign budget to the creator', async () => {
+      const row = await seedContract('MATCHED');
+      await seedContract('MATCHED', [{ fee: 300000 }], randomUUID());
+      const detail = await get(row.id, creatorAuth).expect(200);
+      expect(bodyOf(detail).campaignBudgetLeft).toBeNull();
+      const active = await list('active', creatorAuth).expect(200);
+      for (const item of listOf(active)) {
+        expect(item.campaignBudgetLeft).toBeNull();
+      }
+      expect(JSON.stringify([detail.body, active.body])).not.toMatch(
+        /:1000000\b|:700000\b|"left"|"over"/,
+      );
+    });
+
+    it('asks me to respond while I have not confirmed and to sign once agreed', async () => {
+      const row = await seedContract('MATCHED');
+      const nextActionOf = async (auth: typeof ownerAuth) =>
+        bodyOf(await get(row.id, auth).expect(200)).nextAction;
+      expect(await nextActionOf(ownerAuth)).toBe('RESPOND_TERMS');
+      expect(await nextActionOf(creatorAuth)).toBe('RESPOND_TERMS');
+
+      await prisma.termsVersion.updateMany({
+        where: { collaborationId: row.id },
+        data: { brandConfirmedAt: T0 },
+      });
+      await prisma.collaboration.update({
+        where: { id: row.id },
+        data: { stage: 'NEGOTIATING' },
+      });
+      expect(await nextActionOf(ownerAuth)).toBeNull();
+      expect(await nextActionOf(creatorAuth)).toBe('RESPOND_TERMS');
+
+      await prisma.termsVersion.updateMany({
+        where: { collaborationId: row.id },
+        data: { creatorConfirmedAt: T0 },
+      });
+      await prisma.collaboration.update({
+        where: { id: row.id },
+        data: { stage: 'AGREED' },
+      });
+      expect(await nextActionOf(ownerAuth)).toBe('SIGN_CONTRACT');
+      expect(await nextActionOf(creatorAuth)).toBe('SIGN_CONTRACT');
+    });
+  });
+
+  it('leaves the brand fields empty on a store offer', async () => {
+    const s = await seed();
+    const body = bodyOf(await get(s.collaborationId).expect(200));
+    expect(body).toMatchObject({
+      campaign: null,
+      title: null,
+      brandProgress: null,
+      securedAmount: null,
+      campaignBudgetLeft: null,
+      nextAction: null,
+    });
+    expect(body.steps).toHaveLength(5);
   });
 
   describe('payout status', () => {

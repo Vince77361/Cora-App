@@ -8,7 +8,10 @@ import {
 } from '@prisma/client';
 import { Clock } from '../common/clock';
 import { PrismaService } from '../prisma/prisma.service';
-import { COLLABORATION_DONE_STAGES } from './collaboration-stage';
+import {
+  COLLABORATION_DONE_STAGES,
+  UNSECURED_BRAND_STAGES,
+} from './collaboration-stage';
 
 // 단계를 바꿀 때 함께 쓰는 열. 단계 규칙이 정하는 것만 둔다.
 export interface CollaborationPatch {
@@ -211,6 +214,28 @@ export class CollaborationsRepository {
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
+  }
+
+  // 캠페인들의 확보액을 셀 브랜드 협업(INQUIRY·DROPPED·REFUNDED는 뺀다)의 id와 캠페인. 캠페인마다 부르지 않고 한 번에 읽는다.
+  listSecuredBrandContracts(
+    campaignIds: string[],
+  ): Promise<{ id: string; campaignId: string }[]> {
+    if (campaignIds.length === 0) return Promise.resolve([]);
+    return this.prisma.collaboration
+      .findMany({
+        where: {
+          kind: 'BRAND_CONTRACT',
+          campaignId: { in: campaignIds },
+          stage: { notIn: UNSECURED_BRAND_STAGES },
+          deletedAt: null,
+        },
+        select: { id: true, campaignId: true },
+      })
+      .then((rows) =>
+        rows.flatMap((row) =>
+          row.campaignId ? [{ id: row.id, campaignId: row.campaignId }] : [],
+        ),
+      );
   }
 
   // 맡긴 쪽 하나와 끝나지 않은 협업(진행 중이거나 멈춘 것)이 있는 크리에이터. 하루 추천이 이미 일하는 사이를 뺄 때 쓴다.

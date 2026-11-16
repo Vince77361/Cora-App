@@ -56,6 +56,61 @@ const BRAND_NEXT: Partial<Record<Stage, Stage[]>> = {
   PUBLISHED: ['SETTLED'],
 };
 
+// 캠페인 예산의 확보액에 세지 않는 브랜드 협업 단계: 아직 서로 관심이 아니거나(INQUIRY), 계약 전에 그만뒀거나(DROPPED),
+// 보관 중이던 돈이 환급된(REFUNDED) 협업이다. 멈춘(HALTED) 협업은 돈이 그대로 보관 중이라 센다.
+export const UNSECURED_BRAND_STAGES: CollaborationStage[] = [
+  'INQUIRY',
+  'DROPPED',
+  'REFUNDED',
+];
+
+export interface BrandProgress {
+  // 끝난 단계의 수(0~6).
+  doneCount: number;
+  // 지금 하는 단계(1~6). 모두 끝났으면 null.
+  current: 1 | 2 | 3 | 4 | 5 | 6 | null;
+  // 현재 단계 줄의 보조 글 종류. 없으면 null.
+  currentNote: 'WAITING_OTHER_CONFIRM' | 'WAITING_CONTRACT' | null;
+}
+
+// 07 화면의 여섯 단계(공통 모델 1장의 표). 표에 없는 단계(INQUIRY, DROPPED, HALTED)는 null이다:
+// 멈춘 협업은 부르는 쪽이 멈추기 전 단계로 읽는다.
+const BRAND_PROGRESS: Partial<Record<Stage, BrandProgress>> = {
+  MATCHED: { doneCount: 1, current: 2, currentNote: null },
+  NEGOTIATING: {
+    doneCount: 2,
+    current: 3,
+    currentNote: 'WAITING_OTHER_CONFIRM',
+  },
+  AGREED: { doneCount: 2, current: 3, currentNote: 'WAITING_CONTRACT' },
+  CONTRACTED: { doneCount: 3, current: 4, currentNote: null },
+  GUIDED: { doneCount: 3, current: 4, currentNote: null },
+  REVIEWING: { doneCount: 4, current: 5, currentNote: null },
+  APPROVED: { doneCount: 5, current: 6, currentNote: null },
+  PUBLISHED: { doneCount: 5, current: 6, currentNote: null },
+  SETTLED: { doneCount: 6, current: null, currentNote: null },
+};
+
+export function brandProgress(stage: CollaborationStage): BrandProgress | null {
+  const progress = BRAND_PROGRESS[stage];
+  return progress ? { ...progress } : null;
+}
+
+export type NextAction = 'RESPOND_TERMS' | 'SIGN_CONTRACT';
+
+// 지금 내가 할 일. 조건을 아직 확인하지 않았으면 답하고(MATCHED·NEGOTIATING), 양쪽이 합의했으면(AGREED) 계약한다.
+// CONTRACTED 뒤의 할 일은 이후 계획이 더한다.
+export function nextActionFor(
+  stage: CollaborationStage,
+  myTurn: boolean,
+): NextAction | null {
+  if ((stage === 'MATCHED' || stage === 'NEGOTIATING') && myTurn) {
+    return 'RESPOND_TERMS';
+  }
+  if (stage === 'AGREED') return 'SIGN_CONTRACT';
+  return null;
+}
+
 // 돈이 보관 중이라 운영자·집계 실패·신고로 멈출 수 있는 단계.
 const HALTABLE: Record<CollaborationKind, Stage[]> = {
   STORE_OFFER: ['FUNDED', 'COUNTING'],

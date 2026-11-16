@@ -16,6 +16,9 @@ ApiCollaborationRepository _repo(FakeHttpClient fake) =>
     );
 
 Map<String, Object?> _json({String stage = 'COUNTING'}) => {
+  'brandProgress': null,
+  'campaign': null,
+  'campaignBudgetLeft': null,
   'canCancel': false,
   'canRequestCancel': false,
   'cancelRequest': null,
@@ -27,9 +30,11 @@ Map<String, Object?> _json({String stage = 'COUNTING'}) => {
   'expectedRefund': null,
   'id': 'c0ffee11-aaaa-bbbb-cccc-000000000001',
   'kind': 'STORE_OFFER',
+  'nextAction': null,
   'payoutScheduledFor': null,
   'payoutStatus': 'NONE',
   'role': 'CREATOR',
+  'securedAmount': null,
   'settlement': null,
   'viewReportStatus': 'NONE',
   'stage': stage,
@@ -43,6 +48,7 @@ Map<String, Object?> _json({String stage = 'COUNTING'}) => {
   'store': null,
   'submitDueAt': '2026-11-23T03:00:00.000Z',
   'submittedUrl': 'https://www.instagram.com/reel/abc',
+  'title': null,
   'terms': {
     'format': 'REELS',
     'pieces': 1,
