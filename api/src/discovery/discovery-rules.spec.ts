@@ -1,8 +1,4 @@
-import {
-  planDecisionWrite,
-  proposalProblem,
-  StoredDecision,
-} from './discovery-rules';
+import { planDecisionWrite, StoredDecision } from './discovery-rules';
 
 const stored = (over: Partial<StoredDecision> = {}): StoredDecision => ({
   id: 'd1',
@@ -130,39 +126,5 @@ describe('planDecisionWrite', () => {
       kind: 'update',
       data: { decision: 'PASS', note: null, proposedFee: null },
     });
-  });
-});
-
-describe('proposalProblem', () => {
-  const ok = { fee: 450000, productProvided: true, performance: null };
-
-  it('accepts amounts inside the ranges', () => {
-    expect(proposalProblem(ok, 'REELS')).toBeNull();
-    expect(proposalProblem(proposal, 'CARD_NEWS')).toBeNull();
-    expect(proposalProblem({ ...ok, fee: 10000 }, 'BLOG')).toBeNull();
-    expect(proposalProblem({ ...ok, fee: 10000000 }, 'BLOG')).toBeNull();
-  });
-
-  it('rejects a fee outside 10,000 to 10,000,000 or off the 10,000 step', () => {
-    for (const fee of [0, 5000, 455000, 10010000]) {
-      expect(proposalProblem({ ...ok, fee }, 'REELS')).not.toBeNull();
-    }
-  });
-
-  it('rejects a bonus on a blog', () => {
-    expect(proposalProblem(proposal, 'BLOG')).not.toBeNull();
-  });
-
-  it('rejects a rate or cap outside the policy', () => {
-    const withPerf = (ratePer1000: number, cap: number) =>
-      proposalProblem({ ...ok, performance: { ratePer1000, cap } }, 'REELS');
-    expect(withPerf(1000, 10000)).toBeNull();
-    expect(withPerf(5000, 300000)).toBeNull();
-    expect(withPerf(500, 60000)).not.toBeNull();
-    expect(withPerf(5500, 60000)).not.toBeNull();
-    expect(withPerf(2200, 60000)).not.toBeNull();
-    expect(withPerf(2000, 5000)).not.toBeNull();
-    expect(withPerf(2000, 310000)).not.toBeNull();
-    expect(withPerf(2000, 65000)).not.toBeNull();
   });
 });

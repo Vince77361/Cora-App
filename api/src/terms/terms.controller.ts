@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -6,9 +7,15 @@ import {
   ParseIntPipe,
   Post,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
+import { ProposeRewardDto } from './dto/propose-reward.dto';
 import { TermsLatestModel, TermsVersionModel } from './dto/terms-version.model';
 import { NegotiationService } from './negotiation.service';
 
@@ -28,6 +35,21 @@ export class TermsController {
     @Param('id') id: string,
   ): Promise<TermsLatestModel> {
     return this.negotiation.getLatest(user.userId, id);
+  }
+
+  @Post()
+  @ApiOperation({
+    operationId: 'proposeReward',
+    summary:
+      '돈과 혜택만 바꿔 새 판본을 낸다(나머지 항목은 직전 판본에서 옮긴다). 낸 쪽은 확인함이고 단계는 협의가 된다. 최신 판본이 아니면 409 STALE_VERSION, 바뀐 것이 없으면 400.',
+  })
+  @ApiCreatedResponse({ type: TermsVersionModel })
+  propose(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() body: ProposeRewardDto,
+  ): Promise<TermsVersionModel> {
+    return this.negotiation.proposeReward(user.userId, id, body);
   }
 
   @Post(':version/confirm')

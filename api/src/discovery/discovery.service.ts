@@ -10,6 +10,7 @@ import { CreatorsService } from '../creators/creators.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StoresService } from '../stores/stores.service';
 import { BrandProposal, draftTerms } from '../terms/draft-terms';
+import { proposalProblem } from '../terms/proposal-rules';
 import { TermsService } from '../terms/terms.service';
 import { UsersService } from '../users/users.service';
 import { VisibilityService } from '../visibility/visibility.service';
@@ -24,12 +25,7 @@ import {
   DiscoveryRepository,
   isUniqueViolation,
 } from './discovery.repository';
-import {
-  DecisionInput,
-  NOTE_MAX,
-  planDecisionWrite,
-  proposalProblem,
-} from './discovery-rules';
+import { DecisionInput, NOTE_MAX, planDecisionWrite } from './discovery-rules';
 
 // 한 결정이 낸 결과. 서로 관심이 이번 결정으로 새로 생겼을 때만 알림을 보낸다.
 interface Outcome {

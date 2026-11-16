@@ -172,6 +172,25 @@ describe('NOTIFICATION_CATALOG', () => {
     });
   });
 
+  it('words the terms proposed notice with the version number and the particles', () => {
+    expect(render('TERMS_PROPOSED', '느린결', { version: 2 })).toBe(
+      '느린결이 조건 버전 2를 제안했어요.',
+    );
+    expect(render('TERMS_PROPOSED', '하루 한 컵', { version: 3 })).toBe(
+      '하루 한 컵이 조건 버전 3을 제안했어요.',
+    );
+    expect(render('TERMS_PROPOSED', '모아 스튜디오', { version: 12 })).toBe(
+      '모아 스튜디오가 조건 버전 12를 제안했어요.',
+    );
+    expect(NOTIFICATION_CATALOG.TERMS_PROPOSED).toMatchObject({
+      tab: 'COLLABORATION',
+      switch: 'ESSENTIAL',
+      glyph: null,
+      needsActor: true,
+      requiredParams: { version: 'number' },
+    });
+  });
+
   it('never puts a phone number or account in a text', () => {
     // 문구는 이름, 숫자, 형식만 쓴다.
     const text = render('OFFER_RECEIVED', '한그릇 라멘', {

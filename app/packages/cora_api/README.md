@@ -83,6 +83,7 @@ Class | Method | HTTP request | Description
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
 *CreatorsApi* | [**listMyCreatorSeries**](doc//CreatorsApi.md#listmycreatorseries) | **GET** /creators/me/series | 
 *CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
+*DiscoveryApi* | [**compareCandidates**](doc//DiscoveryApi.md#comparecandidates) | **GET** /discovery/compare | 후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.
 *DiscoveryApi* | [**listInterests**](doc//DiscoveryApi.md#listinterests) | **GET** /discovery/interests | 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
 *DiscoveryApi* | [**listReceivedProposals**](doc//DiscoveryApi.md#listreceivedproposals) | **GET** /discovery/received-proposals | 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.
 *DiscoveryApi* | [**putDecision**](doc//DiscoveryApi.md#putdecision) | **PUT** /discovery/decisions | 관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.
@@ -143,6 +144,7 @@ Class | Method | HTTP request | Description
 *SubmissionsApi* | [**submitContentLink**](doc//SubmissionsApi.md#submitcontentlink) | **POST** /collaborations/{id}/submission | 
 *TermsApi* | [**confirmTerms**](doc//TermsApi.md#confirmterms) | **POST** /collaborations/{id}/terms/{version}/confirm | 이 판본 수락. 최신이 아니면 409 STALE_VERSION(본문에 latestVersion), 성과 추가가 있는데 인스타그램 연동이 없으면 크리에이터는 409.
 *TermsApi* | [**getLatestTerms**](doc//TermsApi.md#getlatestterms) | **GET** /collaborations/{id}/terms/latest | 브랜드 계약의 가장 최근 조건 판본(당사자만).
+*TermsApi* | [**proposeReward**](doc//TermsApi.md#proposereward) | **POST** /collaborations/{id}/terms | 돈과 혜택만 바꿔 새 판본을 낸다(나머지 항목은 직전 판본에서 옮긴다). 낸 쪽은 확인함이고 단계는 협의가 된다. 최신 판본이 아니면 409 STALE_VERSION, 바뀐 것이 없으면 400.
 *UploadsApi* | [**createPhotoUpload**](doc//UploadsApi.md#createphotoupload) | **POST** /uploads/photos | 
 *UsersApi* | [**getMe**](doc//UsersApi.md#getme) | **GET** /me | 
 *UsersApi* | [**updateMyRole**](doc//UsersApi.md#updatemyrole) | **PATCH** /me/role | 
@@ -187,6 +189,9 @@ Class | Method | HTTP request | Description
  - [CollaborationStepModel](doc//CollaborationStepModel.md)
  - [CollaborationStepState](doc//CollaborationStepState.md)
  - [CollaborationViewReportStatus](doc//CollaborationViewReportStatus.md)
+ - [CompareField](doc//CompareField.md)
+ - [CompareModel](doc//CompareModel.md)
+ - [CompareSideModel](doc//CompareSideModel.md)
  - [CompleteInstagramConnectDto](doc//CompleteInstagramConnectDto.md)
  - [ContentCountModel](doc//ContentCountModel.md)
  - [ContentDraftKind](doc//ContentDraftKind.md)
@@ -269,6 +274,7 @@ Class | Method | HTTP request | Description
  - [ProposalRowModel](doc//ProposalRowModel.md)
  - [ProposalStoreModel](doc//ProposalStoreModel.md)
  - [ProposalTab](doc//ProposalTab.md)
+ - [ProposeRewardDto](doc//ProposeRewardDto.md)
  - [ProposeVersionDto](doc//ProposeVersionDto.md)
  - [PutDecisionDto](doc//PutDecisionDto.md)
  - [QuietHours](doc//QuietHours.md)
@@ -279,6 +285,7 @@ Class | Method | HTTP request | Description
  - [RevisionScope](doc//RevisionScope.md)
  - [RewardConfigModel](doc//RewardConfigModel.md)
  - [RewardInputDto](doc//RewardInputDto.md)
+ - [RewardPerformanceDto](doc//RewardPerformanceDto.md)
  - [RewardRangeModel](doc//RewardRangeModel.md)
  - [SavedDecision](doc//SavedDecision.md)
  - [SendOfferDto](doc//SendOfferDto.md)

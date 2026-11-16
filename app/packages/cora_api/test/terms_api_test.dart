@@ -29,5 +29,12 @@ void main() {
     test('test getLatestTerms', () async {
       // TODO
     });
+
+    // 돈과 혜택만 바꿔 새 판본을 낸다(나머지 항목은 직전 판본에서 옮긴다). 낸 쪽은 확인함이고 단계는 협의가 된다. 최신 판본이 아니면 409 STALE_VERSION, 바뀐 것이 없으면 400.
+    //
+    //Future<TermsVersionModel> proposeReward(String id, ProposeRewardDto proposeRewardDto) async
+    test('test proposeReward', () async {
+      // TODO
+    });
   });
 }

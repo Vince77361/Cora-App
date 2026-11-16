@@ -268,6 +268,12 @@ class ApiClient {
           return CollaborationStepStateTypeTransformer().decode(value);
         case 'CollaborationViewReportStatus':
           return CollaborationViewReportStatusTypeTransformer().decode(value);
+        case 'CompareField':
+          return CompareFieldTypeTransformer().decode(value);
+        case 'CompareModel':
+          return CompareModel.fromJson(value);
+        case 'CompareSideModel':
+          return CompareSideModel.fromJson(value);
         case 'CompleteInstagramConnectDto':
           return CompleteInstagramConnectDto.fromJson(value);
         case 'ContentCountModel':
@@ -432,6 +438,8 @@ class ApiClient {
           return ProposalStoreModel.fromJson(value);
         case 'ProposalTab':
           return ProposalTabTypeTransformer().decode(value);
+        case 'ProposeRewardDto':
+          return ProposeRewardDto.fromJson(value);
         case 'ProposeVersionDto':
           return ProposeVersionDto.fromJson(value);
         case 'PutDecisionDto':
@@ -452,6 +460,8 @@ class ApiClient {
           return RewardConfigModel.fromJson(value);
         case 'RewardInputDto':
           return RewardInputDto.fromJson(value);
+        case 'RewardPerformanceDto':
+          return RewardPerformanceDto.fromJson(value);
         case 'RewardRangeModel':
           return RewardRangeModel.fromJson(value);
         case 'SavedDecision':

@@ -9,6 +9,7 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**compareCandidates**](DiscoveryApi.md#comparecandidates) | **GET** /discovery/compare | 후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.
 [**listInterests**](DiscoveryApi.md#listinterests) | **GET** /discovery/interests | 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
 [**listReceivedProposals**](DiscoveryApi.md#listreceivedproposals) | **GET** /discovery/received-proposals | 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.
 [**putDecision**](DiscoveryApi.md#putdecision) | **PUT** /discovery/decisions | 관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.
@@ -16,6 +17,55 @@ Method | HTTP request | Description
 [**putStorePass**](DiscoveryApi.md#putstorepass) | **PUT** /discovery/store-passes/{storeId} | 가게 카드를 넘긴다(가게 카드의 관심은 지원 API로 보낸다).
 [**undoLastDecision**](DiscoveryApi.md#undolastdecision) | **DELETE** /discovery/decisions/last | 오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다.
 
+
+# **compareCandidates**
+> CompareModel compareCandidates(a, b)
+
+후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = DiscoveryApi();
+final a = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 비교할 크리에이터 한 명.
+final b = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 비교할 다른 크리에이터.
+
+try {
+    final result = api_instance.compareCandidates(a, b);
+    print(result);
+} catch (e) {
+    print('Exception when calling DiscoveryApi->compareCandidates: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **a** | **String**| 비교할 크리에이터 한 명. | 
+ **b** | **String**| 비교할 다른 크리에이터. | 
+
+### Return type
+
+[**CompareModel**](CompareModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **listInterests**
 > List<InterestCardModel> listInterests(tab)

@@ -1,51 +1,8 @@
-import type {
-  ContentFormat,
-  PassReason,
-  SwipeDecisionKind,
-} from '@prisma/client';
-import { CAMPAIGN_RULES } from '../campaigns/campaign-rules';
-import { REWARD_POLICY } from '../common/collaboration-policy';
+import type { PassReason, SwipeDecisionKind } from '@prisma/client';
 import type { BrandProposal } from '../terms/draft-terms';
 
 // 관심에 붙이는 글의 길이. 크리에이터는 조건 버전의 제목이 되고(40자), 브랜드는 "좋아한 점"이다(100자).
 export const NOTE_MAX = { CREATOR: 40, BRAND: 100 } as const;
-
-// 값이 범위와 단위에 맞는지. 맞으면 null, 틀리면 사용자에게 보일 문장.
-// 성과 추가의 범위는 가게 흐름 개정 계획의 정책(GET /config와 같은 값)을 쓴다.
-export function proposalProblem(
-  proposal: BrandProposal,
-  format: ContentFormat,
-): string | null {
-  const { fee, performance } = proposal;
-  if (
-    !Number.isInteger(fee) ||
-    fee < CAMPAIGN_RULES.feeMin ||
-    fee > REWARD_POLICY.fixedCash.maxByCommissioner.BRAND ||
-    fee % CAMPAIGN_RULES.moneyStep !== 0
-  ) {
-    return '제작비는 1만 원 단위로, 1만 원부터 1,000만 원까지 정할 수 있어요.';
-  }
-  if (performance === null) return null;
-  if (format === 'BLOG') return '블로그 글에는 조회수 수당을 붙일 수 없어요.';
-  const { viewRate, perViewCap } = REWARD_POLICY;
-  if (
-    !Number.isInteger(performance.ratePer1000) ||
-    performance.ratePer1000 < viewRate.min ||
-    performance.ratePer1000 > viewRate.max ||
-    performance.ratePer1000 % viewRate.step !== 0
-  ) {
-    return '조회수 단가는 1,000회당 1,000원부터 5,000원까지 500원 단위로 정할 수 있어요.';
-  }
-  if (
-    !Number.isInteger(performance.cap) ||
-    performance.cap < perViewCap.min ||
-    performance.cap > perViewCap.max ||
-    performance.cap % perViewCap.step !== 0
-  ) {
-    return '조회수 수당 상한은 1만 원부터 30만 원까지 1만 원 단위로 정할 수 있어요.';
-  }
-  return null;
-}
 
 // 저장돼 있는 결정 한 줄에서 규칙이 읽는 값.
 export interface StoredDecision {

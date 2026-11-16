@@ -16,6 +16,84 @@ class DiscoveryApi {
 
   final ApiClient apiClient;
 
+  /// 후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] a (required):
+  ///   비교할 크리에이터 한 명.
+  ///
+  /// * [String] b (required):
+  ///   비교할 다른 크리에이터.
+  Future<Response> compareCandidatesWithHttpInfo(
+    String a,
+    String b, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/discovery/compare';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    queryParams.addAll(_queryParams('', 'a', a));
+    queryParams.addAll(_queryParams('', 'b', b));
+
+    const contentTypes = <String>[];
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] a (required):
+  ///   비교할 크리에이터 한 명.
+  ///
+  /// * [String] b (required):
+  ///   비교할 다른 크리에이터.
+  Future<CompareModel?> compareCandidates(
+    String a,
+    String b, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await compareCandidatesWithHttpInfo(
+      a,
+      b,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(
+        await _decodeBodyBytes(response),
+        'CompareModel',
+      ) as CompareModel;
+    }
+    return null;
+  }
+
   /// 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
   ///
   /// Note: This method returns the HTTP [Response].

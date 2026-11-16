@@ -70,6 +70,14 @@ describe('canTransition', () => {
     );
   });
 
+  it('sends an agreed brand contract back to negotiating when a new version comes before the payment', () => {
+    expect(canTransition('BRAND_CONTRACT', S.AGREED, S.NEGOTIATING)).toBe(true);
+    expect(canTransition('BRAND_CONTRACT', S.CONTRACTED, S.NEGOTIATING)).toBe(
+      false,
+    );
+    expect(canTransition('STORE_OFFER', S.AGREED, S.NEGOTIATING)).toBe(false);
+  });
+
   it('allows DROPPED only before the contract', () => {
     for (const from of [S.INQUIRY, S.MATCHED, S.NEGOTIATING, S.AGREED]) {
       expect(canTransition('BRAND_CONTRACT', from, S.DROPPED)).toBe(true);

@@ -890,6 +890,138 @@
         ],
         "type": "string"
       },
+      "CompareField": {
+        "description": "두 후보의 보이는 값이 다른 줄(앞에 점을 붙인다).",
+        "enum": [
+          "DELIVERABLE",
+          "BENEFIT",
+          "FEE",
+          "PERF_CAP",
+          "USAGE",
+          "START",
+          "FACE"
+        ],
+        "type": "string"
+      },
+      "CompareModel": {
+        "properties": {
+          "differs": {
+            "description": "두 후보의 보이는 값이 다른 줄(앞에 점을 붙인다).",
+            "items": {
+              "$ref": "#/components/schemas/CompareField"
+            },
+            "type": "array"
+          },
+          "sides": {
+            "items": {
+              "$ref": "#/components/schemas/CompareSideModel"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "sides",
+          "differs"
+        ],
+        "type": "object"
+      },
+      "CompareSideModel": {
+        "properties": {
+          "collaborationId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "creatorId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "faceOk": {
+            "description": "크리에이터의 원칙 3번: 얼굴 출연이 괜찮은가.",
+            "type": "boolean"
+          },
+          "fee": {
+            "description": "서로 관심이면 최신 판본의 제작비, 아니면 내 제안의 금액, 없으면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "feeBand": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeBand"
+              }
+            ],
+            "description": "fee가 null일 때 앱이 \"30만 원대\"로 보여 주는 희망 제작비 구간."
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "perfCap": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "pieces": {
+            "type": "integer"
+          },
+          "productProvided": {
+            "type": "boolean"
+          },
+          "shortName": {
+            "description": "\"{X}의 …\" 꼴이면 X, 아니면 이름 전체.",
+            "type": "string"
+          },
+          "startDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InterestState"
+              }
+            ]
+          },
+          "usageRights": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BrandUsageRights"
+              }
+            ]
+          }
+        },
+        "required": [
+          "creatorId",
+          "name",
+          "shortName",
+          "photoUrl",
+          "state",
+          "collaborationId",
+          "format",
+          "pieces",
+          "productProvided",
+          "fee",
+          "feeBand",
+          "perfCap",
+          "usageRights",
+          "startDate",
+          "faceOk"
+        ],
+        "type": "object"
+      },
       "CompleteInstagramConnectDto": {
         "properties": {
           "code": {
@@ -3188,6 +3320,39 @@
         ],
         "type": "string"
       },
+      "ProposeRewardDto": {
+        "properties": {
+          "baseVersion": {
+            "description": "내가 보고 있던 판본 번호. 최신이 아니면 409 STALE_VERSION이다.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "fee": {
+            "description": "제작비(원). 1만 원 단위, 10000~10000000.",
+            "type": "integer"
+          },
+          "performance": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RewardPerformanceDto"
+              }
+            ],
+            "description": "성과 추가. 없으면 null. 블로그 글에는 붙일 수 없다.",
+            "nullable": true,
+            "type": "object"
+          },
+          "productProvided": {
+            "description": "제품 제공 여부.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "baseVersion",
+          "fee",
+          "productProvided"
+        ],
+        "type": "object"
+      },
       "ProposeVersionDto": {
         "properties": {
           "format": {
@@ -3491,6 +3656,23 @@
             "type": "object"
           }
         },
+        "type": "object"
+      },
+      "RewardPerformanceDto": {
+        "properties": {
+          "cap": {
+            "description": "조회수 수당 상한(원).",
+            "type": "integer"
+          },
+          "ratePer1000": {
+            "description": "조회수 단가(1,000회당 원). 500원 단위.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ratePer1000",
+          "cap"
+        ],
         "type": "object"
       },
       "RewardRangeModel": {
@@ -5833,6 +6015,52 @@
         ]
       }
     },
+    "/collaborations/{id}/terms": {
+      "post": {
+        "operationId": "proposeReward",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposeRewardDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermsVersionModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "돈과 혜택만 바꿔 새 판본을 낸다(나머지 항목은 직전 판본에서 옮긴다). 낸 쪽은 확인함이고 단계는 협의가 된다. 최신 판본이 아니면 409 STALE_VERSION, 바뀐 것이 없으면 400.",
+        "tags": [
+          "Terms"
+        ]
+      }
+    },
     "/collaborations/{id}/terms/latest": {
       "get": {
         "operationId": "getLatestTerms",
@@ -6321,6 +6549,54 @@
         "summary": "크리에이터 카드 상세(브랜드). 보이지 않거나 내가 넘긴 크리에이터는 404.",
         "tags": [
           "CardDetails"
+        ]
+      }
+    },
+    "/discovery/compare": {
+      "get": {
+        "operationId": "compareCandidates",
+        "parameters": [
+          {
+            "description": "비교할 크리에이터 한 명.",
+            "in": "query",
+            "name": "a",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "비교할 다른 크리에이터.",
+            "in": "query",
+            "name": "b",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompareModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.",
+        "tags": [
+          "Discovery"
         ]
       }
     },

@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import { BrandsService } from '../brands/brands.service';
 import { CampaignsService } from '../campaigns/campaigns.service';
+import { canTransition } from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
@@ -15,7 +16,10 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { needsInstagram } from '../offers/offer-rules';
 import { PrinciplesService } from '../principles/principles.service';
 import { matchScore } from '../recommendations/match-score';
+import { BrandProposal } from './draft-terms';
+import { ProposeRewardDto } from './dto/propose-reward.dto';
 import { TermsLatestModel, TermsVersionModel } from './dto/terms-version.model';
+import { nextTermsValues, proposalProblem, sameReward } from './proposal-rules';
 import { termsNotice, toTermsVersionModel } from './terms-rules';
 import { TermsRepository } from './terms.repository';
 import { TermsService } from './terms.service';
@@ -24,6 +28,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // 판본을 확인할 수 있는 단계. AGREED는 이미 한 확인을 다시 눌렀을 때 같은 결과를 돌려주기 위한 것이다.
 const CONFIRMABLE: CollaborationStage[] = ['MATCHED', 'NEGOTIATING', 'AGREED'];
+
+// 새 판본을 낼 수 있는 단계: 결제(CONTRACTED) 전이다. AGREED에서 내면 합의가 취소되고 협의로 돌아간다.
+const PROPOSABLE: CollaborationStage[] = ['MATCHED', 'NEGOTIATING', 'AGREED'];
+
+const INSTAGRAM_REQUIRED_MESSAGE = '인스타그램을 연동하면 수락할 수 있어요.';
 
 // 브랜드 계약의 조건 판본을 당사자에게 보여 주고 확인받는 서비스(06 화면).
 // 확인은 협업 행을 잠근 트랜잭션 안에서 조건부로 한 번만 반영한다: 같은 판본을 양쪽이 동시에 눌러도,
@@ -123,10 +132,7 @@ export class NegotiationService {
           connected,
         )
       ) {
-        throw new AppError(
-          'CONFLICT',
-          '인스타그램을 연동하면 수락할 수 있어요.',
-        );
+        throw new AppError('CONFLICT', INSTAGRAM_REQUIRED_MESSAGE);
       }
       const applied = await this.repository.markConfirmed(
         collaboration.id,
@@ -155,6 +161,83 @@ export class NegotiationService {
     return toTermsVersionModel(row, collaboration.commissionerId);
   }
 
+  // 협업 중에 돈과 혜택(제작비, 제품 제공, 성과 추가)만 바꿔 새 판본을 낸다. 나머지 항목은 직전 판본에서 옮긴다.
+  // 확인과 같은 잠금 안에서 한다: 같은 판본을 보고 두 쪽이 동시에 내면 하나만 다음 판본이 되고 나머지는 409 STALE_VERSION이다.
+  // 낸 쪽은 "확인함", 상대는 "대기"이고 단계는 NEGOTIATING이다(합의돼 있었다면 합의가 취소된다).
+  async proposeReward(
+    userId: string,
+    collaborationId: string,
+    input: ProposeRewardDto,
+  ): Promise<TermsVersionModel> {
+    const collaboration = await this.requireParty(userId, collaborationId);
+    const isCreator = collaboration.creatorId === userId;
+    const connected = isCreator
+      ? ((await this.creators.getSummary(userId))?.instagramConnected ?? false)
+      : true;
+    const proposal: BrandProposal = {
+      fee: input.fee,
+      productProvided: input.productProvided,
+      performance: input.performance
+        ? {
+            ratePer1000: input.performance.ratePer1000,
+            cap: input.performance.cap,
+          }
+        : null,
+    };
+    const now = this.clock.now();
+
+    const created = await this.repository.transaction(async (tx) => {
+      await this.repository.lockCollaboration(collaboration.id, tx);
+      const fresh = await this.collaborations.findById(collaboration.id, tx);
+      const latest = await this.terms.latest(collaboration.id, tx);
+      if (!fresh || !latest || !PROPOSABLE.includes(fresh.stage)) {
+        throw new AppError('CONFLICT', '지금은 조건을 제안할 수 없어요.');
+      }
+      if (latest.version !== input.baseVersion) {
+        throw new AppError('STALE_VERSION', '이전 판본이라 제안할 수 없어요.', {
+          latestVersion: latest.version,
+        });
+      }
+      const problem = proposalProblem(proposal, latest.format);
+      if (problem) throw new AppError('VALIDATION_FAILED', problem);
+      if (sameReward(latest, proposal)) {
+        throw new AppError('VALIDATION_FAILED', '바꾼 조건이 없어요.');
+      }
+      if (
+        isCreator &&
+        proposal.performance !== null &&
+        needsInstagram(
+          { format: latest.format, perViewCap: proposal.performance.cap },
+          connected,
+        )
+      ) {
+        throw new AppError('CONFLICT', INSTAGRAM_REQUIRED_MESSAGE);
+      }
+      const row = await this.terms.createVersion(
+        collaboration.id,
+        userId,
+        nextTermsValues(latest, proposal, isCreator ? 'CREATOR' : 'BRAND', now),
+        tx,
+      );
+      if (fresh.stage !== 'NEGOTIATING') {
+        // 단계 표가 원본이다: MATCHED와 AGREED만 협의로 옮길 수 있다.
+        if (!canTransition('BRAND_CONTRACT', fresh.stage, 'NEGOTIATING')) {
+          throw new AppError('CONFLICT', '지금은 조건을 제안할 수 없어요.');
+        }
+        await this.advanceOrFail(
+          collaboration.id,
+          fresh.stage,
+          'NEGOTIATING',
+          tx,
+        );
+      }
+      return row;
+    });
+
+    await this.notifyProposed(collaboration, userId, created);
+    return toTermsVersionModel(created, collaboration.commissionerId);
+  }
+
   // 잠금 안이라 실패할 길이 없지만, 실패하면 확인만 남고 단계가 안 움직인 채 끝나므로 트랜잭션째 되돌린다.
   private async advanceOrFail(
     collaborationId: string,
@@ -170,10 +253,41 @@ export class NegotiationService {
   }
 
   // 커밋 뒤에 상대에게 알린다. 실패해도 이미 저장된 확인은 유효하다(원장 판단 R22).
-  private async notifyConfirmed(
+  private notifyConfirmed(
     collaboration: Collaboration,
     userId: string,
     row: TermsVersion,
+  ): Promise<void> {
+    return this.notifyCounterpart(
+      collaboration,
+      userId,
+      row,
+      'TERMS_CONFIRMED',
+      'terms-confirmed',
+    );
+  }
+
+  // 새 판본을 낸 것도 같은 모양으로 알린다(낸 쪽에는 알리지 않는다).
+  private notifyProposed(
+    collaboration: Collaboration,
+    userId: string,
+    row: TermsVersion,
+  ): Promise<void> {
+    return this.notifyCounterpart(
+      collaboration,
+      userId,
+      row,
+      'TERMS_PROPOSED',
+      'terms-proposed',
+    );
+  }
+
+  private async notifyCounterpart(
+    collaboration: Collaboration,
+    userId: string,
+    row: TermsVersion,
+    kind: 'TERMS_CONFIRMED' | 'TERMS_PROPOSED',
+    dedupePrefix: string,
   ): Promise<void> {
     const byCreator = collaboration.creatorId === userId;
     try {
@@ -189,15 +303,15 @@ export class NegotiationService {
           ? collaboration.commissionerId
           : collaboration.creatorId,
         role: byCreator ? 'BRAND' : 'CREATOR',
-        kind: 'TERMS_CONFIRMED',
+        kind,
         actor,
         params: { version: row.version },
         target: { kind: 'TERMS', id: collaboration.id },
-        dedupeKey: `terms-confirmed:${collaboration.id}:${row.version}:${userId}`,
+        dedupeKey: `${dedupePrefix}:${collaboration.id}:${row.version}:${userId}`,
       });
     } catch (error) {
       this.logger.warn(
-        `조건 확인 알림을 남기지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        `조건 알림을 남기지 못했어요(${kind}): ${error instanceof Error ? error.name : 'unknown'}`,
       );
     }
   }

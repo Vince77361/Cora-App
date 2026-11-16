@@ -39,6 +39,9 @@ doc/CollaborationStepModel.md
 doc/CollaborationStepState.md
 doc/CollaborationViewReportStatus.md
 doc/CollaborationsApi.md
+doc/CompareField.md
+doc/CompareModel.md
+doc/CompareSideModel.md
 doc/CompleteInstagramConnectDto.md
 doc/ContentCountModel.md
 doc/ContentDraftKind.md
@@ -133,6 +136,7 @@ doc/ProposalRowModel.md
 doc/ProposalStoreModel.md
 doc/ProposalTab.md
 doc/ProposalsApi.md
+doc/ProposeRewardDto.md
 doc/ProposeVersionDto.md
 doc/PutDecisionDto.md
 doc/QuietHours.md
@@ -144,6 +148,7 @@ doc/RecommendedApplicantsModel.md
 doc/RevisionScope.md
 doc/RewardConfigModel.md
 doc/RewardInputDto.md
+doc/RewardPerformanceDto.md
 doc/RewardRangeModel.md
 doc/SavedDecision.md
 doc/SendOfferDto.md
@@ -278,6 +283,9 @@ lib/model/collaboration_step_key.dart
 lib/model/collaboration_step_model.dart
 lib/model/collaboration_step_state.dart
 lib/model/collaboration_view_report_status.dart
+lib/model/compare_field.dart
+lib/model/compare_model.dart
+lib/model/compare_side_model.dart
 lib/model/complete_instagram_connect_dto.dart
 lib/model/content_count_model.dart
 lib/model/content_draft_kind.dart
@@ -360,6 +368,7 @@ lib/model/proposal_person_model.dart
 lib/model/proposal_row_model.dart
 lib/model/proposal_store_model.dart
 lib/model/proposal_tab.dart
+lib/model/propose_reward_dto.dart
 lib/model/propose_version_dto.dart
 lib/model/put_decision_dto.dart
 lib/model/quiet_hours.dart
@@ -370,6 +379,7 @@ lib/model/recommended_applicants_model.dart
 lib/model/revision_scope.dart
 lib/model/reward_config_model.dart
 lib/model/reward_input_dto.dart
+lib/model/reward_performance_dto.dart
 lib/model/reward_range_model.dart
 lib/model/saved_decision.dart
 lib/model/send_offer_dto.dart
@@ -465,6 +475,9 @@ test/collaboration_step_model_test.dart
 test/collaboration_step_state_test.dart
 test/collaboration_view_report_status_test.dart
 test/collaborations_api_test.dart
+test/compare_field_test.dart
+test/compare_model_test.dart
+test/compare_side_model_test.dart
 test/complete_instagram_connect_dto_test.dart
 test/content_count_model_test.dart
 test/content_draft_kind_test.dart
@@ -559,6 +572,7 @@ test/proposal_row_model_test.dart
 test/proposal_store_model_test.dart
 test/proposal_tab_test.dart
 test/proposals_api_test.dart
+test/propose_reward_dto_test.dart
 test/propose_version_dto_test.dart
 test/put_decision_dto_test.dart
 test/quiet_hours_test.dart
@@ -570,6 +584,7 @@ test/recommended_applicants_model_test.dart
 test/revision_scope_test.dart
 test/reward_config_model_test.dart
 test/reward_input_dto_test.dart
+test/reward_performance_dto_test.dart
 test/reward_range_model_test.dart
 test/saved_decision_test.dart
 test/send_offer_dto_test.dart

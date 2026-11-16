@@ -16,6 +16,13 @@ void main() {
   // final instance = DiscoveryApi();
 
   group('tests for DiscoveryApi', () {
+    // 후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.
+    //
+    //Future<CompareModel> compareCandidates(String a, String b) async
+    test('test compareCandidates', () async {
+      // TODO
+    });
+
     // 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
     //
     //Future<List<InterestCardModel>> listInterests({ InterestTab tab }) async

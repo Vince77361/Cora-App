@@ -20,11 +20,13 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { DiscoveryService } from './discovery.service';
+import { CompareService } from './compare.service';
 import { InterestsService } from './interests.service';
 import {
   DecisionResultModel,
   UndoneDecisionModel,
 } from './dto/decision-result.model';
+import { CompareModel, CompareQuery } from './dto/compare.model';
 import {
   InterestCardModel,
   ListInterestsQuery,
@@ -40,6 +42,7 @@ export class DiscoveryController {
   constructor(
     private readonly discovery: DiscoveryService,
     private readonly interests: InterestsService,
+    private readonly compareService: CompareService,
   ) {}
 
   @Put('decisions')
@@ -81,6 +84,20 @@ export class DiscoveryController {
     @CurrentUser() user: AuthUser,
   ): Promise<ProposalModel[]> {
     return this.interests.listReceivedProposals(user.userId);
+  }
+
+  @Get('compare')
+  @ApiOperation({
+    operationId: 'compareCandidates',
+    summary:
+      '후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.',
+  })
+  @ApiOkResponse({ type: CompareModel })
+  compare(
+    @CurrentUser() user: AuthUser,
+    @Query() query: CompareQuery,
+  ): Promise<CompareModel> {
+    return this.compareService.compare(user.userId, query.a, query.b);
   }
 
   @Put('decisions/pass-reason')

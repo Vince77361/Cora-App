@@ -856,6 +856,7 @@ enum NotificationKind {
   VIEW_REPORT_DISPUTED
   MUTUAL_INTEREST
   TERMS_CONFIRMED
+  TERMS_PROPOSED
 
   @@map("notification_kind")
 }

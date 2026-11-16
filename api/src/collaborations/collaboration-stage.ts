@@ -47,7 +47,8 @@ const BRAND_NEXT: Partial<Record<Stage, Stage[]>> = {
   INQUIRY: ['MATCHED', 'DROPPED'],
   MATCHED: ['NEGOTIATING', 'DROPPED'],
   NEGOTIATING: ['AGREED', 'DROPPED'],
-  AGREED: ['CONTRACTED', 'DROPPED'],
+  // 결제 전에 새 판본이 나오면 합의가 취소되고 협의로 돌아간다(공통 모델 2장).
+  AGREED: ['CONTRACTED', 'NEGOTIATING', 'DROPPED'],
   CONTRACTED: ['GUIDED'],
   GUIDED: ['REVIEWING'],
   REVIEWING: ['APPROVED'],

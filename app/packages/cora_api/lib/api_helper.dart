@@ -103,6 +103,9 @@ String parameterToString(dynamic value) {
         .encode(value)
         .toString();
   }
+  if (value is CompareField) {
+    return CompareFieldTypeTransformer().encode(value).toString();
+  }
   if (value is ContentDraftKind) {
     return ContentDraftKindTypeTransformer().encode(value).toString();
   }

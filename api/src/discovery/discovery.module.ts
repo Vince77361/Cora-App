@@ -10,6 +10,7 @@ import { StoresModule } from '../stores/stores.module';
 import { TermsModule } from '../terms/terms.module';
 import { UsersModule } from '../users/users.module';
 import { VisibilityModule } from '../visibility/visibility.module';
+import { CompareService } from './compare.service';
 import { DiscoveryController } from './discovery.controller';
 import { DiscoveryRepository } from './discovery.repository';
 import { DiscoveryService } from './discovery.service';
@@ -30,6 +31,11 @@ import { InterestsService } from './interests.service';
     PrinciplesModule,
   ],
   controllers: [DiscoveryController],
-  providers: [DiscoveryService, InterestsService, DiscoveryRepository],
+  providers: [
+    DiscoveryService,
+    InterestsService,
+    CompareService,
+    DiscoveryRepository,
+  ],
 })
 export class DiscoveryModule {}

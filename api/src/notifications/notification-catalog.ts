@@ -333,6 +333,16 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     render: ({ actorName, params }) =>
       `${josa(actorName ?? OTHER_FALLBACK, '이/가')} 조건 버전 ${josa(String(params.version ?? 1), '을/를')} 확인했어요.`,
   },
+  // 협업 중에 상대가 돈과 혜택을 바꾼 새 판본을 냈다(5번 설계의 조건 수정 제안과 같은 알림). 끌 수 없다.
+  TERMS_PROPOSED: {
+    tab: 'COLLABORATION',
+    switch: 'ESSENTIAL',
+    glyph: null,
+    requiredParams: { version: 'number' },
+    needsActor: true,
+    render: ({ actorName, params }) =>
+      `${josa(actorName ?? OTHER_FALLBACK, '이/가')} 조건 버전 ${josa(String(params.version ?? 1), '을/를')} 제안했어요.`,
+  },
 };
 
 export interface NotifyActorLike {
