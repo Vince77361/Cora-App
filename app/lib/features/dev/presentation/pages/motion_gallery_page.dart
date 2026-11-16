@@ -18,6 +18,9 @@ import '../../../../core/ui/cora_segmented_tabs.dart';
 import '../../../../core/ui/cora_select_card.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../../core/ui/cora_step_header.dart';
+import '../../../../core/ui/swipe_deck/swipe_card_frame.dart';
+import '../../../../core/ui/swipe_deck/swipe_deck.dart';
+import '../../../../core/ui/swipe_deck/swipe_stamp.dart';
 
 /// 개발용 모션 갤러리. 소유자가 실제 기기에서 전환 속도·곡선과 공용 위젯을 보고 승인한다.
 ///
@@ -60,6 +63,13 @@ class _MotionGalleryPageState extends State<MotionGalleryPage> {
           pageBuilder: (context, state) =>
               demo.page(_DemoPage(demo: demo), key: state.pageKey),
         ),
+      GoRoute(
+        path: '/swipeDeck',
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const _SwipeDeckDemoPage(),
+          key: state.pageKey,
+        ),
+      ),
       GoRoute(
         path: '/creator/:id',
         pageBuilder: (context, state) => CoraTransitions.push(
@@ -235,6 +245,12 @@ class _GalleryHomeState extends State<_GalleryHome> {
                 const SizedBox(height: 8),
               ],
               _HeroCard(onTap: () => context.push('/creator/$_heroCreatorId')),
+              const SizedBox(height: 8),
+              _DemoRow(
+                title: '카드 넘기기',
+                subtitle: '끌기·놓기·연달아 넘기기. 카드 세 장짜리 견본이에요.',
+                onTap: () => context.push('/swipeDeck'),
+              ),
 
               const _SectionLabel('선택 카드 · A1'),
               for (final (i, role) in _roles.indexed) ...[
@@ -543,6 +559,179 @@ class _DemoPage extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 카드 넘기기 견본(4번 계획 Task 8). 캔버스 01처럼 카드를 화면 가득 두고 그 위에 버튼 줄을 겹친다.
+/// 끌어서도, 아래 버튼으로도 넘겨 보고, 넘긴 결과를 아래 글자로 확인한다.
+class _SwipeDeckDemoPage extends StatefulWidget {
+  const _SwipeDeckDemoPage();
+
+  @override
+  State<_SwipeDeckDemoPage> createState() => _SwipeDeckDemoPageState();
+}
+
+class _SwipeDeckDemoPageState extends State<_SwipeDeckDemoPage> {
+  static const _cards = [
+    (
+      name: '서윤의 작은 취향',
+      title: '출근 전 30초,\n오늘의 손목 루틴',
+      price: '30만 원',
+      tags: ['얼굴출연없음', '소품'],
+    ),
+    (
+      name: '민의 옷장 기록',
+      title: '같은 니트,\n세 가지 액세서리',
+      price: '35만 원',
+      tags: ['니트', '액세서리'],
+    ),
+    (
+      name: '하루 한 컵',
+      title: '주말 아침,\n잔 하나로 바뀌는 식탁',
+      price: '25만 원',
+      tags: ['리빙', '아침루틴'],
+    ),
+  ];
+
+  final _controller = SwipeDeckController();
+  // 되돌리기 대신 처음부터 다시 보려고 키를 바꿔 덱을 새로 만든다.
+  int _round = 0;
+  final _log = <String>[];
+  bool _failNext = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onSwiped(int index, SwipeOutcome outcome) async {
+    if (_failNext) {
+      _failNext = false;
+      setState(() => _log.add('${_cards[index].name}: 저장 실패, 카드가 돌아와요'));
+      throw StateError('demo');
+    }
+    setState(
+      () => _log.add('${_cards[index].name}: ${SwipeStamp.labelOf(outcome)}'),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _TopBar(),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Stack(
+                  children: [
+                    SwipeDeck<int>(
+                      key: ValueKey(_round),
+                      items: const [0, 1, 2],
+                      controller: _controller,
+                      onSwiped: _onSwiped,
+                      onTap: () => setState(() => _log.add('카드를 눌렀어요')),
+                      empty: Center(
+                        child: CoraPrimaryButton(
+                          label: '처음부터 다시',
+                          onPressed: () => setState(() {
+                            _round++;
+                            _log.clear();
+                          }),
+                        ),
+                      ),
+                      cardBuilder: (context, i) => SwipeCardFrame(
+                        photoUrl: null,
+                        badge: '운영자 추천 ${i + 1} / ${_cards.length}',
+                        name: _cards[i].name,
+                        title: _cards[i].title,
+                        priceLine: _cards[i].price,
+                        tags: _cards[i].tags,
+                      ),
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 26,
+                      child: ListenableBuilder(
+                        listenable: _controller,
+                        builder: (context, _) => Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          spacing: 12,
+                          children: [
+                            for (final outcome in SwipeOutcome.values)
+                              _DemoButton(
+                                label: SwipeStamp.labelOf(outcome),
+                                onTap: () => _controller.swipe(outcome),
+                              ),
+                            _DemoButton(
+                              label: '다음엔 실패',
+                              onTap: () => _failNext = true,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(24, 12, 24, bottom + 16),
+              child: Text(
+                '끌기 기준 가로 110·세로 140, 기울기 최대 12도, 날아가기 '
+                '${CoraMotion.swipeFlyDuration.inMilliseconds}ms easeOut, '
+                '돌아오기 스프링 질량 1·강성 380·감쇠 28\n'
+                '${_log.isEmpty ? '아직 넘기지 않았어요' : _log.last}',
+                style: CoraTextStyles.caption.copyWith(color: c.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DemoButton extends StatelessWidget {
+  const _DemoButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: label,
+      onTap: onTap,
+      child: CoraPressable(
+        onTap: onTap,
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: c.photoChip,
+            borderRadius: BorderRadius.circular(CoraRadius.pill),
+          ),
+          child: ExcludeSemantics(
+            child: Text(
+              label,
+              style: CoraTextStyles.label.copyWith(color: c.onPhotoChip),
+            ),
+          ),
         ),
       ),
     );

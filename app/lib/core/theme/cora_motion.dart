@@ -40,6 +40,20 @@ abstract final class CoraMotion {
   /// sheet: 뒤 화면을 덮는 `scrim`의 최대 불투명도.
   static const sheetUnderlayDim = 0.16;
 
+  /// 카드 넘기기: 놓은 카드가 화면 밖으로 나가는 시간과 곡선. 수치는 소유자 승인 대상이다(4번 계획 Task 8).
+  static const swipeFlyDuration = Duration(milliseconds: 280);
+  static const Curve swipeFlyCurve = Curves.easeOut;
+
+  /// 카드 넘기기: 기준에 못 미쳐 제자리로 돌아오는 스프링(질량 1, 강성 380, 감쇠 28).
+  static const swipeSpring = SpringDescription(
+    mass: 1,
+    stiffness: 380,
+    damping: 28,
+  );
+
+  /// 카드 넘기기: 맨 위 카드 뒤에 보이는 다음 카드의 크기. 앞 카드가 나가면 1이 된다.
+  static const swipeBehindScale = 0.96;
+
   /// 기기에서 '동작 줄이기'를 켰는지.
   static bool reduceMotion(BuildContext context) =>
       MediaQuery.maybeDisableAnimationsOf(context) ?? false;

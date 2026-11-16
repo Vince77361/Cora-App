@@ -88,4 +88,13 @@ abstract final class CoraShadows {
       blurRadius: blurRadiusFor(3),
     ),
   ];
+
+  /// 카드 넘기기 카드(01·08 추천 카드): 0 16px 40px, 알파 0.16. 라이트·다크가 같다.
+  static final swipeCard = [
+    BoxShadow(
+      color: const Color.fromRGBO(23, 24, 28, 0.16),
+      offset: const Offset(0, 16),
+      blurRadius: blurRadiusFor(40),
+    ),
+  ];
 }

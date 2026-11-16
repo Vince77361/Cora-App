@@ -134,6 +134,32 @@ void main() {
     }
   });
 
+  testWidgets('the swipe deck demo swipes three cards with the buttons', (
+    tester,
+  ) async {
+    _usePhone(tester);
+    await _pumpGallery(tester);
+
+    await _open(tester, '카드 넘기기');
+    expect(find.text('서윤의 작은 취향'), findsOneWidget);
+
+    // 버튼 글자와 카드 위 도장 글자가 같아서 작은 글자(버튼)만 고른다.
+    Finder button(String label) => find.byWidgetPredicate(
+      (w) => w is Text && w.data == label && w.style?.fontSize == 13,
+    );
+
+    await tester.tap(button('관심'));
+    await tester.pumpAndSettle();
+    expect(find.text('서윤의 작은 취향'), findsNothing);
+    expect(find.text('민의 옷장 기록'), findsWidgets);
+
+    await tester.tap(button('넘김'));
+    await tester.pumpAndSettle();
+    await tester.tap(button('보류'));
+    await tester.pumpAndSettle();
+    expect(find.text('처음부터 다시'), findsOneWidget);
+  });
+
   testWidgets('the hero demo carries the photo into the detail page', (
     tester,
   ) async {

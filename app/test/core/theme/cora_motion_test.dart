@@ -14,6 +14,15 @@ void main() {
     expect(CoraMotion.sheetUnderlayScale, 0.96);
   });
 
+  test('swipe motion follows plan 4 task 8', () {
+    expect(CoraMotion.swipeFlyDuration, const Duration(milliseconds: 280));
+    expect(CoraMotion.swipeFlyCurve, Curves.easeOut);
+    expect(CoraMotion.swipeSpring.mass, 1);
+    expect(CoraMotion.swipeSpring.stiffness, 380);
+    expect(CoraMotion.swipeSpring.damping, 28);
+    expect(CoraMotion.swipeBehindScale, 0.96);
+  });
+
   testWidgets(
     'durations collapse to zero when the platform asks to reduce motion',
     (tester) async {
