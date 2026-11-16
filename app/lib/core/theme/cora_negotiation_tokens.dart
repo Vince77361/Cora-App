@@ -4,4 +4,7 @@ import 'package:flutter/painting.dart';
 abstract final class CoraNegotiationTokens {
   /// 06 사진 아래 글자를 받치는 덮개: 위 투명 → 아래 `rgba(23,24,28,0.85)`(Terms).
   static const termsPhotoScrim = [Color(0x0017181C), Color(0xD917181C)];
+
+  /// 07 진행 막대의 채움과 끝난 단계 동그라미 `#5C7A00`(Progress, DarkProgress가 같다).
+  static const progressDone = Color(0xFF5C7A00);
 }

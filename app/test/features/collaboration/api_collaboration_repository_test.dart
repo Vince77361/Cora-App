@@ -111,6 +111,65 @@ void main() {
     expect(() => c.offerTerms, throwsStateError);
   });
 
+  test('fetch maps the brand contract progress, next action, secured amount '
+      'and budget left', () async {
+    final fake = FakeHttpClient()
+      ..body = jsonEncode({
+        ..._json(stage: 'NEGOTIATING'),
+        'kind': 'BRAND_CONTRACT',
+        'terms': null,
+        'role': 'COMMISSIONER',
+        'counterpart': {'name': '서윤의 작은 취향', 'photoUrl': null},
+        'title': '출근 전 30초, 오늘의 손목 루틴',
+        'campaign': {
+          'id': 'campaign-1',
+          'brandName': '모아 스튜디오',
+          'headline': '나만의 아침 루틴 속 작은 포인트',
+        },
+        'brandProgress': {
+          'doneCount': 2,
+          'current': 3,
+          'currentNote': 'WAITING_OTHER_CONFIRM',
+        },
+        'securedAmount': 350000,
+        'campaignBudgetLeft': {'left': 0, 'over': 50000},
+        'nextAction': 'RESPOND_TERMS',
+      });
+
+    final c = await _repo(fake).fetch('col-1');
+
+    expect(c.title, '출근 전 30초, 오늘의 손목 루틴');
+    expect(c.campaign?.brandName, '모아 스튜디오');
+    expect(c.campaign?.headline, '나만의 아침 루틴 속 작은 포인트');
+    expect(c.brandProgress?.doneCount, 2);
+    expect(c.brandProgress?.current, 3);
+    expect(c.brandProgress?.note, BrandProgressNote.waitingOtherConfirm);
+    expect(c.securedAmount, 350000);
+    expect(c.campaignBudgetLeft?.left, 0);
+    expect(c.campaignBudgetLeft?.over, 50000);
+    expect(c.nextAction, CollaborationNextAction.respondTerms);
+  });
+
+  test('the next action, progress note and budget are null when the server '
+      'sends none', () async {
+    final fake = FakeHttpClient()
+      ..body = jsonEncode({
+        ..._json(stage: 'AGREED'),
+        'kind': 'BRAND_CONTRACT',
+        'terms': null,
+        'brandProgress': {'doneCount': 6, 'current': null, 'currentNote': null},
+        'nextAction': 'SIGN_CONTRACT',
+      });
+
+    final c = await _repo(fake).fetch('col-1');
+
+    expect(c.nextAction, CollaborationNextAction.signContract);
+    expect(c.brandProgress?.current, isNull);
+    expect(c.brandProgress?.note, isNull);
+    expect(c.campaignBudgetLeft, isNull);
+    expect(c.securedAmount, isNull);
+  });
+
   test('fetch maps a store offer to the store offer kind', () async {
     final fake = FakeHttpClient()..body = jsonEncode(_json());
 

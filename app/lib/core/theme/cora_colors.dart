@@ -81,6 +81,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     this.compareDot = const Color(0xFF17181C),
     this.matchRing = const Color(0xFFFFFFFF),
     this.termsBarShadow = const Color(0x0F17181C),
+    this.progressRing = const Color(0xFF5C7A00),
   });
 
   final Color background;
@@ -248,6 +249,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
   /// DarkTerms rgba(0,0,0,0.45)).
   final Color termsBarShadow;
 
+  /// 07 진행 단계의 상대 사진을 두른 2px 테두리(Progress #5C7A00, DarkProgress 라임 #C6FF3D).
+  final Color progressRing;
+
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
   final Color avatarPlaceholder;
@@ -397,6 +401,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     onToast: Color(0xFFFFFFFF),
     toastShadow: Color(0x0017181C),
     termsBarShadow: Color(0x73000000),
+    progressRing: Color(0xFFC6FF3D),
   );
 
   @override
@@ -478,6 +483,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? compareDot,
     Color? matchRing,
     Color? termsBarShadow,
+    Color? progressRing,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -558,6 +564,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
       compareDot: compareDot ?? this.compareDot,
       matchRing: matchRing ?? this.matchRing,
       termsBarShadow: termsBarShadow ?? this.termsBarShadow,
+      progressRing: progressRing ?? this.progressRing,
     );
   }
 
@@ -646,6 +653,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
       compareDot: mix(compareDot, other.compareDot),
       matchRing: mix(matchRing, other.matchRing),
       termsBarShadow: mix(termsBarShadow, other.termsBarShadow),
+      progressRing: mix(progressRing, other.progressRing),
     );
   }
 }

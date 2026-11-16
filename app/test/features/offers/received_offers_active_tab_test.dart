@@ -61,34 +61,100 @@ void main() {
     expect(find.text('집계 중 · 7일 남음'), findsOneWidget);
   });
 
-  testWidgets('leaves brand contracts off the store offer list', (
-    tester,
-  ) async {
+  testWidgets(
+    'the collaboration tab mixes store and brand collaborations for a '
+    'creator',
+    (tester) async {
+      final collaborations = FakeCollaborationRepository(
+        active: [
+          collaboration(),
+          collaboration(
+            kind: CollaborationKind.brandContract,
+            id: 'b0b0b0b0-0000-0000-0000-000000000009',
+            storeName: '느린결',
+            stage: CollaborationStage.other,
+            nextAction: CollaborationNextAction.respondTerms,
+          ),
+          collaboration(
+            kind: CollaborationKind.brandContract,
+            id: 'b0b0b0b0-0000-0000-0000-000000000011',
+            storeName: '아침 공방',
+            stage: CollaborationStage.other,
+            brandProgress: const BrandProgress(doneCount: 2, current: 3),
+          ),
+        ],
+        done: [
+          collaboration(
+            kind: CollaborationKind.brandContract,
+            id: 'b0b0b0b0-0000-0000-0000-000000000010',
+            storeName: '새벽 로스터스',
+            stage: CollaborationStage.settled,
+            payoutStatus: PayoutStatus.needsAccount,
+          ),
+        ],
+      );
+      await _openActiveTab(tester, collaborations);
+
+      // 가게 협업과 브랜드 협업이 한 목록에 있다.
+      expect(find.text('한그릇 라멘'), findsOneWidget);
+      expect(find.text('방문하고 촬영해 주세요 · 11월 23일까지'), findsOneWidget);
+      expect(find.text('느린결'), findsOneWidget);
+      expect(find.text('받은 제안 확인하고 응답하기'), findsOneWidget);
+      expect(find.text('아침 공방'), findsOneWidget);
+      expect(find.text('2 / 6 완료'), findsOneWidget);
+      // 끝난 브랜드 협업의 지급 줄은 이 계획이 다루지 않는다(가게 협업만).
+      expect(find.text('새벽 로스터스'), findsNothing);
+    },
+  );
+
+  testWidgets('a brand collaboration row opens the progress screen, never the '
+      'store collaboration screen', (tester) async {
+    const id = 'b0b0b0b0-0000-0000-0000-000000000009';
     final collaborations = FakeCollaborationRepository(
       active: [
-        collaboration(),
         collaboration(
           kind: CollaborationKind.brandContract,
-          id: 'b0b0b0b0-0000-0000-0000-000000000009',
+          id: id,
           storeName: '느린결',
           stage: CollaborationStage.other,
-        ),
-      ],
-      done: [
-        collaboration(
-          kind: CollaborationKind.brandContract,
-          id: 'b0b0b0b0-0000-0000-0000-000000000010',
-          storeName: '새벽 로스터스',
-          stage: CollaborationStage.settled,
-          payoutStatus: PayoutStatus.needsAccount,
+          brandProgress: const BrandProgress(doneCount: 2, current: 3),
+          securedAmount: 350000,
         ),
       ],
     );
     await _openActiveTab(tester, collaborations);
 
-    expect(find.text('한그릇 라멘'), findsOneWidget);
-    expect(find.text('느린결'), findsNothing);
-    expect(find.text('새벽 로스터스'), findsNothing);
+    await tester.tap(find.text('느린결'));
+    await tester.pumpAndSettle();
+
+    expect(topPath(tester), AppRoutes.collaborationProgress(id));
+    expect(find.text('콘텐츠 방향을 함께 잡아요.'), findsOneWidget);
+    expect(find.text('350,000원'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the creator collaboration screen sends a brand collaboration id '
+      'to the progress screen', (tester) async {
+    const id = 'b0b0b0b0-0000-0000-0000-000000000009';
+    await pumpCollaboration(
+      tester,
+      repo: FakeCollaborationRepository(
+        active: [
+          collaboration(
+            kind: CollaborationKind.brandContract,
+            id: id,
+            storeName: '느린결',
+            stage: CollaborationStage.other,
+            brandProgress: const BrandProgress(doneCount: 2, current: 3),
+          ),
+        ],
+      ),
+      id: id,
+    );
+
+    expect(topPath(tester), AppRoutes.collaborationProgress(id));
+    expect(find.text('2 / 6 완료'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('opens the collaboration screen from a row', (tester) async {

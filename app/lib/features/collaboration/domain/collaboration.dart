@@ -17,6 +17,44 @@ enum CollaborationStage {
 /// 협업의 종류. 가게 오퍼 화면은 [storeOffer]만 그리고, 브랜드 계약은 조건 판본이 조건을 담는다.
 enum CollaborationKind { storeOffer, brandContract }
 
+/// 브랜드 계약에서 지금 내가 할 일(07의 `지금 할 일`). 서버가 단계와 내 차례로 정해 준다.
+/// [respondTerms]는 최신 조건 판본을 아직 확인하지 않음, [signContract]는 양쪽이 합의해 계약할 차례다.
+enum CollaborationNextAction { respondTerms, signContract }
+
+/// 브랜드 계약 진행에서 지금 단계 줄 아래에 붙는 보조 글의 종류.
+enum BrandProgressNote { waitingOtherConfirm, waitingContract }
+
+/// 브랜드 계약의 여섯 단계 진행(07). [doneCount]는 끝난 단계 수(0~6)이고 [current]는 지금 하는 단계(1~6,
+/// 모두 끝났으면 null)다.
+class BrandProgress {
+  const BrandProgress({required this.doneCount, this.current, this.note});
+
+  final int doneCount;
+  final int? current;
+  final BrandProgressNote? note;
+}
+
+/// 브랜드 계약이 나온 캠페인.
+class CollaborationCampaign {
+  const CollaborationCampaign({
+    required this.id,
+    required this.brandName,
+    required this.headline,
+  });
+
+  final String id;
+  final String brandName;
+  final String headline;
+}
+
+/// 남은 캠페인 예산. [left]는 0에서 멈추고 [over]는 확보액이 예산을 넘은 금액이다(넘지 않았으면 0).
+class CampaignBudgetLeft {
+  const CampaignBudgetLeft({required this.left, required this.over});
+
+  final int left;
+  final int over;
+}
+
 /// 내가 이 협업에서 맡은 쪽. A7은 크리에이터 화면이다.
 enum CollaborationRole { commissioner, creator }
 
@@ -77,6 +115,12 @@ class Collaboration {
     required this.steps,
     this.kind = CollaborationKind.storeOffer,
     this.counterpartPhotoUrl,
+    this.title,
+    this.campaign,
+    this.brandProgress,
+    this.securedAmount,
+    this.campaignBudgetLeft,
+    this.nextAction,
     this.earnedSoFar,
     this.currentViews,
     this.countingEndsAt,
@@ -103,6 +147,24 @@ class Collaboration {
 
   /// 수락할 때의 조건 사본. 가게 오퍼에만 있고 브랜드 계약은 null이다.
   final OfferTerms? terms;
+
+  /// 브랜드 계약만: 최신 조건 판본의 제목. 판본이 없으면 null.
+  final String? title;
+
+  /// 브랜드 계약만: 이 협업이 나온 캠페인. 읽을 수 없으면 null.
+  final CollaborationCampaign? campaign;
+
+  /// 브랜드 계약만: 여섯 단계 진행. 진행 표에 없는 단계(문의, 중도 포기)면 null.
+  final BrandProgress? brandProgress;
+
+  /// 브랜드 계약만: 이번 협업의 확보액(원) = 최신 판본의 최대 현금 부담. 크리에이터에게도 내려온다.
+  final int? securedAmount;
+
+  /// 브랜드 계약만: 남은 캠페인 예산. 그 캠페인의 브랜드에게만 채워지고 크리에이터에게는 null이다.
+  final CampaignBudgetLeft? campaignBudgetLeft;
+
+  /// 브랜드 계약만: 지금 내가 할 일. 없으면 null.
+  final CollaborationNextAction? nextAction;
 
   /// 가게 오퍼 화면이 읽는 조건. 브랜드 계약에는 없으므로 그 화면에 브랜드 협업이 들어오면 바로 드러나게 던진다.
   OfferTerms get offerTerms =>

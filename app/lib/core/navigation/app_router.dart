@@ -20,6 +20,9 @@ import '../../features/discovery/presentation/pages/brand_discovery_page.dart';
 import '../../features/discovery/presentation/pages/campaign_detail_page.dart';
 import '../../features/discovery/presentation/pages/creator_discovery_page.dart';
 import '../../features/interests/presentation/pages/compare_page.dart';
+import '../../features/negotiation/presentation/pages/brand_progress_page.dart';
+import '../../features/negotiation/presentation/pages/brand_proposals_placeholder_page.dart';
+import '../../features/negotiation/presentation/pages/collaboration_hub_page.dart';
 import '../../features/negotiation/presentation/pages/draft_terms_page.dart';
 import '../../features/interests/presentation/pages/interests_page.dart';
 import '../../features/interests/presentation/viewmodels/interests_view_model.dart'
@@ -217,7 +220,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      // 협업(07)은 11번 작업이, 대화·프로필은 뒤 계획이 만든다.
+      // 진행 단계(07). 브랜드와 크리에이터가 함께 쓴다(06의 수락, 알림, 협업 목록이 연다).
+      GoRoute(
+        path: AppRoutes.collaborationProgressPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          BrandProgressPage(collaborationId: state.pathParameters['id']!),
+          key: state.pageKey,
+        ),
+      ),
+      // 브랜드의 협업 탭. 하단 메뉴의 탭이라 제자리에서 바뀌고, 협업이 하나면 곧바로 07이다.
+      GoRoute(
+        path: AppRoutes.brandCollaborations,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const CollaborationHubPage()),
+      ),
+      // 07의 `남은 캠페인 예산`. 브랜드의 제안함(F3)은 5번 계획이 채우므로 지금은 빈 상태만 있다.
+      GoRoute(
+        path: AppRoutes.brandProposals,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const BrandProposalsPlaceholderPage(),
+          key: state.pageKey,
+        ),
+      ),
+      // 대화와 프로필은 뒤 계획이 만든다.
       GoRoute(
         path: '/brand/coming-soon/:title',
         pageBuilder: (context, state) => _entryPage(

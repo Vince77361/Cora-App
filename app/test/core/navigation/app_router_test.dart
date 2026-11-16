@@ -687,6 +687,9 @@ void main() {
             '/brand/interests/compare',
             '/creator/interests',
             '/collaborations/:id/terms',
+            '/collaborations/:id/progress',
+            '/brand/collaborations',
+            '/brand/proposals',
             '/brand/coming-soon/:title',
           ]),
         );

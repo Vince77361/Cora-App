@@ -366,6 +366,18 @@ void main() {
     expect(changed.toastShadow, const Color(0xFF333333));
   });
 
+  test('the progress ring matches Progress and DarkProgress', () {
+    expect(CoraColors.light.progressRing, const Color(0xFF5C7A00));
+    expect(CoraColors.dark.progressRing, const Color(0xFFC6FF3D));
+    final mixed = CoraColors.light.lerp(CoraColors.dark, 1);
+    expect(mixed.progressRing, CoraColors.dark.progressRing);
+    final changed = CoraColors.light.copyWith(
+      progressRing: const Color(0xFF080808),
+    );
+    expect(changed.progressRing, const Color(0xFF080808));
+    expect(changed.text, CoraColors.light.text);
+  });
+
   test('the terms bar shadow matches Terms and DarkTerms', () {
     expect(CoraColors.light.termsBarShadow, const Color(0x0F17181C));
     expect(CoraColors.dark.termsBarShadow, const Color(0x73000000));

@@ -173,10 +173,14 @@ abstract final class AppRoutes {
   /// 브랜드의 협업 탭. 진행 중인 브랜드 협업이 하나면 곧바로 07이고, 여럿이면 목록이다.
   static const brandCollaborations = '/brand/collaborations';
 
+  /// 07의 `남은 캠페인 예산`이 여는 제안함 자리 화면. 브랜드의 제안함(F3)은 5번 계획이 채우므로 그때까지
+  /// F8의 빈 상태만 보인다.
+  static const brandProposals = '/brand/proposals';
+
   /// 브랜드 하단 메뉴의 `프로필`. 계정·설정 계획이 만들기 전까지 역할 다시 고르기와 로그아웃만 있는 자리 화면이다.
   static const brandProfile = '/brand/profile';
 
-  /// 아직 만들지 않은 브랜드 쪽 화면(대화, 프로필, 그리고 10·11번 작업이 등록하기 전의 관심·협업).
+  /// 아직 만들지 않은 브랜드 쪽 화면(대화와 프로필 등).
   static String brandComingSoon(String title) =>
       '/brand/coming-soon/${Uri.encodeComponent(title)}';
 

@@ -63,6 +63,8 @@ class CollaborationPage extends ConsumerStatefulWidget {
 }
 
 class _CollaborationPageState extends ConsumerState<CollaborationPage> {
+  bool _redirected = false;
+
   CollaborationViewModel get _vm =>
       ref.read(collaborationViewModelProvider(widget.collaborationId).notifier);
 
@@ -98,6 +100,20 @@ class _CollaborationPageState extends ConsumerState<CollaborationPage> {
       collaborationViewModelProvider(widget.collaborationId),
     );
     final value = async.value;
+    // 협업 번호가 브랜드 협업의 것이면(알림이나 링크로 온 경우) 07로 보낸다. A7은 가게 오퍼의 조건을 읽는다.
+    if (value != null && !value.collaboration.isStoreOffer) {
+      if (!_redirected) {
+        _redirected = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            context.pushReplacement(
+              AppRoutes.collaborationProgress(widget.collaborationId),
+            );
+          }
+        });
+      }
+      return const Scaffold(body: CoraStateView.loading());
+    }
     final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
     final now = ref.watch(clockProvider).now();
     return Scaffold(

@@ -103,6 +103,41 @@ class ApiCollaborationRepository implements CollaborationRepository {
     counterpartName: m.counterpart.name,
     counterpartPhotoUrl: m.counterpart.photoUrl,
     terms: m.terms == null ? null : offerTermsFromWire(m.terms!),
+    title: m.title,
+    campaign: m.campaign == null
+        ? null
+        : CollaborationCampaign(
+            id: m.campaign!.id,
+            brandName: m.campaign!.brandName,
+            headline: m.campaign!.headline,
+          ),
+    brandProgress: m.brandProgress == null
+        ? null
+        : BrandProgress(
+            doneCount: m.brandProgress!.doneCount,
+            current: m.brandProgress!.current,
+            note: switch (m.brandProgress!.currentNote) {
+              api.BrandProgressNote.WAITING_OTHER_CONFIRM =>
+                BrandProgressNote.waitingOtherConfirm,
+              api.BrandProgressNote.WAITING_CONTRACT =>
+                BrandProgressNote.waitingContract,
+              _ => null,
+            },
+          ),
+    securedAmount: m.securedAmount,
+    campaignBudgetLeft: m.campaignBudgetLeft == null
+        ? null
+        : CampaignBudgetLeft(
+            left: m.campaignBudgetLeft!.left,
+            over: m.campaignBudgetLeft!.over,
+          ),
+    nextAction: switch (m.nextAction) {
+      api.CollaborationNextAction.RESPOND_TERMS =>
+        CollaborationNextAction.respondTerms,
+      api.CollaborationNextAction.SIGN_CONTRACT =>
+        CollaborationNextAction.signContract,
+      _ => null,
+    },
     escrowAmount: m.escrowAmount,
     steps: [
       for (final s in m.steps)

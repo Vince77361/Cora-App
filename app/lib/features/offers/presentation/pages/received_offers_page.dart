@@ -17,6 +17,7 @@ import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../collaboration/presentation/collaboration_text.dart';
 import '../../../collaboration/presentation/viewmodels/collaboration_list_view_model.dart';
+import '../../../negotiation/presentation/terms_text.dart' show brandRowSubtitle;
 import '../../../offer_terms/presentation/offer_terms_text.dart';
 import '../../../proposals/presentation/viewmodels/proposals_view_model.dart';
 import '../../../store_browse/presentation/widgets/creator_bottom_nav.dart';
@@ -591,7 +592,7 @@ class _TextAction extends StatelessWidget {
   }
 }
 
-/// 진행 중 탭: 수락한 오퍼가 만든 협업의 가게 줄. 설명은 단계에 따라 `결제를 기다리고 있어요` /
+/// 진행 중 탭: 수락한 오퍼가 만든 협업의 가게 줄과 브랜드 협업 줄(설명은 지금 할 일 또는 `{n} / 6 완료`, 누르면 07). 설명은 단계에 따라 `결제를 기다리고 있어요` /
 /// `방문하고 촬영해 주세요 · {기한}까지` / `집계 중 · {n}일 남음`이고, 누르면 협업 진행(A7)이 열린다.
 class _ActiveTab extends ConsumerWidget {
   const _ActiveTab();
@@ -611,10 +612,15 @@ class _ActiveTab extends ConsumerWidget {
             CoraListRow(
               photoUrl: collaboration.counterpartPhotoUrl,
               title: collaboration.counterpartName,
-              subtitle: activeRowSubtitle(collaboration, now),
+              subtitle: collaboration.isStoreOffer
+                  ? activeRowSubtitle(collaboration, now)
+                  : brandRowSubtitle(collaboration),
               onTap: () async {
+                // 브랜드 계약의 줄은 07로 간다(A7은 가게 오퍼의 조건을 읽는다).
                 await context.push(
-                  AppRoutes.creatorCollaboration(collaboration.id),
+                  collaboration.isStoreOffer
+                      ? AppRoutes.creatorCollaboration(collaboration.id)
+                      : AppRoutes.collaborationProgress(collaboration.id),
                 );
                 // A7에서 제출하거나 그만두고 돌아오면 줄이 낡을 수 있다.
                 ref.invalidate(collaborationListViewModelProvider);

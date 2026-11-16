@@ -1,3 +1,6 @@
+import '../../../core/text/josa.dart';
+import '../../collaboration/domain/collaboration.dart'
+    show Collaboration, CollaborationNextAction;
 import '../../discovery/domain/discovery_card.dart' show MatchReason;
 import '../../discovery/presentation/discovery_text.dart';
 import '../../offer_terms/domain/offer_terms.dart' show ContentFormat, ViewPay;
@@ -140,7 +143,28 @@ String termsAcceptNote(int maxCash, {required bool hasPerformance}) =>
     '수락하면 이 판본 조건으로 계약 준비를 시작해요. 최대 현금 부담 ${won(maxCash)}.'
     '${hasPerformance ? ' 성과 추가는 조회수만큼, 남으면 환불해요.' : ''}';
 
-/// 06의 고정 문구와 안내. 캔버스 글자 그대로이고, 아래 표시한 것만 캔버스에 없다.
+/// 07 `지금 할 일` 상자의 글. `RESPOND_TERMS` 문구는 캔버스에 없다(설계 6장 16번).
+String nextActionLabel(CollaborationNextAction action) => switch (action) {
+  CollaborationNextAction.respondTerms => '받은 제안 확인하고 응답하기',
+  CollaborationNextAction.signContract => '계약서 확인하고 동의하기',
+};
+
+/// 07 머리 아래 한 줄. `{크리에이터 이름}과 {브랜드 이름}`(조사는 이름의 받침에 맞춘다).
+String progressPair(String creatorName, String brandName) =>
+    '${josa(creatorName, JosaPair.gwaWa)} $brandName';
+
+/// 협업 목록(브랜드의 협업 탭, 크리에이터의 `진행 중`)에서 브랜드 협업 줄의 설명. 지금 할 일이 있으면 그 글,
+/// 없으면 `{n} / 6 완료`다(캔버스 밖).
+String brandRowSubtitle(Collaboration c) {
+  final action = c.nextAction;
+  if (action != null) return nextActionLabel(action);
+  final progress = c.brandProgress;
+  return progress == null
+      ? (c.campaign?.headline ?? '')
+      : TermsTexts.doneCount(progress.doneCount);
+}
+
+/// 06·07의 고정 문구와 안내. 캔버스 글자 그대로이고, 아래 표시한 것만 캔버스에 없다.
 abstract final class TermsTexts {
   // 06
   static const cellFee = '현금 고정비';
@@ -170,4 +194,37 @@ abstract final class TermsTexts {
   static const connectInstagram = '연동하기';
   static const loadFailed = '조건을 불러오지 못했어요';
   static const actionFailed = '처리하지 못했어요. 다시 시도해 주세요.';
+
+  // 07
+  static const brandPill = '브랜드 관점';
+  static const creatorPill = '크리에이터 관점';
+  static const heading = '콘텐츠 방향을 함께 잡아요.';
+  static const nextAction = '지금 할 일';
+  static const secured = '이번 협업 확보액';
+  static const budgetLeft = '남은 캠페인 예산';
+  static const progressTitle = '진행 단계';
+  static const stepNames = [
+    '서로 관심 확인',
+    '조건 검토 의사 표시',
+    '양쪽 조건 확정·계약',
+    '기획안 검토·제작',
+    '광고 표시·초안 검토',
+    '게시·성과 확인',
+  ];
+  static const waitingOther = '상대의 동의를 기다리고 있어요';
+  static const waitingContract = '계약을 진행해 주세요';
+  static String doneCount(int n) => '$n / 6 완료';
+
+  // 07 캔버스 밖: 예산을 넘었을 때, 내 이름을 못 읽었을 때의 대신 글
+  static String overBudget(int over) => '예산을 ${wonLabel(over)} 넘었어요.';
+  static const me = '나';
+
+  // 브랜드의 협업 탭 목록(캔버스 밖)
+  static const hubTitle = '협업';
+  static const hubEmpty = '아직 진행 중인 협업이 없어요.';
+  static const hubLoadFailed = '진행 중인 협업을 불러오지 못했어요.';
+
+  // 남은 캠페인 예산 자리 화면: F3 제안함의 빈 목록과 같은 글(5번 계획이 브랜드의 줄을 채우기 전까지)
+  static const proposalsTitle = '제안함';
+  static const proposalsEmpty = '아직 받은 제안이 없어요';
 }

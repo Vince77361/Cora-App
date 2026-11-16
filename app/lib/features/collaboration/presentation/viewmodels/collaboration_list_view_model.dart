@@ -11,8 +11,8 @@ import '../../domain/collaboration_repository.dart';
 /// 이어 붙인다. 서버의 진행 중 목록은 정산 완료를 빼므로 이 줄들이 없으면 크리에이터가 계좌를 등록하러
 /// 갈 입구가 앱 안에 없다.
 ///
-/// 가게 오퍼만 담는다. 서버는 브랜드 계약도 같은 목록에 내려 주지만 이 화면(A7 줄)은 가게 오퍼 전용이라
-/// 브랜드 계약의 줄은 11번 작업이 켠다.
+/// 진행 중인 협업은 가게 오퍼와 브랜드 계약을 함께 담는다(브랜드 계약의 줄은 07로 가고, 가게 오퍼의 줄은 A7로
+/// 간다). 지급 대기 줄은 가게 오퍼만이다(브랜드 계약의 지급은 6번 계획 몫).
 final collaborationListViewModelProvider =
     AsyncNotifierProvider.autoDispose<
       CollaborationListViewModel,
@@ -28,8 +28,7 @@ class CollaborationListViewModel extends AsyncNotifier<List<Collaboration>> {
     // 끝난 목록을 못 읽어도 진행 중 목록은 보이게 한다(홈의 협업 읽기와 같은 방식).
     final done = repo.fetchDone().catchError((Object _) => <Collaboration>[]);
     return [
-      for (final c in await active)
-        if (c.isStoreOffer) c,
+      ...await active,
       // 지급이 끝나면(done) 목록에서 빠진다.
       for (final c in await done)
         if (c.isStoreOffer && _awaitsPayout(c)) c,

@@ -1,3 +1,5 @@
+import 'package:cora/features/collaboration/domain/collaboration.dart'
+    show CollaborationNextAction;
 import 'package:cora/features/discovery/domain/discovery_card.dart'
     show MatchReason;
 import 'package:cora/features/negotiation/domain/brand_usage_rights.dart';
@@ -146,6 +148,34 @@ void main() {
         termsHeader(version: 3, myTurn: false, mine: true, agreed: true),
         const TermsHeader('합의한 조건 · 판본 3', '합의 완료'),
       );
+    });
+  });
+
+  group('07 progress labels', () {
+    test('nextActionLabel reads the two next actions', () {
+      expect(
+        nextActionLabel(CollaborationNextAction.respondTerms),
+        '받은 제안 확인하고 응답하기',
+      );
+      expect(
+        nextActionLabel(CollaborationNextAction.signContract),
+        '계약서 확인하고 동의하기',
+      );
+    });
+
+    test('the pair takes the josa of the creator name', () {
+      expect(progressPair('서윤의 작은 취향', '모아 스튜디오'), '서윤의 작은 취향과 모아 스튜디오');
+      expect(progressPair('하루 한 컵', '느린결'), '하루 한 컵과 느린결');
+      expect(progressPair('한그릇', '모아'), '한그릇과 모아');
+      expect(progressPair('민의 옷장 기록', '모아'), '민의 옷장 기록과 모아');
+      expect(progressPair('서윤', '모아'), '서윤과 모아');
+      expect(progressPair('나', '모아'), '나와 모아');
+    });
+
+    test('the done count and the overrun line use the canvas words', () {
+      expect(TermsTexts.doneCount(2), '2 / 6 완료');
+      expect(TermsTexts.overBudget(50000), '예산을 50,000원 넘었어요.');
+      expect(TermsTexts.stepNames, hasLength(6));
     });
   });
 }
