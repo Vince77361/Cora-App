@@ -25,6 +25,10 @@ import 'features/view_report/data/api_view_report_repository.dart';
 import 'features/view_report/domain/view_report_repository.dart';
 import 'features/creator_profile/data/api_creator_profile_repository.dart';
 import 'features/creator_profile/domain/creator_profile_repository.dart';
+import 'features/brand_onboarding/data/api_brand_repository.dart';
+import 'features/brand_onboarding/data/api_campaign_repository.dart';
+import 'features/brand_onboarding/domain/brand_repository.dart';
+import 'features/brand_onboarding/domain/campaign_repository.dart';
 import 'features/principles/data/api_principles_repository.dart';
 import 'features/principles/domain/principles_repository.dart';
 import 'features/instagram_connect/data/api_instagram_repository.dart';
@@ -135,6 +139,12 @@ Future<void> main() async {
         ),
         principlesRepositoryProvider.overrideWith(
           (ref) => ApiPrinciplesRepository(ref.watch(apiClientProvider)),
+        ),
+        brandRepositoryProvider.overrideWith(
+          (ref) => ApiBrandRepository(ref.watch(apiClientProvider)),
+        ),
+        campaignRepositoryProvider.overrideWith(
+          (ref) => ApiCampaignRepository(ref.watch(apiClientProvider)),
         ),
         storeBrowseRepositoryProvider.overrideWith(
           (ref) => ApiStoreBrowseRepository(ref.watch(apiClientProvider)),

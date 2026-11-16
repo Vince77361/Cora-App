@@ -3,6 +3,8 @@ import 'package:cora/core/config/app_config.dart';
 import 'package:cora/core/config/app_config_provider.dart';
 import 'package:cora/core/navigation/app_router.dart';
 import 'package:cora/features/auth/domain/auth_repository_provider.dart';
+import 'package:cora/features/brand_onboarding/domain/brand_repository.dart';
+import 'package:cora/features/brand_onboarding/domain/campaign_repository.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/notification_settings/domain/notification_settings_repository.dart';
 import 'package:cora/features/notifications/domain/notification_repository.dart';
@@ -21,6 +23,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/fake_auth_repository.dart';
+import '../features/brand_onboarding/fake_brand_repository.dart';
+import '../features/brand_onboarding/fake_campaign_repository.dart';
 import '../features/collaboration/fake_collaboration_repository.dart';
 import '../features/notification_settings/fake_notification_settings_repository.dart';
 import '../features/notifications/fake_notification_repository.dart';
@@ -96,6 +100,15 @@ Widget coraAppWith(
       // 제안함(F3)과 받은 오퍼의 `제안함` 줄이 읽는다. 기본은 제안이 없는 계정이다.
       if (!_overrides(overrides, proposalRepositoryProvider))
         proposalRepositoryProvider.overrideWithValue(FakeProposalRepository()),
+      // 브랜드 진입이 프로필과 진행 중인 캠페인을 읽는다. 기본은 둘 다 있어 발견(01)이 열리는 브랜드다.
+      if (!_overrides(overrides, brandRepositoryProvider))
+        brandRepositoryProvider.overrideWithValue(
+          FakeBrandRepository(profile: defaultBrandProfile),
+        ),
+      if (!_overrides(overrides, campaignRepositoryProvider))
+        campaignRepositoryProvider.overrideWithValue(
+          FakeCampaignRepository(active: defaultCampaign),
+        ),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(
           FakeContentDraftRepository(),

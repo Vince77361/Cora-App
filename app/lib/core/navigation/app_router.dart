@@ -7,6 +7,8 @@ import '../../features/auth/domain/auth_session.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/phone_verify_page.dart';
 import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
+import '../../features/brand_onboarding/presentation/pages/brand_profile_setup_page.dart';
+import '../../features/brand_onboarding/presentation/pages/campaign_form_page.dart';
 import '../../features/collaboration/presentation/pages/collaboration_page.dart';
 import '../../features/collaboration/presentation/pages/store_collaboration_page.dart';
 import '../../features/collaboration/presentation/pages/submit_link_page.dart';
@@ -110,11 +112,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             CoraTransitions.fade(const RoleSelectPage(), key: state.pageKey),
       ),
-      // 브랜드 홈은 아직 임시 화면이다. 가게와 크리에이터 화면은 아래 역할 경로들이다.
+      // 브랜드 흐름. 프로필이 없으면 프로필 만들기, 진행 중인 캠페인이 없으면 캠페인 만들기가 진입
+      // 경로다(`brandEntryPath`). 홈은 아직 임시 화면이고 발견(01)이 대신한다.
       GoRoute(
         path: AppRoutes.brand,
         pageBuilder: (context, state) =>
             _entryPage(state, const RoleHomePlaceholderPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.brandProfileSetup,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const BrandProfileSetupPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.brandCampaignNew,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const CampaignFormPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.brandCampaignEdit,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const CampaignFormPage(editing: true),
+          key: state.pageKey,
+        ),
       ),
       // 가게 사장님 흐름.
       GoRoute(

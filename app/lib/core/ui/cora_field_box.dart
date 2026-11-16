@@ -24,6 +24,7 @@ class CoraFieldBox extends StatefulWidget {
     this.textInputAction = TextInputAction.done,
     this.minLines,
     this.maxLines = 1,
+    this.hint,
   });
 
   final String label;
@@ -41,6 +42,9 @@ class CoraFieldBox extends StatefulWidget {
   /// 여러 줄 입력(이의 사유처럼 긴 글). 기본은 한 줄이다. [maxLines]를 null로 두면 줄 수에 제한이 없다.
   final int? minLines;
   final int? maxLines;
+
+  /// 비어 있을 때 보조 색으로 보이는 예시 글(예: `예: 느린 결, 일상의 주얼리`).
+  final String? hint;
 
   @override
   State<CoraFieldBox> createState() => _CoraFieldBoxState();
@@ -103,7 +107,12 @@ class _CoraFieldBoxState extends State<CoraFieldBox> {
                         : LengthLimitingTextInputFormatter(widget.maxLength)),
                     ...widget.inputFormatters,
                   ],
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
+                    hintText: widget.hint,
+                    hintStyle: CoraTextStyles.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w400,
+                      color: c.textSecondary,
+                    ),
                     isCollapsed: true,
                     isDense: true,
                     contentPadding: EdgeInsets.zero,

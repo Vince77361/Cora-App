@@ -93,6 +93,16 @@ abstract final class AppRoutes {
   static String storeComingSoon(String title) =>
       '/store/coming-soon/${Uri.encodeComponent(title)}';
 
+  // 브랜드 흐름
+  /// 브랜드 프로필 만들기. 프로필이 없는 브랜드의 진입 경로다.
+  static const brandProfileSetup = '/brand/profile/setup';
+
+  /// 캠페인 만들기. 프로필은 있고 진행 중인 캠페인이 없는 브랜드의 진입 경로다.
+  static const brandCampaignNew = '/brand/campaign/new';
+
+  /// 진행 중인 캠페인 고치기·마감.
+  static const brandCampaignEdit = '/brand/campaign/edit';
+
   // 크리에이터 흐름
   static const creatorProfileSetup = '/creator/profile/setup';
 

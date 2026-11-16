@@ -387,7 +387,7 @@ void main() {
     }
 
     testWidgets(
-      'the default resolver sends a store without a saved store to the links step and the brand home',
+      'the default resolver sends a store without a saved store to the links step',
       (tester) async {
         final container = ProviderContainer();
         addTearDown(container.dispose);
@@ -396,7 +396,6 @@ void main() {
           await defaultRoleEntryResolver(ref, UserRole.store),
           AppRoutes.storeOnboardingLinks,
         );
-        expect(await defaultRoleEntryResolver(ref, UserRole.brand), '/brand');
       },
     );
 
@@ -649,7 +648,7 @@ void main() {
       );
     });
 
-    testWidgets('every route of the store and creator flows is registered', (
+    testWidgets('every route of the store, creator and brand flows is registered', (
       tester,
     ) async {
       await pumpCoraApp(tester, auth: FakeAuthRepository());
@@ -672,6 +671,10 @@ void main() {
           '/creator',
           '/creator/stores/:id',
           '/creator/offers',
+          '/brand',
+          '/brand/profile/setup',
+          '/brand/campaign/new',
+          '/brand/campaign/edit',
         ]),
       );
     });

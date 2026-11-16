@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/brand_onboarding/domain/brand_entry.dart';
 import '../../features/creator_profile/domain/creator_entry.dart';
 import '../../features/onboarding/domain/user_role.dart';
 import '../../features/store_onboarding/presentation/viewmodels/store_entry_path.dart';
@@ -13,9 +14,10 @@ import 'app_routes.dart';
 ///   `/store/onboarding/page`(PAGE)·`/store/onboarding/drafts`(DRAFTS)·`/store/onboarding/terms`
 ///   (TERMS), 공개됐으면 `/store`.
 /// - 크리에이터: 프로필이 없으면 `/creator/profile/setup`, 있으면 `/creator`.
-/// - 브랜드: `/brand`.
+/// - 브랜드: 프로필이 없으면 `/brand/profile/setup`, 진행 중인 캠페인이 없으면 `/brand/campaign/new`,
+///   있으면 `/brand`(발견).
 ///
-/// 판단에 필요한 조회는 가게(`storeEntryPath`)·크리에이터(`creatorEntryPath`)가 각 기능의 provider로
+/// 판단에 필요한 조회는 가게(`storeEntryPath`)·크리에이터(`creatorEntryPath`)·브랜드(`brandEntryPath`)가 각 기능의 provider로
 /// 한다. 라우터는 이 함수가 던진 오류를 역할 선택 화면으로 보낸다.
 typedef RoleEntryResolver = Future<String> Function(Ref ref, UserRole role);
 
@@ -24,7 +26,7 @@ Future<String> defaultRoleEntryResolver(Ref ref, UserRole role) async =>
     switch (role) {
       UserRole.store => storeEntryPath(ref),
       UserRole.creator => creatorEntryPath(ref),
-      UserRole.brand => AppRoutes.brand,
+      UserRole.brand => brandEntryPath(ref),
     };
 
 final roleEntryResolverProvider = Provider<RoleEntryResolver>(
