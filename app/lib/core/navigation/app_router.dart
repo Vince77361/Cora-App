@@ -17,6 +17,10 @@ import '../../features/creator_profile/presentation/pages/creator_profile_setup_
 import '../../features/dev/presentation/pages/motion_gallery_page.dart';
 import '../../features/discovery/domain/discovery_card.dart';
 import '../../features/discovery/presentation/pages/brand_discovery_page.dart';
+import '../../features/interests/presentation/pages/compare_page.dart';
+import '../../features/interests/presentation/pages/interests_page.dart';
+import '../../features/interests/presentation/viewmodels/interests_view_model.dart'
+    show InterestTab;
 import '../../features/discovery/presentation/pages/creator_card_detail_page.dart';
 import '../../features/discovery/presentation/pages/preview_discovery_page.dart';
 import '../../features/notification_settings/presentation/pages/notification_settings_page.dart';
@@ -167,7 +171,40 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             _entryPage(state, const RoleHomePlaceholderPage(title: '프로필')),
       ),
-      // 03·05(관심)와 07(협업)은 10·11번 작업이 등록한다. 대화·프로필은 뒤 계획의 몫이다.
+      // 관심·보류(03)와 서로 관심(05, `?match=`로 시트를 연다). 하단 메뉴의 `관심` 탭이라 제자리에서 바뀐다.
+      GoRoute(
+        path: AppRoutes.brandInterests,
+        pageBuilder: (context, state) => _entryPage(
+          state,
+          InterestsPage(
+            isBrand: true,
+            initialTab: InterestTab.fromQuery(
+              state.uri.queryParameters[AppRoutes.tabParam],
+            ),
+            matchId: state.uri.queryParameters[AppRoutes.matchParam],
+          ),
+        ),
+      ),
+      // 후보 비교(04). 03에서 고른 두 크리에이터 `a`·`b`를 견준다.
+      GoRoute(
+        path: AppRoutes.brandComparePattern,
+        redirect: (context, state) {
+          final q = state.uri.queryParameters;
+          final a = q['a'];
+          final b = q['b'];
+          return a == null || a.isEmpty || b == null || b.isEmpty || a == b
+              ? AppRoutes.brandInterests
+              : null;
+        },
+        pageBuilder: (context, state) => CoraTransitions.push(
+          ComparePage(
+            a: state.uri.queryParameters['a']!,
+            b: state.uri.queryParameters['b']!,
+          ),
+          key: state.pageKey,
+        ),
+      ),
+      // 협업(07)은 11번 작업이, 대화·프로필은 뒤 계획이 만든다.
       GoRoute(
         path: '/brand/coming-soon/:title',
         pageBuilder: (context, state) => _entryPage(
@@ -394,6 +431,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pitch: state.extra is String ? state.extra! as String : '',
           ),
           key: state.pageKey,
+        ),
+      ),
+      // 크리에이터의 관심·보류(03)와 서로 관심(05). 하단 메뉴의 `관심` 탭이라 제자리에서 바뀐다.
+      GoRoute(
+        path: AppRoutes.creatorInterests,
+        pageBuilder: (context, state) => _entryPage(
+          state,
+          InterestsPage(
+            isBrand: false,
+            initialTab: InterestTab.fromQuery(
+              state.uri.queryParameters[AppRoutes.tabParam],
+            ),
+            matchId: state.uri.queryParameters[AppRoutes.matchParam],
+          ),
         ),
       ),
       // 하단 메뉴의 `협업` 탭이라 제자리에서 바뀐다. 가게 상세에서 `오퍼 보기`로 열 때만 밀려 들어온다.

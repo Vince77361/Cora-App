@@ -679,6 +679,9 @@ void main() {
           '/brand/campaign/edit',
           '/brand/creators/:id',
           '/brand/profile',
+          '/brand/interests',
+          '/brand/interests/compare',
+          '/creator/interests',
           '/brand/coming-soon/:title',
         ]),
       );

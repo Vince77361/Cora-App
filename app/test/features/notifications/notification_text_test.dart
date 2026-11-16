@@ -161,7 +161,8 @@ void main() {
     });
 
     test('returns null for kinds it does not know', () {
-      expect(locationFor('MATCH', 'x', UserRole.creator), isNull);
+      // MATCH는 4번 계획이 가는 곳을 정했다. 그 밖의 종류는 아직 화면이 없다.
+      expect(locationFor('TERMS', 'x', UserRole.creator), isNull);
       expect(locationFor('', null, UserRole.store), isNull);
     });
   });

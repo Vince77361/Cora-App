@@ -7,6 +7,7 @@ import 'package:cora/features/brand_onboarding/domain/brand_repository.dart';
 import 'package:cora/features/brand_onboarding/domain/campaign_repository.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/discovery/domain/discovery_repository.dart';
+import 'package:cora/features/interests/domain/interests_repository.dart';
 import 'package:cora/features/notification_settings/domain/notification_settings_repository.dart';
 import 'package:cora/features/notifications/domain/notification_repository.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
@@ -28,6 +29,7 @@ import '../features/brand_onboarding/fake_brand_repository.dart';
 import '../features/brand_onboarding/fake_campaign_repository.dart';
 import '../features/collaboration/fake_collaboration_repository.dart';
 import '../features/discovery/fake_discovery_repository.dart';
+import '../features/interests/fake_interests_repository.dart';
 import '../features/notification_settings/fake_notification_settings_repository.dart';
 import '../features/notifications/fake_notification_repository.dart';
 import '../features/onboarding/fake_me_repository.dart';
@@ -114,6 +116,11 @@ Widget coraAppWith(
       if (!_overrides(overrides, discoveryRepositoryProvider))
         discoveryRepositoryProvider.overrideWithValue(
           FakeDiscoveryRepository(),
+        ),
+      // 03 관심·보류가 저장한 후보를 읽는다. 기본은 저장한 후보가 없는 계정이다.
+      if (!_overrides(overrides, interestsRepositoryProvider))
+        interestsRepositoryProvider.overrideWithValue(
+          FakeInterestsRepository(),
         ),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(

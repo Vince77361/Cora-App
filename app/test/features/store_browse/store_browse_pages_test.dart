@@ -88,9 +88,20 @@ void main() {
       tester,
     ) async {
       await pumpCreatorApp(tester);
-      await tester.tap(find.text('관심'));
+      await tester.tap(find.text('대화'));
       await tester.pumpAndSettle();
       expect(find.text('준비 중이에요.'), findsOneWidget);
+    });
+
+    testWidgets('the interests menu item opens the interests screen', (
+      tester,
+    ) async {
+      await pumpCreatorApp(tester);
+      await tester.tap(find.text('관심'));
+      await tester.pumpAndSettle();
+      expect(currentPath(tester), AppRoutes.creatorInterests);
+      expect(find.text('관심·보류'), findsOneWidget);
+      expect(find.text('준비 중이에요.'), findsNothing);
     });
   });
 

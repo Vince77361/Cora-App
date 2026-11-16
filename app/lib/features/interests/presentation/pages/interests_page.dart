@@ -1,0 +1,457 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/navigation/app_routes.dart';
+import '../../../../core/theme/cora_colors.dart';
+import '../../../../core/theme/cora_text_styles.dart';
+import '../../../../core/ui/cora_bottom_nav.dart';
+import '../../../../core/ui/cora_logo.dart';
+import '../../../../core/ui/cora_pressable.dart';
+import '../../../../core/ui/cora_state_view.dart';
+import '../../../../core/ui/swipe_deck/swipe_physics.dart' show SwipeOutcome;
+import '../../../discovery/domain/discovery_card.dart' show CreatorCard;
+import '../../../discovery/presentation/discovery_text.dart';
+import '../../../discovery/presentation/widgets/brand_bottom_nav.dart';
+import '../../../discovery/presentation/widgets/discovery_toast.dart';
+import '../../../store_browse/presentation/widgets/creator_bottom_nav.dart';
+import '../../domain/interest_card.dart';
+import '../interests_text.dart';
+import '../viewmodels/interests_view_model.dart';
+import '../widgets/hold_sheet.dart';
+import '../widgets/interest_grid_card.dart';
+import '../widgets/interest_icons.dart';
+import '../widgets/interest_status_box.dart';
+import '../widgets/interest_tabs.dart';
+import 'match_sheet.dart';
+
+/// 03 관심·보류. 내가 저장한(관심 + 보류) 후보를 두 줄 격자로 보여 준다. 브랜드는 카드 오른쪽 위 동그라미로
+/// 비교할 후보를 두 장까지 고르고 아래 버튼으로 04를 연다. 크리에이터의 03은 같은 화면이고 비교가 없다.
+///
+/// [matchId]가 있으면(토스트의 `확인하기`, 알림의 서로 관심) 화면이 열린 뒤 그 협업의 05를 시트로 연다.
+class InterestsPage extends ConsumerStatefulWidget {
+  const InterestsPage({
+    super.key,
+    required this.isBrand,
+    this.initialTab = InterestTab.saved,
+    this.matchId,
+  });
+
+  final bool isBrand;
+  final InterestTab initialTab;
+  final String? matchId;
+
+  @override
+  ConsumerState<InterestsPage> createState() => _InterestsPageState();
+}
+
+class _InterestsPageState extends ConsumerState<InterestsPage> {
+  bool _deciding = false;
+
+  InterestsScope get _scope =>
+      (isBrand: widget.isBrand, tab: widget.initialTab);
+
+  InterestsViewModel get _vm =>
+      ref.read(interestsViewModelProvider(_scope).notifier);
+
+  @override
+  void initState() {
+    super.initState();
+    final id = widget.matchId;
+    if (id != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openMatch(id, closeOnDismiss: true);
+      });
+    }
+  }
+
+  /// 05를 시트로 연다. 링크로 열린 화면([closeOnDismiss])에서 시트를 그냥 닫으면(버튼으로 이동한 것이 아니면)
+  /// 발견으로 돌아간다.
+  Future<void> _openMatch(String id, {bool closeOnDismiss = false}) async {
+    try {
+      final info = await _vm.loadMatch(id);
+      if (!mounted) return;
+      final result = await showMatchSheet(context, info);
+      if (!mounted) return;
+      if (closeOnDismiss && result != MatchSheetResult.moved) {
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go(widget.isBrand ? AppRoutes.brand : AppRoutes.creator);
+        }
+      }
+    } catch (_) {
+      if (mounted) _vm.showNotice(DiscoveryTexts.retryLater);
+    }
+  }
+
+  Future<void> _openCard(InterestCard card) async {
+    if (card.state == InterestState.held) {
+      final outcome = await showHoldSheet(context);
+      if (outcome == null || !mounted) return;
+      await _decideHeld(card, outcome);
+      return;
+    }
+    if (!widget.isBrand) {
+      context.push(AppRoutes.creatorCampaign(card.id));
+      return;
+    }
+    final band = card.feeBand;
+    context.push(
+      AppRoutes.brandCreator(card.id),
+      // 상세는 카드를 받으면 오늘 목록을 뒤지지 않는다(이미 결정한 카드는 오늘 목록에 없다).
+      extra: band == null
+          ? null
+          : CreatorCard(
+              creatorId: card.id,
+              displayName: card.name,
+              headline: card.headline,
+              photoUrl: card.photoUrl,
+              feeBand: band,
+            ),
+    );
+  }
+
+  Future<void> _decideHeld(InterestCard card, SwipeOutcome outcome) async {
+    if (_deciding) return;
+    _deciding = true;
+    try {
+      final matchId = await _vm.decideHeld(
+        card,
+        outcome,
+        message: outcome == SwipeOutcome.like
+            ? DiscoveryTexts.likeToast
+            : (widget.isBrand
+                  ? DiscoveryTexts.passToast
+                  : InterestsTexts.passedForCreator),
+      );
+      if (matchId != null && mounted) await _openMatch(matchId);
+    } catch (_) {
+      if (mounted) _vm.showNotice(DiscoveryTexts.retryLater);
+    } finally {
+      _deciding = false;
+    }
+  }
+
+  void _compare(InterestsState state) {
+    if (!state.canCompare) return;
+    final [a, b] = state.selected;
+    context.push(AppRoutes.brandCompare(a, b));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(interestsViewModelProvider(_scope));
+    final state = async.value;
+    final c = context.colors;
+
+    final Widget body;
+    if (state == null) {
+      body = Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: async.hasError
+            ? CoraStateView.loadFailed(
+                title: InterestsTexts.loadFailedTitle,
+                onRetry: _vm.reload,
+              )
+            : const CoraStateView.loading(),
+      );
+    } else if (state.visible.isEmpty) {
+      body = const Padding(
+        padding: EdgeInsets.only(top: 16),
+        child: CoraStateView.empty(
+          title: InterestsTexts.emptyTitle,
+          description: InterestsTexts.emptyBody,
+        ),
+      );
+    } else {
+      body = _List(
+        state: state,
+        isBrand: widget.isBrand,
+        onTapCard: _openCard,
+        onTogglePick: (card) => _vm.togglePick(card),
+        onOpenTerms: (card) {
+          final id = card.collaborationId;
+          if (id != null) context.push(AppRoutes.collaborationTerms(id));
+        },
+      );
+    }
+
+    final notice = state?.notice;
+    return Scaffold(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _Header(isBrand: widget.isBrand),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: 4,
+                      children: [
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            InterestsTexts.title,
+                            style: CoraTextStyles.title.copyWith(
+                              letterSpacing: -0.78,
+                              height: 1.448,
+                              color: c.text,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          widget.isBrand
+                              ? InterestsTexts.brandDescription
+                              : InterestsTexts.creatorDescription,
+                          style: CoraTextStyles.meta.copyWith(
+                            color: c.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (state != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                      child: InterestTabs(
+                        labels: [
+                          InterestsTexts.tabSaved(
+                            state.count(InterestTab.saved),
+                          ),
+                          InterestsTexts.tabMutual(
+                            state.count(InterestTab.mutual),
+                          ),
+                          InterestsTexts.tabSent(state.count(InterestTab.sent)),
+                          InterestsTexts.tabHeld(state.count(InterestTab.held)),
+                        ],
+                        selected: InterestTab.values.indexOf(state.tab),
+                        onChanged: (i) => _vm.selectTab(InterestTab.values[i]),
+                      ),
+                    ),
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        Positioned.fill(child: body),
+                        if (notice != null)
+                          Positioned(
+                            top: 12,
+                            left: 22,
+                            right: 22,
+                            child: DiscoveryToastBanner(
+                              key: ValueKey(notice.serial),
+                              message: notice.message,
+                              onDismiss: () => _vm.dismissNotice(notice.serial),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (widget.isBrand && state != null && state.visible.isNotEmpty)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 100,
+              child: _CompareButton(
+                count: state.selected.length,
+                enabled: state.canCompare,
+                onTap: () => _compare(state),
+              ),
+            ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: widget.isBrand
+                ? const BrandBottomNav(currentIndex: CoraCreatorNavItems.likes)
+                : const CreatorBottomNav(
+                    currentIndex: CoraCreatorNavItems.likes,
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 머리(캔버스 Likes): 안쪽 위 14·아래 10·좌우 16. 왼쪽 로고, 오른쪽 관점 알약(`surface` 바탕, 12/500).
+class _Header extends StatelessWidget {
+  const _Header({required this.isBrand});
+
+  final bool isBrand;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const CoraLogo(size: 26),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Text(
+                isBrand ? InterestsTexts.brandPill : InterestsTexts.creatorPill,
+                style: CoraTextStyles.caption.copyWith(color: c.text),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 카드 격자(두 줄, 사이 10, 좌우 16)와 그 아래 상자.
+class _List extends StatelessWidget {
+  const _List({
+    required this.state,
+    required this.isBrand,
+    required this.onTapCard,
+    required this.onTogglePick,
+    required this.onOpenTerms,
+  });
+
+  final InterestsState state;
+  final bool isBrand;
+  final void Function(InterestCard card) onTapCard;
+  final void Function(InterestCard card) onTogglePick;
+  final void Function(InterestCard card) onOpenTerms;
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = state.visible;
+    final mutual = [
+      for (final c in cards)
+        if (c.state == InterestState.mutual) c,
+    ];
+    final waiting = [
+      for (final c in cards)
+        if (c.state == InterestState.waiting) c,
+    ];
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              mainAxisExtent: InterestGridCard.height,
+            ),
+            delegate: SliverChildBuilderDelegate(childCount: cards.length, (
+              context,
+              i,
+            ) {
+              final card = cards[i];
+              return InterestGridCard(
+                key: ValueKey(card.id),
+                card: card,
+                picked: state.selected.contains(card.id),
+                onTap: () => onTapCard(card),
+                onTogglePick: isBrand ? () => onTogglePick(card) : null,
+              );
+            }),
+          ),
+        ),
+        if (mutual.isNotEmpty || waiting.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: InterestStatusBox(
+                mutual: mutual,
+                waiting: waiting,
+                onOpenTerms: onOpenTerms,
+              ),
+            ),
+          ),
+        // 떠 있는 비교 버튼(아래 100 + 54)과 그 위 안내 줄, 하단 메뉴 밑으로 내용이 밀리지 않게.
+        SliverToBoxAdapter(child: SizedBox(height: isBrand ? 220 : 120)),
+      ],
+    );
+  }
+}
+
+/// 아래 `선택한 {n}명 비교하기`: 높이 54, 알약, 라임 바탕에 16/700, 앞에 두 칸 아이콘. 두 장을 골랐을 때만
+/// 켜지고, 아니면 꺼지며 위에 `비교할 후보 2명을 골라 주세요.`가 보인다.
+class _CompareButton extends StatelessWidget {
+  const _CompareButton({
+    required this.count,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final int count;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final label = InterestsTexts.compareButton(count);
+    final foreground = enabled ? c.onAccent : c.textSecondary;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 8,
+      children: [
+        if (!enabled)
+          Text(
+            InterestsTexts.compareNeedTwo,
+            textAlign: TextAlign.center,
+            style: CoraTextStyles.caption.copyWith(color: c.textSecondary),
+          ),
+        Semantics(
+          container: true,
+          button: true,
+          enabled: enabled,
+          label: label,
+          onTap: enabled ? onTap : null,
+          child: ExcludeSemantics(
+            child: CoraPressable(
+              onTap: enabled ? onTap : null,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: enabled ? c.accent : c.surface,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: SizedBox(
+                  height: 54,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    spacing: 8,
+                    children: [
+                      InterestIcon(ComparePainter(foreground), size: 18),
+                      Text(
+                        label,
+                        style: CoraTextStyles.button.copyWith(
+                          color: foreground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -114,16 +114,43 @@ abstract final class AppRoutes {
   /// [brandCreator]의 라우트 패턴.
   static const brandCreatorPattern = '/brand/creators/:id';
 
-  /// 관심·보류 목록(03). 10번 작업이 화면을 등록한다. 그 전에는 등록된 화면이 없다.
+  /// 관심·보류 목록(03).
   static const brandInterests = '/brand/interests';
 
   /// 03의 저장 탭. 01의 `저장한 후보 보기`가 연다.
   static const brandSaved = '$brandInterests?tab=saved';
 
   /// 서로 관심 확인(05). 03 화면이 시트로 여는 것이라 `match` 쿼리로 협업 [collaborationId]를 알린다
-  /// (알림 가는 곳 `MATCH`와 같은 모양이다). 10번 작업이 등록한다.
+  /// (알림 가는 곳 `MATCH`와 같은 모양이다).
   static String brandMatch(String collaborationId) =>
-      '$brandInterests?match=${Uri.encodeQueryComponent(collaborationId)}';
+      '$brandInterests?$matchParam=${Uri.encodeQueryComponent(collaborationId)}';
+
+  /// 03이 읽는 쿼리 이름. `tab`은 처음 고를 탭(`saved`, `mutual`, `sent`, `held`), `match`는 시트로 열 협업.
+  static const tabParam = 'tab';
+  static const matchParam = 'match';
+
+  /// 후보 비교(04). 03에서 고른 두 크리에이터 [a]·[b]를 견준다.
+  static String brandCompare(String a, String b) =>
+      '$brandInterests/compare?a=${Uri.encodeQueryComponent(a)}&b=${Uri.encodeQueryComponent(b)}';
+
+  /// [brandCompare]의 라우트 패턴(쿼리는 패턴에 쓰지 않는다).
+  static const brandComparePattern = '$brandInterests/compare';
+
+  /// 크리에이터의 관심·보류 목록(03, 크리에이터 쪽).
+  static const creatorInterests = '/creator/interests';
+
+  /// 크리에이터 쪽 서로 관심 확인(05).
+  static String creatorMatch(String collaborationId) =>
+      '$creatorInterests?$matchParam=${Uri.encodeQueryComponent(collaborationId)}';
+
+  /// 조건 협의(06). 가게와 브랜드 모두 협업 [collaborationId]의 최신 조건 판본을 여기서 본다.
+  /// 11번 작업이 등록한다.
+  static String collaborationTerms(String collaborationId) =>
+      '/collaborations/${Uri.encodeComponent(collaborationId)}/terms';
+
+  /// 캠페인 상세(D1). 크리에이터의 03 카드를 누르면 열린다. 11번 작업이 등록한다.
+  static String creatorCampaign(String campaignId) =>
+      '/creator/campaigns/${Uri.encodeComponent(campaignId)}';
 
   /// 브랜드의 협업(07). 11번 작업이 등록한다.
   static const brandCollaborations = '/brand/collaborations';

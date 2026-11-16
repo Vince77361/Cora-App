@@ -365,4 +365,37 @@ void main() {
     expect(changed.swipeProgressOn, const Color(0xFF123456));
     expect(changed.toastShadow, const Color(0xFF333333));
   });
+
+  test(
+    '03, 04 and 05 tokens match Likes, Compare, Match and their dark twins',
+    () {
+      // 03 카드 표지와 글자 바탕: 라이트·다크가 같다.
+      for (final c in [CoraColors.light, CoraColors.dark]) {
+        expect(c.interestChipMutual, const Color(0xFF5C7A00));
+        expect(c.interestChipWait, const Color(0xB8111418));
+        expect(c.interestCardScrim, const Color(0xEB111418));
+        // 04의 점(#17181C)과 05의 사진 고리(#FFFFFF)도 DarkCompare·DarkMatch가 바꾸지 않았다.
+        expect(c.compareDot, const Color(0xFF17181C));
+        expect(c.matchRing, const Color(0xFFFFFFFF));
+      }
+
+      final mixed = CoraColors.light.lerp(CoraColors.dark, 1);
+      expect(mixed.interestPickIdle, CoraColors.dark.interestPickIdle);
+      final changed = CoraColors.light.copyWith(
+        interestChipMutual: const Color(0xFF010101),
+        interestChipWait: const Color(0xFF020202),
+        interestCardScrim: const Color(0xFF030303),
+        interestPickIdle: const Color(0xFF040404),
+        compareDot: const Color(0xFF050505),
+        matchRing: const Color(0xFF060606),
+      );
+      expect(changed.interestChipMutual, const Color(0xFF010101));
+      expect(changed.interestChipWait, const Color(0xFF020202));
+      expect(changed.interestCardScrim, const Color(0xFF030303));
+      expect(changed.interestPickIdle, const Color(0xFF040404));
+      expect(changed.compareDot, const Color(0xFF050505));
+      expect(changed.matchRing, const Color(0xFF060606));
+      expect(changed.text, CoraColors.light.text);
+    },
+  );
 }

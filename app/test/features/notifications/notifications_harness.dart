@@ -49,12 +49,16 @@ Future<void> pumpCreatorNotifications(
   required FakeNotificationRepository repo,
   FakeClock? clock,
   bool smallPhoneLargeText = false,
+  List<Override> overrides = const [],
 }) async {
   await pumpCreatorApp(
     tester,
     clock: clock,
     smallPhoneLargeText: smallPhoneLargeText,
-    overrides: [notificationRepositoryProvider.overrideWithValue(repo)],
+    overrides: [
+      notificationRepositoryProvider.overrideWithValue(repo),
+      ...overrides,
+    ],
   );
   routerOf(tester).push(NotificationRoutes.notifications);
   await tester.pumpAndSettle();

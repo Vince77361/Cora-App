@@ -1,5 +1,7 @@
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_colors.dart';
+import 'package:cora/features/interests/domain/interest_card.dart';
+import 'package:cora/features/interests/domain/interests_repository.dart';
 import 'package:cora/features/notifications/domain/app_notification.dart';
 import 'package:cora/features/notifications/presentation/widgets/notification_bell.dart';
 import 'package:cora/features/payment/domain/payment_repository.dart';
@@ -21,6 +23,7 @@ import '../payment/fake_payment_repository.dart';
 import '../payment/payment_harness.dart';
 import '../proposals/fake_proposal_repository.dart';
 import '../store_result/fake_store_result_repository.dart';
+import '../interests/fake_interests_repository.dart';
 import 'fake_notification_repository.dart';
 import 'notifications_harness.dart';
 
@@ -196,6 +199,46 @@ void main() {
     );
     expect(locationFor('PROPOSAL', null, UserRole.store), isNull);
     expect(locationFor('PROPOSAL', 'p-7', UserRole.brand), isNull);
+  });
+
+  test(
+    'a mutual interest notification goes to the match sheet of each role',
+    () {
+      expect(
+        locationFor('MATCH', 'col-1', UserRole.brand),
+        '/brand/interests?match=col-1',
+      );
+      expect(
+        locationFor('MATCH', 'col-1', UserRole.creator),
+        '/creator/interests?match=col-1',
+      );
+      expect(locationFor('MATCH', null, UserRole.brand), isNull);
+      expect(locationFor('MATCH', 'col-1', UserRole.store), isNull);
+    },
+  );
+
+  testWidgets('a mutual interest notification opens the match sheet', (
+    tester,
+  ) async {
+    final repo = FakeNotificationRepository(
+      items: [_note('match', targetId: 'collab-k1')],
+    );
+    final interests = FakeInterestsRepository(
+      cards: [campaignCard('k1', name: '모아 스튜디오', state: InterestState.mutual)],
+      match: matchInfo(isBrand: false, collaborationId: 'collab-k1'),
+    );
+    await pumpCreatorNotifications(
+      tester,
+      repo: repo,
+      overrides: [interestsRepositoryProvider.overrideWithValue(interests)],
+    );
+
+    await tester.tap(find.text('match 문구'));
+    await tester.pumpAndSettle();
+
+    expect(topPath(tester), '/creator/interests');
+    expect(interests.matchesFetched, ['collab-k1']);
+    expect(find.text('서로를 골랐어요.'), findsOneWidget);
   });
 
   test('a settlement notification goes to the store seven day result', () {

@@ -74,6 +74,12 @@ class CoraColors extends ThemeExtension<CoraColors> {
     this.toastSurface = const Color(0xFFFFFFFF),
     this.onToast = const Color(0xFF17181C),
     this.toastShadow = const Color(0x2917181C),
+    this.interestChipMutual = const Color(0xFF5C7A00),
+    this.interestChipWait = const Color(0xB8111418),
+    this.interestCardScrim = const Color(0xEB111418),
+    this.interestPickIdle = const Color(0x40111418),
+    this.compareDot = const Color(0xFF17181C),
+    this.matchRing = const Color(0xFFFFFFFF),
   });
 
   final Color background;
@@ -221,6 +227,21 @@ class CoraColors extends ThemeExtension<CoraColors> {
   final Color toastSurface;
   final Color onToast;
   final Color toastShadow;
+
+  /// 03 관심·보류 카드 위의 표지와 글자 바탕(Likes). 라이트·다크가 같다. `서로 관심` 표지는 #5C7A00,
+  /// `응답 대기`·`보류` 표지는 rgba(17,20,24,0.72), 카드 아래 글자를 받치는 그라데이션의 끝은
+  /// rgba(17,20,24,0.92)다. 고르지 않은 비교 동그라미의 채움(캔버스에 없는 모양)은 rgba(17,20,24,0.25)다.
+  final Color interestChipMutual;
+  final Color interestChipWait;
+  final Color interestCardScrim;
+  final Color interestPickIdle;
+
+  /// 04 비교 표에서 조건이 다른 줄 이름 앞의 점(Compare #17181C, DarkCompare도 #17181C). 다크에서는
+  /// 바탕(#0F1012)과 거의 같아 잘 보이지 않지만 캔버스 그대로다(값이 굵어지는 것이 함께 표시한다).
+  final Color compareDot;
+
+  /// 05 서로 관심의 사진과 가운데 하트를 두른 4px 고리(Match #FFFFFF, DarkMatch도 #FFFFFF).
+  final Color matchRing;
 
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
@@ -444,6 +465,12 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? toastSurface,
     Color? onToast,
     Color? toastShadow,
+    Color? interestChipMutual,
+    Color? interestChipWait,
+    Color? interestCardScrim,
+    Color? interestPickIdle,
+    Color? compareDot,
+    Color? matchRing,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -517,6 +544,12 @@ class CoraColors extends ThemeExtension<CoraColors> {
       toastSurface: toastSurface ?? this.toastSurface,
       onToast: onToast ?? this.onToast,
       toastShadow: toastShadow ?? this.toastShadow,
+      interestChipMutual: interestChipMutual ?? this.interestChipMutual,
+      interestChipWait: interestChipWait ?? this.interestChipWait,
+      interestCardScrim: interestCardScrim ?? this.interestCardScrim,
+      interestPickIdle: interestPickIdle ?? this.interestPickIdle,
+      compareDot: compareDot ?? this.compareDot,
+      matchRing: matchRing ?? this.matchRing,
     );
   }
 
@@ -598,6 +631,12 @@ class CoraColors extends ThemeExtension<CoraColors> {
       toastSurface: mix(toastSurface, other.toastSurface),
       onToast: mix(onToast, other.onToast),
       toastShadow: mix(toastShadow, other.toastShadow),
+      interestChipMutual: mix(interestChipMutual, other.interestChipMutual),
+      interestChipWait: mix(interestChipWait, other.interestChipWait),
+      interestCardScrim: mix(interestCardScrim, other.interestCardScrim),
+      interestPickIdle: mix(interestPickIdle, other.interestPickIdle),
+      compareDot: mix(compareDot, other.compareDot),
+      matchRing: mix(matchRing, other.matchRing),
     );
   }
 }

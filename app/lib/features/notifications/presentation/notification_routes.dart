@@ -64,6 +64,14 @@ String? locationFor(String targetKind, String? targetId, UserRole role) {
         UserRole.creator => AppRoutes.creatorProposal(id),
         UserRole.brand => null,
       };
+    case 'MATCH':
+      // 서로 관심이 닿았다. 서버는 협업 id를 주고, 관심 목록이 그 협업의 05를 시트로 연다.
+      if (id == null) return null;
+      return switch (role) {
+        UserRole.brand => AppRoutes.brandMatch(id),
+        UserRole.creator => AppRoutes.creatorMatch(id),
+        UserRole.store => null,
+      };
     case 'WALLET':
       return role == UserRole.creator ? NotificationRoutes.wallet : null;
   }
