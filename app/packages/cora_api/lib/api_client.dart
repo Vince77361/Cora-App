@@ -230,6 +230,8 @@ class ApiClient {
           return BrandProfileModel.fromJson(value);
         case 'BrandProposalDto':
           return BrandProposalDto.fromJson(value);
+        case 'BrandUsageRights':
+          return BrandUsageRightsTypeTransformer().decode(value);
         case 'CampaignListCardKind':
           return CampaignListCardKindTypeTransformer().decode(value);
         case 'CampaignListCardModel':
@@ -430,6 +432,8 @@ class ApiClient {
           return RecommendedApplicantModel.fromJson(value);
         case 'RecommendedApplicantsModel':
           return RecommendedApplicantsModel.fromJson(value);
+        case 'RevisionScope':
+          return RevisionScopeTypeTransformer().decode(value);
         case 'RewardConfigModel':
           return RewardConfigModel.fromJson(value);
         case 'RewardInputDto':
@@ -478,6 +482,14 @@ class ApiClient {
           return SwipeDecisionKindTypeTransformer().decode(value);
         case 'SwipeTargetKind':
           return SwipeTargetKindTypeTransformer().decode(value);
+        case 'TermsLatestModel':
+          return TermsLatestModel.fromJson(value);
+        case 'TermsPerformanceModel':
+          return TermsPerformanceModel.fromJson(value);
+        case 'TermsProposer':
+          return TermsProposerTypeTransformer().decode(value);
+        case 'TermsVersionModel':
+          return TermsVersionModel.fromJson(value);
         case 'TrialBanner':
           return TrialBannerTypeTransformer().decode(value);
         case 'TrialComparisonModel':

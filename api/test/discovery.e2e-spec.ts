@@ -577,6 +577,53 @@ describe('discovery decisions', () => {
       expect(rows.every((r) => r.decision === 'LIKE')).toBe(true);
     });
 
+    it('promotes an inquiry collaboration to MATCHED instead of creating a second one', async () => {
+      const campaignId = await bothSides();
+      const inquiry = await prisma.collaboration.create({
+        data: {
+          kind: 'BRAND_CONTRACT',
+          stage: 'INQUIRY',
+          commissionerId: USER_A,
+          creatorId: OTHER,
+          campaignId,
+          terms: {},
+          settlementMethod: 'FIXED',
+        },
+      });
+      await creatorLike(campaignId).expect(200);
+      const result = resultOf(await brandLike().expect(200));
+      expect(result).toMatchObject({
+        matched: true,
+        collaborationId: inquiry.id,
+      });
+      const rows = await prisma.collaboration.findMany();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].stage).toBe('MATCHED');
+      expect(await prisma.termsVersion.count()).toBe(1);
+    });
+
+    it('refuses a match when the pair already has a collaboration past the inquiry and keeps the like out', async () => {
+      const campaignId = await bothSides();
+      await prisma.collaboration.create({
+        data: {
+          kind: 'BRAND_CONTRACT',
+          stage: 'DROPPED',
+          commissionerId: USER_A,
+          creatorId: OTHER,
+          campaignId,
+          terms: {},
+          settlementMethod: 'FIXED',
+        },
+      });
+      await creatorLike(campaignId).expect(200);
+      const res = await brandLike().expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect(await prisma.match.count()).toBe(0);
+      // 브랜드의 관심은 같은 트랜잭션이라 남지 않는다.
+      const rows = await decisionRows();
+      expect(rows.map((r) => r.actorId)).toEqual([OTHER]);
+    });
+
     it('shows the brand collaboration to both parties with kind and no terms copy', async () => {
       const campaignId = await bothSides();
       await creatorLike(campaignId).expect(200);

@@ -22,7 +22,9 @@ export type NotificationTarget = {
     // 조회 자료 확인(F4, id = 협업 id). 집계가 끝난 알림이 간다.
     | 'VIEW_REPORT'
     // 서로 관심(id = 협업 id). 앱이 05 시트를 연다.
-    | 'MATCH';
+    | 'MATCH'
+    // 조건 판본 화면(id = 협업 id). 조건을 확인하거나 제안했다는 알림이 간다.
+    | 'TERMS';
   id: string | null;
 };
 
@@ -320,6 +322,16 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     needsActor: true,
     render: ({ actorName }) =>
       `${josa(actorName ?? OTHER_FALLBACK, '과/와')} 서로 관심이 닿았어요.`,
+  },
+  // 표 "조건 확인": 협업 / 끌 수 없음 / 사진. 캔버스 E3 문구. 숫자 뒤 조사는 마지막 자리의 한글 읽기로 정한다("1을", "2를").
+  TERMS_CONFIRMED: {
+    tab: 'COLLABORATION',
+    switch: 'ESSENTIAL',
+    glyph: null,
+    requiredParams: { version: 'number' },
+    needsActor: true,
+    render: ({ actorName, params }) =>
+      `${josa(actorName ?? OTHER_FALLBACK, '이/가')} 조건 버전 ${josa(String(params.version ?? 1), '을/를')} 확인했어요.`,
   },
 };
 

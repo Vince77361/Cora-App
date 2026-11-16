@@ -145,6 +145,11 @@ export class CampaignsService {
     return row;
   }
 
+  // 마감한 캠페인도 읽는다(이미 이어진 협업의 조건 화면이 캠페인을 본다). 없으면 null.
+  async getById(id: string): Promise<Campaign | null> {
+    return UUID.test(id) ? this.campaigns.findById(id) : null;
+  }
+
   // 진행 중인 캠페인만 찾는다. 마감했거나 없으면 null.
   async findActiveById(id: string): Promise<Campaign | null> {
     return UUID.test(id) ? this.campaigns.findActiveById(id) : null;

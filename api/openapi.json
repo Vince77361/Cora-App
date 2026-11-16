@@ -241,6 +241,14 @@
         ],
         "type": "object"
       },
+      "BrandUsageRights": {
+        "enum": [
+          "REPOST_ONLY",
+          "ADS_TOO",
+          "NONE"
+        ],
+        "type": "string"
+      },
       "CampaignListCardKind": {
         "enum": [
           "CAMPAIGN",
@@ -3042,6 +3050,15 @@
         ],
         "type": "object"
       },
+      "RevisionScope": {
+        "enum": [
+          "NONE",
+          "GUIDE_1",
+          "DRAFT_1",
+          "DRAFT_2"
+        ],
+        "type": "string"
+      },
       "RewardConfigModel": {
         "properties": {
           "countingDays": {
@@ -3738,6 +3755,189 @@
           "STORE"
         ],
         "type": "string"
+      },
+      "TermsLatestModel": {
+        "properties": {
+          "followers": {
+            "description": "크리에이터가 연동한 인스타그램의 팔로워 수. 연동이 없으면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "mine": {
+            "description": "최신 판본을 내가 냈다.",
+            "type": "boolean"
+          },
+          "myTurn": {
+            "description": "최신 판본을 내가 아직 확인하지 않았다.",
+            "type": "boolean"
+          },
+          "needsInstagram": {
+            "description": "내가 크리에이터이고, 성과 추가가 켜져 있고, 형식이 릴스나 카드뉴스이고, 인스타그램이 연동돼 있지 않다.",
+            "type": "boolean"
+          },
+          "notice": {
+            "description": "크리에이터의 협업 원칙에서 만든 안내 줄. 해당하는 것이 없으면 null.",
+            "nullable": true,
+            "type": "string"
+          },
+          "reasons": {
+            "description": "크리에이터의 협업 원칙과 캠페인이 겹치는 규칙.",
+            "items": {
+              "$ref": "#/components/schemas/MatchReason"
+            },
+            "type": "array"
+          },
+          "terms": {
+            "$ref": "#/components/schemas/TermsVersionModel"
+          },
+          "trialDays": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProductTrialDays"
+              }
+            ],
+            "description": "캠페인의 제품 사용 기간."
+          }
+        },
+        "required": [
+          "terms",
+          "notice",
+          "reasons",
+          "trialDays",
+          "followers",
+          "myTurn",
+          "mine",
+          "needsInstagram"
+        ],
+        "type": "object"
+      },
+      "TermsPerformanceModel": {
+        "properties": {
+          "cap": {
+            "description": "조회수 수당 상한(원).",
+            "type": "integer"
+          },
+          "ratePer1000": {
+            "description": "조회수 단가(1,000회당 원).",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ratePer1000",
+          "cap"
+        ],
+        "type": "object"
+      },
+      "TermsProposer": {
+        "description": "SYSTEM은 서로 관심이 닿을 때 서버가 만든 버전 1이다.",
+        "enum": [
+          "BRAND",
+          "CREATOR",
+          "SYSTEM"
+        ],
+        "type": "string"
+      },
+      "TermsVersionModel": {
+        "properties": {
+          "brandConfirmed": {
+            "description": "브랜드가 이 판본을 확인했다.",
+            "type": "boolean"
+          },
+          "creatorConfirmed": {
+            "description": "크리에이터가 이 판본을 확인했다.",
+            "type": "boolean"
+          },
+          "fee": {
+            "description": "제작비(원, 현금 고정비).",
+            "type": "integer"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "maxCash": {
+            "description": "최대 현금 부담 = 제작비 + 성과 추가 상한(없으면 0).",
+            "type": "integer"
+          },
+          "payoutDays": {
+            "description": "게시 뒤 지급까지 걸리는 날(7 또는 14).",
+            "type": "integer"
+          },
+          "performance": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TermsPerformanceModel"
+              }
+            ],
+            "description": "성과 추가(조회수 수당). 없으면 null.",
+            "nullable": true,
+            "type": "object"
+          },
+          "pieces": {
+            "description": "편 수(1~3).",
+            "type": "integer"
+          },
+          "productProvided": {
+            "description": "제품 제공 여부.",
+            "type": "boolean"
+          },
+          "proposedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TermsProposer"
+              }
+            ],
+            "description": "SYSTEM은 서로 관심이 닿을 때 서버가 만든 버전 1이다."
+          },
+          "revisionScope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RevisionScope"
+              }
+            ]
+          },
+          "startDate": {
+            "description": "제작 시작.",
+            "format": "date",
+            "type": "string"
+          },
+          "title": {
+            "description": "콘텐츠 제목(40자까지).",
+            "type": "string"
+          },
+          "usageRights": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BrandUsageRights"
+              }
+            ]
+          },
+          "version": {
+            "description": "판본 번호(1부터).",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "proposedBy",
+          "title",
+          "fee",
+          "performance",
+          "maxCash",
+          "startDate",
+          "format",
+          "pieces",
+          "productProvided",
+          "revisionScope",
+          "usageRights",
+          "payoutDays",
+          "brandConfirmed",
+          "creatorConfirmed"
+        ],
+        "type": "object"
       },
       "TrialBanner": {
         "description": "COMPARE: 종료일이 30일 안이라 비교를 보여 준다. HINT: 계약 정보를 넣으면 비교해 준다는 안내를 한 번 보여 준다.",
@@ -5225,6 +5425,86 @@
         "summary": "",
         "tags": [
           "Submissions"
+        ]
+      }
+    },
+    "/collaborations/{id}/terms/latest": {
+      "get": {
+        "operationId": "getLatestTerms",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermsLatestModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "브랜드 계약의 가장 최근 조건 판본(당사자만).",
+        "tags": [
+          "Terms"
+        ]
+      }
+    },
+    "/collaborations/{id}/terms/{version}/confirm": {
+      "post": {
+        "operationId": "confirmTerms",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermsVersionModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "이 판본 수락. 최신이 아니면 409 STALE_VERSION(본문에 latestVersion), 성과 추가가 있는데 인스타그램 연동이 없으면 크리에이터는 409.",
+        "tags": [
+          "Terms"
         ]
       }
     },

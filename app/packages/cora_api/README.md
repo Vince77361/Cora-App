@@ -137,6 +137,8 @@ Class | Method | HTTP request | Description
 *StoresApi* | [**snoozeMyStoreTrialCompare**](doc//StoresApi.md#snoozemystoretrialcompare) | **POST** /stores/me/trial-info/snooze | 
 *StoresApi* | [**updateMyStore**](doc//StoresApi.md#updatemystore) | **PATCH** /stores/me | 
 *SubmissionsApi* | [**submitContentLink**](doc//SubmissionsApi.md#submitcontentlink) | **POST** /collaborations/{id}/submission | 
+*TermsApi* | [**confirmTerms**](doc//TermsApi.md#confirmterms) | **POST** /collaborations/{id}/terms/{version}/confirm | 이 판본 수락. 최신이 아니면 409 STALE_VERSION(본문에 latestVersion), 성과 추가가 있는데 인스타그램 연동이 없으면 크리에이터는 409.
+*TermsApi* | [**getLatestTerms**](doc//TermsApi.md#getlatestterms) | **GET** /collaborations/{id}/terms/latest | 브랜드 계약의 가장 최근 조건 판본(당사자만).
 *UploadsApi* | [**createPhotoUpload**](doc//UploadsApi.md#createphotoupload) | **POST** /uploads/photos | 
 *UsersApi* | [**getMe**](doc//UsersApi.md#getme) | **GET** /me | 
 *UsersApi* | [**updateMyRole**](doc//UsersApi.md#updatemyrole) | **PATCH** /me/role | 
@@ -162,6 +164,7 @@ Class | Method | HTTP request | Description
  - [BankModel](doc//BankModel.md)
  - [BrandProfileModel](doc//BrandProfileModel.md)
  - [BrandProposalDto](doc//BrandProposalDto.md)
+ - [BrandUsageRights](doc//BrandUsageRights.md)
  - [CampaignListCardKind](doc//CampaignListCardKind.md)
  - [CampaignListCardModel](doc//CampaignListCardModel.md)
  - [CampaignModel](doc//CampaignModel.md)
@@ -262,6 +265,7 @@ Class | Method | HTTP request | Description
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)
  - [RecommendedApplicantModel](doc//RecommendedApplicantModel.md)
  - [RecommendedApplicantsModel](doc//RecommendedApplicantsModel.md)
+ - [RevisionScope](doc//RevisionScope.md)
  - [RewardConfigModel](doc//RewardConfigModel.md)
  - [RewardInputDto](doc//RewardInputDto.md)
  - [RewardRangeModel](doc//RewardRangeModel.md)
@@ -286,6 +290,10 @@ Class | Method | HTTP request | Description
  - [SubmitViewEvidenceDto](doc//SubmitViewEvidenceDto.md)
  - [SwipeDecisionKind](doc//SwipeDecisionKind.md)
  - [SwipeTargetKind](doc//SwipeTargetKind.md)
+ - [TermsLatestModel](doc//TermsLatestModel.md)
+ - [TermsPerformanceModel](doc//TermsPerformanceModel.md)
+ - [TermsProposer](doc//TermsProposer.md)
+ - [TermsVersionModel](doc//TermsVersionModel.md)
  - [TrialBanner](doc//TrialBanner.md)
  - [TrialComparisonModel](doc//TrialComparisonModel.md)
  - [TrialInfoDto](doc//TrialInfoDto.md)

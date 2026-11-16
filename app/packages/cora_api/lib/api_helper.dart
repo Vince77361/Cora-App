@@ -71,6 +71,9 @@ String parameterToString(dynamic value) {
   if (value is ApplicationStatus) {
     return ApplicationStatusTypeTransformer().encode(value).toString();
   }
+  if (value is BrandUsageRights) {
+    return BrandUsageRightsTypeTransformer().encode(value).toString();
+  }
   if (value is CampaignListCardKind) {
     return CampaignListCardKindTypeTransformer().encode(value).toString();
   }
@@ -175,6 +178,9 @@ String parameterToString(dynamic value) {
   if (value is ReceivedOfferTab) {
     return ReceivedOfferTabTypeTransformer().encode(value).toString();
   }
+  if (value is RevisionScope) {
+    return RevisionScopeTypeTransformer().encode(value).toString();
+  }
   if (value is SettlementMethod) {
     return SettlementMethodTypeTransformer().encode(value).toString();
   }
@@ -192,6 +198,9 @@ String parameterToString(dynamic value) {
   }
   if (value is SwipeTargetKind) {
     return SwipeTargetKindTypeTransformer().encode(value).toString();
+  }
+  if (value is TermsProposer) {
+    return TermsProposerTypeTransformer().encode(value).toString();
   }
   if (value is TrialBanner) {
     return TrialBannerTypeTransformer().encode(value).toString();
