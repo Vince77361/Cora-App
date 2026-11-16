@@ -41,6 +41,7 @@ export class PrinciplesService {
   }
 
   // 프로필 수정(E6)이 희망 보상대만 바꿀 때 쓴다. 원칙이 아직 없으면 404.
+  // 역할을 확인하지 않는다: 호출하는 쪽(다른 모듈의 서비스)이 크리에이터인지 먼저 확인해야 한다.
   async updateFeeBand(
     creatorId: string,
     band: FeeBand,

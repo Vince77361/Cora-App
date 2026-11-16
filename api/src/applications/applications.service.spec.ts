@@ -653,6 +653,16 @@ describe('ApplicationsService', () => {
       expect(row.skippedFromPicksAt).toEqual(first);
     });
 
+    it('returns 404 for an applicant who avoids the store industry', async () => {
+      users.role = 'STORE';
+      const row = (await repo.create(store.id, CREATOR))!;
+      visibility.hiddenCreators.add(CREATOR);
+      expect(await codeOf(service.skipRecommended(OWNER, row.id))).toBe(
+        'NOT_FOUND',
+      );
+      expect(row.skippedFromPicksAt).toBeNull();
+    });
+
     it('returns 404 for an application of another store, a missing one or a malformed id', async () => {
       users.role = 'STORE';
       const other = (await repo.create(randomUUID(), CREATOR))!;
@@ -713,7 +723,15 @@ describe('ApplicationsService', () => {
       await service.apply(CREATOR, store.id);
       await service.apply(CREATOR_B, store.id);
       await service.markOffered(store.id, CREATOR_B);
-      expect(await service.countNew(store.id)).toBe(1);
+      expect(await service.countNew(store)).toBe(1);
+    });
+
+    it('countNew leaves out applicants who avoid the store industry', async () => {
+      creators.add(CREATOR_B, '서울특별시', null);
+      await service.apply(CREATOR, store.id);
+      await service.apply(CREATOR_B, store.id);
+      visibility.hiddenCreators.add(CREATOR_B);
+      expect(await service.countNew(store)).toBe(1);
     });
   });
 });

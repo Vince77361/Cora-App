@@ -200,7 +200,15 @@ export class ApplicationsService {
     const row = UUID.test(applicationId)
       ? await this.applications.findAppliedOfStore(store.id, applicationId)
       : null;
-    if (!row) throw this.notFound();
+    // 피하는 업종 때문에 목록에서 빠진 지원자는 없는 지원과 같게 404다.
+    const visible = row
+      ? await this.visibility.filterCreators([row.creatorId], {
+          userId: store.ownerId,
+          kind: 'STORE',
+          industry: store.industry,
+        })
+      : [];
+    if (!row || visible.length === 0) throw this.notFound();
     await this.applications.markSkipped(row.id, this.clock.now());
   }
 
@@ -230,9 +238,9 @@ export class ApplicationsService {
     return this.applications.reopenOffered(applicationId);
   }
 
-  // 가게 홈의 "새 지원자" 수.
-  countNew(storeId: string): Promise<number> {
-    return this.applications.countApplied(storeId);
+  // 가게 홈의 "새 지원자" 수. 지원자 목록과 같은 기준이라, 이 가게의 업종을 피하는 크리에이터는 세지 않는다.
+  async countNew(store: Store): Promise<number> {
+    return (await this.visibleApplied(store)).length;
   }
 
   // 지원 중인 지원. 이 가게의 업종을 피하는 크리에이터는 지원했더라도 보이지 않는다(나중에 피하게 된 경우도 바로 빠진다).

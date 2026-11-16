@@ -265,6 +265,31 @@ describe('visibility', () => {
         '괜찮음',
         '원칙 없음',
       ]);
+      expect(body.totalNew).toBe(2);
+      // 사장님 홈의 새 지원 수도 같은 기준이다.
+      const home = await request(server)
+        .get('/stores/me/summary')
+        .set(auth)
+        .expect(200);
+      expect((home.body as { newApplications: number }).newApplications).toBe(
+        2,
+      );
+    });
+
+    it('returns 404 when skipping a recommendation of an applicant who avoids the industry', async () => {
+      const avoiding = await seedCreator('술 피함', ['ALCOHOL']);
+      const row = await prisma.application.create({
+        data: { storeId, creatorId: avoiding, status: 'APPLIED' },
+      });
+      const res = await request(server)
+        .post(`/stores/me/applications/${row.id}/skip`)
+        .set(auth)
+        .expect(404);
+      expect(codeOf(res)).toBe('NOT_FOUND');
+      const after = await prisma.application.findUniqueOrThrow({
+        where: { id: row.id },
+      });
+      expect(after.skippedFromPicksAt).toBeNull();
     });
 
     it('drops an applicant from the list as soon as they start avoiding the industry', async () => {

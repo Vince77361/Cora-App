@@ -774,7 +774,7 @@ export class OffersService {
     );
     const views = rows.map((row) => viewForStore(row, now));
     return {
-      newApplications: await this.applications.countNew(store.id),
+      newApplications: await this.applications.countNew(store),
       sentOffers: views.filter((view) => view === 'WAITING').length,
       // 오퍼가 아니라 협업의 단계로 센다: 결제 대기, 결제함, 조회수 집계 중.
       inProgress: await this.collaborations.countForStore(
