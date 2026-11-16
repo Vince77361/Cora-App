@@ -118,6 +118,12 @@ String parameterToString(dynamic value) {
   if (value is IndustryCategory) {
     return IndustryCategoryTypeTransformer().encode(value).toString();
   }
+  if (value is InterestState) {
+    return InterestStateTypeTransformer().encode(value).toString();
+  }
+  if (value is InterestTab) {
+    return InterestTabTypeTransformer().encode(value).toString();
+  }
   if (value is MatchReason) {
     return MatchReasonTypeTransformer().encode(value).toString();
   }
@@ -180,6 +186,9 @@ String parameterToString(dynamic value) {
   }
   if (value is RevisionScope) {
     return RevisionScopeTypeTransformer().encode(value).toString();
+  }
+  if (value is SavedDecision) {
+    return SavedDecisionTypeTransformer().encode(value).toString();
   }
   if (value is SettlementMethod) {
     return SettlementMethodTypeTransformer().encode(value).toString();

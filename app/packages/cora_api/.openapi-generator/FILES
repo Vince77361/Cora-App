@@ -18,6 +18,7 @@ doc/BrandProfileModel.md
 doc/BrandProposalDto.md
 doc/BrandUsageRights.md
 doc/BrandsApi.md
+doc/CampaignDetailModel.md
 doc/CampaignListCardKind.md
 doc/CampaignListCardModel.md
 doc/CampaignModel.md
@@ -25,6 +26,7 @@ doc/CampaignRecommendationsModel.md
 doc/CampaignStatus.md
 doc/CampaignsApi.md
 doc/CancelRequestModel.md
+doc/CardDetailsApi.md
 doc/CollaborationCounterpartModel.md
 doc/CollaborationKind.md
 doc/CollaborationModel.md
@@ -48,6 +50,7 @@ doc/CreateCampaignDto.md
 doc/CreateCreatorSeriesDto.md
 doc/CreatePaymentDto.md
 doc/CreatePhotoUploadDto.md
+doc/CreatorCardDetailModel.md
 doc/CreatorCardModel.md
 doc/CreatorProfileModel.md
 doc/CreatorRecommendationsModel.md
@@ -71,6 +74,9 @@ doc/IndustryCategory.md
 doc/InstagramApi.md
 doc/InstagramConnectUrlModel.md
 doc/InstagramConnectionModel.md
+doc/InterestCardModel.md
+doc/InterestState.md
+doc/InterestTab.md
 doc/ManualBranchDto.md
 doc/ManualStoreDto.md
 doc/MatchReason.md
@@ -119,7 +125,9 @@ doc/ProposalCounterpartModel.md
 doc/ProposalDetailModel.md
 doc/ProposalEndKind.md
 doc/ProposalGroup.md
+doc/ProposalModel.md
 doc/ProposalPerformanceDto.md
+doc/ProposalPerformanceModel.md
 doc/ProposalPersonModel.md
 doc/ProposalRowModel.md
 doc/ProposalStoreModel.md
@@ -137,6 +145,7 @@ doc/RevisionScope.md
 doc/RewardConfigModel.md
 doc/RewardInputDto.md
 doc/RewardRangeModel.md
+doc/SavedDecision.md
 doc/SendOfferDto.md
 doc/SentOfferModel.md
 doc/SetDefaultTermsDto.md
@@ -205,6 +214,7 @@ lib/api/app_config_api.dart
 lib/api/applications_api.dart
 lib/api/brands_api.dart
 lib/api/campaigns_api.dart
+lib/api/card_details_api.dart
 lib/api/collaborations_api.dart
 lib/api/content_drafts_api.dart
 lib/api/creators_api.dart
@@ -250,6 +260,7 @@ lib/model/bank_model.dart
 lib/model/brand_profile_model.dart
 lib/model/brand_proposal_dto.dart
 lib/model/brand_usage_rights.dart
+lib/model/campaign_detail_model.dart
 lib/model/campaign_list_card_kind.dart
 lib/model/campaign_list_card_model.dart
 lib/model/campaign_model.dart
@@ -277,6 +288,7 @@ lib/model/create_campaign_dto.dart
 lib/model/create_creator_series_dto.dart
 lib/model/create_payment_dto.dart
 lib/model/create_photo_upload_dto.dart
+lib/model/creator_card_detail_model.dart
 lib/model/creator_card_model.dart
 lib/model/creator_profile_model.dart
 lib/model/creator_recommendations_model.dart
@@ -296,6 +308,9 @@ lib/model/health_model.dart
 lib/model/industry_category.dart
 lib/model/instagram_connect_url_model.dart
 lib/model/instagram_connection_model.dart
+lib/model/interest_card_model.dart
+lib/model/interest_state.dart
+lib/model/interest_tab.dart
 lib/model/manual_branch_dto.dart
 lib/model/manual_store_dto.dart
 lib/model/match_reason.dart
@@ -338,7 +353,9 @@ lib/model/proposal_counterpart_model.dart
 lib/model/proposal_detail_model.dart
 lib/model/proposal_end_kind.dart
 lib/model/proposal_group.dart
+lib/model/proposal_model.dart
 lib/model/proposal_performance_dto.dart
+lib/model/proposal_performance_model.dart
 lib/model/proposal_person_model.dart
 lib/model/proposal_row_model.dart
 lib/model/proposal_store_model.dart
@@ -354,6 +371,7 @@ lib/model/revision_scope.dart
 lib/model/reward_config_model.dart
 lib/model/reward_input_dto.dart
 lib/model/reward_range_model.dart
+lib/model/saved_decision.dart
 lib/model/send_offer_dto.dart
 lib/model/sent_offer_model.dart
 lib/model/set_default_terms_dto.dart
@@ -426,6 +444,7 @@ test/brand_profile_model_test.dart
 test/brand_proposal_dto_test.dart
 test/brand_usage_rights_test.dart
 test/brands_api_test.dart
+test/campaign_detail_model_test.dart
 test/campaign_list_card_kind_test.dart
 test/campaign_list_card_model_test.dart
 test/campaign_model_test.dart
@@ -433,6 +452,7 @@ test/campaign_recommendations_model_test.dart
 test/campaign_status_test.dart
 test/campaigns_api_test.dart
 test/cancel_request_model_test.dart
+test/card_details_api_test.dart
 test/collaboration_counterpart_model_test.dart
 test/collaboration_kind_test.dart
 test/collaboration_model_test.dart
@@ -456,6 +476,7 @@ test/create_campaign_dto_test.dart
 test/create_creator_series_dto_test.dart
 test/create_payment_dto_test.dart
 test/create_photo_upload_dto_test.dart
+test/creator_card_detail_model_test.dart
 test/creator_card_model_test.dart
 test/creator_profile_model_test.dart
 test/creator_recommendations_model_test.dart
@@ -479,6 +500,9 @@ test/industry_category_test.dart
 test/instagram_api_test.dart
 test/instagram_connect_url_model_test.dart
 test/instagram_connection_model_test.dart
+test/interest_card_model_test.dart
+test/interest_state_test.dart
+test/interest_tab_test.dart
 test/manual_branch_dto_test.dart
 test/manual_store_dto_test.dart
 test/match_reason_test.dart
@@ -527,7 +551,9 @@ test/proposal_counterpart_model_test.dart
 test/proposal_detail_model_test.dart
 test/proposal_end_kind_test.dart
 test/proposal_group_test.dart
+test/proposal_model_test.dart
 test/proposal_performance_dto_test.dart
+test/proposal_performance_model_test.dart
 test/proposal_person_model_test.dart
 test/proposal_row_model_test.dart
 test/proposal_store_model_test.dart
@@ -545,6 +571,7 @@ test/revision_scope_test.dart
 test/reward_config_model_test.dart
 test/reward_input_dto_test.dart
 test/reward_range_model_test.dart
+test/saved_decision_test.dart
 test/send_offer_dto_test.dart
 test/sent_offer_model_test.dart
 test/set_default_terms_dto_test.dart

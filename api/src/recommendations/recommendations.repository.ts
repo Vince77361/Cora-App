@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, RecommendationScope, SwipeTargetKind } from '@prisma/client';
+import {
+  Prisma,
+  RecommendationScope,
+  SwipeDecisionKind,
+  SwipeTargetKind,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DecisionRow } from './candidate-rules';
 
@@ -92,6 +97,20 @@ export class RecommendationsRepository {
       },
       select: { targetId: true, decision: true, updatedAt: true },
     });
+  }
+
+  // 내가 이 대상에 내린 결정. 없으면 null.
+  async findDecision(
+    actorId: string,
+    targetKind: SwipeTargetKind,
+    targetId: string,
+    campaignId: string,
+  ): Promise<SwipeDecisionKind | null> {
+    const row = await this.prisma.swipeDecision.findFirst({
+      where: { actorId, targetKind, targetId, campaignId, deletedAt: null },
+      select: { decision: true },
+    });
+    return row?.decision ?? null;
   }
 
   // 이 캠페인에 관심을 보낸 크리에이터.

@@ -171,6 +171,21 @@ export class CampaignsService {
     });
   }
 
+  // 마감한 캠페인을 포함해 id로 읽고 그 브랜드의 프로필을 붙인다. 브랜드 프로필이 없는 캠페인은 빠진다.
+  // 돌려주는 행에는 예산이 있다: 크리에이터가 받는 응답에 그대로 넣지 말고 필요한 값만 골라 담는다.
+  async listWithBrand(
+    ids: string[],
+  ): Promise<{ campaign: Campaign; brand: BrandProfileModel }[]> {
+    const rows = await this.campaigns.listByIds(
+      ids.filter((id) => UUID.test(id)),
+    );
+    const brands = await this.brands.findProfiles(rows.map((r) => r.brandId));
+    return rows.flatMap((campaign) => {
+      const brand = brands.get(campaign.brandId);
+      return brand ? [{ campaign, brand }] : [];
+    });
+  }
+
   // 남의 캠페인과 없는 캠페인을 구별하지 않는다.
   private async requireOwned(userId: string, id: string): Promise<Campaign> {
     const row = UUID.test(id) ? await this.campaigns.findById(id) : null;

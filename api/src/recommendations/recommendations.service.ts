@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { Campaign, UserRole } from '@prisma/client';
-import { BrandProfileModel } from '../brands/dto/brand-profile.model';
 import { BrandsService } from '../brands/brands.service';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
@@ -15,12 +14,8 @@ import { StoreCardSource } from '../stores/dto/store-card-source';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { VisibilityService } from '../visibility/visibility.service';
-import {
-  campaignTags,
-  principleTags,
-  storeHeadline,
-  storeRewardLine,
-} from './card-text';
+import { campaignFacts, toCampaignCard, toCreatorCard } from './card-models';
+import { principleTags, storeHeadline, storeRewardLine } from './card-text';
 import {
   DAILY_CARD_COUNT,
   decidedTargetIds,
@@ -31,7 +26,6 @@ import {
 } from './candidate-rules';
 import {
   CampaignCardModel,
-  CreatorCardModel,
   PreviewCardModel,
   StoreCardModel,
 } from './dto/recommendation-cards.model';
@@ -391,60 +385,6 @@ export class RecommendationsService {
 
 function idsOf(items: StoredItem[], kind: StoredItem['kind']): string[] {
   return items.filter((item) => item.kind === kind).map((item) => item.id);
-}
-
-function campaignFacts(
-  campaign: Campaign,
-  brand: BrandProfileModel,
-): CampaignFacts {
-  return {
-    industry: brand.industry,
-    fee: campaign.fee,
-    notRequired: campaign.notRequired,
-    trialDays: campaign.trialDays,
-  };
-}
-
-// 아래 변환은 응답에 나갈 값을 하나씩 고른다. Prisma 행을 그대로 펼치지 않는다
-// (캠페인 예산과 넘김 기록이 응답에 새지 않게 하려는 것이다).
-function toCreatorCard(
-  source: CreatorCardSource,
-  p: PrinciplesModel,
-  facts: CampaignFacts,
-): CreatorCardModel {
-  return {
-    creatorId: source.userId,
-    displayName: source.displayName,
-    instagramHandle: source.instagramHandle,
-    headline: source.headline,
-    photoUrl: source.photoUrl,
-    feeBand: p.feeBand,
-    tags: principleTags(p),
-    reasons: matchScore(p, facts).reasons,
-    // 상대의 관심은 미리 알려 주지 않는다. 순서에만 쓰고 늘 false로 내보낸다.
-    theyLikedMe: false,
-  };
-}
-
-function toCampaignCard(
-  campaign: Campaign,
-  brand: BrandProfileModel,
-  principles: PrinciplesModel | null,
-): CampaignCardModel {
-  return {
-    kind: 'CAMPAIGN',
-    campaignId: campaign.id,
-    brandName: brand.name,
-    brandTagline: brand.tagline,
-    photoUrl: brand.photoUrl,
-    headline: campaign.headline,
-    fee: campaign.fee,
-    productProvided: campaign.productProvided,
-    tags: campaignTags(campaign.notRequired),
-    reasons: principles
-      ? matchScore(principles, campaignFacts(campaign, brand)).reasons
-      : [],
-  };
 }
 
 function toStoreCard(

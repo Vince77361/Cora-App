@@ -16,6 +16,131 @@ class DiscoveryApi {
 
   final ApiClient apiClient;
 
+  /// 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [InterestTab] tab:
+  ///   saved(기본) = 내 관심 + 보류, mutual = 서로 관심, sent = 보낸 관심(응답 대기), held = 보류.
+  Future<Response> listInterestsWithHttpInfo({
+    InterestTab? tab,
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/discovery/interests';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (tab != null) {
+      queryParams.addAll(_queryParams('', 'tab', tab));
+    }
+
+    const contentTypes = <String>[];
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
+  ///
+  /// Parameters:
+  ///
+  /// * [InterestTab] tab:
+  ///   saved(기본) = 내 관심 + 보류, mutual = 서로 관심, sent = 보낸 관심(응답 대기), held = 보류.
+  Future<List<InterestCardModel>?> listInterests({
+    InterestTab? tab,
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await listInterestsWithHttpInfo(
+      tab: tab,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(
+              responseBody, 'List<InterestCardModel>') as List)
+          .cast<InterestCardModel>()
+          .toList(growable: false);
+    }
+    return null;
+  }
+
+  /// 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> listReceivedProposalsWithHttpInfo({
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/discovery/received-proposals';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.
+  Future<List<ProposalModel>?> listReceivedProposals({
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await listReceivedProposalsWithHttpInfo(
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(
+              responseBody, 'List<ProposalModel>') as List)
+          .cast<ProposalModel>()
+          .toList(growable: false);
+    }
+    return null;
+  }
+
   /// 관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.
   ///
   /// Note: This method returns the HTTP [Response].

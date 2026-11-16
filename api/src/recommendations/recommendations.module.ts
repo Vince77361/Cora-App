@@ -7,6 +7,8 @@ import { PrinciplesModule } from '../principles/principles.module';
 import { StoresModule } from '../stores/stores.module';
 import { UsersModule } from '../users/users.module';
 import { VisibilityModule } from '../visibility/visibility.module';
+import { CardDetailsController } from './card-details.controller';
+import { CardDetailsService } from './card-details.service';
 import { RecommendationsController } from './recommendations.controller';
 import { RecommendationsRepository } from './recommendations.repository';
 import { RecommendationsService } from './recommendations.service';
@@ -22,7 +24,11 @@ import { RecommendationsService } from './recommendations.service';
     VisibilityModule,
     CollaborationsModule,
   ],
-  controllers: [RecommendationsController],
-  providers: [RecommendationsService, RecommendationsRepository],
+  controllers: [RecommendationsController, CardDetailsController],
+  providers: [
+    RecommendationsService,
+    CardDetailsService,
+    RecommendationsRepository,
+  ],
 })
 export class RecommendationsModule {}

@@ -144,4 +144,73 @@ export class DiscoveryRepository {
       data: { ...data, createdAt: data.matchedAt, updatedAt: data.matchedAt },
     });
   }
+
+  // 내가 저장한(관심 + 보류) 결정, 최근 결정이 앞이다. 넘긴 것은 읽지 않는다.
+  // campaignId를 주면 그 캠페인에서 한 것만(브랜드), 주지 않으면 내 모든 결정(크리에이터).
+  listSavedDecisions(
+    actorId: string,
+    targetKind: SwipeTargetKind,
+    campaignId?: string,
+    targetIds?: string[],
+  ): Promise<SwipeDecision[]> {
+    if (targetIds?.length === 0) return Promise.resolve([]);
+    return this.prisma.swipeDecision.findMany({
+      where: {
+        actorId,
+        targetKind,
+        decision: { in: ['LIKE', 'HOLD'] },
+        deletedAt: null,
+        ...(campaignId ? { campaignId } : {}),
+        ...(targetIds ? { targetId: { in: targetIds } } : {}),
+      },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+    });
+  }
+
+  // 내가 낸 결정 전부(종류와 대상을 고른 것). 받은 제안에서 "내가 이미 결정한 캠페인"을 거를 때 쓴다.
+  listDecisionsOn(
+    actorId: string,
+    targetKind: SwipeTargetKind,
+    targetIds: string[],
+  ): Promise<SwipeDecision[]> {
+    if (targetIds.length === 0) return Promise.resolve([]);
+    return this.prisma.swipeDecision.findMany({
+      where: {
+        actorId,
+        targetKind,
+        targetId: { in: targetIds },
+        deletedAt: null,
+      },
+    });
+  }
+
+  // 그 캠페인에서 서로 관심이 닿은 크리에이터들.
+  listMatchesOfCampaign(campaignId: string): Promise<Match[]> {
+    return this.prisma.match.findMany({
+      where: { campaignId, deletedAt: null },
+    });
+  }
+
+  // 그 크리에이터가 서로 관심이 닿은 캠페인들.
+  listMatchesOfCreator(creatorId: string): Promise<Match[]> {
+    return this.prisma.match.findMany({
+      where: { creatorId, deletedAt: null },
+    });
+  }
+
+  // 브랜드가 이 크리에이터에게 보낸 관심 가운데 글이나 조건 제안이 붙은 것(크리에이터의 "받은 제안" 재료).
+  // 넘김과 보류, 아무것도 붙지 않은 관심은 읽지 않는다.
+  listProposalLikesTo(creatorId: string): Promise<SwipeDecision[]> {
+    return this.prisma.swipeDecision.findMany({
+      where: {
+        targetKind: 'CREATOR',
+        targetId: creatorId,
+        decision: 'LIKE',
+        campaignId: { not: null },
+        deletedAt: null,
+        OR: [{ note: { not: null } }, { proposedFee: { not: null } }],
+      },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+    });
+  }
 }

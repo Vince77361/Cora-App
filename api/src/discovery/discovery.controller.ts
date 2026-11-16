@@ -2,10 +2,12 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   Param,
   ParseUUIDPipe,
   Put,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -18,10 +20,16 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { DiscoveryService } from './discovery.service';
+import { InterestsService } from './interests.service';
 import {
   DecisionResultModel,
   UndoneDecisionModel,
 } from './dto/decision-result.model';
+import {
+  InterestCardModel,
+  ListInterestsQuery,
+  ProposalModel,
+} from './dto/interest-card.model';
 import { PassReasonDto } from './dto/pass-reason.dto';
 import { PutDecisionDto } from './dto/put-decision.dto';
 
@@ -29,7 +37,10 @@ import { PutDecisionDto } from './dto/put-decision.dto';
 @ApiExtraModels(UndoneDecisionModel)
 @Controller('discovery')
 export class DiscoveryController {
-  constructor(private readonly discovery: DiscoveryService) {}
+  constructor(
+    private readonly discovery: DiscoveryService,
+    private readonly interests: InterestsService,
+  ) {}
 
   @Put('decisions')
   @ApiOperation({
@@ -43,6 +54,33 @@ export class DiscoveryController {
     @Body() body: PutDecisionDto,
   ): Promise<DecisionResultModel> {
     return this.discovery.decide(user.userId, body);
+  }
+
+  @Get('interests')
+  @ApiOperation({
+    operationId: 'listInterests',
+    summary:
+      '관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).',
+  })
+  @ApiOkResponse({ type: [InterestCardModel] })
+  listInterests(
+    @CurrentUser() user: AuthUser,
+    @Query() query: ListInterestsQuery,
+  ): Promise<InterestCardModel[]> {
+    return this.interests.list(user.userId, query.tab ?? 'saved');
+  }
+
+  @Get('received-proposals')
+  @ApiOperation({
+    operationId: 'listReceivedProposals',
+    summary:
+      '크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.',
+  })
+  @ApiOkResponse({ type: [ProposalModel] })
+  listReceivedProposals(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ProposalModel[]> {
+    return this.interests.listReceivedProposals(user.userId);
   }
 
   @Put('decisions/pass-reason')

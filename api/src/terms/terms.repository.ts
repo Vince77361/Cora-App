@@ -56,6 +56,19 @@ export class TermsRepository {
     });
   }
 
+  // 여러 협업의 가장 큰 번호 판본을 한 번에(협업마다 하나).
+  async findLatestMany(
+    collaborationIds: string[],
+  ): Promise<Map<string, TermsVersion>> {
+    if (collaborationIds.length === 0) return new Map();
+    const rows = await this.prisma.termsVersion.findMany({
+      where: { collaborationId: { in: collaborationIds }, deletedAt: null },
+      distinct: ['collaborationId'],
+      orderBy: [{ collaborationId: 'asc' }, { version: 'desc' }],
+    });
+    return new Map(rows.map((row) => [row.collaborationId, row]));
+  }
+
   create(
     collaborationId: string,
     version: number,

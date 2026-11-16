@@ -249,6 +249,112 @@
         ],
         "type": "string"
       },
+      "CampaignDetailModel": {
+        "properties": {
+          "brandName": {
+            "type": "string"
+          },
+          "brandTagline": {
+            "nullable": true,
+            "type": "string"
+          },
+          "campaignId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "fee": {
+            "type": "integer"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "CAMPAIGN"
+            ],
+            "type": "string"
+          },
+          "mustInclude": {
+            "description": "꼭 담을 것.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "myDecision": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SavedDecision"
+              }
+            ],
+            "description": "내가 저장한 결정(관심 또는 보류). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.",
+            "nullable": true
+          },
+          "notRequired": {
+            "description": "요구하지 않는 것.",
+            "items": {
+              "$ref": "#/components/schemas/NotRequired"
+            },
+            "type": "array"
+          },
+          "overlapCount": {
+            "description": "\"내 협업 원칙과 N개가 겹쳐요\"의 N(reasons의 개수).",
+            "type": "integer"
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "productProvided": {
+            "type": "boolean"
+          },
+          "reasons": {
+            "description": "크리에이터의 협업 원칙과 겹치는 규칙. 많을수록 잘 맞는다.",
+            "items": {
+              "$ref": "#/components/schemas/MatchReason"
+            },
+            "type": "array"
+          },
+          "startFrom": {
+            "description": "시작 가능한 날.",
+            "format": "date",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 2,
+            "type": "array"
+          },
+          "trialDays": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProductTrialDays"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "campaignId",
+          "brandName",
+          "brandTagline",
+          "photoUrl",
+          "headline",
+          "fee",
+          "productProvided",
+          "tags",
+          "reasons",
+          "startFrom",
+          "trialDays",
+          "mustInclude",
+          "notRequired",
+          "overlapCount",
+          "myDecision"
+        ],
+        "type": "object"
+      },
       "CampaignListCardKind": {
         "enum": [
           "CAMPAIGN",
@@ -1048,6 +1154,76 @@
         ],
         "type": "object"
       },
+      "CreatorCardDetailModel": {
+        "properties": {
+          "creatorId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "feeBand": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeBand"
+              }
+            ]
+          },
+          "headline": {
+            "maxLength": 40,
+            "nullable": true,
+            "type": "string"
+          },
+          "instagramHandle": {
+            "nullable": true,
+            "type": "string"
+          },
+          "myDecision": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SavedDecision"
+              }
+            ],
+            "description": "내가 저장한 결정(관심 또는 보류). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.",
+            "nullable": true
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "reasons": {
+            "description": "크리에이터의 협업 원칙과 겹치는 규칙. 많을수록 잘 맞는다.",
+            "items": {
+              "$ref": "#/components/schemas/MatchReason"
+            },
+            "type": "array"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "theyLikedMe": {
+            "description": "항상 false. 상대가 먼저 관심을 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "creatorId",
+          "displayName",
+          "instagramHandle",
+          "headline",
+          "photoUrl",
+          "feeBand",
+          "tags",
+          "reasons",
+          "theyLikedMe",
+          "myDecision"
+        ],
+        "type": "object"
+      },
       "CreatorCardModel": {
         "properties": {
           "creatorId": {
@@ -1522,6 +1698,108 @@
           "followers"
         ],
         "type": "object"
+      },
+      "InterestCardModel": {
+        "properties": {
+          "collaborationId": {
+            "description": "서로 관심이면 그 협업의 id.",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "feeBand": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeBand"
+              }
+            ],
+            "description": "브랜드가 볼 때 그 크리에이터의 희망 제작비 구간. 크리에이터가 볼 때는 null.",
+            "nullable": true
+          },
+          "feeLabel": {
+            "description": "카드 아래 글의 금액. 서로 관심이면 최신 판본의 제작비, 아니면 브랜드는 내가 만든 제안의 금액(없으면 null이고 앱이 feeBand를 보여 준다), 크리에이터는 캠페인의 제작비.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "hasProposal": {
+            "description": "내가 보낸 관심에 제안(제작비, 혜택, 성과 추가)이 붙어 있다. 브랜드만 true일 수 있다.",
+            "type": "boolean"
+          },
+          "headline": {
+            "description": "크리에이터 카드의 한 줄 또는 캠페인 한 줄.",
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "description": "크리에이터의 활동 이름 또는 브랜드 이름.",
+            "type": "string"
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "shortName": {
+            "description": "\"{X}의 …\" 꼴이면 X, 아니면 이름 전체. 04의 버튼에 쓴다.",
+            "type": "string"
+          },
+          "startFrom": {
+            "description": "서로 관심일 때만 최신 판본의 제작 시작. 아니면 null(일정 협의).",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InterestState"
+              }
+            ]
+          },
+          "targetId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "targetKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SwipeTargetKind"
+              }
+            ],
+            "description": "브랜드는 CREATOR, 크리에이터는 CAMPAIGN."
+          }
+        },
+        "required": [
+          "targetKind",
+          "targetId",
+          "name",
+          "shortName",
+          "headline",
+          "photoUrl",
+          "state",
+          "feeLabel",
+          "feeBand",
+          "startFrom",
+          "hasProposal",
+          "collaborationId"
+        ],
+        "type": "object"
+      },
+      "InterestState": {
+        "enum": [
+          "MUTUAL",
+          "WAITING",
+          "HELD"
+        ],
+        "type": "string"
+      },
+      "InterestTab": {
+        "enum": [
+          "saved",
+          "mutual",
+          "sent",
+          "held"
+        ],
+        "type": "string"
       },
       "ManualBranchDto": {
         "properties": {
@@ -2681,6 +2959,72 @@
         ],
         "type": "string"
       },
+      "ProposalModel": {
+        "properties": {
+          "brandName": {
+            "type": "string"
+          },
+          "brandPhotoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "campaignId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "contentPhotoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "contentTitle": {
+            "nullable": true,
+            "type": "string"
+          },
+          "fee": {
+            "description": "제안이 붙어 있으면 제안의 제작비, 없으면 캠페인의 제작비.",
+            "type": "integer"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "note": {
+            "description": "브랜드가 붙인 글(좋아한 점). 조건 제안만 붙었으면 null.",
+            "nullable": true,
+            "type": "string"
+          },
+          "performance": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProposalPerformanceModel"
+              }
+            ],
+            "description": "제안에 붙은 성과 추가. 없으면 null.",
+            "nullable": true,
+            "type": "object"
+          },
+          "productProvided": {
+            "description": "제안이 붙어 있으면 제안의 값, 없으면 캠페인의 값.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "campaignId",
+          "brandName",
+          "brandPhotoUrl",
+          "note",
+          "contentTitle",
+          "contentPhotoUrl",
+          "fee",
+          "productProvided",
+          "performance",
+          "format"
+        ],
+        "type": "object"
+      },
       "ProposalPerformanceDto": {
         "properties": {
           "cap": {
@@ -2689,6 +3033,23 @@
           },
           "ratePer1000": {
             "description": "조회수 단가(1,000회당 원). 500원 단위.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ratePer1000",
+          "cap"
+        ],
+        "type": "object"
+      },
+      "ProposalPerformanceModel": {
+        "properties": {
+          "cap": {
+            "description": "조회수 수당 상한(원).",
+            "type": "integer"
+          },
+          "ratePer1000": {
+            "description": "조회수 단가(1,000회당 원).",
             "type": "integer"
           }
         },
@@ -3154,6 +3515,14 @@
           "default"
         ],
         "type": "object"
+      },
+      "SavedDecision": {
+        "description": "내가 저장한 결정(관심 또는 보류). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.",
+        "enum": [
+          "LIKE",
+          "HOLD"
+        ],
+        "type": "string"
       },
       "SendOfferDto": {
         "properties": {
@@ -5072,6 +5441,42 @@
         ]
       }
     },
+    "/campaigns/{id}/detail": {
+      "get": {
+        "operationId": "getCampaignDetail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignDetailModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "캠페인 상세(크리에이터). 보이지 않거나 내가 넘긴 캠페인은 404, 예산은 담지 않는다.",
+        "tags": [
+          "CardDetails"
+        ]
+      }
+    },
     "/collaborations": {
       "get": {
         "operationId": "listCollaborations",
@@ -5883,6 +6288,42 @@
         ]
       }
     },
+    "/creators/{id}/card": {
+      "get": {
+        "operationId": "getCreatorCard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatorCardDetailModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "크리에이터 카드 상세(브랜드). 보이지 않거나 내가 넘긴 크리에이터는 404.",
+        "tags": [
+          "CardDetails"
+        ]
+      }
+    },
     "/discovery/decisions": {
       "put": {
         "operationId": "putDecision",
@@ -5977,6 +6418,76 @@
           }
         ],
         "summary": "넘긴 카드에 이유를 남긴다. 이유 없이 넘기는 것은 이 호출을 하지 않는 것이다.",
+        "tags": [
+          "Discovery"
+        ]
+      }
+    },
+    "/discovery/interests": {
+      "get": {
+        "operationId": "listInterests",
+        "parameters": [
+          {
+            "description": "saved(기본) = 내 관심 + 보류, mutual = 서로 관심, sent = 보낸 관심(응답 대기), held = 보류.",
+            "in": "query",
+            "name": "tab",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/InterestTab"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InterestCardModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).",
+        "tags": [
+          "Discovery"
+        ]
+      }
+    },
+    "/discovery/received-proposals": {
+      "get": {
+        "operationId": "listReceivedProposals",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProposalModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.",
         "tags": [
           "Discovery"
         ]

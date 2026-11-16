@@ -16,6 +16,20 @@ void main() {
   // final instance = DiscoveryApi();
 
   group('tests for DiscoveryApi', () {
+    // 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
+    //
+    //Future<List<InterestCardModel>> listInterests({ InterestTab tab }) async
+    test('test listInterests', () async {
+      // TODO
+    });
+
+    // 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.
+    //
+    //Future<List<ProposalModel>> listReceivedProposals() async
+    test('test listReceivedProposals', () async {
+      // TODO
+    });
+
     // 관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.
     //
     //Future<DecisionResultModel> putDecision(PutDecisionDto putDecisionDto) async

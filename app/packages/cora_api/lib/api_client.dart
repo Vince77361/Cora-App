@@ -232,6 +232,8 @@ class ApiClient {
           return BrandProposalDto.fromJson(value);
         case 'BrandUsageRights':
           return BrandUsageRightsTypeTransformer().decode(value);
+        case 'CampaignDetailModel':
+          return CampaignDetailModel.fromJson(value);
         case 'CampaignListCardKind':
           return CampaignListCardKindTypeTransformer().decode(value);
         case 'CampaignListCardModel':
@@ -286,6 +288,8 @@ class ApiClient {
           return CreatePaymentDto.fromJson(value);
         case 'CreatePhotoUploadDto':
           return CreatePhotoUploadDto.fromJson(value);
+        case 'CreatorCardDetailModel':
+          return CreatorCardDetailModel.fromJson(value);
         case 'CreatorCardModel':
           return CreatorCardModel.fromJson(value);
         case 'CreatorProfileModel':
@@ -324,6 +328,12 @@ class ApiClient {
           return InstagramConnectUrlModel.fromJson(value);
         case 'InstagramConnectionModel':
           return InstagramConnectionModel.fromJson(value);
+        case 'InterestCardModel':
+          return InterestCardModel.fromJson(value);
+        case 'InterestState':
+          return InterestStateTypeTransformer().decode(value);
+        case 'InterestTab':
+          return InterestTabTypeTransformer().decode(value);
         case 'ManualBranchDto':
           return ManualBranchDto.fromJson(value);
         case 'ManualStoreDto':
@@ -408,8 +418,12 @@ class ApiClient {
           return ProposalEndKindTypeTransformer().decode(value);
         case 'ProposalGroup':
           return ProposalGroupTypeTransformer().decode(value);
+        case 'ProposalModel':
+          return ProposalModel.fromJson(value);
         case 'ProposalPerformanceDto':
           return ProposalPerformanceDto.fromJson(value);
+        case 'ProposalPerformanceModel':
+          return ProposalPerformanceModel.fromJson(value);
         case 'ProposalPersonModel':
           return ProposalPersonModel.fromJson(value);
         case 'ProposalRowModel':
@@ -440,6 +454,8 @@ class ApiClient {
           return RewardInputDto.fromJson(value);
         case 'RewardRangeModel':
           return RewardRangeModel.fromJson(value);
+        case 'SavedDecision':
+          return SavedDecisionTypeTransformer().decode(value);
         case 'SendOfferDto':
           return SendOfferDto.fromJson(value);
         case 'SentOfferModel':

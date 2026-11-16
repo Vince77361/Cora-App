@@ -32,6 +32,14 @@ export class CampaignsRepository {
     return this.prisma.campaign.findFirst({ where: { id, deletedAt: null } });
   }
 
+  // 마감한 캠페인도 읽는다(이미 서로 관심이 닿은 캠페인이 관심 목록에 남는다).
+  listByIds(ids: string[]): Promise<Campaign[]> {
+    if (ids.length === 0) return Promise.resolve([]);
+    return this.prisma.campaign.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+    });
+  }
+
   findActiveById(id: string): Promise<Campaign | null> {
     return this.prisma.campaign.findFirst({
       where: { id, status: 'ACTIVE', deletedAt: null },

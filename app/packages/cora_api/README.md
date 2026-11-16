@@ -70,6 +70,8 @@ Class | Method | HTTP request | Description
 *CampaignsApi* | [**createCampaign**](doc//CampaignsApi.md#createcampaign) | **POST** /campaigns | 
 *CampaignsApi* | [**getMyActiveCampaign**](doc//CampaignsApi.md#getmyactivecampaign) | **GET** /campaigns/mine/active | 
 *CampaignsApi* | [**updateCampaign**](doc//CampaignsApi.md#updatecampaign) | **PATCH** /campaigns/{id} | 
+*CardDetailsApi* | [**getCampaignDetail**](doc//CardDetailsApi.md#getcampaigndetail) | **GET** /campaigns/{id}/detail | 캠페인 상세(크리에이터). 보이지 않거나 내가 넘긴 캠페인은 404, 예산은 담지 않는다.
+*CardDetailsApi* | [**getCreatorCard**](doc//CardDetailsApi.md#getcreatorcard) | **GET** /creators/{id}/card | 크리에이터 카드 상세(브랜드). 보이지 않거나 내가 넘긴 크리에이터는 404.
 *CollaborationsApi* | [**acceptCollaborationCancel**](doc//CollaborationsApi.md#acceptcollaborationcancel) | **POST** /collaborations/{id}/cancel-requests/{requestId}/accept | 크리에이터가 사장님의 취소 요청에 동의한다(직접 그만두는 것과 같은 처리).
 *CollaborationsApi* | [**cancelCollaboration**](doc//CollaborationsApi.md#cancelcollaboration) | **POST** /collaborations/{id}/cancel | 크리에이터가 링크를 제출하기 전에 협업을 그만둔다(수수료까지 전액 환급).
 *CollaborationsApi* | [**getCollaboration**](doc//CollaborationsApi.md#getcollaboration) | **GET** /collaborations/{id} | 
@@ -81,6 +83,8 @@ Class | Method | HTTP request | Description
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
 *CreatorsApi* | [**listMyCreatorSeries**](doc//CreatorsApi.md#listmycreatorseries) | **GET** /creators/me/series | 
 *CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
+*DiscoveryApi* | [**listInterests**](doc//DiscoveryApi.md#listinterests) | **GET** /discovery/interests | 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
+*DiscoveryApi* | [**listReceivedProposals**](doc//DiscoveryApi.md#listreceivedproposals) | **GET** /discovery/received-proposals | 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.
 *DiscoveryApi* | [**putDecision**](doc//DiscoveryApi.md#putdecision) | **PUT** /discovery/decisions | 관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.
 *DiscoveryApi* | [**putPassReason**](doc//DiscoveryApi.md#putpassreason) | **PUT** /discovery/decisions/pass-reason | 넘긴 카드에 이유를 남긴다. 이유 없이 넘기는 것은 이 호출을 하지 않는 것이다.
 *DiscoveryApi* | [**putStorePass**](doc//DiscoveryApi.md#putstorepass) | **PUT** /discovery/store-passes/{storeId} | 가게 카드를 넘긴다(가게 카드의 관심은 지원 API로 보낸다).
@@ -165,6 +169,7 @@ Class | Method | HTTP request | Description
  - [BrandProfileModel](doc//BrandProfileModel.md)
  - [BrandProposalDto](doc//BrandProposalDto.md)
  - [BrandUsageRights](doc//BrandUsageRights.md)
+ - [CampaignDetailModel](doc//CampaignDetailModel.md)
  - [CampaignListCardKind](doc//CampaignListCardKind.md)
  - [CampaignListCardModel](doc//CampaignListCardModel.md)
  - [CampaignModel](doc//CampaignModel.md)
@@ -192,6 +197,7 @@ Class | Method | HTTP request | Description
  - [CreateCreatorSeriesDto](doc//CreateCreatorSeriesDto.md)
  - [CreatePaymentDto](doc//CreatePaymentDto.md)
  - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
+ - [CreatorCardDetailModel](doc//CreatorCardDetailModel.md)
  - [CreatorCardModel](doc//CreatorCardModel.md)
  - [CreatorProfileModel](doc//CreatorProfileModel.md)
  - [CreatorRecommendationsModel](doc//CreatorRecommendationsModel.md)
@@ -211,6 +217,9 @@ Class | Method | HTTP request | Description
  - [IndustryCategory](doc//IndustryCategory.md)
  - [InstagramConnectUrlModel](doc//InstagramConnectUrlModel.md)
  - [InstagramConnectionModel](doc//InstagramConnectionModel.md)
+ - [InterestCardModel](doc//InterestCardModel.md)
+ - [InterestState](doc//InterestState.md)
+ - [InterestTab](doc//InterestTab.md)
  - [ManualBranchDto](doc//ManualBranchDto.md)
  - [ManualStoreDto](doc//ManualStoreDto.md)
  - [MatchReason](doc//MatchReason.md)
@@ -253,7 +262,9 @@ Class | Method | HTTP request | Description
  - [ProposalDetailModel](doc//ProposalDetailModel.md)
  - [ProposalEndKind](doc//ProposalEndKind.md)
  - [ProposalGroup](doc//ProposalGroup.md)
+ - [ProposalModel](doc//ProposalModel.md)
  - [ProposalPerformanceDto](doc//ProposalPerformanceDto.md)
+ - [ProposalPerformanceModel](doc//ProposalPerformanceModel.md)
  - [ProposalPersonModel](doc//ProposalPersonModel.md)
  - [ProposalRowModel](doc//ProposalRowModel.md)
  - [ProposalStoreModel](doc//ProposalStoreModel.md)
@@ -269,6 +280,7 @@ Class | Method | HTTP request | Description
  - [RewardConfigModel](doc//RewardConfigModel.md)
  - [RewardInputDto](doc//RewardInputDto.md)
  - [RewardRangeModel](doc//RewardRangeModel.md)
+ - [SavedDecision](doc//SavedDecision.md)
  - [SendOfferDto](doc//SendOfferDto.md)
  - [SentOfferModel](doc//SentOfferModel.md)
  - [SetDefaultTermsDto](doc//SetDefaultTermsDto.md)
