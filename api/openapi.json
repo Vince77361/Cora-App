@@ -1798,6 +1798,42 @@
         ],
         "type": "object"
       },
+      "CreateReportDto": {
+        "properties": {
+          "detail": {
+            "description": "자세한 내용(선택, 500자까지).",
+            "maxLength": 500,
+            "type": "string"
+          },
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportReason"
+              }
+            ],
+            "description": "SPAM 광고·스팸, ABUSE 부적절한 말, FRAUD 사기 의심, OTHER 기타."
+          },
+          "targetId": {
+            "description": "사용자 또는 대화방의 id. 내 방이나 그 상대가 아니면 404다(형식이 틀려도 같다).",
+            "format": "uuid",
+            "type": "string"
+          },
+          "targetKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportTargetKind"
+              }
+            ],
+            "description": "USER는 내가 참가한 방의 상대, CONVERSATION은 내가 참가한 방이다."
+          }
+        },
+        "required": [
+          "targetKind",
+          "targetId",
+          "reason"
+        ],
+        "type": "object"
+      },
       "CreatorCardDetailModel": {
         "properties": {
           "creatorId": {
@@ -4243,6 +4279,36 @@
           "items"
         ],
         "type": "object"
+      },
+      "ReportCreatedModel": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "ReportReason": {
+        "description": "SPAM 광고·스팸, ABUSE 부적절한 말, FRAUD 사기 의심, OTHER 기타.",
+        "enum": [
+          "SPAM",
+          "ABUSE",
+          "FRAUD",
+          "OTHER"
+        ],
+        "type": "string"
+      },
+      "ReportTargetKind": {
+        "description": "USER는 내가 참가한 방의 상대, CONVERSATION은 내가 참가한 방이다.",
+        "enum": [
+          "USER",
+          "CONVERSATION"
+        ],
+        "type": "string"
       },
       "RevisionScope": {
         "enum": [
@@ -7120,6 +7186,48 @@
         ]
       }
     },
+    "/conversations/{id}/block": {
+      "post": {
+        "operationId": "blockConversationMember",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetailModel"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "description": "방이 없거나 내가 참가자가 아니다."
+          },
+          "409": {
+            "description": "두 사람 사이에 돈이 보관 중인 협업이 있다."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "이 방의 상대를 차단한다. 두 사람 사이의 모든 방이 닫히고 계약 전 협업이 끝난다. 상대에게는 알리지 않는다.",
+        "tags": [
+          "Blocks"
+        ]
+      }
+    },
     "/conversations/{id}/messages": {
       "get": {
         "operationId": "listMessages",
@@ -8938,6 +9046,49 @@
         "summary": "역할이 없는 사용자의 둘러보기 카드(읽기 전용)",
         "tags": [
           "Recommendations"
+        ]
+      }
+    },
+    "/reports": {
+      "post": {
+        "operationId": "createReport",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReportDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportCreatedModel"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "description": "내 방이나 그 상대가 아니다."
+          },
+          "409": {
+            "description": "이미 신고했다."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "내가 참가한 방이나 그 상대를 신고한다. 운영자에게 메일이 간다. 돈이 보관 중인 협업이면 그 협업이 멈춘다.",
+        "tags": [
+          "Reports"
         ]
       }
     },

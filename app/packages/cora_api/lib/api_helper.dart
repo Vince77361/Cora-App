@@ -205,6 +205,12 @@ String parameterToString(dynamic value) {
   if (value is ReceivedOfferTab) {
     return ReceivedOfferTabTypeTransformer().encode(value).toString();
   }
+  if (value is ReportReason) {
+    return ReportReasonTypeTransformer().encode(value).toString();
+  }
+  if (value is ReportTargetKind) {
+    return ReportTargetKindTypeTransformer().encode(value).toString();
+  }
   if (value is RevisionScope) {
     return RevisionScopeTypeTransformer().encode(value).toString();
   }

@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Collaboration, CollaborationStage, Prisma } from '@prisma/client';
+import {
+  Collaboration,
+  CollaborationStage,
+  Message,
+  Prisma,
+} from '@prisma/client';
 import {
   scheduleSubmissionDeadlineJobs,
   submissionDeadlineJobKeys,
@@ -14,12 +19,12 @@ import {
 } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
 import { PaymentsService } from '../payments/payments.service';
+import { SafetyService } from '../safety/safety.service';
 import {
-  autoConfirmJobKey,
-  evidenceHaltJobKey,
   forcePayoutKey,
   forcePayoutRefundKey,
   forceRefundKey,
+  haltJobKeys,
   lateRefundKey,
   payoutJobKey,
   paymentLedgerKey,
@@ -43,6 +48,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_OPERATOR = 100;
 const MAX_REASON = 1000;
+const SHOW_CONVERSATION_DEFAULT = 50;
+const SHOW_CONVERSATION_MAX = 200;
 
 // 운영자가 멈춘 협업의 사유. 조회수를 읽지 못해 멈춘 것(VIEW_COUNT_UNAVAILABLE)과 구별한다.
 export const OPERATOR_HALT_REASON = 'OPERATOR_HALT';
@@ -83,6 +90,7 @@ export class OpsService {
     private readonly refunds: RefundsService,
     private readonly clock: Clock,
     private readonly viewReport: ViewReportService,
+    private readonly safety: SafetyService,
   ) {}
 
   // 돈을 보관 중인 협업을 멈춘다. 등록된 정산·집계·제출 기한 작업을 취소한다.
@@ -670,6 +678,118 @@ export class OpsService {
     };
   }
 
+  // 신고를 처리 완료로 표시한다. 신고로 멈춘 협업은 여기서 풀지 않는다(확인한 뒤 resume으로 따로 푼다: 돈이 걸린 결정이다).
+  async resolveReport(reportId: string, actor: OpsActor): Promise<OpsResult> {
+    this.assertActor(actor);
+    this.assertUuid(reportId, '신고');
+    const done = await this.repository.transaction(async (tx) => {
+      const outcome = await this.safety.resolveReport(
+        reportId,
+        actor.operator.trim(),
+        tx,
+      );
+      if (outcome.result === 'MISSING') {
+        throw new OpsError('신고를 찾을 수 없어요.');
+      }
+      if (outcome.result === 'ALREADY') {
+        throw new OpsError('이미 처리 완료로 표시한 신고예요.');
+      }
+      const { report } = outcome;
+      const collaborationId =
+        report.targetKind === 'CONVERSATION'
+          ? await this.repository.collaborationIdOfConversation(
+              report.targetId,
+              tx,
+            )
+          : null;
+      await this.repository.writeAudit(
+        {
+          command: 'resolve-report',
+          collaborationId,
+          operator: actor.operator.trim(),
+          reason: actor.reason.trim(),
+          detail: {
+            reportId: report.id,
+            targetKind: report.targetKind,
+            targetId: report.targetId,
+            reportReason: report.reason,
+          },
+          createdAt: this.clock.now(),
+        },
+        tx,
+      );
+      return report;
+    });
+    return {
+      lines: [
+        `신고를 처리 완료로 표시했어요. (대상: ${done.targetKind} ${done.targetId}, 사유: ${done.reason})`,
+      ],
+      warnings: [],
+    };
+  }
+
+  // 신고를 확인하려고 대화방의 최근 메시지를 출력한다. 대화는 두 사람만 읽는 것이라, 읽은 사실을 같은 트랜잭션에서 감사 기록에 남기고
+  // 기록이 실패하면 출력도 하지 않는다(안내 줄은 저장된 코드를 그대로 보여 준다: 보는 사람이 없으므로 문구를 만들지 않는다).
+  async showConversation(
+    conversationId: string,
+    limit: number | undefined,
+    actor: OpsActor,
+  ): Promise<OpsResult> {
+    this.assertActor(actor);
+    this.assertUuid(conversationId, '대화방');
+    const count = limit ?? SHOW_CONVERSATION_DEFAULT;
+    if (
+      !Number.isInteger(count) ||
+      count < 1 ||
+      count > SHOW_CONVERSATION_MAX
+    ) {
+      throw new OpsError(
+        `--limit은 1 이상 ${SHOW_CONVERSATION_MAX} 이하의 정수여야 해요.`,
+      );
+    }
+    const read = await this.repository.transaction(async (tx) => {
+      const found = await this.repository.readConversation(
+        conversationId,
+        count,
+        tx,
+      );
+      if (!found) throw new OpsError('대화방을 찾을 수 없어요.');
+      await this.repository.writeAudit(
+        {
+          command: 'show-conversation',
+          collaborationId: found.conversation.collaborationId,
+          operator: actor.operator.trim(),
+          reason: actor.reason.trim(),
+          detail: {
+            conversationId,
+            limit: count,
+            messageCount: found.messages.length,
+          },
+          createdAt: this.clock.now(),
+        },
+        tx,
+      );
+      return found;
+    });
+    const { conversation, messages } = read;
+    const who = (senderId: string | null): string => {
+      if (senderId === null) return '안내';
+      return senderId === read.creatorId ? '크리에이터' : '맡긴 쪽';
+    };
+    return {
+      lines: [
+        `대화방 ${conversation.id} · 협업 ${conversation.collaborationId} · 상태 ${conversation.status}${
+          conversation.closedReason ? `(${conversation.closedReason})` : ''
+        } · 메시지 ${messages.length}개 (마지막 번호 ${conversation.lastSeq})`,
+        ...messages.map(
+          (m) =>
+            `#${m.seq} ${m.createdAt.toISOString()} [${who(m.senderId)}] ${describeMessage(m)}`,
+        ),
+      ],
+      warnings: [],
+    };
+  }
+
   // 읽기 전용. 감사 기록을 남기지 않는다. 계좌번호는 출력하지 않는다.
   async show(collaborationId: string): Promise<OpsResult> {
     this.assertUuid(collaborationId, '협업');
@@ -811,16 +931,7 @@ export class OpsService {
 
   // 멈췄거나 끝난 협업에 남은 정산·집계·제출 기한 작업을 지운다. 지울 것이 없어도 오류가 아니다.
   private async cancelJobs(collaborationId: string): Promise<void> {
-    const keys = [
-      settleJobKey(collaborationId),
-      autoConfirmJobKey(collaborationId),
-      evidenceHaltJobKey(collaborationId),
-      ...Array.from({ length: SNAPSHOT_DAYS + 1 }, (_, day) =>
-        snapshotJobKey(collaborationId, day),
-      ),
-      ...submissionDeadlineJobKeys(collaborationId),
-    ];
-    for (const key of keys) await this.jobs.cancel(key);
+    for (const key of haltJobKeys(collaborationId)) await this.jobs.cancel(key);
   }
 
   private assertActor(actor: OpsActor): void {
@@ -852,6 +963,13 @@ export class OpsService {
       '협업의 단계가 그사이 바뀌었어요. show로 확인한 뒤 다시 실행해 주세요.',
     );
   }
+}
+
+// 메시지 한 줄의 내용. 글은 그대로, 카드는 제목, 안내 줄은 저장된 코드와 값이다.
+function describeMessage(m: Message): string {
+  if (m.kind === 'TEXT') return m.text ?? '';
+  if (m.kind === 'CONTENT_CARD') return `[콘텐츠 카드] ${m.cardTitle ?? ''}`;
+  return `[${m.systemCode ?? 'SYSTEM'}] ${JSON.stringify(m.systemParams ?? {})}`;
 }
 
 const won = (n: number): string => n.toLocaleString('en-US');

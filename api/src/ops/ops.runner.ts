@@ -33,9 +33,14 @@ export class OpsRunner {
       { requestId: `ops:${name}:${randomUUID()}` },
       async (): Promise<OpsRunResult> => {
         const v = command.values;
-        const target = [v.collaboration, v.payout, v.refund, v.payment].find(
-          (id): id is string => typeof id === 'string',
-        );
+        const target = [
+          v.collaboration,
+          v.payout,
+          v.refund,
+          v.payment,
+          v.report,
+          v.conversation,
+        ].find((id): id is string => typeof id === 'string');
         const log = (result: 'ALLOWED' | 'DENIED' | 'FAILED') =>
           securityLog('OPS_COMMAND', { target, result, reason: name });
         let result: OpsResult;
@@ -102,6 +107,14 @@ export class OpsRunner {
         return this.service.resolveDispute(
           v.collaboration as string,
           v.views as number | undefined,
+          actor,
+        );
+      case 'resolve-report':
+        return this.service.resolveReport(v.report as string, actor);
+      case 'show-conversation':
+        return this.service.showConversation(
+          v.conversation as string,
+          v.limit as number | undefined,
           actor,
         );
       case 'show':

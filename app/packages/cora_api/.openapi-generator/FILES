@@ -14,6 +14,7 @@ doc/ApplicationStatus.md
 doc/ApplicationsApi.md
 doc/ApplyDto.md
 doc/BankModel.md
+doc/BlocksApi.md
 doc/BrandProfileModel.md
 doc/BrandProgressModel.md
 doc/BrandProgressNote.md
@@ -67,6 +68,7 @@ doc/CreateCampaignDto.md
 doc/CreateCreatorSeriesDto.md
 doc/CreatePaymentDto.md
 doc/CreatePhotoUploadDto.md
+doc/CreateReportDto.md
 doc/CreatorCardDetailModel.md
 doc/CreatorCardModel.md
 doc/CreatorProfileModel.md
@@ -166,6 +168,10 @@ doc/ReceivedOfferTab.md
 doc/RecommendationsApi.md
 doc/RecommendedApplicantModel.md
 doc/RecommendedApplicantsModel.md
+doc/ReportCreatedModel.md
+doc/ReportReason.md
+doc/ReportTargetKind.md
+doc/ReportsApi.md
 doc/RevisionScope.md
 doc/RewardConfigModel.md
 doc/RewardInputDto.md
@@ -241,6 +247,7 @@ doc/WalletNextPayoutModel.md
 lib/api.dart
 lib/api/app_config_api.dart
 lib/api/applications_api.dart
+lib/api/blocks_api.dart
 lib/api/brands_api.dart
 lib/api/campaigns_api.dart
 lib/api/card_details_api.dart
@@ -259,6 +266,7 @@ lib/api/payout_accounts_api.dart
 lib/api/principles_api.dart
 lib/api/proposals_api.dart
 lib/api/recommendations_api.dart
+lib/api/reports_api.dart
 lib/api/store_insights_api.dart
 lib/api/store_result_api.dart
 lib/api/stores_api.dart
@@ -334,6 +342,7 @@ lib/model/create_campaign_dto.dart
 lib/model/create_creator_series_dto.dart
 lib/model/create_payment_dto.dart
 lib/model/create_photo_upload_dto.dart
+lib/model/create_report_dto.dart
 lib/model/creator_card_detail_model.dart
 lib/model/creator_card_model.dart
 lib/model/creator_profile_model.dart
@@ -421,6 +430,9 @@ lib/model/received_offer_model.dart
 lib/model/received_offer_tab.dart
 lib/model/recommended_applicant_model.dart
 lib/model/recommended_applicants_model.dart
+lib/model/report_created_model.dart
+lib/model/report_reason.dart
+lib/model/report_target_kind.dart
 lib/model/revision_scope.dart
 lib/model/reward_config_model.dart
 lib/model/reward_input_dto.dart
@@ -498,6 +510,7 @@ test/application_status_test.dart
 test/applications_api_test.dart
 test/apply_dto_test.dart
 test/bank_model_test.dart
+test/blocks_api_test.dart
 test/brand_profile_model_test.dart
 test/brand_progress_model_test.dart
 test/brand_progress_note_test.dart
@@ -551,6 +564,7 @@ test/create_campaign_dto_test.dart
 test/create_creator_series_dto_test.dart
 test/create_payment_dto_test.dart
 test/create_photo_upload_dto_test.dart
+test/create_report_dto_test.dart
 test/creator_card_detail_model_test.dart
 test/creator_card_model_test.dart
 test/creator_profile_model_test.dart
@@ -650,6 +664,10 @@ test/received_offer_tab_test.dart
 test/recommendations_api_test.dart
 test/recommended_applicant_model_test.dart
 test/recommended_applicants_model_test.dart
+test/report_created_model_test.dart
+test/report_reason_test.dart
+test/report_target_kind_test.dart
+test/reports_api_test.dart
 test/revision_scope_test.dart
 test/reward_config_model_test.dart
 test/reward_input_dto_test.dart

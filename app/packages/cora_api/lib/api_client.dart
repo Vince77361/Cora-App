@@ -320,6 +320,8 @@ class ApiClient {
           return CreatePaymentDto.fromJson(value);
         case 'CreatePhotoUploadDto':
           return CreatePhotoUploadDto.fromJson(value);
+        case 'CreateReportDto':
+          return CreateReportDto.fromJson(value);
         case 'CreatorCardDetailModel':
           return CreatorCardDetailModel.fromJson(value);
         case 'CreatorCardModel':
@@ -494,6 +496,12 @@ class ApiClient {
           return RecommendedApplicantModel.fromJson(value);
         case 'RecommendedApplicantsModel':
           return RecommendedApplicantsModel.fromJson(value);
+        case 'ReportCreatedModel':
+          return ReportCreatedModel.fromJson(value);
+        case 'ReportReason':
+          return ReportReasonTypeTransformer().decode(value);
+        case 'ReportTargetKind':
+          return ReportTargetKindTypeTransformer().decode(value);
         case 'RevisionScope':
           return RevisionScopeTypeTransformer().decode(value);
         case 'RewardConfigModel':

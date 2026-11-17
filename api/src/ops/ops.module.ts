@@ -3,6 +3,7 @@ import { CollaborationsModule } from '../collaborations/collaborations.module';
 import { JobsModule } from '../jobs/jobs.module';
 import { LedgerModule } from '../ledger/ledger.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { SafetyModule } from '../safety/safety.module';
 import { SettlementsModule } from '../settlements/settlements.module';
 import { OpsRepository } from './ops.repository';
 import { OpsRunner } from './ops.runner';
@@ -16,6 +17,7 @@ import { OpsService } from './ops.service';
     JobsModule,
     LedgerModule,
     PaymentsModule,
+    SafetyModule,
     SettlementsModule,
   ],
   providers: [OpsService, OpsRepository, OpsRunner],

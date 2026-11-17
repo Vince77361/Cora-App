@@ -1,3 +1,5 @@
+import { submissionDeadlineJobKeys } from '../collaborations/collaboration-jobs';
+
 // 정산 쪽 작업의 중복 방지 키. 등록과 취소가 같은 키를 쓰므로 한 곳에 모은다.
 export const SNAPSHOT_DAYS = 7;
 
@@ -32,6 +34,23 @@ export const disputeDedupeKey = (collaborationId: string): string =>
 // 계산이 만들어졌다는 알림의 중복 방지 키(사장님·크리에이터 각자 한 건).
 export const viewReportDedupeKey = (collaborationId: string): string =>
   `view-report:${collaborationId}`;
+
+// 브랜드 계약이 체결된 뒤 60일 동안 링크가 없으면 협업을 멈추는 점검 작업(brand-halt-check)의 키. 처리기는 8번 작업이 만든다.
+export const brandHaltJobKey = (collaborationId: string): string =>
+  `brand-halt:${collaborationId}`;
+
+// 협업을 멈추거나 끝낼 때 지우는 작업의 키 전부(정산·집계·자동 확인·캡처 기한·제출 기한·브랜드 60일 점검).
+// 운영 명령과 신고로 멈출 때가 같은 목록을 쓴다. 지울 것이 없어도 오류가 아니다. 8번 작업이 settle-fixed 키를 여기에 더한다.
+export const haltJobKeys = (collaborationId: string): string[] => [
+  settleJobKey(collaborationId),
+  autoConfirmJobKey(collaborationId),
+  evidenceHaltJobKey(collaborationId),
+  brandHaltJobKey(collaborationId),
+  ...Array.from({ length: SNAPSHOT_DAYS + 1 }, (_, day) =>
+    snapshotJobKey(collaborationId, day),
+  ),
+  ...submissionDeadlineJobKeys(collaborationId),
+];
 
 export const payoutJobKey = (payoutId: string): string => `payout:${payoutId}`;
 

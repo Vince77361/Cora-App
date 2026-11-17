@@ -21,6 +21,7 @@ const service = new OpsService(
   trap as never,
   trap as never,
   trap as never,
+  trap as never,
 );
 
 describe('OpsService input checks', () => {

@@ -64,6 +64,7 @@ Class | Method | HTTP request | Description
 *ApplicationsApi* | [**listMyStoreApplicants**](doc//ApplicationsApi.md#listmystoreapplicants) | **GET** /stores/me/applications | 
 *ApplicationsApi* | [**listRecommendedApplicants**](doc//ApplicationsApi.md#listrecommendedapplicants) | **GET** /stores/me/applications/recommended | 
 *ApplicationsApi* | [**skipRecommendedApplicant**](doc//ApplicationsApi.md#skiprecommendedapplicant) | **POST** /stores/me/applications/{id}/skip | 
+*BlocksApi* | [**blockConversationMember**](doc//BlocksApi.md#blockconversationmember) | **POST** /conversations/{id}/block | 이 방의 상대를 차단한다. 두 사람 사이의 모든 방이 닫히고 계약 전 협업이 끝난다. 상대에게는 알리지 않는다.
 *BrandsApi* | [**getMyBrand**](doc//BrandsApi.md#getmybrand) | **GET** /brands/me | 
 *BrandsApi* | [**upsertMyBrand**](doc//BrandsApi.md#upsertmybrand) | **PUT** /brands/me | 
 *CampaignsApi* | [**closeCampaign**](doc//CampaignsApi.md#closecampaign) | **POST** /campaigns/{id}/close | 
@@ -134,6 +135,7 @@ Class | Method | HTTP request | Description
 *RecommendationsApi* | [**listCampaignRecommendations**](doc//RecommendationsApi.md#listcampaignrecommendations) | **GET** /recommendations/campaigns | 크리에이터의 오늘 캠페인·가게 추천
 *RecommendationsApi* | [**listCreatorRecommendations**](doc//RecommendationsApi.md#listcreatorrecommendations) | **GET** /recommendations/creators | 브랜드의 오늘 크리에이터 추천(진행 중인 캠페인 필요)
 *RecommendationsApi* | [**listPreviewCards**](doc//RecommendationsApi.md#listpreviewcards) | **GET** /recommendations/preview | 역할이 없는 사용자의 둘러보기 카드(읽기 전용)
+*ReportsApi* | [**createReport**](doc//ReportsApi.md#createreport) | **POST** /reports | 내가 참가한 방이나 그 상대를 신고한다. 운영자에게 메일이 간다. 돈이 보관 중인 협업이면 그 협업이 멈춘다.
 *StoreInsightsApi* | [**getMyStoreTrialComparison**](doc//StoreInsightsApi.md#getmystoretrialcomparison) | **GET** /stores/me/trial-comparison | 체험단 재계약 전 비교(G3). 체험단 계약 정보가 없으면 404다.
 *StoreResultApi* | [**getStoreResult**](doc//StoreResultApi.md#getstoreresult) | **GET** /collaborations/{id}/result | 사장님의 7일 결과(G1). 끝난 협업의 지급·환불과 평소 조회수 대비 배수를 돌려준다.
 *StoresApi* | [**advanceMyStoreOnboarding**](doc//StoresApi.md#advancemystoreonboarding) | **POST** /stores/me/onboarding-step | 
@@ -224,6 +226,7 @@ Class | Method | HTTP request | Description
  - [CreateCreatorSeriesDto](doc//CreateCreatorSeriesDto.md)
  - [CreatePaymentDto](doc//CreatePaymentDto.md)
  - [CreatePhotoUploadDto](doc//CreatePhotoUploadDto.md)
+ - [CreateReportDto](doc//CreateReportDto.md)
  - [CreatorCardDetailModel](doc//CreatorCardDetailModel.md)
  - [CreatorCardModel](doc//CreatorCardModel.md)
  - [CreatorProfileModel](doc//CreatorProfileModel.md)
@@ -311,6 +314,9 @@ Class | Method | HTTP request | Description
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)
  - [RecommendedApplicantModel](doc//RecommendedApplicantModel.md)
  - [RecommendedApplicantsModel](doc//RecommendedApplicantsModel.md)
+ - [ReportCreatedModel](doc//ReportCreatedModel.md)
+ - [ReportReason](doc//ReportReason.md)
+ - [ReportTargetKind](doc//ReportTargetKind.md)
  - [RevisionScope](doc//RevisionScope.md)
  - [RewardConfigModel](doc//RewardConfigModel.md)
  - [RewardInputDto](doc//RewardInputDto.md)

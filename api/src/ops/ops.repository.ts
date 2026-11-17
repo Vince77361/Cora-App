@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
   Collaboration,
+  Conversation,
+  Message,
   OpsAuditLog,
   Payment,
   Payout,
@@ -65,6 +67,48 @@ export class OpsRepository {
 
   async writeAudit(row: NewAuditRow, tx: Prisma.TransactionClient) {
     await tx.opsAuditLog.create({ data: row });
+  }
+
+  // 대화방과 최근 메시지(번호 오름차순). 운영자가 신고를 확인할 때 읽는다. 읽은 사실의 감사 기록과 같은 트랜잭션에서 부른다.
+  async readConversation(
+    conversationId: string,
+    limit: number,
+    tx: Prisma.TransactionClient,
+  ): Promise<{
+    conversation: Conversation;
+    commissionerId: string;
+    creatorId: string;
+    messages: Message[];
+  } | null> {
+    const conversation = await tx.conversation.findFirst({
+      where: { id: conversationId, deletedAt: null },
+      include: { collaboration: true },
+    });
+    if (!conversation) return null;
+    const { collaboration, ...room } = conversation;
+    const latest = await tx.message.findMany({
+      where: { conversationId, deletedAt: null },
+      orderBy: { seq: 'desc' },
+      take: limit,
+    });
+    return {
+      conversation: room,
+      commissionerId: collaboration.commissionerId,
+      creatorId: collaboration.creatorId,
+      messages: latest.reverse(),
+    };
+  }
+
+  // 신고가 가리키는 대화방의 협업(감사 기록의 협업 칸). 사용자 신고나 방이 없으면 null이다.
+  async collaborationIdOfConversation(
+    conversationId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<string | null> {
+    const room = await tx.conversation.findFirst({
+      where: { id: conversationId, deletedAt: null },
+      select: { collaborationId: true },
+    });
+    return room?.collaborationId ?? null;
   }
 
   async snapshot(

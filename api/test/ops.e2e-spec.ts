@@ -1119,6 +1119,183 @@ describe('ops commands', () => {
     });
   });
 
+  describe('resolve-report and show-conversation', () => {
+    // 협업(seed)의 대화방과 메시지 셋(크리에이터 글, 사장님 글, 안내 줄)을 DB에 바로 만든다.
+    async function seedRoom(s: Seeded) {
+      const room = await prisma.conversation.create({
+        data: {
+          collaborationId: s.collaborationId,
+          status: 'OPEN',
+          lastSeq: 3,
+          members: { create: [{ userId: USER_A }, { userId: s.ownerId }] },
+        },
+      });
+      await prisma.message.createMany({
+        data: [
+          {
+            conversationId: room.id,
+            seq: 1,
+            senderId: USER_A,
+            clientId: randomUUID(),
+            kind: 'TEXT',
+            text: '촬영은 언제 하면 될까요?',
+          },
+          {
+            conversationId: room.id,
+            seq: 2,
+            senderId: s.ownerId,
+            clientId: randomUUID(),
+            kind: 'TEXT',
+            text: '다음 주 화요일이요.',
+          },
+          {
+            conversationId: room.id,
+            seq: 3,
+            kind: 'SYSTEM',
+            systemCode: 'TERMS_AGREED',
+            systemParams: { version: 2 },
+          },
+        ],
+      });
+      return room;
+    }
+    const reportOf = (roomId: string) =>
+      prisma.report.create({
+        data: {
+          reporterId: USER_A,
+          targetKind: 'CONVERSATION',
+          targetId: roomId,
+          reason: 'ABUSE',
+        },
+      });
+
+    it('marks a report resolved with the operator and leaves a halted collaboration alone', async () => {
+      const s = await seed('COUNTING');
+      const room = await seedRoom(s);
+      await halted(s.collaborationId, 'REPORTED', 'COUNTING');
+      const report = await reportOf(room.id);
+      const r = await withWho('resolve-report', '--report', report.id);
+      expect(r.exitCode).toBe(0);
+      expect(text(r)).toContain('처리 완료');
+      expect(
+        await prisma.report.findUniqueOrThrow({ where: { id: report.id } }),
+      ).toMatchObject({ resolvedAt: T0, resolvedBy: '김운영' });
+      // 신고로 멈춘 협업은 확인한 뒤 resume으로 따로 푼다.
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('HALTED');
+      const rows = await audits();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        command: 'resolve-report',
+        collaborationId: s.collaborationId,
+        operator: '김운영',
+        reason: '운영 확인 후 처리',
+      });
+      // 같은 신고를 다시 처리하면 거절되고 처리 시각도 기록도 그대로다.
+      clock.set(new Date(T0.getTime() + DAY));
+      expect(
+        (await withWho('resolve-report', '--report', report.id)).exitCode,
+      ).toBe(1);
+      expect(
+        (await prisma.report.findUniqueOrThrow({ where: { id: report.id } }))
+          .resolvedAt,
+      ).toEqual(T0);
+      expect(await audits()).toHaveLength(1);
+    });
+
+    it('refuses to resolve an unknown report or one without operator and reason', async () => {
+      expect(
+        (await withWho('resolve-report', '--report', randomUUID())).exitCode,
+      ).toBe(1);
+      const s = await seed('COUNTING');
+      const report = await reportOf((await seedRoom(s)).id);
+      expect(
+        (await ops('resolve-report', '--report', report.id, '--operator', 'x'))
+          .exitCode,
+      ).toBe(1);
+      expect(
+        (await prisma.report.findUniqueOrThrow({ where: { id: report.id } }))
+          .resolvedAt,
+      ).toBeNull();
+      expect(await audits()).toHaveLength(0);
+    });
+
+    it('prints the latest messages in order and records that the conversation was read', async () => {
+      const s = await seed('COUNTING');
+      const room = await seedRoom(s);
+      const r = await withWho('show-conversation', '--conversation', room.id);
+      expect(r.exitCode).toBe(0);
+      const lines = r.output;
+      expect(lines[0]).toContain(room.id);
+      expect(lines[0]).toContain(s.collaborationId);
+      expect(lines[1]).toContain('#1');
+      expect(lines[1]).toContain('[크리에이터] 촬영은 언제 하면 될까요?');
+      expect(lines[2]).toContain('[맡긴 쪽] 다음 주 화요일이요.');
+      expect(lines[3]).toContain('[안내] [TERMS_AGREED] {"version":2}');
+      const rows = await audits();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        command: 'show-conversation',
+        collaborationId: s.collaborationId,
+        operator: '김운영',
+        reason: '운영 확인 후 처리',
+        detail: { conversationId: room.id, limit: 50, messageCount: 3 },
+      });
+      // 읽을 때마다 한 줄씩 남는다.
+      await withWho('show-conversation', '--conversation', room.id);
+      expect(await audits()).toHaveLength(2);
+    });
+
+    it('prints only the last messages when a limit is given', async () => {
+      const s = await seed('COUNTING');
+      const room = await seedRoom(s);
+      const r = await withWho(
+        'show-conversation',
+        '--conversation',
+        room.id,
+        '--limit',
+        '2',
+      );
+      expect(r.exitCode).toBe(0);
+      expect(r.output).toHaveLength(3);
+      expect(r.output[1]).toContain('#2');
+      expect(r.output[2]).toContain('#3');
+      expect((await audits())[0].detail).toMatchObject({
+        limit: 2,
+        messageCount: 2,
+      });
+    });
+
+    it('refuses a missing room, a bad limit or a missing operator without reading or recording anything', async () => {
+      const s = await seed('COUNTING');
+      const room = await seedRoom(s);
+      expect(
+        (await withWho('show-conversation', '--conversation', randomUUID()))
+          .exitCode,
+      ).toBe(1);
+      for (const limit of ['0', '201', '1.5']) {
+        const r = await withWho(
+          'show-conversation',
+          '--conversation',
+          room.id,
+          '--limit',
+          limit,
+        );
+        expect(r.exitCode).toBe(1);
+        expect(r.output.join('\n')).not.toContain('촬영은');
+      }
+      const noReason = await ops(
+        'show-conversation',
+        '--conversation',
+        room.id,
+        '--operator',
+        '김운영',
+      );
+      expect(noReason.exitCode).toBe(1);
+      expect(noReason.output.join('\n')).not.toContain('촬영은');
+      expect(await audits()).toHaveLength(0);
+    });
+  });
+
   describe('ledger check', () => {
     it('rolls every change back when the closing ledger check fails', async () => {
       const s = await seed('COUNTING');

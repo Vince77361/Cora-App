@@ -90,6 +90,26 @@ export const COMMAND_SPECS: CommandSpec[] = [
     ],
   },
   {
+    name: 'resolve-report',
+    summary:
+      '신고를 처리 완료로 표시한다(처리 시각과 처리한 사람을 남긴다). 신고로 멈춘 협업은 확인한 뒤 resume으로 따로 푼다.',
+    flags: [{ name: 'report', kind: 'uuid', help: '신고 id' }],
+  },
+  {
+    name: 'show-conversation',
+    summary:
+      '신고를 확인하려고 대화방의 최근 메시지를 출력한다(기본 50개, 최대 200개). 대화를 읽은 사실이 감사 기록(ops_audit_logs)에 남는다.',
+    flags: [
+      { name: 'conversation', kind: 'uuid', help: '대화방 id' },
+      {
+        name: 'limit',
+        kind: 'int',
+        help: '메시지 수(기본 50, 최대 200)',
+        optional: true,
+      },
+    ],
+  },
+  {
     name: 'show',
     summary:
       '협업의 단계, 장부 계정별 잔액, 결제·지급·환급 상태, 정산 상태·자료 출처·캡처·이의 사유를 보여 준다(읽기 전용).',
