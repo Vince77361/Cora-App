@@ -598,7 +598,8 @@ void main() {
       expect(find.text('결제가 완료되지 않았어요. 다시 시도해 주세요.'), findsNothing);
     });
 
-    testWidgets('a payment that never settles stays retryable', (tester) async {
+    testWidgets('a payment that never settles asks to check again, not to pay '
+        'again', (tester) async {
       final h = await _pump(
         tester,
         FakeNegotiationRepository()
@@ -615,8 +616,113 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(h.payments.statusCalls, 3);
+      // 다시 결제하라는 말이 없고, 새 결제창을 열 수 있는 버튼도 없다.
+      expect(find.text('결제를 확인하고 있어요. 잠시 뒤 다시 확인해 주세요.'), findsOneWidget);
+      expect(find.text('결제가 완료되지 않았어요. 다시 시도해 주세요.'), findsNothing);
+      expect(_consentOn(tester), isFalse);
+      expect(find.text('다시 확인'), findsOneWidget);
+
+      // 다시 확인해도 아직 처리 중이면 그대로이고 새 결제는 만들어지지 않는다.
+      await tester.tap(find.text('다시 확인'));
+      await tester.pumpAndSettle();
+      expect(h.payments.statusCalls, 4);
+      expect(find.text('다시 확인'), findsOneWidget);
+      expect(h.repo.brandConsents, hasLength(1));
+      expect(h.launcher.opened, hasLength(1));
+    });
+
+    testWidgets('checking again confirms a payment that was approved late', (
+      tester,
+    ) async {
+      final repo = FakeNegotiationRepository()
+        ..contract = sampleContract(
+          status: ContractStatus.awaitingBrand,
+          brand: true,
+        );
+      final h = await _pump(
+        tester,
+        repo,
+        role: CollaborationRole.commissioner,
+        // 처음 세 번은 처리 중, 다시 확인할 때 승인.
+        payments: FakePaymentRepository(
+          statuses: [
+            PaymentStatus.pending,
+            PaymentStatus.pending,
+            PaymentStatus.pending,
+            PaymentStatus.approved,
+          ],
+        ),
+      );
+      await _checkAll(tester, _brandTexts);
+      await tester.tap(find.text('동의하고 계약하기'));
+      await tester.pumpAndSettle();
+      expect(find.text('다시 확인'), findsOneWidget);
+
+      repo.contract = sampleContract(
+        status: ContractStatus.concluded,
+        brand: true,
+      );
+      await tester.tap(find.text('다시 확인'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('계약이 체결됐어요.'), findsOneWidget);
+      expect(h.repo.brandConsents, hasLength(1));
+    });
+
+    testWidgets('checking again after a failed payment allows paying again', (
+      tester,
+    ) async {
+      final h = await _pump(
+        tester,
+        FakeNegotiationRepository()
+          ..contract = sampleContract(
+            status: ContractStatus.awaitingBrand,
+            brand: true,
+          ),
+        role: CollaborationRole.commissioner,
+        payments: FakePaymentRepository(
+          statuses: [
+            PaymentStatus.pending,
+            PaymentStatus.pending,
+            PaymentStatus.pending,
+            PaymentStatus.failed,
+          ],
+        ),
+      );
+      await _checkAll(tester, _brandTexts);
+      await tester.tap(find.text('동의하고 계약하기'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('다시 확인'));
+      await tester.pumpAndSettle();
+
       expect(find.text('결제가 완료되지 않았어요. 다시 시도해 주세요.'), findsOneWidget);
       expect(_consentOn(tester), isTrue);
+      expect(h.repo.brandConsents, hasLength(1));
+    });
+
+    testWidgets('tapping the consent button twice consents once', (
+      tester,
+    ) async {
+      final h = await _pump(
+        tester,
+        FakeNegotiationRepository()
+          ..contract = sampleContract(
+            status: ContractStatus.awaitingBrand,
+            brand: true,
+          ),
+        role: CollaborationRole.commissioner,
+        payments: FakePaymentRepository(statuses: [PaymentStatus.approved]),
+      );
+      await _checkAll(tester, _brandTexts);
+
+      // 화면이 다시 그려지기 전에 연달아 두 번 누른다.
+      await tester.tap(find.text('동의하고 계약하기'));
+      await tester.tap(find.text('동의하고 계약하기'));
+      await tester.pumpAndSettle();
+
+      expect(h.repo.brandConsents, hasLength(1));
+      expect(h.launcher.opened, hasLength(1));
     });
 
     testWidgets('shows a checking state while the payment is confirmed', (
@@ -647,25 +753,33 @@ void main() {
       expect(find.text('결제를 확인하고 있어요'), findsNothing);
     });
 
-    testWidgets('a checkout that cannot open leaves things retryable', (
-      tester,
-    ) async {
-      final h = await _pump(
-        tester,
-        FakeNegotiationRepository()
-          ..contract = sampleContract(
-            status: ContractStatus.awaitingBrand,
-            brand: true,
-          ),
-        role: CollaborationRole.commissioner,
-      );
+    testWidgets('a checkout that cannot open reads the contract again and '
+        'stays retryable', (tester) async {
+      final repo = FakeNegotiationRepository()
+        ..contract = sampleContract(
+          status: ContractStatus.awaitingBrand,
+          brand: true,
+        );
+      final h = await _pump(tester, repo, role: CollaborationRole.commissioner);
+      // 서버는 결제를 만들어 계약이 `PAYING`이 된다(결제 행의 금액이 내려온다).
+      repo.onBrandConsented = () {
+        repo.contract = sampleContract(
+          status: ContractStatus.paying,
+          brand: true,
+          quote: contractQuote(fee: 12345),
+        );
+      };
       h.launcher.failWith = StateError('no checkout');
       await _checkAll(tester, _brandTexts);
+      final reads = repo.contractCalls;
 
       await tester.tap(find.text('동의하고 계약하기'));
       await tester.pumpAndSettle();
 
       expect(find.text('결제를 시작하지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
+      expect(repo.contractCalls, greaterThan(reads));
+      // 다시 읽은 서버의 값(PAYING의 견적)이 보이고, 확인란은 그대로라 다시 시도할 수 있다.
+      expect(find.text('12,345원'), findsOneWidget);
       expect(_consentOn(tester), isTrue);
     });
 

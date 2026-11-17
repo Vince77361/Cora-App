@@ -45,6 +45,10 @@ abstract final class ContractTexts {
   static const checking = '결제를 확인하고 있어요';
   static const paymentIncomplete = '결제가 완료되지 않았어요. 다시 시도해 주세요.';
 
+  // 캔버스·브리프 밖: 확인 시간 안에 결과를 받지 못했을 때(결제가 아직 처리 중일 수 있어 다시 결제를 권하지 않는다).
+  static const paymentConfirming = '결제를 확인하고 있어요. 잠시 뒤 다시 확인해 주세요.';
+  static const recheck = '다시 확인';
+
   /// 결제 상자의 안내. 성과 추가가 있으면 뒤에 환불 안내가 붙는다.
   static String escrowNote(int payoutDays, {required bool hasPerformance}) =>
       '결제 금액은 Cora가 보관하다가, 콘텐츠가 게시되고 $payoutDays일째에 크리에이터에게 지급해요.'

@@ -112,6 +112,7 @@ class _ContractPageState extends ConsumerState<ContractPage> {
               state: value,
               bottom: bottom,
               onConsent: _vm.consent,
+              onRecheck: _vm.recheckPayment,
               onProgress: _openProgress,
             ),
           ],
@@ -203,11 +204,13 @@ class _Body extends StatelessWidget {
     final photo = state.collaboration.counterpartPhotoUrl;
     final texts = contract.myConsentTexts;
     // 크리에이터가 동의한 뒤에는 확인한 채로 보인다. 그 밖에는 확인란을 직접 켠다.
-    final canToggle = mode == ContractMode.consentable && !state.busy;
+    final canToggle =
+        mode == ContractMode.consentable && !state.busy && !state.confirming;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (state.showVoidedNotice) const _VoidedNotice(),
+        if (state.showVoidedNotice)
+          _VoidedNotice(onShown: vm.markVoidedNoticeSeen),
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
           child: Column(
@@ -276,9 +279,25 @@ class _Body extends StatelessWidget {
   }
 }
 
-/// 내 동의가 새 판본으로 취소됐을 때의 띠(캔버스 밖): `surface` 상자에 13/500 글.
-class _VoidedNotice extends StatelessWidget {
-  const _VoidedNotice();
+/// 내 동의가 새 판본으로 취소됐을 때의 띠(캔버스 밖): `surface` 상자에 13/500 글. 처음 그려진 뒤 [onShown]으로 본 것으로
+/// 적는다(그리기 전에 적으면 화면이 다시 만들어질 때 보지 못한 띠가 사라진다).
+class _VoidedNotice extends StatefulWidget {
+  const _VoidedNotice({required this.onShown});
+
+  final VoidCallback onShown;
+
+  @override
+  State<_VoidedNotice> createState() => _VoidedNoticeState();
+}
+
+class _VoidedNoticeState extends State<_VoidedNotice> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onShown();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -347,12 +366,14 @@ class _BottomBar extends StatelessWidget {
     required this.state,
     required this.bottom,
     required this.onConsent,
+    required this.onRecheck,
     required this.onProgress,
   });
 
   final ContractState state;
   final double bottom;
   final VoidCallback onConsent;
+  final VoidCallback onRecheck;
   final VoidCallback onProgress;
 
   @override
@@ -370,6 +391,10 @@ class _BottomBar extends StatelessWidget {
         if (state.phase == ContractPhase.checking) {
           label = ContractTexts.checking;
           onPressed = null;
+        } else if (state.confirming) {
+          // 결제 결과를 모른다: 새 결제창을 열지 않고 다시 확인만 한다.
+          label = ContractTexts.recheck;
+          onPressed = state.busy ? null : onRecheck;
         } else if (!state.allChecked) {
           label = ContractTexts.notReady;
           onPressed = null;

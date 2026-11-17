@@ -67,6 +67,7 @@ class ContractState {
     this.notice,
     this.staleVersion,
     this.showVoidedNotice = false,
+    this.confirmingPaymentId,
   });
 
   final Contract contract;
@@ -88,8 +89,13 @@ class ContractState {
   /// `조건이 바뀌어 동의가 취소됐어요` 띠를 이 화면에서 보인다.
   final bool showVoidedNotice;
 
+  /// 결제창을 닫은 뒤 확인 시간 안에 결과를 받지 못한 결제. 있으면 결제가 아직 처리 중일 수 있어서 새 결제창을 열지 않고
+  /// `다시 확인`만 할 수 있다(돈이 두 번 나가지 않게).
+  final String? confirmingPaymentId;
+
   bool get isBrand => collaboration.role == CollaborationRole.commissioner;
   bool get busy => phase != ContractPhase.idle;
+  bool get confirming => confirmingPaymentId != null;
 
   ContractMode get mode {
     final c = contract;
@@ -119,6 +125,8 @@ class ContractState {
     bool clearNotice = false,
     int? staleVersion,
     bool? showVoidedNotice,
+    String? confirmingPaymentId,
+    bool clearConfirming = false,
   }) => ContractState(
     contract: contract ?? this.contract,
     collaboration: collaboration,
@@ -128,6 +136,9 @@ class ContractState {
     notice: clearNotice ? null : (notice ?? this.notice),
     staleVersion: staleVersion ?? this.staleVersion,
     showVoidedNotice: showVoidedNotice ?? this.showVoidedNotice,
+    confirmingPaymentId: clearConfirming
+        ? null
+        : (confirmingPaymentId ?? this.confirmingPaymentId),
   );
 }
 
@@ -174,13 +185,22 @@ class ContractViewModel extends AsyncNotifier<ContractState> {
   static List<bool> _cleared(Contract contract) =>
       List.filled(contract.myConsentTexts.length, false);
 
-  /// 같은 판본의 띠는 한 번만 보인다. 보이는 순간 본 것으로 적는다.
-  bool _firstVoidedNotice(Contract contract) {
-    if (!contract.voidedNotice) return false;
-    final key = '$collaborationId/${contract.version}';
-    if (ref.read(voidedNoticesSeenProvider).contains(key)) return false;
-    ref.read(voidedNoticesSeenProvider.notifier).markSeen(key);
-    return true;
+  String _voidedKey(Contract contract) =>
+      '$collaborationId/${contract.version}';
+
+  /// 같은 판본의 띠는 한 번만 보인다. 여기서는 본 적이 있는지만 보고, 본 것으로 적는 것은 띠를 실제로 그린 뒤
+  /// [markVoidedNoticeSeen]이 한다(그리기 전에 화면이 다시 만들어져도 띠가 사라지지 않게).
+  bool _firstVoidedNotice(Contract contract) =>
+      contract.voidedNotice &&
+      !ref.read(voidedNoticesSeenProvider).contains(_voidedKey(contract));
+
+  /// 띠가 화면에 그려진 뒤 부른다.
+  void markVoidedNoticeSeen() {
+    final current = state.value;
+    if (current == null || !current.showVoidedNotice) return;
+    ref
+        .read(voidedNoticesSeenProvider.notifier)
+        .markSeen(_voidedKey(current.contract));
   }
 
   void _onEvent(RealtimeEvent event) {
@@ -217,6 +237,7 @@ class ContractViewModel extends AsyncNotifier<ContractState> {
       method: now.method,
       notice: now.notice,
       showVoidedNotice: now.showVoidedNotice || _firstVoidedNotice(fresh),
+      confirmingPaymentId: now.confirmingPaymentId,
     );
   }
 
@@ -234,6 +255,7 @@ class ContractViewModel extends AsyncNotifier<ContractState> {
     final current = state.value;
     if (current == null ||
         current.busy ||
+        current.confirming ||
         current.mode != ContractMode.consentable ||
         index < 0 ||
         index >= current.checked.length) {
@@ -246,7 +268,12 @@ class ContractViewModel extends AsyncNotifier<ContractState> {
 
   void selectMethod(PaymentMethod method) {
     final current = state.value;
-    if (current == null || current.busy || current.method == method) return;
+    if (current == null ||
+        current.busy ||
+        current.confirming ||
+        current.method == method) {
+      return;
+    }
     state = AsyncData(current.copyWith(method: method));
   }
 
@@ -256,6 +283,7 @@ class ContractViewModel extends AsyncNotifier<ContractState> {
     final start = state.value;
     if (start == null ||
         start.busy ||
+        start.confirming ||
         start.mode != ContractMode.consentable ||
         !start.allChecked) {
       return;
@@ -309,14 +337,15 @@ class ContractViewModel extends AsyncNotifier<ContractState> {
           .read(checkoutLauncherProvider)
           .open(created.checkoutUrl, amount: start.contract.quote?.total);
     } on NegotiationFailure {
-      return _stop(start, ContractTexts.startFailed);
+      return _stop(start, ContractTexts.startFailed, reread: true);
     } on NegotiationRejected catch (rejected) {
       return _fail(start, version, rejected);
     } on NegotiationStale catch (stale) {
       return _fail(start, version, stale);
     } catch (_) {
-      // 결제창을 열지 못했다(아직 붙이지 않은 PG 주소 등).
-      return _stop(start, ContractTexts.startFailed);
+      // 결제창을 열지 못했다(아직 붙이지 않은 PG 주소 등). 서버는 이미 결제를 만들었을 수 있어서(계약이 `PAYING`)
+      // 계약을 다시 읽어 화면을 서버와 맞춘다.
+      return _stop(start, ContractTexts.startFailed, reread: true);
     }
     if (!ref.mounted) return;
 
@@ -348,7 +377,62 @@ class ContractViewModel extends AsyncNotifier<ContractState> {
           break;
       }
     }
-    return _stop(start, ContractTexts.paymentIncomplete, reread: true);
+    // 확인 시간 안에 결과를 받지 못했다. 결제가 아직 처리 중일 수 있으니 다시 결제하라고 하지 않고 확인만 권한다.
+    _keepConfirming(paymentId);
+  }
+
+  /// 결제 결과를 아직 모른다: 새 결제창을 막고 `다시 확인`만 남긴다.
+  void _keepConfirming(String paymentId) {
+    if (!ref.mounted) return;
+    state = AsyncData(
+      state.requireValue.copyWith(
+        phase: ContractPhase.idle,
+        notice: ContractTexts.paymentConfirming,
+        confirmingPaymentId: paymentId,
+      ),
+    );
+  }
+
+  /// `다시 확인`. 결제 상태를 다시 묻고 계약도 다시 읽는다. 승인이면 체결을 확인하고, 실패·취소면 다시 결제할 수 있게
+  /// 풀고, 아직 처리 중이면 그대로 둔다. 새 결제를 만들지 않는다.
+  Future<void> recheckPayment() async {
+    final current = state.value;
+    final paymentId = current?.confirmingPaymentId;
+    if (current == null || paymentId == null || current.busy) return;
+    state = AsyncData(
+      current.copyWith(phase: ContractPhase.checking, clearNotice: true),
+    );
+    final PaymentStatus status;
+    try {
+      status = await ref.read(paymentRepositoryProvider).fetchStatus(paymentId);
+    } on PaymentFailure {
+      return _keepConfirming(paymentId);
+    }
+    if (!ref.mounted) return;
+    switch (status) {
+      case PaymentStatus.approved:
+        return _afterApproved();
+      case PaymentStatus.failed:
+      case PaymentStatus.cancelled:
+        state = AsyncData(
+          state.requireValue.copyWith(
+            phase: ContractPhase.idle,
+            notice: ContractTexts.paymentIncomplete,
+            clearConfirming: true,
+          ),
+        );
+        await _refreshQuietly();
+      case PaymentStatus.pending:
+        _keepConfirming(paymentId);
+        // 웹훅이 먼저 체결했을 수 있어서 계약도 다시 읽는다.
+        try {
+          final fresh = await _repo.fetchContract(collaborationId);
+          if (!ref.mounted || !fresh.concluded) return;
+          return _afterApproved();
+        } catch (_) {
+          // 못 읽어도 확인 중 화면은 그대로다.
+        }
+    }
   }
 
   /// 결제가 승인됐다. 체결은 서버가 승인과 한 트랜잭션으로 하므로 계약을 다시 읽어 `체결`을 확인한다.
