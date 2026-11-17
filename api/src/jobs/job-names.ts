@@ -14,6 +14,7 @@ export const JOB_NAMES = [
   'payout-send',
   'settlement-auto-confirm',
   'evidence-missing-halt',
+  'settle-fixed',
 ] as const;
 
 export type JobName = (typeof JOB_NAMES)[number];

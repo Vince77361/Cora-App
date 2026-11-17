@@ -88,6 +88,9 @@ describe('NOTIFICATION_CATALOG', () => {
     expect(render('PAYOUT_DONE', null, { amount: 43200 })).toBe(
       '43,200원이 지급됐어요.',
     );
+    expect(render('BRAND_FIXED_PAID', null, { amount: 350000 })).toBe(
+      '제작비 350,000원을 크리에이터에게 지급했어요.',
+    );
     expect(render('SETTLEMENT_REFUNDED', null, { amount: 7000 })).toBe(
       '조회수 집계가 끝났어요. 7,000원을 돌려드려요.',
     );
@@ -308,6 +311,11 @@ describe('NOTIFICATION_CATALOG', () => {
       switch: 'SETTLEMENT',
       glyph: 'WON',
     });
+    expect(NOTIFICATION_CATALOG.BRAND_FIXED_PAID).toMatchObject({
+      tab: 'SETTLEMENT',
+      switch: 'SETTLEMENT',
+      glyph: 'WON',
+    });
   });
   describe('required inputs', () => {
     const actor = { name: '한그릇 라멘' };
@@ -328,6 +336,7 @@ describe('NOTIFICATION_CATALOG', () => {
       for (const kind of [
         'SETTLEMENT_CONFIRMED',
         'PAYOUT_DONE',
+        'BRAND_FIXED_PAID',
         'SETTLEMENT_REFUNDED',
         'UNSUBMITTED_REFUNDED',
       ] as const) {

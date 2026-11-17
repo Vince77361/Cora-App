@@ -46,6 +46,10 @@ describe('contract snapshot', () => {
   it('refuses a copy whose money fields do not agree', () => {
     expect(() => readSnapshot(snapshotOf(model({ maxCash: 999 })))).toThrow();
     expect(() => readSnapshot(snapshotOf(model({ fee: -1 })))).toThrow();
+    expect(() => readSnapshot(snapshotOf(model({ payoutDays: 10 })))).toThrow();
+    expect(() =>
+      readSnapshot(snapshotOf(model({ format: 'VLOG' as never }))),
+    ).toThrow();
     expect(() => readSnapshot({})).toThrow();
     expect(() => readSnapshot(null)).toThrow();
     expect(() =>

@@ -4,6 +4,7 @@ import { CollaborationStage } from '@prisma/client';
 import { submissionDeadlineJobKeys } from '../collaborations/collaboration-jobs';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
+import { readSnapshot } from '../contracts/contract-snapshot';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
 import { InstagramService } from '../instagram/instagram.service';
@@ -12,8 +13,15 @@ import { JobScheduler } from '../jobs/job-scheduler';
 import { NotificationsService } from '../notifications/notifications.service';
 import { readTerms } from '../stores/reward-terms';
 import { UsersService } from '../users/users.service';
-import { settleJobKey, SNAPSHOT_DAYS, snapshotJobKey } from './job-keys';
+import {
+  brandHaltJobKey,
+  settleFixedJobKey,
+  settleJobKey,
+  SNAPSHOT_DAYS,
+  snapshotJobKey,
+} from './job-keys';
 import { isAcceptedLink } from './link-rules';
+import { SettlementsRepository } from './settlements.repository';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -29,6 +37,7 @@ export class SubmissionsService {
 
   constructor(
     private readonly collaborations: CollaborationsRepository,
+    private readonly repository: SettlementsRepository,
     private readonly users: UsersService,
     private readonly creators: CreatorsService,
     private readonly instagram: InstagramService,
@@ -57,8 +66,10 @@ export class SubmissionsService {
     if (collaboration.stage !== submittableStage(collaboration.kind)) {
       throw this.notSubmittable();
     }
-    // 브랜드 계약의 제출(APPROVED → PUBLISHED)은 5·6번 계획이 이어서 구현한다. 지금은 이 계획의 가게 오퍼만 받는다.
-    if (collaboration.kind !== 'STORE_OFFER') throw this.notSubmittable();
+    if (collaboration.kind === 'BRAND_CONTRACT') {
+      await this.submitBrand(collaboration, rawUrl);
+      return;
+    }
 
     // 기한이 지난 제출은 받지 않는다: 늦게 도는 미제출 환급 작업과 경쟁해 기한 뒤의 링크가 집계에 들어가지 않게.
     const dueAt = collaboration.submitDueAt;
@@ -106,6 +117,81 @@ export class SubmissionsService {
     }
     await this.cancelDeadlineJobs(collaboration.id);
     await this.notifySubmitted(collaboration);
+  }
+
+  // 브랜드 계약의 링크 제출: APPROVED → PUBLISHED. 형식은 협업의 terms 칸(브랜드는 비어 있다)이 아니라 계약의 조건 사본에서 읽는다.
+  // 성과 추가가 없으면 게시한 날 + 지급 조건(7·14일)에 settle-fixed 작업을 올린다. 성과 추가가 있는 계약의 측정·정산은 이 길이
+  // 아직 올리지 않는다: PUBLISHED로 두고 작업을 올리지 않으므로 돈이 움직이지 않는다. 연결 계정의 게시물인지는 조회수를 읽을 때만 중요해서 이때만 본다.
+  // 측정이 끝나는 시각(= 지급 시각)은 collaborations.countingEndsAt에 적어 협업 모델이 그대로 내려 준다.
+  private async submitBrand(
+    collaboration: Collaboration,
+    rawUrl: string,
+  ): Promise<void> {
+    const snapshot = readSnapshot(
+      await this.repository.findConcludedContractSnapshot(collaboration.id),
+    );
+    const url = rawUrl.trim();
+    if (!isAcceptedLink(snapshot.format, url)) {
+      throw new AppError('VALIDATION_FAILED', '링크 형식을 확인해 주세요.');
+    }
+    if (snapshot.performance) {
+      const connection = await this.instagram.getConnection(
+        collaboration.creatorId,
+      );
+      if (
+        !(await this.viewCount.isOwnedBy(url, {
+          instagramHandle: connection?.handle ?? null,
+        }))
+      ) {
+        throw new AppError('CONFLICT', '내 계정의 게시물만 제출할 수 있어요.');
+      }
+    }
+
+    const now = this.clock.now();
+    const countingEndsAt = new Date(
+      now.getTime() + snapshot.payoutDays * DAY_MS,
+    );
+    // 같은 제출이 동시에 와도 조건부 갱신이 한 번만 통과시킨다.
+    const moved = await this.collaborations.advance(
+      collaboration.id,
+      'APPROVED',
+      'PUBLISHED',
+      { submittedUrl: url, submittedAt: now, countingEndsAt },
+    );
+    if (!moved) throw this.notSubmittable();
+
+    if (!snapshot.performance) {
+      try {
+        await this.jobs.schedule(
+          'settle-fixed',
+          { collaborationId: collaboration.id },
+          countingEndsAt,
+          settleFixedJobKey(collaboration.id),
+        );
+      } catch (error) {
+        // 작업 없이 PUBLISHED로 두면 아무도 지급하지 않는다: 제출을 되돌려 크리에이터가 다시 낼 수 있게 한다.
+        await this.collaborations.advance(
+          collaboration.id,
+          'PUBLISHED',
+          'APPROVED',
+          { submittedUrl: null, submittedAt: null, countingEndsAt: null },
+        );
+        throw error;
+      }
+    }
+    await this.cancelBrandHaltCheck(collaboration.id);
+    await this.notifySubmitted(collaboration);
+  }
+
+  // 링크가 올라왔으니 60일 점검은 필요 없다. 지우지 못해도 처리기가 단계를 보고 아무 일도 하지 않는다.
+  private async cancelBrandHaltCheck(collaborationId: string): Promise<void> {
+    try {
+      await this.jobs.cancel(brandHaltJobKey(collaborationId));
+    } catch (error) {
+      this.logger.warn(
+        `60일 점검 작업을 지우지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
   }
 
   // 집계 작업을 올린다: 조회수 8번(0일째는 지금, 이후 하루 간격)과 정산 한 번.
@@ -188,7 +274,7 @@ export class SubmissionsService {
       }
       await this.notifications.notify({
         userId: collaboration.commissionerId,
-        role: 'STORE',
+        role: collaboration.kind === 'BRAND_CONTRACT' ? 'BRAND' : 'STORE',
         kind: 'CONTENT_SUBMITTED',
         actor: actor ?? {
           userId: collaboration.creatorId,

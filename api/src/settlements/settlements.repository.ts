@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   Collaboration,
+  CollaborationKind,
   EvidenceSource,
   Payout,
   Prisma,
@@ -74,7 +75,12 @@ export interface NewRefund {
   idempotencyKey: string;
 }
 
-export type PayoutWithCreator = Payout & { creatorId: string };
+// 지급과 그 협업의 당사자. 브랜드 계약이면 송금이 끝난 뒤 브랜드에게도 알리므로 맡긴 쪽(commissionerId)과 종류를 함께 읽는다.
+export type PayoutWithCreator = Payout & {
+  creatorId: string;
+  commissionerId: string;
+  collaborationKind: CollaborationKind;
+};
 
 // 정산·지급·환급과 조회수 스냅샷의 저장소. Prisma는 여기서만 쓴다.
 @Injectable()
@@ -411,14 +417,36 @@ export class SettlementsRepository {
     });
   }
 
+  // 체결된 계약의 조건 사본(JSON). 정산이 읽는 보상은 이 사본뿐이다(브랜드 협업의 terms 칸은 비어 있다).
+  // 계약 모듈이 정산 모듈을 import하므로 이 모듈이 계약 모듈을 쓸 수 없어 표를 직접 읽는다(협업 저장소가 오퍼 표를 읽는 것과 같다).
+  async findConcludedContractSnapshot(
+    collaborationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<unknown> {
+    const row = await (tx ?? this.prisma).contract.findFirst({
+      where: { collaborationId, status: 'CONCLUDED', deletedAt: null },
+      select: { termsSnapshot: true },
+    });
+    return row?.termsSnapshot ?? null;
+  }
+
   async findPayoutWithCreator(id: string): Promise<PayoutWithCreator | null> {
     const row = await this.prisma.payout.findFirst({
       where: { id, deletedAt: null },
-      include: { collaboration: { select: { creatorId: true } } },
+      include: {
+        collaboration: {
+          select: { creatorId: true, commissionerId: true, kind: true },
+        },
+      },
     });
     if (!row) return null;
     const { collaboration, ...payout } = row;
-    return { ...payout, creatorId: collaboration.creatorId };
+    return {
+      ...payout,
+      creatorId: collaboration.creatorId,
+      commissionerId: collaboration.commissionerId,
+      collaborationKind: collaboration.kind,
+    };
   }
 
   // 그 크리에이터의 대기 중 지급 가운데 지급일이 before보다 이른 것.

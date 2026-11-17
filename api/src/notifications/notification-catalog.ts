@@ -378,6 +378,16 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     needsActor: false,
     render: () => '계약이 체결됐어요. 이제 제작을 시작할 수 있어요.',
   },
+  // 브랜드 계약의 지급이 나갔다(브랜드에게). 정산 / 정산 / ₩. 송금이 끝난 뒤 지급 작업이 보낸다.
+  BRAND_FIXED_PAID: {
+    tab: 'SETTLEMENT',
+    switch: 'SETTLEMENT',
+    glyph: 'WON',
+    requiredParams: { amount: 'number' },
+    needsActor: false,
+    render: ({ params }) =>
+      `제작비 ${josa(won(params.amount), '을/를')} 크리에이터에게 지급했어요.`,
+  },
   // 표 "메시지 요청": 브랜드 / 매칭 / 대화 메시지 / 사진. 누르면 11 메시지 요청(대화방)이 열린다.
   MESSAGE_REQUEST: {
     tab: 'MATCHING',

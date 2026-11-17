@@ -35,9 +35,17 @@ export const disputeDedupeKey = (collaborationId: string): string =>
 export const viewReportDedupeKey = (collaborationId: string): string =>
   `view-report:${collaborationId}`;
 
-// 브랜드 계약이 체결된 뒤 60일 동안 링크가 없으면 협업을 멈추는 점검 작업(brand-halt-check)의 키. 처리기는 8번 작업이 만든다.
+// 브랜드 계약이 체결된 뒤 60일 동안 링크가 없으면 협업을 멈추는 점검 작업(brand-halt-check)의 키.
 export const brandHaltJobKey = (collaborationId: string): string =>
   `brand-halt:${collaborationId}`;
+
+// 성과 추가가 없는 브랜드 계약의 지급 작업(settle-fixed)의 키. 링크를 낸 날 + 지급 조건(7·14일)에 돈다.
+// 정산 장부의 키는 이 키가 아니라 settleJobKey와 같은 'settle:' + 협업 id다(정산은 협업마다 한 번뿐이라 길이 달라도 키가 같아야 한다).
+export const settleFixedJobKey = (collaborationId: string): string =>
+  `settle-fixed:${collaborationId}`;
+
+// 브랜드 계약이 60일 동안 링크 없이 멈춘 협업의 사유(brand-halt-check 처리기가 쓰고, 운영 명령 resume이 읽는다).
+export const NO_LINK_HALT_REASON = 'NO_LINK_60_DAYS';
 
 // 협업이 멈췄다는 알림(COLLABORATION_HALTED)의 중복 방지 키. 알림은 (사용자, 키)마다 한 건이라 협업 id만 쓰면 풀었다가 다시 멈출 때
 // 두 번째 알림이 조용히 사라진다. 멈출 때 바뀌는 협업 행의 updatedAt(멈춘 시각)을 넣어 멈춤 한 번마다 다른 키가 되게 하고,
@@ -48,9 +56,10 @@ export const haltedNoticeKey = (
 ): string => `halted:${collaborationId}:${haltedAt.getTime()}`;
 
 // 협업을 멈추거나 끝낼 때 지우는 작업의 키 전부(정산·집계·자동 확인·캡처 기한·제출 기한·브랜드 60일 점검).
-// 운영 명령과 신고로 멈출 때가 같은 목록을 쓴다. 지울 것이 없어도 오류가 아니다. 8번 작업이 settle-fixed 키를 여기에 더한다.
+// 운영 명령과 신고로 멈출 때가 같은 목록을 쓴다. 지울 것이 없어도 오류가 아니다.
 export const haltJobKeys = (collaborationId: string): string[] => [
   settleJobKey(collaborationId),
+  settleFixedJobKey(collaborationId),
   autoConfirmJobKey(collaborationId),
   evidenceHaltJobKey(collaborationId),
   brandHaltJobKey(collaborationId),

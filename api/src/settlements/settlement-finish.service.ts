@@ -59,10 +59,39 @@ export class SettlementFinishService {
       refund: settleRefundKey(collaboration.id),
     },
   ): Promise<void> {
-    const payout = await this.payouts.findByKey(keys.payout);
-    if (payout?.status === 'PENDING') await this.payouts.schedule(payout);
+    await this.schedulePayoutAndNotifyCreator(
+      collaboration,
+      settlement,
+      keys.payout,
+    );
+    const refund = await this.refunds.findByKey(keys.refund);
+    if (refund) await this.refunds.execute(refund.id, context);
+    // 평소 조회수는 사장님이 알림으로 7일 결과(G1)를 열기 전에 채운다.
+    await this.recordUsualViews(collaboration, settlement);
+    await this.notifyStoreOfResult(collaboration, settlement);
+  }
 
-    const target = { kind: 'WALLET', id: null } as const;
+  // 성과 추가가 없는 브랜드 계약의 정산이 커밋된 뒤의 단계: 지급 작업 등록과 크리에이터 알림.
+  // 환급이 없고(전액 지급) 사장님용 7일 결과(G1)도 없어서 가게 쪽 단계(환급 전송, 평소 조회수, 사장님 알림)는 거치지 않는다.
+  // 브랜드의 알림은 송금이 끝난 뒤 지급 작업이 보낸다.
+  async finishBrandFixed(
+    collaboration: Collaboration,
+    settlement: Settlement,
+  ): Promise<void> {
+    await this.schedulePayoutAndNotifyCreator(
+      collaboration,
+      settlement,
+      settlePayoutKey(collaboration.id),
+    );
+  }
+
+  private async schedulePayoutAndNotifyCreator(
+    collaboration: Collaboration,
+    settlement: Settlement,
+    payoutKey: string,
+  ): Promise<void> {
+    const payout = await this.payouts.findByKey(payoutKey);
+    if (payout?.status === 'PENDING') await this.payouts.schedule(payout);
     // 0원 정산의 알림("정산 0원…")은 보내지 않는다.
     if (settlement.payoutAmount > 0) {
       await this.notifications.notify({
@@ -70,15 +99,10 @@ export class SettlementFinishService {
         role: 'CREATOR',
         kind: 'SETTLEMENT_CONFIRMED',
         params: { amount: settlement.payoutAmount },
-        target,
+        target: { kind: 'WALLET', id: null },
         dedupeKey: `settled:${collaboration.id}`,
       });
     }
-    const refund = await this.refunds.findByKey(keys.refund);
-    if (refund) await this.refunds.execute(refund.id, context);
-    // 평소 조회수는 사장님이 알림으로 7일 결과(G1)를 열기 전에 채운다.
-    await this.recordUsualViews(collaboration, settlement);
-    await this.notifyStoreOfResult(collaboration, settlement);
   }
 
   // 사장님에게 정산이 끝났다고 알리고, 누르면 7일 결과(G1)가 열리게 한다. 이 알림이 G1로 가는 유일한 길이라

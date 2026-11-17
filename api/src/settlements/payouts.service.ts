@@ -140,7 +140,7 @@ export class PayoutsService implements OnModuleInit {
 
   // 대상은 협업 ID이고 금액만 싣는다. 계좌번호·예금주는 어떤 로그에도 남기지 않는다.
   private logResult(
-    payout: Payout & { creatorId: string },
+    payout: PayoutWithCreator,
     result: 'ALLOWED' | 'FAILED',
     reason: string,
   ): void {
@@ -193,14 +193,25 @@ export class PayoutsService implements OnModuleInit {
     }
   }
 
-  private notifyDone(payout: Payout & { creatorId: string }): Promise<void> {
-    return this.notifications.notify({
+  // 크리에이터에게 지급 완료를 알리고, 브랜드 계약이면 브랜드에게도 제작비가 지급됐다고 알린다(탭 정산).
+  // 알림은 모두 지급마다 한 건씩이라 송금 직후 죽어 다시 돌아도 중복되지 않는다.
+  private async notifyDone(payout: PayoutWithCreator): Promise<void> {
+    await this.notifications.notify({
       userId: payout.creatorId,
       role: 'CREATOR',
       kind: 'PAYOUT_DONE',
       params: { amount: payout.amount },
       target: { kind: 'WALLET', id: null },
       dedupeKey: `payout-done:${payout.id}`,
+    });
+    if (payout.collaborationKind !== 'BRAND_CONTRACT') return;
+    await this.notifications.notify({
+      userId: payout.commissionerId,
+      role: 'BRAND',
+      kind: 'BRAND_FIXED_PAID',
+      params: { amount: payout.amount },
+      target: { kind: 'COLLABORATION', id: payout.collaborationId },
+      dedupeKey: `brand-fixed-paid:${payout.id}`,
     });
   }
 

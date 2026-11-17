@@ -9,7 +9,10 @@ import {
   scheduleSubmissionDeadlineJobs,
   submissionDeadlineJobKeys,
 } from '../collaborations/collaboration-jobs';
-import { canTransition } from '../collaborations/collaboration-stage';
+import {
+  BRAND_HALT_CHECK_DAYS,
+  canTransition,
+} from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { JobScheduler } from '../jobs/job-scheduler';
@@ -24,11 +27,13 @@ import {
   forcePayoutKey,
   forcePayoutRefundKey,
   forceRefundKey,
+  brandHaltJobKey,
   haltJobKeys,
   lateRefundKey,
   payoutJobKey,
   paymentLedgerKey,
   SETTLEMENT_DISPUTED_HALT_REASON,
+  settleFixedJobKey,
   settleJobKey,
   SNAPSHOT_DAYS,
   snapshotJobKey,
@@ -158,6 +163,15 @@ export class OpsService {
             '제출 기한이 없어서 제출 기한 작업을 올릴 수 없어요.',
           );
         }
+        if (
+          to === 'PUBLISHED' &&
+          c.kind === 'BRAND_CONTRACT' &&
+          !c.countingEndsAt
+        ) {
+          throw new OpsError(
+            '지급 시각이 없어서 지급 작업을 다시 올릴 수 없어요.',
+          );
+        }
         await this.advanceOrConflict(c, 'HALTED', to, tx, {
           haltedReason: null,
           stageBeforeHalt: null,
@@ -189,8 +203,46 @@ export class OpsService {
           now,
         );
       });
+    } else if (collaboration.kind === 'BRAND_CONTRACT') {
+      await this.afterCommit(warnings, '브랜드 계약 작업 등록', () =>
+        this.rescheduleBrand(collaboration, to, now),
+      );
     }
     return { lines: [`협업을 다시 열었어요. (HALTED → ${to})`], warnings };
+  }
+
+  // 브랜드 계약을 재개하면 멈추기 전 단계에 맞는 작업을 다시 올린다. 멈추면서 모두 취소했으므로 같은 키로 올릴 수 있다.
+  // - 링크를 내기 전(CONTRACTED~APPROVED): 60일 점검을 지금부터 60일 뒤로 다시 올린다(운영자가 확인하고 푼 협업에 새 60일을 준다).
+  // - 링크를 낸 뒤(PUBLISHED): 성과 추가가 없으면 지급 작업을 max(지금, 원래 지급 시각)에 올린다. 지급 조건이 끝나기 전에 풀어도
+  //   일찍 지급하지 않는다. 성과 추가가 있는 계약은 이 길이 작업을 올리지 않는다(PUBLISHED로 남는다).
+  private async rescheduleBrand(
+    c: Collaboration,
+    to: CollaborationStage,
+    now: Date,
+  ): Promise<void> {
+    if (to !== 'PUBLISHED') {
+      const key = brandHaltJobKey(c.id);
+      await this.jobs.cancel(key);
+      await this.jobs.schedule(
+        'brand-halt-check',
+        { collaborationId: c.id },
+        new Date(now.getTime() + BRAND_HALT_CHECK_DAYS * DAY_MS),
+        key,
+      );
+      return;
+    }
+    const endsAt = c.countingEndsAt;
+    if (!endsAt || (await this.settlements.brandTermsOf(c.id)).performance) {
+      return;
+    }
+    const key = settleFixedJobKey(c.id);
+    await this.jobs.cancel(key);
+    await this.jobs.schedule(
+      'settle-fixed',
+      { collaborationId: c.id },
+      new Date(Math.max(now.getTime(), endsAt.getTime())),
+      key,
+    );
   }
 
   // 집계 중이던 협업을 재개하면 멈추기 전의 일정을 이어 간다(일찍 정산하지 않는다):

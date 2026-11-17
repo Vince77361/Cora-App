@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { BrandUsageRights } from '@prisma/client';
+import { BrandUsageRights, ContentFormat } from '@prisma/client';
 import { maxCashBurden } from '../stores/reward-terms';
 import { TermsVersionModel } from '../terms/dto/terms-version.model';
 
@@ -13,7 +13,7 @@ function isWholeWon(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
-// 저장된 사본을 읽는다. 돈이 걸린 값(제작비, 성과 추가, 최대 현금 부담, 활용 권한, 판본)이 맞지 않으면 던진다:
+// 저장된 사본을 읽는다. 돈이 걸린 값(제작비, 성과 추가, 최대 현금 부담, 활용 권한, 판본, 형식, 지급 조건)이 맞지 않으면 던진다:
 // 잘못 읽은 금액으로 결제하거나 정산하는 것보다 멈추는 편이 낫다.
 export function readSnapshot(json: unknown): TermsVersionModel {
   const s = json as Partial<TermsVersionModel> | null;
@@ -24,6 +24,9 @@ export function readSnapshot(json: unknown): TermsVersionModel {
     !isWholeWon(s.fee) ||
     !isWholeWon(s.maxCash) ||
     !Number.isInteger(s.pieces) ||
+    !Object.values(ContentFormat).includes(s.format as ContentFormat) ||
+    // 지급 시각(게시 + 지급 조건)이 이 값에서 나온다. 7·14가 아니면 지급 시각을 믿을 수 없다.
+    (s.payoutDays !== 7 && s.payoutDays !== 14) ||
     !Object.values(BrandUsageRights).includes(s.usageRights as BrandUsageRights)
   ) {
     throw new Error('계약의 조건 사본이 올바르지 않아요.');

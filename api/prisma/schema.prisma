@@ -883,6 +883,7 @@ enum NotificationKind {
   COLLABORATION_DROPPED
   CREATOR_CONSENTED
   CONTRACT_CONCLUDED
+  BRAND_FIXED_PAID
 
   @@map("notification_kind")
 }

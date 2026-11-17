@@ -4,6 +4,7 @@ import {
   brandHaltJobKey,
   evidenceHaltJobKey,
   haltJobKeys,
+  settleFixedJobKey,
   settleJobKey,
   SNAPSHOT_DAYS,
   snapshotJobKey,
@@ -15,6 +16,7 @@ describe('haltJobKeys', () => {
     expect(keys).toEqual(
       expect.arrayContaining([
         settleJobKey('c1'),
+        settleFixedJobKey('c1'),
         autoConfirmJobKey('c1'),
         evidenceHaltJobKey('c1'),
         brandHaltJobKey('c1'),
@@ -25,6 +27,10 @@ describe('haltJobKeys', () => {
       expect(keys).toContain(snapshotJobKey('c1', day));
     }
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('names the fixed payout job after the collaboration so a halt can cancel it by id', () => {
+    expect(settleFixedJobKey('c1')).toBe('settle-fixed:c1');
   });
 
   it('names the brand halt check after the collaboration so it can be cancelled by id', () => {

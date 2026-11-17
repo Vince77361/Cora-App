@@ -19,6 +19,10 @@ import {
 } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
 import { Clock } from '../common/clock';
+import {
+  maxCashOfSnapshot,
+  readSnapshot,
+} from '../contracts/contract-snapshot';
 import { hasViewPay, readTerms } from '../stores/reward-terms';
 import { InstagramService } from '../instagram/instagram.service';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
@@ -147,6 +151,63 @@ export class SettlementsService {
     const settlement = await this.repository.findSettlement(collaborationId);
     if (settlement && settlement.status === 'CONFIRMED') {
       await this.finisher.finish(collaboration, settlement, context);
+    }
+  }
+
+  // 체결된 브랜드 계약의 조건 사본. 운영 명령이 재개할 때 지급 작업을 올릴지 가리는 데 쓴다.
+  async brandTermsOf(collaborationId: string) {
+    return readSnapshot(
+      await this.repository.findConcludedContractSnapshot(collaborationId),
+    );
+  }
+
+  // settle-fixed 작업: 성과 추가가 없는 브랜드 계약을 링크를 낸 날 + 지급 조건(7·14일)에 정산한다. 제작비 전액을 지급하고 환급은 없다.
+  // 조회수는 읽지 않는다(finalViews = null). 같은 작업이 몇 번 돌아도 정산·장부·지급 행은 한 번이다(장부 키 'settle:' + 협업 id).
+  // 커밋(정산 행, 장부, 단계, 지급 행)은 한 트랜잭션이고 그 뒤 단계(지급 작업 등록, 알림)는 정산 행을 보고 이어서 한다:
+  // 커밋 뒤에 죽어 다시 돌 때는 단계가 이미 SETTLED여도 남은 단계를 마친다.
+  // 성과 추가가 있는 계약은 이 길로 지급하지 않는다(작업이 잘못 올라가도 PUBLISHED로 남는다).
+  async settleFixed(collaborationId: string, key: string): Promise<void> {
+    const collaboration = await this.collaborations.findById(collaborationId);
+    if (!collaboration || collaboration.kind !== 'BRAND_CONTRACT') return;
+    if (
+      collaboration.stage !== 'PUBLISHED' &&
+      collaboration.stage !== 'SETTLED'
+    ) {
+      return;
+    }
+    const snapshot = await this.brandTermsOf(collaborationId);
+    if (snapshot.performance) return;
+
+    if (collaboration.stage === 'PUBLISHED') {
+      // 작업은 지급 시각에 도는 것이 정상이다. 일찍 돌았다면 지급하지 말고 던져 큐가 나중에 다시 시도하게 한다
+      // (조용히 끝내면 PUBLISHED에 남은 채 아무도 지급하지 않는다).
+      const dueAt = collaboration.countingEndsAt;
+      if (!dueAt) throw new Error('지급 시각이 없는 브랜드 계약이에요.');
+      if (this.clock.now().getTime() < dueAt.getTime()) {
+        throw new Error('아직 지급 시각이 아니에요.');
+      }
+      const outcome = await this.repository.transaction<'settled', 'gone'>(
+        async (tx, rollback) => {
+          const committed = await this.commitSettlement(
+            tx,
+            collaboration,
+            'PUBLISHED',
+            (escrow) => planBrandFixed(snapshot, escrow),
+            key,
+            { confirmedBy: 'NOT_NEEDED' },
+          );
+          return committed ? 'settled' : rollback('gone');
+        },
+      );
+      // 졌다면 다른 길이 이미 단계를 옮겼다(멈춤, 동시에 도는 같은 작업): 아래 이어 하기는 정산 행이 있을 때만 한다.
+      if (outcome === 'gone') {
+        const fresh = await this.collaborations.findById(collaborationId);
+        if (fresh?.stage !== 'SETTLED') return;
+      }
+    }
+    const settlement = await this.repository.findSettlement(collaborationId);
+    if (settlement?.status === 'CONFIRMED') {
+      await this.finisher.finishBrandFixed(collaboration, settlement);
     }
   }
 
@@ -588,5 +649,31 @@ function planFixed(
     refund,
     fixedCash: terms.fixedCash,
     viewPay,
+  };
+}
+
+// 성과 추가가 없는 브랜드 계약의 정산: 보관액(= 제작비) 전부를 지급하고 환급은 없다. 보관액이 계약 사본의 제작비와 다르면 던진다:
+// 사본과 장부가 어긋난 채 돈을 보내지 않는다.
+function planBrandFixed(
+  snapshot: ReturnType<typeof readSnapshot>,
+  escrow: number,
+): {
+  finalViews: null;
+  payout: number;
+  refund: number;
+  fixedCash: number;
+  viewPay: number;
+} {
+  if (escrow !== maxCashOfSnapshot(snapshot)) {
+    throw new Error(
+      `보관액(${escrow})이 계약 사본의 제작비(${snapshot.fee})와 달라요.`,
+    );
+  }
+  return {
+    finalViews: null,
+    payout: escrow,
+    refund: 0,
+    fixedCash: escrow,
+    viewPay: 0,
   };
 }

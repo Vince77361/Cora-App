@@ -15,6 +15,7 @@ import { UsersModule } from '../users/users.module';
 import { EvidenceMissingHaltHandler } from './jobs/evidence-missing-halt.handler';
 import { PayoutSendHandler } from './jobs/payout-send.handler';
 import { RefundUnsubmittedHandler } from './jobs/refund-unsubmitted.handler';
+import { SettleFixedHandler } from './jobs/settle-fixed.handler';
 import { SettleHandler } from './jobs/settle.handler';
 import { SettlementAutoConfirmHandler } from './jobs/settlement-auto-confirm.handler';
 import { SubmitReminderHandler } from './jobs/submit-reminder.handler';
@@ -56,6 +57,7 @@ import { ViewReportService } from './view-report.service';
     DeadlinesService,
     ViewSnapshotHandler,
     SettleHandler,
+    SettleFixedHandler,
     SettlementAutoConfirmHandler,
     EvidenceMissingHaltHandler,
     PayoutSendHandler,
@@ -78,6 +80,7 @@ export class SettlementsModule implements OnModuleInit {
     private readonly registry: JobHandlerRegistry,
     private readonly viewSnapshot: ViewSnapshotHandler,
     private readonly settle: SettleHandler,
+    private readonly settleFixed: SettleFixedHandler,
     private readonly autoConfirm: SettlementAutoConfirmHandler,
     private readonly evidenceHalt: EvidenceMissingHaltHandler,
     private readonly payoutSend: PayoutSendHandler,
@@ -92,6 +95,7 @@ export class SettlementsModule implements OnModuleInit {
     this.registry.register('settle', (p, context) =>
       this.settle.run(p, context),
     );
+    this.registry.register('settle-fixed', (p) => this.settleFixed.run(p));
     this.registry.register('settlement-auto-confirm', (p, context) =>
       this.autoConfirm.run(p, context),
     );
