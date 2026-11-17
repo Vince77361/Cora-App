@@ -171,12 +171,14 @@ MatchInfo matchInfo({
   bool isBrand = true,
   int pendingProposals = 1,
   int baseVersion = 1,
+  String? conversationId = 'conv-1',
 }) => MatchInfo(
   collaborationId: collaborationId,
   brandName: brandName,
   brandTagline: brandTagline,
   creatorName: creatorName,
   isBrand: isBrand,
+  conversationId: conversationId,
   pendingProposals: pendingProposals,
   baseVersion: baseVersion,
 );

@@ -76,6 +76,7 @@ class ApiInterestsRepository implements InterestsRepository {
         creatorName: counterpart.name,
         creatorPhotoUrl: counterpart.photoUrl,
         isBrand: true,
+        conversationId: collaboration.conversationId,
         pendingProposals: pending,
         baseVersion: baseVersion,
       );
@@ -103,6 +104,7 @@ class ApiInterestsRepository implements InterestsRepository {
       creatorName: me.displayName,
       creatorPhotoUrl: me.photoUrl,
       isBrand: false,
+      conversationId: collaboration.conversationId,
       pendingProposals: pending,
       baseVersion: baseVersion,
     );

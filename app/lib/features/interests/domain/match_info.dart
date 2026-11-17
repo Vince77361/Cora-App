@@ -8,6 +8,7 @@ class MatchInfo {
     required this.pendingProposals,
     required this.baseVersion,
     this.brandTagline,
+    this.conversationId,
     this.brandPhotoUrl,
     this.creatorPhotoUrl,
   });
@@ -20,6 +21,9 @@ class MatchInfo {
   final String? brandPhotoUrl;
   final String creatorName;
   final String? creatorPhotoUrl;
+
+  /// 서로 관심으로 열린 대화방. 아직 없으면(읽지 못했으면) null이고 05에는 첫 인사 입력란이 없다.
+  final String? conversationId;
 
   /// 내가 브랜드 쪽이다(07로 가는 길이 역할마다 다르다).
   final bool isBrand;

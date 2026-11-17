@@ -68,5 +68,13 @@ abstract final class InterestsTexts {
       '${josa(brand, JosaPair.gwaWa)} ${josa(creator, JosaPair.iGa)} 서로의 콘텐츠에 관심을 표시했어요. 아직 계약이나 지급 의무는 생기지 않아요.';
   static String viewProposals(int n) => n == 0 ? '제안 보기' : '받은 제안 보기 · $n건';
   static const proposeFirst = '내가 먼저 제안하기';
+
+  /// 첫 인사 입력란(캔버스의 안내 글자 `콘텐츠에 대한 첫 인사 남기기`, 스크린 리더 이름 `첫 메시지`)과 보내기 원.
+  static const greetingHint = '콘텐츠에 대한 첫 인사 남기기';
+  static const greetingLabel = '첫 메시지';
+  static const greetingSendLabel = '첫 메시지 보내기';
+
+  /// 캔버스에 없는 안내(계획 Task 11의 문구).
+  static const greetingFailed = '첫 인사를 보내지 못했어요. 대화에서 다시 보내 주세요.';
   static const close = '닫기';
 }

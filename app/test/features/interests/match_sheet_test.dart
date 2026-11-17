@@ -1,5 +1,7 @@
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_theme.dart';
+import 'package:cora/features/chat/domain/chat_repository.dart';
+import 'package:cora/features/chat/domain/message.dart';
 import 'package:cora/features/discovery/domain/reward_proposal.dart';
 import 'package:cora/features/instagram_connect/domain/instagram_repository.dart';
 import 'package:cora/features/interests/domain/interests_repository.dart';
@@ -13,6 +15,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
+import '../chat/chat_fixtures.dart';
 import '../instagram_connect/fake_instagram_repository.dart';
 import '../server_config/fake_server_config_repository.dart';
 import 'fake_interests_repository.dart';
@@ -24,6 +27,7 @@ Future<({List<String> opened, List<MatchSheetResult> results})> _pump(
   ThemeData? theme,
   String start = '/start',
   FakeInterestsRepository? repo,
+  FakeChatRepository? chat,
 }) async {
   useCanvasPhone(tester);
   final opened = <String>[];
@@ -58,6 +62,7 @@ Future<({List<String> opened, List<MatchSheetResult> results})> _pump(
         builder: (c, s) => stub(s),
       ),
       GoRoute(path: '/creator/instagram', builder: (c, s) => stub(s)),
+      GoRoute(path: '/chats/:id', builder: (context, state) => stub(state)),
     ],
   );
   addTearDown(router.dispose);
@@ -67,6 +72,7 @@ Future<({List<String> opened, List<MatchSheetResult> results})> _pump(
         interestsRepositoryProvider.overrideWithValue(
           repo ?? (FakeInterestsRepository()..proposalBase = proposalBase()),
         ),
+        chatRepositoryProvider.overrideWithValue(chat ?? FakeChatRepository()),
         serverConfigRepositoryProvider.overrideWithValue(
           FakeServerConfigRepository(),
         ),
@@ -135,9 +141,151 @@ void main() {
 
     expect(find.text('계속 둘러보기'), findsNothing);
     expect(find.text('협업 조건 확인하기'), findsNothing);
-    // 첫 인사 입력란은 이 계획에서 만들지 않는다.
+  });
+
+  testWidgets('the match sheet has the first greeting field above the '
+      'buttons', (tester) async {
+    await _pump(tester, matchInfo());
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('콘텐츠에 대한 첫 인사 남기기'), findsOneWidget);
+    expect(find.bySemanticsLabel('첫 메시지 보내기'), findsOneWidget);
+    // 캔버스 순서: 본문 → 입력 → 받은 제안 보기 → 내가 먼저 제안하기.
+    final field = tester.getTopLeft(find.byType(TextField)).dy;
+    final proposals = tester.getTopLeft(find.text('받은 제안 보기 · 1건')).dy;
+    final propose = tester.getTopLeft(find.text('내가 먼저 제안하기')).dy;
+    expect(field, lessThan(proposals));
+    expect(proposals, lessThan(propose));
+  });
+
+  testWidgets('without a conversation there is no greeting field', (
+    tester,
+  ) async {
+    await _pump(tester, matchInfo(conversationId: null));
+
     expect(find.byType(TextField), findsNothing);
-    expect(find.text('콘텐츠에 대한 첫 인사 남기기'), findsNothing);
+    expect(find.text('받은 제안 보기 · 1건'), findsOneWidget);
+  });
+
+  testWidgets('the match sheet sends the greeting into the conversation', (
+    tester,
+  ) async {
+    final chat = FakeChatRepository();
+    final env = await _pump(
+      tester,
+      matchInfo(conversationId: 'room-7'),
+      chat: chat,
+    );
+
+    await tester.enterText(find.byType(TextField), '  콘텐츠 잘 봤어요!  ');
+    await tester.tap(find.bySemanticsLabel('첫 메시지 보내기'));
+    await tester.pumpAndSettle();
+
+    final sent = chat.sends.single;
+    expect(sent.id, 'room-7');
+    expect(sent.kind, MessageKind.text);
+    expect(chat.messages['room-7']!.single.text, '콘텐츠 잘 봤어요!');
+    // 보낸 뒤 그 방(D3)으로 간다.
+    expect(env.opened, ['/chats/room-7']);
+    expect(env.results, [MatchSheetResult.moved]);
+    expect(find.text('서로를 골랐어요.'), findsNothing);
+  });
+
+  testWidgets('the send circle does nothing while the greeting is empty', (
+    tester,
+  ) async {
+    final chat = FakeChatRepository();
+    final env = await _pump(tester, matchInfo(), chat: chat);
+
+    await tester.tap(find.bySemanticsLabel('첫 메시지 보내기'));
+    await tester.pumpAndSettle();
+
+    expect(chat.sends, isEmpty);
+    expect(env.opened, isEmpty);
+    expect(find.text('서로를 골랐어요.'), findsOneWidget);
+  });
+
+  testWidgets('a failed greeting stays on the sheet with the failure text and '
+      'keeps what I wrote', (tester) async {
+    final chat = FakeChatRepository()..sendFailure = const ChatFailure.failed();
+    final env = await _pump(tester, matchInfo(), chat: chat);
+
+    await tester.enterText(find.byType(TextField), '안녕하세요');
+    await tester.tap(find.bySemanticsLabel('첫 메시지 보내기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('첫 인사를 보내지 못했어요. 대화에서 다시 보내 주세요.'), findsOneWidget);
+    expect(find.text('서로를 골랐어요.'), findsOneWidget);
+    expect(env.opened, isEmpty);
+
+    // 다시 누르면 같은 clientId로 보낸다(서버가 두 번 만들지 않는다).
+    chat.sendFailure = null;
+    await tester.tap(find.bySemanticsLabel('첫 메시지 보내기'));
+    await tester.pumpAndSettle();
+    expect(chat.sends, hasLength(2));
+    expect(chat.sends.first.clientId, chat.sends.last.clientId);
+    expect(chat.messages['conv-1'], hasLength(1));
+    expect(env.opened, ['/chats/conv-1']);
+  });
+
+  testWidgets('the received-proposal button sends a written greeting before '
+      'moving', (tester) async {
+    final chat = FakeChatRepository();
+    final env = await _pump(
+      tester,
+      matchInfo(collaborationId: 'collab-9', conversationId: 'room-9'),
+      chat: chat,
+    );
+
+    await tester.enterText(find.byType(TextField), '첫 인사예요');
+    await tester.tap(find.text('받은 제안 보기 · 1건'));
+    await tester.pumpAndSettle();
+
+    expect(chat.sends.single.id, 'room-9');
+    expect(chat.messages['room-9']!.single.text, '첫 인사예요');
+    expect(env.opened, ['/collaborations/collab-9/terms']);
+    expect(env.results, [MatchSheetResult.moved]);
+  });
+
+  testWidgets('the received-proposal button sends nothing when the greeting '
+      'is empty', (tester) async {
+    final chat = FakeChatRepository();
+    await _pump(tester, matchInfo(), chat: chat);
+
+    await tester.tap(find.text('받은 제안 보기 · 1건'));
+    await tester.pumpAndSettle();
+
+    expect(chat.sends, isEmpty);
+  });
+
+  testWidgets('a failed greeting does not block moving to the terms', (
+    tester,
+  ) async {
+    final chat = FakeChatRepository()..sendFailure = const ChatFailure.failed();
+    final env = await _pump(
+      tester,
+      matchInfo(collaborationId: 'collab-9'),
+      chat: chat,
+    );
+
+    await tester.enterText(find.byType(TextField), '첫 인사예요');
+    await tester.tap(find.text('받은 제안 보기 · 1건'));
+    await tester.pumpAndSettle();
+
+    expect(env.opened, ['/collaborations/collab-9/terms']);
+  });
+
+  testWidgets('propose-first sends a written greeting first and a failed '
+      'greeting still opens the reward screen', (tester) async {
+    final chat = FakeChatRepository()..sendFailure = const ChatFailure.failed();
+    await _pump(tester, matchInfo(), chat: chat);
+
+    await tester.enterText(find.byType(TextField), '첫 인사예요');
+    await tester.tap(find.text('내가 먼저 제안하기'));
+    await tester.pumpAndSettle();
+
+    expect(chat.sends, hasLength(1));
+    expect(find.text('1 / 2'), findsOneWidget);
   });
 
   testWidgets('the received-proposal button opens the terms screen', (
@@ -391,7 +539,12 @@ void main() {
     );
     addTearDown(router.dispose);
     await tester.pumpWidget(
-      MaterialApp.router(routerConfig: router, theme: coraLightTheme),
+      ProviderScope(
+        overrides: [
+          chatRepositoryProvider.overrideWithValue(FakeChatRepository()),
+        ],
+        child: MaterialApp.router(routerConfig: router, theme: coraLightTheme),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('open sheet'));

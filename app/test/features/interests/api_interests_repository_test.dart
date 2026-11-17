@@ -112,13 +112,16 @@ Map<String, Object?> _latest({bool myTurn = true, int version = 2}) => {
   'trialDays': 'D7',
 };
 
-Map<String, Object?> _collaboration({required String role}) => {
+Map<String, Object?> _collaboration({
+  required String role,
+  String? conversationId,
+}) => {
   'brandProgress': null,
   'campaign': {'brandName': '모아 스튜디오', 'headline': '아침 루틴', 'id': 'camp-1'},
   'campaignBudgetLeft': null,
   'canCancel': false,
   'canRequestCancel': false,
-  'conversationId': null,
+  'conversationId': conversationId,
   'contractStatus': 'NONE',
   'extraRevisionsAllowed': 0,
   'cancelRequest': null,
@@ -304,6 +307,7 @@ void main() {
       final client = _RoutedClient()
         ..bodies['/collaborations/collab-1'] = _collaboration(
           role: 'COMMISSIONER',
+          conversationId: 'room-1',
         )
         ..bodies['/collaborations/collab-1/terms/latest'] = _latest()
         ..bodies['/brands/me'] = {
@@ -324,6 +328,8 @@ void main() {
       expect(info.creatorPhotoUrl, 'https://x/creator.jpg');
       expect(info.pendingProposals, 1);
       expect(info.baseVersion, 2);
+      // 첫 인사를 보낼 대화방.
+      expect(info.conversationId, 'room-1');
     });
 
     test(
@@ -356,7 +362,10 @@ void main() {
     test('reads a creator-side match with the tagline from the campaign '
         'detail', () async {
       final client = _RoutedClient()
-        ..bodies['/collaborations/collab-1'] = _collaboration(role: 'CREATOR')
+        ..bodies['/collaborations/collab-1'] = _collaboration(
+          role: 'CREATOR',
+          conversationId: 'room-2',
+        )
         ..bodies['/collaborations/collab-1/terms/latest'] = _latest()
         ..bodies['/creators/me'] = {
           'cardHeadline': null,
@@ -391,6 +400,7 @@ void main() {
         };
 
       final info = await _repo(client).fetchMatch('collab-1');
+      expect(info.conversationId, 'room-2');
 
       expect(info.isBrand, isFalse);
       expect(info.brandName, '모아 스튜디오');
