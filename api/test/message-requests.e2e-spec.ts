@@ -7,6 +7,7 @@ import { PushPort } from '../src/integrations/push/push.port';
 import { PresenceService } from '../src/realtime/presence.service';
 import { RealtimePublisher } from '../src/realtime/realtime-publisher';
 import { createTestApp, httpOf } from './helpers/create-test-app';
+import { flushMessages } from './helpers/flush-messages';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
 import { FakePresence } from './support/fake-presence';
@@ -271,6 +272,7 @@ describe('message requests and the inquiry', () => {
       const { conversationId } = resultOf(
         await inquire(campaignId).expect(201),
       );
+      await flushMessages(app);
       const forBrand = realtime.receivedBy(USER_A, 'message.created');
       const forCreator = realtime.receivedBy(OTHER, 'message.created');
       expect(forBrand).toHaveLength(1);
@@ -518,8 +520,10 @@ describe('message requests and the inquiry', () => {
       const { conversationId } = resultOf(
         await inquire(campaignId).expect(201),
       );
+      await flushMessages(app);
       realtime.sent.length = 0;
       await accept(conversationId).expect(200);
+      await flushMessages(app);
       for (const user of [USER_A, OTHER]) {
         const lines = realtime.receivedBy(user, 'message.created');
         expect(lines).toHaveLength(1);
@@ -650,8 +654,10 @@ describe('message requests and the inquiry', () => {
       const { conversationId } = resultOf(
         await inquire(campaignId).expect(201),
       );
+      await flushMessages(app);
       realtime.sent.length = 0;
       await decline(conversationId).expect(204);
+      await flushMessages(app);
       expect(realtime.receivedBy(OTHER)).toEqual([]);
       // 거절한 사람의 다른 기기만 목록을 새로 읽는다.
       expect(
@@ -779,9 +785,11 @@ describe('message requests and the inquiry', () => {
       const { conversationId } = resultOf(
         await inquire(campaignId).expect(201),
       );
+      await flushMessages(app);
       realtime.sent.length = 0;
       push.sent.length = 0;
       await creatorLike(campaignId).expect(200);
+      await flushMessages(app);
       for (const user of [USER_A, OTHER]) {
         const lines = realtime.receivedBy(user, 'message.created');
         expect(lines).toHaveLength(1);

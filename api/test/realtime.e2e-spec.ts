@@ -7,7 +7,9 @@ import { io, Socket } from 'socket.io-client';
 import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
 import { RedisIoAdapter } from '../src/realtime/redis-io.adapter';
+import { MAX_SOCKETS_PER_USER } from '../src/realtime/realtime.gateway';
 import { createTestApp, httpOf } from './helpers/create-test-app';
+import { flushMessages } from './helpers/flush-messages';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
 import { FakePushPort } from './support/fake-push.port';
@@ -60,11 +62,20 @@ describe('realtime gateway', () => {
     token: string | undefined,
     target = url,
   ): Promise<Client> {
+    return connectWith(target, token);
+  }
+
+  async function connectWith(
+    target: string,
+    token: string | undefined,
+    extraHeaders: Record<string, string> = {},
+  ): Promise<Client> {
     const socket = io(target, {
       auth: token === undefined ? {} : { token },
       transports: ['websocket'],
       reconnection: false,
       forceNew: true,
+      extraHeaders,
     });
     const client: Client = { socket, received: [] };
     socket.onAny((event: string, payload: Received['payload']) => {
@@ -275,6 +286,7 @@ describe('realtime gateway', () => {
     it('sends a push with a 60 character preview when the receiver is offline', async () => {
       const roomId = await seedRoom();
       await send(app, creator, roomId, '가'.repeat(70)).expect(201);
+      await flushMessages(app);
       expect(push.sent).toHaveLength(1);
       expect(push.sent[0]).toMatchObject({
         userId: USER_A,
@@ -296,6 +308,7 @@ describe('realtime gateway', () => {
         .set(creator)
         .send({ clientId: randomUUID(), kind: 'CONTENT_CARD' })
         .expect(201);
+      await flushMessages(app);
       expect(push.sent).toHaveLength(1);
       expect(push.sent[0]).toMatchObject({
         userId: USER_A,
@@ -308,6 +321,7 @@ describe('realtime gateway', () => {
       const a = await connect('user-a');
       await send(app, creator, roomId, '안녕하세요').expect(201);
       await until(() => eventsOf(a, 'message.created').length === 1);
+      await flushMessages(app);
       expect(push.sent).toHaveLength(0);
     });
 
@@ -318,6 +332,7 @@ describe('realtime gateway', () => {
       // 서버가 연결 끊김을 알 때까지 기다린 뒤 보낸다.
       await wait(100);
       await send(app, creator, roomId, '안녕하세요').expect(201);
+      await flushMessages(app);
       expect(push.sent).toHaveLength(1);
     });
 
@@ -329,6 +344,7 @@ describe('realtime gateway', () => {
         .send({ muted: true })
         .expect(200);
       await send(app, creator, roomId, '안녕하세요').expect(201);
+      await flushMessages(app);
       expect(push.sent).toHaveLength(0);
       // 알림을 켜면 다시 간다.
       await request(httpOf(app))
@@ -337,6 +353,7 @@ describe('realtime gateway', () => {
         .send({ muted: false })
         .expect(200);
       await send(app, creator, roomId, '다시 한번').expect(201);
+      await flushMessages(app);
       expect(push.sent).toHaveLength(1);
     });
 
@@ -355,6 +372,7 @@ describe('realtime gateway', () => {
         })
         .expect(200);
       await send(app, creator, roomId, '안녕하세요').expect(201);
+      await flushMessages(app);
       expect(push.sent).toHaveLength(0);
       const inbox = await request(httpOf(app))
         .get('/notifications')
@@ -366,6 +384,7 @@ describe('realtime gateway', () => {
     it('does not keep a pushed message in the inbox', async () => {
       const roomId = await seedRoom();
       await send(app, creator, roomId, '안녕하세요').expect(201);
+      await flushMessages(app);
       expect(push.sent).toHaveLength(1);
       const inbox = await request(httpOf(app))
         .get('/notifications')
@@ -375,29 +394,126 @@ describe('realtime gateway', () => {
     });
   });
 
-  describe('two server instances behind the redis adapter', () => {
+  describe('limits on the socket handshake', () => {
+    const IP_LIMIT = 3;
+    let limited: INestApplication;
+    let limitedUrl: string;
+
+    // 요청 수 제한 값은 앱 모듈을 불러오는 순간 process.env에서 읽혀 굳는다(hardening e2e와 같은 방법).
+    beforeAll(async () => {
+      const before = process.env.RATE_LIMIT_IP_PER_MIN;
+      process.env.RATE_LIMIT_IP_PER_MIN = String(IP_LIMIT);
+      jest.resetModules();
+      try {
+        const fresh = jest.requireActual<{
+          createTestApp: typeof createTestApp;
+        }>('./helpers/create-test-app');
+        limited = await fresh.createTestApp();
+      } finally {
+        process.env.RATE_LIMIT_IP_PER_MIN = before;
+      }
+      await limited.listen(0);
+      limitedUrl = urlOf(limited);
+    });
+    afterAll(() => limited.close());
+
+    it('refuses connection attempts over the per ip limit and ignores a spoofed forwarded header', async () => {
+      const kept: Client[] = [];
+      for (let i = 0; i < IP_LIMIT; i += 1) {
+        kept.push(
+          await connectWith(limitedUrl, 'user-a', {
+            'x-forwarded-for': `203.0.113.${i}`,
+          }),
+        );
+      }
+      await wait(100);
+      expect(kept.every((c) => c.socket.connected)).toBe(true);
+      // 프록시를 믿지 않으므로 헤더의 주소를 바꿔도 같은 IP로 센다.
+      const over = await connectWith(limitedUrl, 'user-a', {
+        'x-forwarded-for': '203.0.113.99',
+      });
+      await until(() => over.socket.disconnected);
+      expect(over.socket.disconnected).toBe(true);
+      expect(over.received).toEqual([]);
+      // 이미 붙어 있는 연결은 그대로다.
+      expect(kept.every((c) => c.socket.connected)).toBe(true);
+    });
+
+    it('refuses the default namespace', async () => {
+      const root = limitedUrl.replace(/\/realtime$/, '/');
+      const socket = io(root, {
+        transports: ['websocket'],
+        reconnection: false,
+        forceNew: true,
+      });
+      clients.push({ socket, received: [] });
+      const error = await new Promise<Error>((resolve) => {
+        socket.once('connect_error', resolve);
+        socket.once('connect', () => resolve(new Error('connected')));
+      });
+      expect(error.message).toBe('FORBIDDEN');
+    });
+  });
+
+  describe('connections per user', () => {
+    it('disconnects the oldest socket when a sixth connects', async () => {
+      const sockets: Client[] = [];
+      for (let i = 0; i < MAX_SOCKETS_PER_USER; i += 1) {
+        sockets.push(await connect('user-a'));
+        // 연결 시각이 서로 달라야 "가장 오래된 것"이 정해진다.
+        await wait(5);
+      }
+      await wait(100);
+      expect(sockets.every((c) => c.socket.connected)).toBe(true);
+      const sixth = await connect('user-a');
+      await until(() => sockets[0].socket.disconnected);
+      expect(sockets[0].socket.disconnected).toBe(true);
+      expect(sockets.slice(1).every((c) => c.socket.connected)).toBe(true);
+      expect(sixth.socket.connected).toBe(true);
+    });
+
+    it('counts each user on their own', async () => {
+      const others: Client[] = [];
+      for (let i = 0; i < MAX_SOCKETS_PER_USER; i += 1) {
+        others.push(await connect('user-b'));
+      }
+      const mine = await connect('user-a');
+      await wait(150);
+      expect(others.every((c) => c.socket.connected)).toBe(true);
+      expect(mine.socket.connected).toBe(true);
+    });
+  });
+
+  describe('server instances behind the redis adapter', () => {
     const prefix = `cora-test-realtime-${randomUUID()}`;
+    const otherPrefix = `cora-test-realtime-other-${randomUUID()}`;
     let first: INestApplication;
     let second: INestApplication;
-    const adapters: RedisIoAdapter[] = [];
+    let isolated: INestApplication;
 
     // 테스트 전용 key 접두어로 같은 Redis를 쓰는 개발 서버와 채널이 섞이지 않게 한다.
-    const withRedis = async (target: INestApplication) => {
-      const adapter = new RedisIoAdapter(target, REDIS_URL, prefix);
-      await adapter.connectToRedis();
-      adapters.push(adapter);
-      return adapter;
-    };
+    const withRedis =
+      (keyPrefix: string) => async (target: INestApplication) => {
+        const adapter = new RedisIoAdapter(target, REDIS_URL, keyPrefix);
+        await adapter.connectToRedis();
+        return adapter;
+      };
 
     beforeAll(async () => {
-      first = await createTestApp([], { webSocketAdapter: withRedis });
-      second = await createTestApp([], { webSocketAdapter: withRedis });
+      first = await createTestApp([], { webSocketAdapter: withRedis(prefix) });
+      second = await createTestApp([], { webSocketAdapter: withRedis(prefix) });
+      // 같은 Redis인데 key 접두어만 다른 서버.
+      isolated = await createTestApp([], {
+        webSocketAdapter: withRedis(otherPrefix),
+      });
       await first.listen(0);
       await second.listen(0);
+      await isolated.listen(0);
     });
     afterAll(async () => {
       await first.close();
       await second.close();
+      await isolated.close();
     });
 
     it('delivers through the redis adapter between two server instances', async () => {
@@ -406,6 +522,7 @@ describe('realtime gateway', () => {
       const onSecond = await connect('user-a', urlOf(second));
       const stranger = await connect('user-c', urlOf(second));
       await send(first, creator, roomId, '다른 서버로 가요').expect(201);
+      await flushMessages(first);
       await until(() => eventsOf(onSecond, 'message.created').length === 1);
       expect(
         eventsOf(onSecond, 'message.created')[0].payload.message,
@@ -416,13 +533,16 @@ describe('realtime gateway', () => {
       expect(first.get<FakePushPort>(PushPort).sent).toHaveLength(0);
     });
 
-    it('does not reach a server that is not on the same redis channel', async () => {
+    it('does not cross-deliver to a server that uses another key prefix on the same redis', async () => {
       const roomId = await seedRoom();
-      const lonely = await connect('user-a');
-      await send(first, creator, roomId, '이 서버끼리만').expect(201);
+      const onSecond = await connect('user-a', urlOf(second));
+      const onIsolated = await connect('user-a', urlOf(isolated));
+      await send(first, creator, roomId, '접두어가 같은 서버만').expect(201);
+      await flushMessages(first);
+      await until(() => eventsOf(onSecond, 'message.created').length === 1);
       await wait(200);
-      // 어댑터 없이 도는 서버(위의 첫 번째 app)의 소켓에는 가지 않는다.
-      expect(lonely.received).toHaveLength(0);
+      // 접두어가 다른 서버의 소켓에는 같은 사용자라도 가지 않는다.
+      expect(onIsolated.received).toHaveLength(0);
     });
   });
 });

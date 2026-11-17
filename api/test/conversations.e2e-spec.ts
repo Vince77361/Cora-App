@@ -16,6 +16,7 @@ import { PushPort } from '../src/integrations/push/push.port';
 import { PresenceService } from '../src/realtime/presence.service';
 import { RealtimePublisher } from '../src/realtime/realtime-publisher';
 import { createTestApp, httpOf } from './helpers/create-test-app';
+import { flushMessages } from './helpers/flush-messages';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
 import { FakePresence } from './support/fake-presence';
@@ -244,6 +245,7 @@ describe('conversations', () => {
       const clientId = randomUUID();
       await send(authCreator, roomId, text('안녕하세요', clientId)).expect(201);
       await send(authCreator, roomId, text('안녕하세요', clientId)).expect(201);
+      await flushMessages(app);
       const forBrand = realtime.receivedBy(USER_A, 'message.created');
       const forCreator = realtime.receivedBy(OTHER, 'message.created');
       expect(forBrand).toHaveLength(1);
@@ -263,6 +265,7 @@ describe('conversations', () => {
       const { campaignId } = await seedParties();
       const { roomId } = await seedRoom(campaignId);
       await send(authCreator, roomId, text()).expect(201);
+      await flushMessages(app);
       realtime.sent.length = 0;
       await request(server)
         .post(`/conversations/${roomId}/read`)
@@ -300,6 +303,7 @@ describe('conversations', () => {
       });
       realtime.fail = true;
       await send(authCreator, roomId, text()).expect(201);
+      await flushMessages(app);
       // 실시간 전달이 실패해도 메시지는 저장되고 푸시는 간다.
       expect(await messages(authBrand, roomId)).toHaveLength(1);
       expect(push.sent).toHaveLength(1);
@@ -310,7 +314,34 @@ describe('conversations', () => {
       const { roomId } = await seedRoom(campaignId);
       presence.online.add(USER_A);
       await send(authCreator, roomId, text()).expect(201);
+      await flushMessages(app);
       expect(push.sent).toEqual([]);
+    });
+
+    it('answers a send without waiting for the connection check or the push', async () => {
+      const { campaignId } = await seedParties();
+      const { roomId } = await seedRoom(campaignId);
+      // 연결 확인이 끝나지 않는 상황(Redis 응답 시간 제한 대기)에서도 보내기 응답은 바로 온다.
+      let release: (online: boolean) => void = () => undefined;
+      const original = presence.isOnline.bind(presence);
+      const asked = new Promise<void>((resolve) => {
+        presence.isOnline = () =>
+          new Promise<boolean>((answer) => {
+            release = answer;
+            resolve();
+          });
+      });
+      try {
+        await send(authCreator, roomId, text()).expect(201);
+        // 응답은 이미 왔는데 연결 확인은 아직 답이 없다.
+        await asked;
+        expect(push.sent).toEqual([]);
+        release(false);
+        await flushMessages(app);
+        expect(push.sent).toHaveLength(1);
+      } finally {
+        presence.isOnline = original;
+      }
     });
   });
 

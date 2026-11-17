@@ -219,6 +219,50 @@ describe('MessageNotifier', () => {
     );
     wired.onModuleInit();
     await events.publish(event());
+    await wired.flush();
     expect(realtime.sent).toHaveLength(2);
+  });
+
+  it('does not make the publisher wait for a slow push', async () => {
+    const events = new MessageEvents();
+    const wired = new MessageNotifier(
+      events,
+      conversations,
+      realtime,
+      presence,
+      notifications,
+    );
+    wired.onModuleInit();
+    // 연결 확인이 끝나지 않는 상황(Redis 응답 시간 제한 대기).
+    let release: (online: boolean) => void = () => undefined;
+    presence.isOnline = () =>
+      new Promise<boolean>((resolve) => {
+        release = resolve;
+      });
+    await events.publish(event());
+    // publish는 이미 돌아왔고 푸시는 아직 나가지 않았다.
+    expect(notifications.sent).toHaveLength(0);
+    await new Promise((resolve) => setImmediate(resolve));
+    release(false);
+    await wired.flush();
+    expect(notifications.sent).toHaveLength(1);
+  });
+
+  it('logs and survives an unexpected failure while delivering', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    conversations.deliveriesOf = () => Promise.reject(new Error('db down'));
+    const events = new MessageEvents();
+    const wired = new MessageNotifier(
+      events,
+      conversations,
+      realtime,
+      presence,
+      notifications,
+    );
+    wired.onModuleInit();
+    await events.publish(event());
+    await wired.flush();
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
   });
 });

@@ -7,6 +7,7 @@ import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
 import { RealtimePublisher } from '../src/realtime/realtime-publisher';
 import { createTestApp, httpOf } from './helpers/create-test-app';
+import { flushMessages } from './helpers/flush-messages';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
 import { FakePushPort } from './support/fake-push.port';
@@ -557,6 +558,7 @@ describe('discovery decisions', () => {
       await creatorLike(campaignId).expect(200);
       expect(realtime.sent).toEqual([]);
       const matched = resultOf(await brandLike().expect(200));
+      await flushMessages(app);
       for (const user of [USER_A, OTHER]) {
         const lines = realtime.receivedBy(user, 'message.created');
         expect(lines).toHaveLength(1);

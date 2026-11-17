@@ -14,6 +14,7 @@ import {
   type TestOfferInput,
 } from './helpers/create-offer';
 import { createTestApp, httpOf } from './helpers/create-test-app';
+import { flushMessages } from './helpers/flush-messages';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
 import { FakeJobScheduler } from './support/fake-job-scheduler';
@@ -1355,6 +1356,7 @@ describe('offers', () => {
     it('opens a conversation when the store owner accepts a creator counter-proposal', async () => {
       await propose(authB, offerId).expect(201);
       await acceptAs(auth, offerId, 2).expect(200);
+      await flushMessages(app);
       // 역제안을 수락해 방이 열릴 때도 같은 자리에서 안내 줄이 양쪽 화면으로 간다.
       for (const user of [USER_A, OTHER]) {
         expect(realtime.receivedBy(user, 'message.created')).toHaveLength(1);
@@ -1950,6 +1952,7 @@ describe('offers', () => {
     it('delivers the accepted line to both members after the commit without a chat message push', async () => {
       const offer = await seedOffer(store.id, USER_A);
       await accept(offer.id).expect(200);
+      await flushMessages(app);
       const room = await prisma.conversation.findFirstOrThrow();
       for (const user of [USER_A, store.ownerId]) {
         const lines = realtime.receivedBy(user, 'message.created');
