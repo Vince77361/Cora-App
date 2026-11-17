@@ -199,6 +199,16 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     needsActor: false,
     render: () => '협업이 잠시 멈췄어요. 운영팀이 확인하고 연락드릴게요.',
   },
+  // 계약 전 협의를 상대가 그만뒀다(5번 계획). 그만둔 이유와 이름은 알리지 않는다. 끌 수 없다. 대화방 안내 줄이 같은 말이라
+  // 안내 줄의 메시지 푸시는 보내지 않는다(같은 일로 두 번 울리지 않게).
+  COLLABORATION_DROPPED: {
+    tab: 'COLLABORATION',
+    switch: 'ESSENTIAL',
+    glyph: null,
+    requiredParams: {},
+    needsActor: false,
+    render: () => '이번에는 함께하기 어렵대요.',
+  },
   // 표 "정산 확정": 정산 / 정산 / ₩. 캔버스 E3 문구.
   SETTLEMENT_CONFIRMED: {
     tab: 'SETTLEMENT',

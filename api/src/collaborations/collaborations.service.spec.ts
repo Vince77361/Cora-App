@@ -17,6 +17,7 @@ import { RefundsService } from '../settlements/refunds.service';
 import { SettlementsRepository } from '../settlements/settlements.repository';
 import { StoresService } from '../stores/stores.service';
 import { CampaignsService } from '../campaigns/campaigns.service';
+import { ConversationsService } from '../conversations/conversations.service';
 import { TermsService } from '../terms/terms.service';
 import { CancelRequestsRepository } from './cancel-requests.repository';
 import { CollaborationsRepository } from './collaborations.repository';
@@ -310,6 +311,8 @@ function build() {
     notifications,
     scheduler,
     clock,
+    // 이 스펙은 협의를 그만두는 길(drop)을 다루지 않는다: 대화방 연동은 e2e가 본다.
+    {} as unknown as ConversationsService,
   );
   return {
     service,

@@ -880,6 +880,7 @@ enum NotificationKind {
   MESSAGE_REQUEST
   MESSAGE_REQUEST_ACCEPTED
   MESSAGE
+  COLLABORATION_DROPPED
 
   @@map("notification_kind")
 }

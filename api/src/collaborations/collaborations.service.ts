@@ -11,6 +11,7 @@ import { budgetLeft } from '../campaigns/campaign-budget';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
+import { ConversationsService } from '../conversations/conversations.service';
 import { CreatorsService } from '../creators/creators.service';
 import { JobRunContext, JobScheduler } from '../jobs/job-scheduler';
 import { postingsForFullRefund } from '../ledger/ledger-postings';
@@ -26,7 +27,12 @@ import { isMyTurn, termsMaxCash } from '../terms/terms-rules';
 import { TermsService } from '../terms/terms.service';
 import { hasViewPay, readTerms } from '../stores/reward-terms';
 import { CancelRequestsRepository } from './cancel-requests.repository';
-import { brandProgress, nextActionFor } from './collaboration-stage';
+import {
+  BRAND_PAYMENT_LOCK_MINUTES,
+  brandProgress,
+  nextActionFor,
+  preContractStages,
+} from './collaboration-stage';
 import { submissionDeadlineJobKeys } from './collaboration-jobs';
 import { CollaborationsRepository } from './collaborations.repository';
 import {
@@ -38,6 +44,7 @@ import {
 } from './collaboration-view';
 import { CollaborationScope } from './dto/collaboration-query.dto';
 import { CollaborationModel } from './dto/collaboration.model';
+import { DropChoice } from './dto/drop-collaboration.dto';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -95,6 +102,7 @@ export class CollaborationsService {
     private readonly notifications: NotificationsService,
     private readonly jobs: JobScheduler,
     private readonly clock: Clock,
+    private readonly conversations: ConversationsService,
   ) {}
 
   async list(
@@ -118,6 +126,101 @@ export class CollaborationsService {
     const row = await this.requireParty(userId, id);
     const [model] = await this.toModels(userId, [row]);
     return model;
+  }
+
+  // 계약 전 협의를 그만둔다(당사자 누구나). 단계가 DROPPED가 되고, 브랜드가 아직 결제하지 않은 계약은 무효가 된다.
+  // 방은 열어 둔다. 상대에게는 이유도 누가 그만뒀는지도 알리지 않고 "이번에는 함께하기 어렵대요."만 안내 줄과 알림으로 간다.
+  // 조건을 바꾸는 쪽과 같은 협업 잠금을 쓴다: 새 판본·확인과 엇갈려도 한 줄로 선다. 브랜드 결제창이 열려 있으면(60분) 막는다.
+  async drop(
+    userId: string,
+    id: string,
+    reason: DropChoice,
+  ): Promise<CollaborationModel> {
+    const collaboration = await this.requireParty(userId, id);
+    const cannot = new AppError('CONFLICT', '지금은 협의를 그만둘 수 없어요.');
+    if (!preContractStages.includes(collaboration.stage)) throw cannot;
+    const now = this.clock.now();
+    const lockSince = new Date(
+      now.getTime() - BRAND_PAYMENT_LOCK_MINUTES * 60 * 1000,
+    );
+
+    const { roomId, lineId } = await this.collaborations.transaction(
+      async (tx) => {
+        await this.collaborations.lock(collaboration.id, tx);
+        const fresh = await this.collaborations.findById(collaboration.id, tx);
+        if (!fresh || !preContractStages.includes(fresh.stage)) throw cannot;
+        if (
+          await this.collaborations.hasOpenBrandPayment(
+            collaboration.id,
+            lockSince,
+            tx,
+          )
+        ) {
+          throw new AppError(
+            'CONFLICT',
+            '브랜드가 결제를 진행하고 있어요. 잠시 뒤 다시 시도해 주세요.',
+          );
+        }
+        const dropped = await this.collaborations.advance(
+          collaboration.id,
+          fresh.stage,
+          'DROPPED',
+          { dropReason: reason, droppedById: userId },
+          tx,
+        );
+        if (!dropped) throw cannot;
+        await this.collaborations.voidPendingContract(
+          collaboration.id,
+          'DROPPED',
+          now,
+          tx,
+        );
+        const roomId = await this.conversations.idForCollaboration(
+          collaboration.id,
+          tx,
+        );
+        const line = roomId
+          ? await this.conversations.postSystem(
+              roomId,
+              'DROPPED',
+              { droppedById: userId },
+              tx,
+            )
+          : null;
+        return { roomId, lineId: line?.id ?? null };
+      },
+    );
+
+    if (lineId) await this.conversations.publishCreated(lineId);
+    if (roomId) await this.conversations.publishUpdated(roomId, 'STATUS');
+    await this.notifyDropped(collaboration, userId, roomId);
+    return this.get(userId, id);
+  }
+
+  // 상대에게 "이번에는 함께하기 어렵대요."를 알린다. 이름도 이유도 담지 않는다. 실패해도 그만둔 것은 유효하다(R22).
+  private async notifyDropped(
+    collaboration: Collaboration,
+    droppedById: string,
+    roomId: string | null,
+  ): Promise<void> {
+    const toCreator = collaboration.commissionerId === droppedById;
+    try {
+      await this.notifications.notify({
+        userId: toCreator
+          ? collaboration.creatorId
+          : collaboration.commissionerId,
+        role: toCreator ? 'CREATOR' : 'BRAND',
+        kind: 'COLLABORATION_DROPPED',
+        target: roomId
+          ? { kind: 'CONVERSATION', id: roomId }
+          : { kind: 'TERMS', id: collaboration.id },
+        dedupeKey: `collaboration-dropped:${collaboration.id}`,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `협의 그만둠 알림을 남기지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
   }
 
   // 크리에이터가 링크를 제출하기 전(FUNDED)에 그만둔다. 수수료까지 전액 환급한다.

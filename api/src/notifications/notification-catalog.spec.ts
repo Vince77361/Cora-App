@@ -73,6 +73,9 @@ describe('NOTIFICATION_CATALOG', () => {
     expect(render('CANCEL_REQUESTED', '한그릇 라멘')).toBe(
       '한그릇 라멘이 협업 취소를 요청했어요.',
     );
+    expect(render('COLLABORATION_DROPPED', null)).toBe(
+      '이번에는 함께하기 어렵대요.',
+    );
     expect(render('COLLABORATION_HALTED', null)).toBe(
       '협업이 잠시 멈췄어요. 운영팀이 확인하고 연락드릴게요.',
     );
@@ -272,6 +275,7 @@ describe('NOTIFICATION_CATALOG', () => {
       'UNSUBMITTED_ENDED',
       'CANCEL_REQUESTED',
       'COLLABORATION_HALTED',
+      'COLLABORATION_DROPPED',
     ] as const) {
       expect(NOTIFICATION_CATALOG[kind]).toMatchObject({
         tab: 'COLLABORATION',

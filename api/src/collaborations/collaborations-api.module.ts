@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { BrandsModule } from '../brands/brands.module';
 import { CampaignsModule } from '../campaigns/campaigns.module';
+import { ConversationsModule } from '../conversations/conversations.module';
 import { CreatorsModule } from '../creators/creators.module';
 import { JobHandlerRegistry } from '../jobs/job-handler-registry';
 import { JobsModule } from '../jobs/jobs.module';
@@ -40,6 +41,7 @@ import { ViewReportController } from './view-report.controller';
     BrandsModule,
     CampaignsModule,
     TermsModule,
+    ConversationsModule,
   ],
   controllers: [
     CollaborationsController,
