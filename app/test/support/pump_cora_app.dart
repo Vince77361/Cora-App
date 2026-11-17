@@ -5,6 +5,8 @@ import 'package:cora/core/navigation/app_router.dart';
 import 'package:cora/features/auth/domain/auth_repository_provider.dart';
 import 'package:cora/features/brand_onboarding/domain/brand_repository.dart';
 import 'package:cora/features/brand_onboarding/domain/campaign_repository.dart';
+import 'package:cora/features/chat/domain/chat_repository.dart';
+import 'package:cora/features/chat/domain/realtime_connection.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/discovery/domain/discovery_repository.dart';
 import 'package:cora/features/interests/domain/interests_repository.dart';
@@ -29,6 +31,7 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/fake_auth_repository.dart';
 import '../features/brand_onboarding/fake_brand_repository.dart';
 import '../features/brand_onboarding/fake_campaign_repository.dart';
+import '../features/chat/chat_fixtures.dart';
 import '../features/collaboration/fake_collaboration_repository.dart';
 import '../features/discovery/fake_discovery_repository.dart';
 import '../features/interests/fake_interests_repository.dart';
@@ -136,6 +139,11 @@ Widget coraAppWith(
         negotiationRepositoryProvider.overrideWithValue(
           FakeNegotiationRepository(),
         ),
+      // 대화 목록과 실시간 연결. 기본은 대화가 없는 계정이고 연결은 아무 일도 밀어 주지 않는다.
+      if (!_overrides(overrides, chatRepositoryProvider))
+        chatRepositoryProvider.overrideWithValue(FakeChatRepository()),
+      if (!_overrides(overrides, realtimeConnectionProvider))
+        realtimeConnectionProvider.overrideWithValue(FakeRealtimeConnection()),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(
           FakeContentDraftRepository(),

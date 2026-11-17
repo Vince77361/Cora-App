@@ -93,11 +93,21 @@ void main() {
       expect(find.text('받은 오퍼'), findsOneWidget);
     });
 
-    testWidgets('menu items without a screen open the coming soon page', (
+    testWidgets('the chat menu item opens the conversation list', (
       tester,
     ) async {
       await pumpCreatorApp(tester);
       await tester.tap(_navItem('대화'));
+      await tester.pumpAndSettle();
+      expect(currentPath(tester), AppRoutes.chats);
+      expect(find.text('준비 중이에요.'), findsNothing);
+    });
+
+    testWidgets('the profile menu item still opens the coming soon page', (
+      tester,
+    ) async {
+      await pumpCreatorApp(tester);
+      await tester.tap(_navItem('프로필'));
       await tester.pumpAndSettle();
       expect(find.text('준비 중이에요.'), findsOneWidget);
     });

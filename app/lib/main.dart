@@ -19,6 +19,10 @@ import 'features/auth/data/secure_session_storage.dart';
 import 'features/auth/data/sign_in_adapter.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/domain/auth_repository_provider.dart';
+import 'features/chat/data/api_chat_repository.dart';
+import 'features/chat/data/socket_realtime_connection.dart';
+import 'features/chat/domain/chat_repository.dart';
+import 'features/chat/domain/realtime_connection.dart';
 import 'features/collaboration/data/api_collaboration_repository.dart';
 import 'features/collaboration/domain/collaboration_repository.dart';
 import 'features/view_report/data/api_view_report_repository.dart';
@@ -209,6 +213,16 @@ Future<void> main() async {
         ),
         receivedOffersRepositoryProvider.overrideWith(
           (ref) => ApiReceivedOffersRepository(ref.watch(apiClientProvider)),
+        ),
+        chatRepositoryProvider.overrideWith(
+          (ref) => ApiChatRepository(ref.watch(apiClientProvider)),
+        ),
+        // 소켓은 연결할 때마다 그 순간 유효한 토큰을 받아 붙는다(만료되면 새 토큰으로 다시 붙는다).
+        realtimeConnectionProvider.overrideWith(
+          (ref) => SocketRealtimeConnection(
+            baseUrl: config.apiBaseUrl,
+            tokenProvider: ref.watch(authRepositoryProvider).validAccessToken,
+          ),
         ),
         photoUploaderProvider.overrideWith(
           (ref) => ApiPhotoUploader(

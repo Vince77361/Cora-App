@@ -9,6 +9,8 @@ import '../../features/auth/presentation/pages/phone_verify_page.dart';
 import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import '../../features/brand_onboarding/presentation/pages/brand_profile_setup_page.dart';
 import '../../features/brand_onboarding/presentation/pages/campaign_form_page.dart';
+import '../../features/chat/presentation/pages/conversation_list_page.dart';
+import '../../features/chat/presentation/pages/message_request_page.dart';
 import '../../features/collaboration/presentation/pages/collaboration_page.dart';
 import '../../features/collaboration/presentation/pages/store_collaboration_page.dart';
 import '../../features/collaboration/presentation/pages/submit_link_page.dart';
@@ -248,6 +250,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _entryPage(
           state,
           CoraComingSoonPage(title: state.pathParameters['title']!),
+        ),
+      ),
+      // 대화 목록. 세 역할의 하단 메뉴 `대화`가 제자리에서 연다.
+      GoRoute(
+        path: AppRoutes.chats,
+        pageBuilder: (context, state) =>
+            _entryPage(state, const ConversationListPage()),
+      ),
+      // 메시지 요청(11). 목록의 `메시지 요청` 묶음이 연다. `대화 열기`를 누르면 대화방으로 바뀐다.
+      GoRoute(
+        path: AppRoutes.chatRequestPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          MessageRequestPage(conversationId: state.pathParameters['id']!),
+          key: state.pageKey,
+        ),
+      ),
+      // 대화방(D3)은 5번 계획 Task 10이 만든다. 그때까지 자리 화면이다.
+      GoRoute(
+        path: AppRoutes.chatPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const CoraComingSoonPage(title: '대화'),
+          key: state.pageKey,
         ),
       ),
       // 가게 사장님 흐름.

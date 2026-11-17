@@ -256,6 +256,21 @@ abstract final class AppRoutes {
   /// 열 때 `extra`로 넘긴다. 넘기지 않으면 제자리에서 나타난다(진입과 구별할 수 없어서).
   static const stacked = 'stacked';
 
+  /// 대화 목록. 세 역할의 하단 메뉴 `대화`가 제자리에서 연다.
+  static const chats = '/chats';
+
+  /// 대화방 [id](D3). 목록의 줄과 알림이 연다.
+  static String chat(String id) => '$chats/${Uri.encodeComponent(id)}';
+
+  /// 메시지 요청 [id](11). 목록의 `메시지 요청` 묶음이 연다. `대화 열기`를 누르면 이 화면이 [chat]으로 바뀐다.
+  static String chatRequest(String id) => '${chat(id)}/request';
+
+  /// [chat]의 라우트 패턴.
+  static const chatPattern = '$chats/:id';
+
+  /// [chatRequest]의 라우트 패턴.
+  static const chatRequestPattern = '$chats/:id/request';
+
   /// 개발 환경 전용 모션 갤러리. 운영 빌드에는 없다.
   static const devMotion = '/dev/motion';
 

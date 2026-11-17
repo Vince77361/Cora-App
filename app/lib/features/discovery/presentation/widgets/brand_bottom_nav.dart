@@ -7,8 +7,8 @@ import '../../../../core/ui/cora_bottom_nav.dart';
 /// 브랜드 화면의 하단 메뉴. 항목은 크리에이터 메뉴와 같은 다섯 개(발견, 관심, 대화, 협업, 프로필)이고
 /// 캔버스 아이콘도 같다. 발견은 제자리에서 바뀐다.
 ///
-/// 발견·관심(03)·협업(브랜드의 협업 탭, 하나면 07)은 제자리에서 바뀐다. 대화는 뒤 계획의 몫이라
-/// `준비 중이에요.`이고, 프로필은 역할 다시 고르기와 로그아웃만 있는 자리 화면이다(계정을 바꿔 가며 확인할
+/// 발견·관심(03)·대화(목록)·협업(브랜드의 협업 탭, 하나면 07)은 제자리에서 바뀐다. 프로필은 역할 다시
+/// 고르기와 로그아웃만 있는 자리 화면이다(계정을 바꿔 가며 확인할
 /// 수 있게).
 class BrandBottomNav extends StatelessWidget {
   const BrandBottomNav({
@@ -27,6 +27,10 @@ class BrandBottomNav extends StatelessWidget {
     }
     if (index == CoraCreatorNavItems.likes) {
       context.go(AppRoutes.brandInterests);
+      return;
+    }
+    if (index == CoraCreatorNavItems.chat) {
+      context.go(AppRoutes.chats);
       return;
     }
     if (index == CoraCreatorNavItems.collab) {

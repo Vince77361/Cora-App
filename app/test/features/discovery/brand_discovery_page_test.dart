@@ -52,6 +52,7 @@ Future<List<String>> _pump(
         builder: (context, state) => stub(state),
       ),
       GoRoute(path: '/notifications', builder: (context, state) => stub(state)),
+      GoRoute(path: AppRoutes.chats, builder: (context, state) => stub(state)),
       GoRoute(
         path: '/brand/coming-soon/:title',
         builder: (context, state) => stub(state),
@@ -514,16 +515,13 @@ void main() {
     },
   );
 
-  testWidgets(
-    'conversation and profile stay as placeholders and discovery stays put',
-    (tester) async {
-      final opened = await _pump(tester, _three());
+  testWidgets('the chat menu item opens the conversation list', (tester) async {
+    final opened = await _pump(tester, _three());
 
-      await tester.tap(find.text('대화'));
-      await tester.pumpAndSettle();
-      expect(opened, ['/brand/coming-soon/%EB%8C%80%ED%99%94']);
-    },
-  );
+    await tester.tap(find.text('대화'));
+    await tester.pumpAndSettle();
+    expect(opened, [AppRoutes.chats]);
+  });
 
   testWidgets('uses the dark toast and card section colors in dark mode', (
     tester,

@@ -162,7 +162,7 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
       case StoreHomePage.navFind:
         _comingSoon(CoraNavItems.store[index].label);
       case StoreHomePage.navChat:
-        _comingSoon(CoraNavItems.store[index].label);
+        context.go(AppRoutes.chats);
       case StoreHomePage.navOffers:
         // 하단 메뉴의 `오퍼`는 제안함(F3)이다. 홈 위로 밀려 들어온다.
         context.push(AppRoutes.storeProposals);
