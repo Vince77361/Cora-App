@@ -108,7 +108,7 @@ describe('ledger_entries', () => {
 });
 
 describe('view_snapshots', () => {
-  it('rejects a second snapshot for the same collaboration and day and a day outside 0 to 7', async () => {
+  it('rejects a second snapshot for the same collaboration and day and a day outside 0 to 14', async () => {
     const collaboration = await createCollaboration();
     const base = {
       collaborationId: collaboration.id,
@@ -120,8 +120,12 @@ describe('view_snapshots', () => {
     await expect(
       prisma.viewSnapshot.create({ data: { ...base, views: 5, dayIndex: 3 } }),
     ).rejects.toThrow();
+    // 브랜드 계약은 14일까지 잰다.
     await expect(
-      prisma.viewSnapshot.create({ data: { ...base, views: 5, dayIndex: 8 } }),
+      prisma.viewSnapshot.create({ data: { ...base, views: 5, dayIndex: 14 } }),
+    ).resolves.toBeDefined();
+    await expect(
+      prisma.viewSnapshot.create({ data: { ...base, views: 5, dayIndex: 15 } }),
     ).rejects.toThrow();
   });
 });

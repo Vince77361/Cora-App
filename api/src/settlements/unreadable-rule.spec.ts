@@ -48,4 +48,24 @@ describe('isViewCountUnreadable', () => {
       ),
     ).toBe(false);
   });
+
+  it('counts the last three days of a 14 day period at settlement', () => {
+    // 12·13·14일째가 모두 읽지 못한 날이면(줄이 없는 날 포함) 11일째 값으로 정산하지 않는다.
+    const rows = [row(10, 5), row(11, 9), row(12, null)];
+    expect(
+      isViewCountUnreadable(rows, { atSettlement: true, lastDay: 14 }),
+    ).toBe(true);
+    // 7일 기준이면 그 구간(5~7일)에는 값이 있어 읽을 수 있다.
+    expect(
+      isViewCountUnreadable([row(5, 3), row(10, 5), row(11, 9)], {
+        atSettlement: true,
+      }),
+    ).toBe(false);
+    expect(
+      isViewCountUnreadable([row(12, 4), row(13, null), row(14, null)], {
+        atSettlement: true,
+        lastDay: 14,
+      }),
+    ).toBe(false);
+  });
 });

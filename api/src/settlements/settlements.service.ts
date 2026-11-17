@@ -23,7 +23,7 @@ import {
   maxCashOfSnapshot,
   readSnapshot,
 } from '../contracts/contract-snapshot';
-import { hasViewPay, readTerms } from '../stores/reward-terms';
+import { hasViewPay } from '../stores/reward-terms';
 import { InstagramService } from '../instagram/instagram.service';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import {
@@ -40,16 +40,18 @@ import {
   settleJobKey,
   settlePayoutKey,
   settleRefundKey,
-  SNAPSHOT_DAYS,
+  MAX_SNAPSHOT_DAYS,
   snapshotJobKey,
   VIEW_COUNT_HALT_REASON,
 } from './job-keys';
+import { measurementDaysOf, measurementStageOf } from './measurement';
 import { VIEW_REPORT_POLICY } from '../common/collaboration-policy';
 import { assertEscrowMatches } from './escrow-check';
 import { PayoutsService } from './payouts.service';
 import { RefundsService } from './refunds.service';
 import { SettlementFinishService } from './settlement-finish.service';
 import { pickFinalViews, settleReward } from './settlement-math';
+import { rewardOf, SettlementReward } from './settlement-reward';
 import { SettlementsRepository } from './settlements.repository';
 import { isViewCountUnreadable } from './unreadable-rule';
 import { ViewReportService } from './view-report.service';
@@ -101,9 +103,9 @@ export class SettlementsService {
       await this.finishHalt(collaboration);
       return;
     }
-    if (collaboration.stage !== 'COUNTING') return;
+    if (collaboration.stage !== measurementStageOf(collaboration.kind)) return;
     // 조회수 수당이 없는 협업은 조회수를 세지 않는다(운영 재개가 남긴 작업이 돌아도 아무 일 없다).
-    if (!hasViewPay(readTerms(collaboration.terms))) return;
+    if (!hasViewPay(await rewardOf(collaboration, this.repository))) return;
     // 계산이 이미 만들어졌다면(확인 전) 측정은 끝난 것이다: 늦게 도는 마지막 날 작업이 확인을 기다리는 협업을 멈추지 않게 한다.
     if (await this.repository.findSettlement(collaboration.id)) return;
 
@@ -131,7 +133,14 @@ export class SettlementsService {
       await this.finishHalt(collaboration);
       return;
     }
-    if (collaboration.stage === 'COUNTING') {
+    if (collaboration.stage === measurementStageOf(collaboration.kind)) {
+      // 성과 추가가 없는 브랜드 계약은 settle-fixed 작업이 지급한다(조회수를 재지 않으니 계산도 없다).
+      if (
+        collaboration.kind === 'BRAND_CONTRACT' &&
+        !hasViewPay(await rewardOf(collaboration, this.repository))
+      ) {
+        return;
+      }
       // 계산이 이미 있으면(확인 전) 다시 만들지 않고 알림 단계만 이어서 한다.
       const existing = await this.repository.findSettlement(collaborationId);
       if (existing && existing.status !== 'CONFIRMED') {
@@ -216,16 +225,19 @@ export class SettlementsService {
     key: string,
     context?: JobRunContext,
   ): Promise<'settled' | 'calculated' | 'waiting' | 'halted' | 'gone'> {
+    const reward = await rewardOf(collaboration, this.repository);
+    const measuring = measurementStageOf(collaboration.kind);
+    const lastDay = measurementDaysOf(collaboration);
     // 조회수 수당이 없는 협업(고정 현금만)은 조회수를 읽지 않고 측정 기간이 끝나는 날 고정 현금으로 정산한다.
     // 스냅샷이 없어 아래의 3일 실패 규칙을 보면 안 된다(거짓으로 멈춘다).
-    if (!hasViewPay(readTerms(collaboration.terms))) {
+    if (!hasViewPay(reward)) {
       const fixed = await this.repository.transaction<'settled', 'gone'>(
         async (tx, rollback) => {
           const committed = await this.commitSettlement(
             tx,
             collaboration,
-            'COUNTING',
-            (escrow) => planFixed(collaboration, escrow),
+            measuring,
+            (escrow) => planFixed(reward, escrow),
             key,
             { confirmedBy: 'NOT_NEEDED' },
           );
@@ -234,11 +246,11 @@ export class SettlementsService {
       );
       return fixed === 'settled' ? 'settled' : 'gone';
     }
-    // 7일째 줄이 없으면 이 자리에서 읽는다: 같은 시각의 7일째 작업과 이 작업의 실행 순서에 기대지 않는다
+    // 마지막 날(가게 오퍼 7일째, 브랜드 계약 7·14일째) 줄이 없으면 이 자리에서 읽는다: 같은 시각의 마지막 날 작업과 이 작업의 실행 순서에 기대지 않는다
     // (같은 날 줄은 유일 제약이 하나만 남긴다).
-    await this.ensureSnapshot(collaboration, SNAPSHOT_DAYS, context);
-    // 7일째 작업이 먼저 돌았다면 그 작업이 했을 판정을 여기서도 한다: 5~7일을 읽지 못했는데 4일째 값으로 정산하면 안 된다.
-    // 정산 시점에는 5~7일의 작업이 이미 끝났어야 하므로, 줄이 없는 날도 읽지 못한 날로 센다.
+    await this.ensureSnapshot(collaboration, lastDay, context);
+    // 마지막 날 작업이 먼저 돌았다면 그 작업이 했을 판정을 여기서도 한다: 마지막 3일을 읽지 못했는데 그 전 값으로 정산하면 안 된다.
+    // 정산 시점에는 마지막 3일의 작업이 이미 끝났어야 하므로, 줄이 없는 날도 읽지 못한 날로 센다.
     if (await this.isUnreadable(collaboration, true)) {
       // 연결 계정의 조회수를 믿을 수 없다. 캡처를 요청하고(이미 보냈다면 같은 키라 그대로다),
       // 캡처가 와 있으면 그 조회수로 계산을 만든다. 없으면 기간이 끝난 뒤 3일까지 기다리고, 그때까지 없으면 멈춘다.
@@ -255,7 +267,7 @@ export class SettlementsService {
       return fromCapture === 'gone' ? 'gone' : 'calculated';
     }
     const snapshots = await this.repository.listSnapshots(collaboration.id);
-    const finalViews = pickFinalViews(snapshots, SNAPSHOT_DAYS);
+    const finalViews = pickFinalViews(snapshots, lastDay);
     // 읽은 값이 하나도 없다(위 판정에 걸리기 전의 경우): 0으로 정산하지 않고 멈춘다.
     if (finalViews === null) {
       await this.halt(collaboration);
@@ -352,16 +364,17 @@ export class SettlementsService {
 
   // 운영 명령 resume-settlement: 조회수를 읽지 못해 멈춘 협업을 운영자가 준 조회수로 정산한다(호출한 쪽의 트랜잭션 안).
   // 지급과 환급은 일반 정산과 같은 키·같은 줄이다. 졌으면(그사이 다른 길이 정산·변경했다) null이다.
-  settleHaltedWithViews(
+  async settleHaltedWithViews(
     tx: Prisma.TransactionClient,
     collaboration: Collaboration,
     views: number,
   ): Promise<{ payout: number; refund: number } | null> {
+    const reward = await rewardOf(collaboration, this.repository, tx);
     return this.commitSettlement(
       tx,
       collaboration,
       'HALTED',
-      (escrow) => planByViews(collaboration, views, escrow),
+      (escrow) => planByViews(reward, views, escrow),
       settleJobKey(collaboration.id),
       {
         confirmedBy: 'OPERATOR',
@@ -438,7 +451,7 @@ export class SettlementsService {
     });
   }
 
-  // 조회수를 연속 3일 읽지 못했는가. 날마다의 스냅샷 작업과 7일째의 정산 작업이 같은 규칙(unreadable-rule)을 쓴다:
+  // 조회수를 연속 3일 읽지 못했는가. 날마다의 스냅샷 작업과 마지막 날의 정산 작업이 같은 규칙(unreadable-rule)을 쓴다:
   // 어느 쪽이 먼저 돌아도 결과가 같다. atSettlement이면 줄이 없는 마지막 3일도 읽지 못한 날로 센다.
   private async isUnreadable(
     collaboration: Collaboration,
@@ -446,7 +459,7 @@ export class SettlementsService {
   ): Promise<boolean> {
     return isViewCountUnreadable(
       await this.repository.listSnapshots(collaboration.id),
-      { atSettlement },
+      { atSettlement, lastDay: measurementDaysOf(collaboration) },
     );
   }
 
@@ -474,14 +487,15 @@ export class SettlementsService {
       await this.finishHalt(collaboration);
       return;
     }
-    if (collaboration.stage !== 'COUNTING') return;
+    const measuring = measurementStageOf(collaboration.kind);
+    if (collaboration.stage !== measuring) return;
     const halted = await this.repository.transaction<boolean, false>(
       async (tx, rollback) => {
         if (!(await this.repository.lockCollaboration(collaborationId, tx))) {
           return rollback(false);
         }
         const fresh = await this.collaborations.findById(collaborationId, tx);
-        if (fresh?.stage !== 'COUNTING') return rollback(false);
+        if (fresh?.stage !== measuring) return rollback(false);
         if (
           (await this.repository.findSettlement(collaborationId, tx)) ||
           (await this.repository.findEvidence(collaborationId, tx))
@@ -490,10 +504,10 @@ export class SettlementsService {
         }
         return this.collaborations.advance(
           collaborationId,
-          'COUNTING',
+          measuring,
           'HALTED',
           {
-            stageBeforeHalt: 'COUNTING',
+            stageBeforeHalt: measuring,
             haltedReason: VIEW_COUNT_HALT_REASON,
           },
           tx,
@@ -509,8 +523,9 @@ export class SettlementsService {
   // 조건부 전이가 이겼을 때만(또는 이미 조회수 사유로 멈춰 있을 때만) 뒷정리와 운영자 알림으로 간다:
   // 전이에서 졌다면(동시 정산 등) 멈춘 것이 아니므로 거짓 경보를 보내지 않는다.
   async halt(collaboration: Collaboration): Promise<void> {
-    await this.collaborations.advance(collaboration.id, 'COUNTING', 'HALTED', {
-      stageBeforeHalt: 'COUNTING',
+    const measuring = measurementStageOf(collaboration.kind);
+    await this.collaborations.advance(collaboration.id, measuring, 'HALTED', {
+      stageBeforeHalt: measuring,
       haltedReason: VIEW_COUNT_HALT_REASON,
     });
     const fresh = await this.collaborations.findById(collaboration.id);
@@ -534,7 +549,7 @@ export class SettlementsService {
     );
     await this.notifications.notify({
       userId: collaboration.commissionerId,
-      role: 'STORE',
+      role: collaboration.kind === 'BRAND_CONTRACT' ? 'BRAND' : 'STORE',
       kind: 'COLLABORATION_HALTED',
       target,
       dedupeKey,
@@ -548,7 +563,7 @@ export class SettlementsService {
     });
     await this.jobs.cancel(settleJobKey(collaboration.id));
     await this.jobs.cancel(evidenceHaltJobKey(collaboration.id));
-    for (let day = 0; day <= SNAPSHOT_DAYS; day += 1) {
+    for (let day = 0; day <= MAX_SNAPSHOT_DAYS; day += 1) {
       await this.jobs.cancel(snapshotJobKey(collaboration.id, day));
     }
   }
@@ -594,7 +609,7 @@ export function isViewCountHalt(collaboration: Collaboration): boolean {
 // 조건 사본(고정 현금, 조회수 단가, 상한)으로 지급·환급을 정한다. 상한은 에스크로 잔액이 아니라 조건의 값이다.
 // 조회수 수당이 없는 협업은 조회수로 정산하지 않는다(planFixed).
 function planByViews(
-  collaboration: Collaboration,
+  reward: SettlementReward,
   views: number,
   escrow: number,
 ): {
@@ -604,29 +619,28 @@ function planByViews(
   fixedCash: number;
   viewPay: number;
 } {
-  const terms = readTerms(collaboration.terms);
-  if (terms.viewRatePerThousand === null || terms.perViewCap === null) {
+  if (reward.viewRatePerThousand === null || reward.perViewCap === null) {
     throw new Error('조회수 수당이 없는 협업은 조회수로 정산할 수 없어요.');
   }
-  assertEscrowMatches(terms, escrow);
+  assertEscrowMatches(reward, escrow);
   const { viewPay, payout, refund } = settleReward({
     views,
-    ratePerThousand: terms.viewRatePerThousand,
-    cap: terms.perViewCap,
-    fixedCash: terms.fixedCash,
+    ratePerThousand: reward.viewRatePerThousand,
+    cap: reward.perViewCap,
+    fixedCash: reward.fixedCash,
   });
   return {
     finalViews: views,
     payout,
     refund,
-    fixedCash: terms.fixedCash,
+    fixedCash: reward.fixedCash,
     viewPay,
   };
 }
 
 // 고정 현금만 있는 협업의 정산: 조회수 없이(finalViews = null) 고정 현금 전부를 지급하고 환급은 없다.
 function planFixed(
-  collaboration: Collaboration,
+  reward: SettlementReward,
   escrow: number,
 ): {
   finalViews: null;
@@ -635,19 +649,18 @@ function planFixed(
   fixedCash: number;
   viewPay: number;
 } {
-  const terms = readTerms(collaboration.terms);
-  assertEscrowMatches(terms, escrow);
+  assertEscrowMatches(reward, escrow);
   const { viewPay, payout, refund } = settleReward({
     views: 0,
     ratePerThousand: 0,
     cap: 0,
-    fixedCash: terms.fixedCash,
+    fixedCash: reward.fixedCash,
   });
   return {
     finalViews: null,
     payout,
     refund,
-    fixedCash: terms.fixedCash,
+    fixedCash: reward.fixedCash,
     viewPay,
   };
 }

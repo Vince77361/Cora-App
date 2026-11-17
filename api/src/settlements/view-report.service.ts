@@ -21,7 +21,7 @@ import { JobRunContext, JobScheduler } from '../jobs/job-scheduler';
 import { postingsForSettlement } from '../ledger/ledger-postings';
 import { LedgerService } from '../ledger/ledger.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { hasViewPay, readTerms } from '../stores/reward-terms';
+import { hasViewPay } from '../stores/reward-terms';
 import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
 import { assertEscrowMatches } from './escrow-check';
@@ -35,9 +35,9 @@ import {
   settleJobKey,
   settlePayoutKey,
   settleRefundKey,
-  SNAPSHOT_DAYS,
   viewReportDedupeKey,
 } from './job-keys';
+import { measurementDaysOf, measurementStageOf } from './measurement';
 import { PayoutsService } from './payouts.service';
 import { RefundsService } from './refunds.service';
 import { SettlementFinishService } from './settlement-finish.service';
@@ -47,6 +47,7 @@ import {
   NewSettlement,
   SettlementsRepository,
 } from './settlements.repository';
+import { rewardOf, SettlementReward } from './settlement-reward';
 import { isViewCountUnreadable } from './unreadable-rule';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -85,8 +86,8 @@ export interface ViewReportView {
 }
 
 // 조회수 수당이 있는 협업의 "계산 만들기 → 확인 → 확정" 가운데 계산과 확인을 맡는다.
-// 협업의 종류(가게 오퍼, 브랜드 계약)를 가정하지 않는다: 측정 기간의 끝은 협업의 countingEndsAt에서, 조건은 readTerms로,
-// 맡기는 쪽 알림의 역할은 그 사람의 지금 역할로 읽고, 단계 전이는 COUNTING인 것만 본다.
+// 협업의 종류(가게 오퍼, 브랜드 계약)를 가정하지 않는다: 측정 기간의 끝은 협업의 countingEndsAt에서, 보상은 rewardOf로,
+// 맡기는 쪽 알림의 역할은 그 사람의 지금 역할로 읽고, 단계 전이는 그 종류의 측정 단계(measurementStageOf)인 것만 본다.
 // 잠금 순서: 정산 행이 이미 있는 길(확인)은 정산 행 → 협업, 정산 행이 아직 없는 길(계산 만들기)은 오퍼 → 협업이다.
 @Injectable()
 export class ViewReportService {
@@ -121,12 +122,13 @@ export class ViewReportService {
       ? capture.statedViews
       : pickFinalViews(
           await this.repository.listSnapshots(collaborationId),
-          lastDayOf(collaboration),
+          measurementDaysOf(collaboration),
         );
     // 읽은 값이 하나도 없으면 0으로 계산하지 않는다(호출한 쪽이 먼저 멈춘다).
     if (views === null) throw new Error('읽은 조회수가 없어 계산할 수 없어요.');
     const row = this.calculationRow(
-      collaboration,
+      collaborationId,
+      await rewardOf(collaboration, this.repository),
       views,
       capture ? 'CAPTURE' : 'CONNECTED_ACCOUNT',
     );
@@ -136,7 +138,9 @@ export class ViewReportService {
           return rollback('gone');
         }
         const fresh = await this.collaborations.findById(collaborationId, tx);
-        if (fresh?.stage !== 'COUNTING') return rollback('gone');
+        if (!fresh || fresh.stage !== measurementStageOf(fresh.kind)) {
+          return rollback('gone');
+        }
         // 작업이 겹쳐 돈 두 번째 실행은 잠금을 잡은 채 INSERT로 가지 않는다: 첫 계산 행을 이의·확인이 갱신 중이면 서로 기다려 교착이 난다.
         if (await this.repository.findSettlement(collaborationId, tx)) {
           return rollback('exists');
@@ -149,31 +153,31 @@ export class ViewReportService {
 
   // 조건과 조회수로 계산 행(UNCONFIRMED)을 만든다. 연결 계정 자료는 확인 기한(48시간)을 두고, 캡처 자료는 운영 명령만 확정하므로 기한이 없다.
   private calculationRow(
-    collaboration: Collaboration,
+    collaborationId: string,
+    reward: SettlementReward,
     views: number,
     source: EvidenceSource,
   ): NewSettlement {
-    const terms = readTerms(collaboration.terms);
     if (
-      terms.viewRatePerThousand === null ||
-      terms.perViewCap === null ||
-      !hasViewPay(terms)
+      reward.viewRatePerThousand === null ||
+      reward.perViewCap === null ||
+      !hasViewPay(reward)
     ) {
       throw new Error('조회수 수당이 없는 협업은 계산을 만들지 않아요.');
     }
     const { viewPay, payout, refund } = settleReward({
       views,
-      ratePerThousand: terms.viewRatePerThousand,
-      cap: terms.perViewCap,
-      fixedCash: terms.fixedCash,
+      ratePerThousand: reward.viewRatePerThousand,
+      cap: reward.perViewCap,
+      fixedCash: reward.fixedCash,
     });
     const now = this.clock.now();
     return {
-      collaborationId: collaboration.id,
+      collaborationId,
       finalViews: views,
       payoutAmount: payout,
       refundAmount: refund,
-      fixedCashAmount: terms.fixedCash,
+      fixedCashAmount: reward.fixedCash,
       viewPayAmount: viewPay,
       status: 'UNCONFIRMED',
       calculatedAt: now,
@@ -201,7 +205,7 @@ export class ViewReportService {
       !collaboration ||
       !settlement ||
       settlement.status !== 'UNCONFIRMED' ||
-      collaboration.stage !== 'COUNTING'
+      collaboration.stage !== measurementStageOf(collaboration.kind)
     ) {
       return;
     }
@@ -361,9 +365,9 @@ export class ViewReportService {
   // 조회수 수당이 없는 협업, 링크 제출 전, 집계 중도 정산도 아닌 단계의 협업은 보여 줄 것이 없어 404다.
   async get(userId: string, collaborationId: string): Promise<ViewReportView> {
     const collaboration = await this.requireParty(userId, collaborationId);
-    const terms = readTerms(collaboration.terms);
+    const reward = await rewardOf(collaboration, this.repository);
     if (
-      !hasViewPay(terms) ||
+      !hasViewPay(reward) ||
       !collaboration.submittedUrl ||
       !collaboration.submittedAt
     ) {
@@ -373,7 +377,7 @@ export class ViewReportService {
     // 정산 행이 없으면 측정 중이다. 조회수를 읽지 못해 멈춘 협업(HALTED)도 정산 행이 없어 "집계 중"이다.
     if (
       !settlement &&
-      collaboration.stage !== 'COUNTING' &&
+      collaboration.stage !== measurementStageOf(collaboration.kind) &&
       collaboration.stage !== 'HALTED'
     ) {
       throw this.notFound();
@@ -396,7 +400,10 @@ export class ViewReportService {
       periodStart: collaboration.submittedAt.toISOString(),
       periodEnd: (
         periodEnd ??
-        new Date(collaboration.submittedAt.getTime() + SNAPSHOT_DAYS * DAY_MS)
+        new Date(
+          collaboration.submittedAt.getTime() +
+            measurementDaysOf(collaboration) * DAY_MS,
+        )
       ).toISOString(),
       // 출처는 서버가 한 곳에서 정한다: 계산이 있으면 그 계산의 자료 출처(캡처가 남아 있어도 연결 계정 값으로 계산됐다면 연결 계정),
       // 계산 전이면 캡처가 제출된 상태를 CAPTURE_PENDING으로 직접 나타낸다.
@@ -411,19 +418,19 @@ export class ViewReportService {
           : 'CONNECTED_ACCOUNT',
       calc:
         settlement &&
-        terms.viewRatePerThousand !== null &&
-        terms.perViewCap !== null
+        reward.viewRatePerThousand !== null &&
+        reward.perViewCap !== null
           ? {
               viewPay: settlement.viewPayAmount,
-              ratePerThousand: terms.viewRatePerThousand,
-              cap: terms.perViewCap,
+              ratePerThousand: reward.viewRatePerThousand,
+              cap: reward.perViewCap,
               capApplied:
                 settlement.finalViews !== null &&
                 settleReward({
                   views: settlement.finalViews,
-                  ratePerThousand: terms.viewRatePerThousand,
-                  cap: terms.perViewCap,
-                  fixedCash: terms.fixedCash,
+                  ratePerThousand: reward.viewRatePerThousand,
+                  cap: reward.perViewCap,
+                  fixedCash: reward.fixedCash,
                 }).capApplied,
               fixedCash: settlement.fixedCashAmount,
               refund: settlement.refundAmount,
@@ -473,17 +480,17 @@ export class ViewReportService {
           by,
           key,
           fromStatus: 'UNCONFIRMED',
-          fromStage: 'COUNTING',
+          fromStage: 'MEASUREMENT',
           onlySource: options.onlySource,
         });
-        // 협업이 그사이 COUNTING이 아니게 됐다면 정산 행 변경까지 전부 되돌린다(돈은 그대로 보관된다).
+        // 협업이 그사이 측정 단계가 아니게 됐다면 정산 행 변경까지 전부 되돌린다(돈은 그대로 보관된다).
         return settled ? 'confirmed' : rollback('lost');
       },
     );
   }
 
   // 정산 행 확인 완료 → 협업 이동 → 에스크로 잔액 검사 → 장부(key) → 지급·환급 행을 호출한 쪽의 트랜잭션 안에서 한다.
-  // 사장님·자동 확인(UNCONFIRMED, COUNTING)과 운영 명령(캡처 확정은 UNCONFIRMED, 이의 처리는 DISPUTED·HALTED)이 같은 길을 쓴다.
+  // 사장님·자동 확인(UNCONFIRMED, 측정 단계)과 운영 명령(캡처 확정은 UNCONFIRMED, 이의 처리는 DISPUTED·HALTED)이 같은 길을 쓴다.
   // 졌으면(정산 행이 그 상태가 아니거나 협업이 그 단계가 아님) false다: 호출한 쪽이 반드시 트랜잭션을 되돌려야 한다(정산 행만 바뀐 채 남지 않게).
   // correctedViews를 주면 그 조회수로 다시 계산한 금액을 정산 행에 쓴다(이의 처리). 지급 + 환급은 늘 고정 현금 + 상한이라 에스크로 잔액이 0이 된다.
   async settleCalculation(
@@ -493,7 +500,8 @@ export class ViewReportService {
       by: SettlementConfirmer;
       key: string;
       fromStatus: 'UNCONFIRMED' | 'DISPUTED';
-      fromStage: 'COUNTING' | 'HALTED';
+      // MEASUREMENT는 그 협업 종류의 측정 단계다(가게 오퍼 COUNTING, 브랜드 계약 PUBLISHED).
+      fromStage: 'MEASUREMENT' | 'HALTED';
       onlySource?: EvidenceSource;
       patch?: CollaborationPatch;
       correctedViews?: number;
@@ -502,10 +510,11 @@ export class ViewReportService {
     const now = this.clock.now();
     const before = await this.collaborations.findById(collaborationId, tx);
     if (!before) throw new Error('확인한 정산의 협업을 찾을 수 없어요.');
+    const reward = await rewardOf(before, this.repository, tx);
     const corrected =
       p.correctedViews === undefined
         ? undefined
-        : this.correctedCalculation(before, p.correctedViews);
+        : this.correctedCalculation(before.id, reward, p.correctedViews);
     // 이 갱신이 정산 행을 먼저 잠근다(정산 행 → 협업).
     if (
       !(await this.repository.confirmCalculation(
@@ -532,7 +541,9 @@ export class ViewReportService {
     if (
       !(await this.collaborations.advance(
         collaborationId,
-        p.fromStage,
+        p.fromStage === 'MEASUREMENT'
+          ? measurementStageOf(collaboration.kind)
+          : p.fromStage,
         'SETTLED',
         p.patch ?? {},
         tx,
@@ -541,7 +552,7 @@ export class ViewReportService {
       return false;
     }
     const escrow = await this.ledger.escrowBalance(collaborationId, tx);
-    assertEscrowMatches(readTerms(collaboration.terms), escrow);
+    assertEscrowMatches(reward, escrow);
     if (settlement.payoutAmount + settlement.refundAmount !== escrow) {
       throw new Error(
         `정산 금액(${settlement.payoutAmount + settlement.refundAmount})이 에스크로 잔액(${escrow})과 달라요.`,
@@ -578,10 +589,16 @@ export class ViewReportService {
 
   // 운영자가 고친 조회수로 다시 계산한 금액. 조건 사본(고정 현금, 단가, 상한)을 쓰고 상한은 에스크로 잔액이 아니라 조건의 값이다.
   private correctedCalculation(
-    collaboration: Collaboration,
+    collaborationId: string,
+    reward: SettlementReward,
     views: number,
   ): CorrectedCalculation {
-    const row = this.calculationRow(collaboration, views, 'CONNECTED_ACCOUNT');
+    const row = this.calculationRow(
+      collaborationId,
+      reward,
+      views,
+      'CONNECTED_ACCOUNT',
+    );
     return {
       finalViews: views,
       payoutAmount: row.payoutAmount,
@@ -592,7 +609,7 @@ export class ViewReportService {
   }
 
   // 이의 제기. 당사자 누구나 확인 전(UNCONFIRMED)인 계산에 한 번 낼 수 있다. 한 트랜잭션에서 정산 행 UNCONFIRMED → DISPUTED(조건부)
-  // → 이의 행 → 협업 COUNTING → HALTED를 하고, 돈은 에스크로에 그대로 둔다. 자동 확인과 겹치면 하나만 이긴다(진 쪽은 409 또는 'lost').
+  // → 이의 행 → 협업 측정 단계 → HALTED를 하고, 돈은 에스크로에 그대로 둔다. 자동 확인과 겹치면 하나만 이긴다(진 쪽은 409 또는 'lost').
   // 커밋 뒤: 자동 확인 작업 취소, 운영자 알림(사유 글은 넣지 않는다), 상대에게 알림. 실패해도 이의는 이미 유효하니 로그만 남긴다.
   async dispute(
     userId: string,
@@ -612,6 +629,7 @@ export class ViewReportService {
     }
     const settlement = await this.repository.findSettlement(collaborationId);
     if (!canDispute(collaboration, settlement)) throw this.cannotDispute();
+    const measuring = measurementStageOf(collaboration.kind);
     const outcome = await this.repository.transaction<'disputed', 'lost'>(
       async (tx, rollback) => {
         // 이 갱신이 정산 행을 먼저 잠근다(정산 행 → 협업).
@@ -630,10 +648,10 @@ export class ViewReportService {
         if (
           !(await this.collaborations.advance(
             collaborationId,
-            'COUNTING',
+            measuring,
             'HALTED',
             {
-              stageBeforeHalt: 'COUNTING',
+              stageBeforeHalt: measuring,
               haltedReason: SETTLEMENT_DISPUTED_HALT_REASON,
             },
             tx,
@@ -715,8 +733,8 @@ export class ViewReportService {
         '조회수는 0 이상의 정수여야 해요.',
       );
     }
-    const terms = readTerms(collaboration.terms);
-    if (!hasViewPay(terms) || !collaboration.submittedAt) {
+    const reward = await rewardOf(collaboration, this.repository);
+    if (!hasViewPay(reward) || !collaboration.submittedAt) {
       throw this.notFound();
     }
     // 올리지 않은 경로(PUT이 실패했거나 지어낸 경로)는 받지 않는다. 저장소 호출이라 트랜잭션 밖에서 한다.
@@ -762,7 +780,7 @@ export class ViewReportService {
           fresh.countingEndsAt.getTime() <= now.getTime();
         if (!periodOver) return false;
         return this.repository.createSettlement(
-          this.calculationRow(fresh, input.views, 'CAPTURE'),
+          this.calculationRow(collaborationId, reward, input.views, 'CAPTURE'),
           tx,
         );
       },
@@ -800,22 +818,31 @@ export class ViewReportService {
   }
 
   // 캡처를 받을 수 있는 때: 협업이 집계 중(COUNTING)이고 정산 행이 아직 없으며 조회수를 연속 3일 읽지 못했을 때다.
-  // 측정 기간이 끝났다면 5~7일을 날로 세는 판정까지 쓰되, 7일째를 읽어 보려 한 뒤에만 받는다(7일째 줄이 있어야 한다):
-  // 읽기 전에 캡처를 받으면 7일째가 읽혔을 협업이 캡처 계산으로 남는다. 정산 작업과 같은 규칙이다.
+  // 측정 기간이 끝났다면 마지막 3일을 날로 세는 판정까지 쓰되, 마지막 날을 읽어 보려 한 뒤에만 받는다(마지막 날 줄이 있어야 한다):
+  // 읽기 전에 캡처를 받으면 마지막 날이 읽혔을 협업이 캡처 계산으로 남는다. 정산 작업과 같은 규칙이다.
   private async isEvidenceOpen(
     collaboration: Collaboration,
     settlement: { id: string } | null,
     tx?: Prisma.TransactionClient,
   ): Promise<boolean> {
-    if (settlement || collaboration.stage !== 'COUNTING') return false;
+    if (
+      settlement ||
+      collaboration.stage !== measurementStageOf(collaboration.kind)
+    ) {
+      return false;
+    }
     const periodOver =
       collaboration.countingEndsAt !== null &&
       collaboration.countingEndsAt.getTime() <= this.clock.now().getTime();
     const snapshots = await this.repository.listSnapshots(collaboration.id, tx);
-    if (periodOver && !snapshots.some((x) => x.dayIndex === SNAPSHOT_DAYS)) {
+    const lastDay = measurementDaysOf(collaboration);
+    if (periodOver && !snapshots.some((x) => x.dayIndex === lastDay)) {
       return false;
     }
-    return isViewCountUnreadable(snapshots, { atSettlement: periodOver });
+    return isViewCountUnreadable(snapshots, {
+      atSettlement: periodOver,
+      lastDay,
+    });
   }
 
   private async requireParty(
@@ -850,19 +877,20 @@ export class ViewReportService {
   }
 }
 
-// 이의를 낼 수 있을 때: 계산이 확인 전(UNCONFIRMED)이고 협업이 집계 중(COUNTING)일 때다(당사자 누구나, 캡처 자료도 포함).
+// 이의를 낼 수 있을 때: 계산이 확인 전(UNCONFIRMED)이고 협업이 측정 단계(가게 오퍼 COUNTING, 브랜드 계약 PUBLISHED)일 때다(당사자 누구나, 캡처 자료도 포함).
 // 한 사람이 한 번이라는 규칙은 이의가 정산 행을 DISPUTED로 바꾸는 것으로 이미 지켜진다(DISPUTED가 되면 다시 낼 수 없다).
 function canDispute(
   collaboration: Collaboration,
   settlement: { status: string } | null,
 ): boolean {
   return (
-    collaboration.stage === 'COUNTING' && settlement?.status === 'UNCONFIRMED'
+    collaboration.stage === measurementStageOf(collaboration.kind) &&
+    settlement?.status === 'UNCONFIRMED'
   );
 }
 
 // 확인할 수 있는 사람: 맡기는 쪽이고, 계산이 확인 전이며, 자료가 연결 계정에서 읽은 것일 때만이다(캡처 자료는 운영 명령만 확정한다).
-// 협업이 COUNTING이 아니면(운영자가 멈춤) 확인해도 정산되지 않으므로 누를 수 없다.
+// 협업이 측정 단계가 아니면(운영자가 멈춤) 확인해도 정산되지 않으므로 누를 수 없다.
 function canConfirm(
   collaboration: Collaboration,
   settlement: { status: string; evidenceSource: string } | null,
@@ -870,20 +898,8 @@ function canConfirm(
 ): boolean {
   return (
     collaboration.commissionerId === userId &&
-    collaboration.stage === 'COUNTING' &&
+    collaboration.stage === measurementStageOf(collaboration.kind) &&
     settlement?.status === 'UNCONFIRMED' &&
     settlement.evidenceSource === 'CONNECTED_ACCOUNT'
-  );
-}
-
-// 측정 기간의 마지막 날 번호(제출한 날부터 센 날수). 협업의 countingEndsAt에서 읽는다(7일이든 14일이든).
-function lastDayOf(collaboration: Collaboration): number {
-  if (!collaboration.submittedAt || !collaboration.countingEndsAt) {
-    return SNAPSHOT_DAYS;
-  }
-  return Math.round(
-    (collaboration.countingEndsAt.getTime() -
-      collaboration.submittedAt.getTime()) /
-      DAY_MS,
   );
 }

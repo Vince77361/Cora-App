@@ -35,16 +35,20 @@ import {
   SETTLEMENT_DISPUTED_HALT_REASON,
   settleFixedJobKey,
   settleJobKey,
-  SNAPSHOT_DAYS,
   snapshotJobKey,
   VIEW_COUNT_HALT_REASON,
 } from '../settlements/job-keys';
+import {
+  measurementDaysOf,
+  measurementStageOf,
+} from '../settlements/measurement';
 import { PayoutsService } from '../settlements/payouts.service';
 import { RefundsService } from '../settlements/refunds.service';
+import { rewardOf } from '../settlements/settlement-reward';
 import { SettlementsRepository } from '../settlements/settlements.repository';
 import { SettlementsService } from '../settlements/settlements.service';
 import { ViewReportService } from '../settlements/view-report.service';
-import { hasViewPay, readTerms } from '../stores/reward-terms';
+import { hasViewPay } from '../stores/reward-terms';
 import { OpsError } from './ops-error';
 import { formatSnapshot } from './ops-format';
 import { OpsRepository } from './ops.repository';
@@ -253,13 +257,15 @@ export class OpsService {
     const endsAt = c.countingEndsAt;
     if (!submittedAt || !endsAt) return;
     // 조회수 수당이 없는 협업(고정 현금만)은 조회수를 세지 않으니 조회수 작업은 올리지 않고 정산만 올린다.
-    const viewPay = hasViewPay(readTerms(c.terms));
+    const viewPay = hasViewPay(await rewardOf(c, this.settlementsRepository));
+    // 측정 일수는 협업이 정한다(가게 오퍼 7일, 브랜드 계약 7·14일).
+    const lastDay = measurementDaysOf(c);
     const recorded = new Set(
       (await this.settlementsRepository.listSnapshots(c.id)).map(
         (snapshot) => snapshot.dayIndex,
       ),
     );
-    for (let day = 0; viewPay && day <= SNAPSHOT_DAYS; day += 1) {
+    for (let day = 0; viewPay && day <= lastDay; day += 1) {
       if (recorded.has(day)) continue;
       const key = snapshotJobKey(c.id, day);
       await this.jobs.cancel(key);
@@ -455,16 +461,17 @@ export class OpsService {
             '캡처로 만든, 확인 전(UNCONFIRMED)인 계산이 있는 협업만 확인할 수 있어요.',
           );
         }
-        if (c.stage !== 'COUNTING') {
+        const measuring = measurementStageOf(c.kind);
+        if (c.stage !== measuring) {
           throw new OpsError(
-            `집계 중(COUNTING)인 협업만 확인할 수 있어요. (지금 단계: ${c.stage})`,
+            `집계 중(${measuring})인 협업만 확인할 수 있어요. (지금 단계: ${c.stage})`,
           );
         }
         const ok = await this.viewReport.settleCalculation(tx, c.id, {
           by: 'OPERATOR',
           key: settleJobKey(c.id),
           fromStatus: 'UNCONFIRMED',
-          fromStage: 'COUNTING',
+          fromStage: 'MEASUREMENT',
           onlySource: 'CAPTURE',
         });
         if (!ok) throw this.conflict();

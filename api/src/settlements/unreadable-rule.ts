@@ -6,9 +6,10 @@ import { HALT_AFTER_UNREADABLE_DAYS, SNAPSHOT_DAYS } from './job-keys';
 // - 가장 최근 세 줄이 모두 null이면(읽지 못한 날이 연속 3일) 참이다.
 // - atSettlement이면 마지막 3일(5~7일)을 날로 세는 판정을 더한다: 줄이 없는 날(작업이 시도를 다 쓰고 죽었거나 작업자를 다시 켜느라
 //   건너뛴 날)도 읽지 못한 날이라, 5일째 null·6일째 줄 없음·7일째 null이면 4일째 값으로 정산하지 않는다.
+//   마지막 날 번호(lastDay)는 측정 기간에 따라 7일 또는 14일이다(주지 않으면 가게 오퍼의 7일).
 export function isViewCountUnreadable(
   snapshots: { dayIndex: number; views: number | null }[],
-  options: { atSettlement: boolean },
+  options: { atSettlement: boolean; lastDay?: number },
 ): boolean {
   const latest = [...snapshots]
     .sort((a, b) => b.dayIndex - a.dayIndex)
@@ -21,6 +22,6 @@ export function isViewCountUnreadable(
   const byDay = new Map(snapshots.map((s) => [s.dayIndex, s.views]));
   return Array.from(
     { length: HALT_AFTER_UNREADABLE_DAYS },
-    (_, i) => SNAPSHOT_DAYS - i,
+    (_, i) => (options.lastDay ?? SNAPSHOT_DAYS) - i,
   ).every((day) => (byDay.get(day) ?? null) === null);
 }

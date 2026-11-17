@@ -1,7 +1,10 @@
 import { submissionDeadlineJobKeys } from '../collaborations/collaboration-jobs';
 
 // 정산 쪽 작업의 중복 방지 키. 등록과 취소가 같은 키를 쓰므로 한 곳에 모은다.
+// 가게 오퍼의 측정 기간(일). 스냅숏 일수 = 측정 일수라 브랜드 계약(7 또는 14일)은 협업의 countingEndsAt에서 읽는다(measurement.ts).
 export const SNAPSHOT_DAYS = 7;
+// 어떤 협업도 이 날수를 넘겨 재지 않는다(view_snapshots의 day_index CHECK 0..14와 같다). 취소할 작업 키의 범위다.
+export const MAX_SNAPSHOT_DAYS = 14;
 
 export const snapshotJobKey = (
   collaborationId: string,
@@ -63,7 +66,7 @@ export const haltJobKeys = (collaborationId: string): string[] => [
   autoConfirmJobKey(collaborationId),
   evidenceHaltJobKey(collaborationId),
   brandHaltJobKey(collaborationId),
-  ...Array.from({ length: SNAPSHOT_DAYS + 1 }, (_, day) =>
+  ...Array.from({ length: MAX_SNAPSHOT_DAYS + 1 }, (_, day) =>
     snapshotJobKey(collaborationId, day),
   ),
   ...submissionDeadlineJobKeys(collaborationId),

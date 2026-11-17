@@ -597,7 +597,7 @@ model LedgerEntry {
 }
 
 // 조회수 스냅샷. views가 null이면 그날 읽지 못한 것이다(0이 아니다).
-// dayIndex 0~7의 범위는 마이그레이션의 CHECK 제약이 지킨다.
+// dayIndex 0~14(가게 오퍼는 0~7, 브랜드 계약은 0~7 또는 0~14)의 범위는 마이그레이션의 CHECK 제약이 지킨다.
 model ViewSnapshot {
   id              String    @id @default(uuid()) @db.Uuid
   collaborationId String    @map("collaboration_id") @db.Uuid

@@ -6,7 +6,7 @@ import {
   haltJobKeys,
   settleFixedJobKey,
   settleJobKey,
-  SNAPSHOT_DAYS,
+  MAX_SNAPSHOT_DAYS,
   snapshotJobKey,
 } from './job-keys';
 
@@ -23,7 +23,8 @@ describe('haltJobKeys', () => {
         ...submissionDeadlineJobKeys('c1'),
       ]),
     );
-    for (let day = 0; day <= SNAPSHOT_DAYS; day += 1) {
+    // 브랜드 계약은 14일까지 잰다: 멈출 때 7일 뒤의 조회수 작업도 지워야 한다.
+    for (let day = 0; day <= MAX_SNAPSHOT_DAYS; day += 1) {
       expect(keys).toContain(snapshotJobKey('c1', day));
     }
     expect(new Set(keys).size).toBe(keys.length);
