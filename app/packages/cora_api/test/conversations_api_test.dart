@@ -16,6 +16,20 @@ void main() {
   // final instance = ConversationsApi();
 
   group('tests for ConversationsApi', () {
+    // 메시지 요청을 수락해 대화를 연다. 받은 사람만. 협업은 INQUIRY에 남고, 요청을 보낸 사람에게 알린다.
+    //
+    //Future<ConversationDetailModel> acceptMessageRequest(String id) async
+    test('test acceptMessageRequest', () async {
+      // TODO
+    });
+
+    // 메시지 요청을 거절한다. 받은 사람만. 협업은 끝나 같은 캠페인으로 다시 요청할 수 없고, 상대에게 알리지 않는다.
+    //
+    //Future declineMessageRequest(String id) async
+    test('test declineMessageRequest', () async {
+      // TODO
+    });
+
     // 방 머리: 상대, 협업 단계, 조건, 내가 할 수 있는 일.
     //
     //Future<ConversationDetailModel> getConversation(String id) async

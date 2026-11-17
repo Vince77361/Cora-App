@@ -23,6 +23,13 @@ void main() {
       // TODO
     });
 
+    // \"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.
+    //
+    //Future<InquiryResultModel> createInquiry(String campaignId, InquiryDto inquiryDto) async
+    test('test createInquiry', () async {
+      // TODO
+    });
+
     // 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
     //
     //Future<List<InterestCardModel>> listInterests({ InterestTab tab }) async

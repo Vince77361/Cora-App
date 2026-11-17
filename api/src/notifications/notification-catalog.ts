@@ -24,7 +24,9 @@ export type NotificationTarget = {
     // 서로 관심(id = 협업 id). 앱이 05 시트를 연다.
     | 'MATCH'
     // 조건 판본 화면(id = 협업 id). 조건을 확인하거나 제안했다는 알림이 간다.
-    | 'TERMS';
+    | 'TERMS'
+    // 대화방(id = 방 id). 메시지 요청과 그 수락 알림이 간다.
+    | 'CONVERSATION';
   id: string | null;
 };
 
@@ -342,6 +344,26 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     needsActor: true,
     render: ({ actorName, params }) =>
       `${josa(actorName ?? OTHER_FALLBACK, '이/가')} 조건 버전 ${josa(String(params.version ?? 1), '을/를')} 제안했어요.`,
+  },
+  // 표 "메시지 요청": 브랜드 / 매칭 / 대화 메시지 / 사진. 누르면 11 메시지 요청(대화방)이 열린다.
+  MESSAGE_REQUEST: {
+    tab: 'MATCHING',
+    switch: 'MESSAGES',
+    glyph: null,
+    requiredParams: {},
+    needsActor: true,
+    render: ({ actorName }) =>
+      `${actorName ?? CREATOR_FALLBACK}님이 메시지를 보냈어요.`,
+  },
+  // 요청을 보낸 사람이 받는다. 문구는 대화방 안내 줄(REQUEST_ACCEPTED)과 같다(캔버스 밖). 탭·스위치는 메시지 요청과 같다.
+  MESSAGE_REQUEST_ACCEPTED: {
+    tab: 'MATCHING',
+    switch: 'MESSAGES',
+    glyph: null,
+    requiredParams: {},
+    needsActor: true,
+    render: ({ actorName }) =>
+      `${actorName ?? OTHER_FALLBACK}님이 대화를 수락했어요.`,
   },
 };
 

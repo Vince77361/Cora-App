@@ -140,6 +140,7 @@ describe('ConversationsService', () => {
       null as never,
       new FakeStoragePort(),
       events,
+      null as never,
       new FakeClock(T0),
     );
   });

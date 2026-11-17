@@ -16,6 +16,123 @@ class ConversationsApi {
 
   final ApiClient apiClient;
 
+  /// 메시지 요청을 수락해 대화를 연다. 받은 사람만. 협업은 INQUIRY에 남고, 요청을 보낸 사람에게 알린다.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<Response> acceptMessageRequestWithHttpInfo(
+    String id, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/conversations/{id}/request/accept'.replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 메시지 요청을 수락해 대화를 연다. 받은 사람만. 협업은 INQUIRY에 남고, 요청을 보낸 사람에게 알린다.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<ConversationDetailModel?> acceptMessageRequest(
+    String id, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await acceptMessageRequestWithHttpInfo(
+      id,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(
+        await _decodeBodyBytes(response),
+        'ConversationDetailModel',
+      ) as ConversationDetailModel;
+    }
+    return null;
+  }
+
+  /// 메시지 요청을 거절한다. 받은 사람만. 협업은 끝나 같은 캠페인으로 다시 요청할 수 없고, 상대에게 알리지 않는다.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<Response> declineMessageRequestWithHttpInfo(
+    String id, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/conversations/{id}/request/decline'.replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 메시지 요청을 거절한다. 받은 사람만. 협업은 끝나 같은 캠페인으로 다시 요청할 수 없고, 상대에게 알리지 않는다.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<void> declineMessageRequest(
+    String id, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await declineMessageRequestWithHttpInfo(
+      id,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+  }
+
   /// 방 머리: 상대, 협업 단계, 조건, 내가 할 수 있는 일.
   ///
   /// Note: This method returns the HTTP [Response].

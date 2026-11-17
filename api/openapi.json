@@ -2321,6 +2321,45 @@
         ],
         "type": "string"
       },
+      "InquiryDto": {
+        "properties": {
+          "contentLine": {
+            "description": "내가 만들고 싶은 콘텐츠 한 줄(40자). 나중에 서로 관심이 닿으면 조건 버전 1의 제목이 된다.",
+            "maxLength": 40,
+            "nullable": true,
+            "type": "string"
+          },
+          "message": {
+            "description": "브랜드에게 보내는 첫 메시지(1~1000자). 요청에는 이 한 개만 담긴다.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "InquiryResultModel": {
+        "properties": {
+          "collaborationId": {
+            "description": "만들어진 협업(단계 INQUIRY)의 id.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "conversationId": {
+            "description": "메시지 요청 상태로 만들어진 대화방의 id.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collaborationId",
+          "conversationId"
+        ],
+        "type": "object"
+      },
       "InstagramConnectUrlModel": {
         "properties": {
           "connectUrl": {
@@ -7292,6 +7331,77 @@
         ]
       }
     },
+    "/conversations/{id}/request/accept": {
+      "post": {
+        "operationId": "acceptMessageRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetailModel"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "description": "방이 없거나 내가 참가자가 아니다."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "메시지 요청을 수락해 대화를 연다. 받은 사람만. 협업은 INQUIRY에 남고, 요청을 보낸 사람에게 알린다.",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/conversations/{id}/request/decline": {
+      "post": {
+        "operationId": "declineMessageRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": "방이 없거나 내가 참가자가 아니다."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "메시지 요청을 거절한다. 받은 사람만. 협업은 끝나 같은 캠페인으로 다시 요청할 수 없고, 상대에게 알리지 않는다.",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
     "/creators/me": {
       "get": {
         "operationId": "getMyCreatorProfile",
@@ -7729,6 +7839,55 @@
           }
         ],
         "summary": "크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.",
+        "tags": [
+          "Discovery"
+        ]
+      }
+    },
+    "/discovery/received-proposals/{campaignId}/inquiry": {
+      "post": {
+        "operationId": "createInquiry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaignId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InquiryDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InquiryResultModel"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "description": "그 캠페인의 브랜드가 나에게 글이나 제안을 붙인 관심을 보내지 않았다."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.",
         "tags": [
           "Discovery"
         ]

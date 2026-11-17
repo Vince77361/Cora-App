@@ -4,6 +4,7 @@ import { CampaignsModule } from '../campaigns/campaigns.module';
 import { CollaborationsModule } from '../collaborations/collaborations.module';
 import { CreatorsModule } from '../creators/creators.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { StoresModule } from '../stores/stores.module';
 import { TermsModule } from '../terms/terms.module';
 import { ConversationsController } from './conversations.controller';
@@ -22,6 +23,7 @@ import { MessageEvents } from './message-events';
     CampaignsModule,
     TermsModule,
     IntegrationsModule,
+    NotificationsModule,
   ],
   controllers: [ConversationsController],
   providers: [ConversationsService, ConversationsRepository, MessageEvents],

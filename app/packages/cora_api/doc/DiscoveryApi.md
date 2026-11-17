@@ -10,6 +10,7 @@ All URIs are relative to *http://localhost*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**compareCandidates**](DiscoveryApi.md#comparecandidates) | **GET** /discovery/compare | 후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.
+[**createInquiry**](DiscoveryApi.md#createinquiry) | **POST** /discovery/received-proposals/{campaignId}/inquiry | \"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.
 [**listInterests**](DiscoveryApi.md#listinterests) | **GET** /discovery/interests | 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
 [**listReceivedProposals**](DiscoveryApi.md#listreceivedproposals) | **GET** /discovery/received-proposals | 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.
 [**putDecision**](DiscoveryApi.md#putdecision) | **PUT** /discovery/decisions | 관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.
@@ -63,6 +64,55 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **createInquiry**
+> InquiryResultModel createInquiry(campaignId, inquiryDto)
+
+\"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = DiscoveryApi();
+final campaignId = campaignId_example; // String | 
+final inquiryDto = InquiryDto(); // InquiryDto | 
+
+try {
+    final result = api_instance.createInquiry(campaignId, inquiryDto);
+    print(result);
+} catch (e) {
+    print('Exception when calling DiscoveryApi->createInquiry: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **campaignId** | **String**|  | 
+ **inquiryDto** | [**InquiryDto**](InquiryDto.md)|  | 
+
+### Return type
+
+[**InquiryResultModel**](InquiryResultModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

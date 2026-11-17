@@ -90,6 +90,27 @@ export class ConversationsRepository {
     return tx ?? this.prisma;
   }
 
+  transaction<T>(
+    run: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return this.prisma.$transaction(run);
+  }
+
+  // 방의 상태를 조건부로 바꾼다(UPDATE ... WHERE status = 기대 상태). 동시에 와도 한 번만 바뀌고, 바뀐 행이 0이면 false다.
+  async transitionRoom(
+    id: string,
+    from: ConversationStatus,
+    to: ConversationStatus,
+    now: Date,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const { count } = await tx.conversation.updateMany({
+      where: { id, status: from, deletedAt: null },
+      data: { status: to, updatedAt: now },
+    });
+    return count === 1;
+  }
+
   findByCollaborationId(
     collaborationId: string,
     tx?: Prisma.TransactionClient,

@@ -1,5 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { Campaign, Conversation, Message, Prisma } from '@prisma/client';
+import { Injectable, Logger } from '@nestjs/common';
+import {
+  Campaign,
+  Conversation,
+  Message,
+  Prisma,
+  UserRole,
+} from '@prisma/client';
 import {
   negotiableStages,
   preContractStages,
@@ -10,6 +16,7 @@ import { AppError } from '../common/errors/app-error';
 import { BrandsService } from '../brands/brands.service';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import { CreatorsService } from '../creators/creators.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { StoragePort } from '../integrations/storage/storage.port';
 import { readTerms } from '../stores/reward-terms';
 import { StoresService } from '../stores/stores.service';
@@ -62,10 +69,15 @@ interface Header {
 const notFound = (): AppError =>
   new AppError('NOT_FOUND', '대화를 찾을 수 없어요.');
 
+const requestAnswered = (): AppError =>
+  new AppError('CONFLICT', '이미 답한 메시지 요청이에요.');
+
 // 대화방과 메시지. 방은 협업 하나에 하나이고 참가자(맡기는 쪽, 크리에이터) 둘만 읽고 쓴다.
 // 참가자가 아니면 방이 없는 것과 같다(404).
 @Injectable()
 export class ConversationsService {
+  private readonly logger = new Logger(ConversationsService.name);
+
   constructor(
     private readonly repository: ConversationsRepository,
     private readonly collaborations: CollaborationsRepository,
@@ -76,10 +88,13 @@ export class ConversationsService {
     private readonly terms: TermsService,
     private readonly storage: StoragePort,
     private readonly events: MessageEvents,
+    private readonly notifications: NotificationsService,
     private readonly clock: Clock,
   ) {}
 
   // 협업과 같은 트랜잭션에서 방과 참가자 둘을 만든다. 이미 방이 있으면 그것을 돌려준다.
+  // 이미 있는 방이 메시지 요청(REQUESTED)인데 열린 방(OPEN)을 원하면 방을 연다: "조건부터 질문하기"로 먼저 생긴 협업이
+  // 서로 관심으로 올라갈 때다(요청을 수락하지 않아도 서로 관심이면 바로 열린다).
   // 두 사람 사이에 차단이 있으면 방은 처음부터 닫힌 방(CLOSED, BLOCKED)이다 — 차단 뒤 수락으로 대화가 열리는 길을 막는다.
   async openForCollaboration(
     collaborationId: string,
@@ -90,7 +105,20 @@ export class ConversationsService {
       collaborationId,
       tx,
     );
-    if (existing) return existing;
+    if (existing) {
+      if (existing.status === 'REQUESTED' && opts.status === 'OPEN') {
+        const now = this.clock.now();
+        const opened = await this.repository.transitionRoom(
+          existing.id,
+          'REQUESTED',
+          'OPEN',
+          now,
+          tx,
+        );
+        if (opened) return { ...existing, status: 'OPEN', updatedAt: now };
+      }
+      return existing;
+    }
     const collaboration = await this.collaborations.findById(
       collaborationId,
       tx,
@@ -153,6 +181,143 @@ export class ConversationsService {
     if (!row) throw notFound();
     if (!tx) await this.publishCreated(row.id);
     return this.toMessage(row, { userId: '', role: 'COMMISSIONER' });
+  }
+
+  // "조건부터 질문하기"의 첫 메시지. 방이 아직 메시지 요청(REQUESTED)이라 열린 방 조건 없이 번호 1로 남긴다.
+  // 요청을 보낸 사람은 수락될 때까지 더 보낼 수 없으므로(sendMessage는 열린 방만) 요청에는 이 한 개만 담긴다.
+  // tx 안에서 부르며 커밋 전이라 이벤트를 내지 않는다(알림은 부르는 쪽이 MESSAGE_REQUEST로 보낸다).
+  async postRequestMessage(
+    conversationId: string,
+    senderId: string,
+    text: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    const row = await this.repository.appendMessage(
+      {
+        conversationId,
+        senderId,
+        clientId: null,
+        kind: 'TEXT',
+        text,
+        cardTitle: null,
+        cardPhotoPath: null,
+        systemCode: null,
+        systemParams: null,
+        requireOpen: false,
+        now: this.clock.now(),
+      },
+      tx,
+    );
+    if (!row) throw notFound();
+  }
+
+  // 받은 사람이 메시지 요청을 수락한다: REQUESTED → OPEN 조건부, 안내 줄 REQUEST_ACCEPTED. 협업은 INQUIRY에 남는다.
+  // 요청을 보낸 사람에게는 커밋 뒤에 알린다(알림이 실패해도 수락은 유효하다).
+  async acceptRequest(
+    userId: string,
+    id: string,
+  ): Promise<ConversationDetailModel> {
+    const room = await this.requireReceiver(userId, id);
+    const actor = await this.actorOf(room, userId);
+    const now = this.clock.now();
+    await this.repository.transaction(async (tx) => {
+      const opened = await this.repository.transitionRoom(
+        room.id,
+        'REQUESTED',
+        'OPEN',
+        now,
+        tx,
+      );
+      if (!opened) throw requestAnswered();
+      await this.postSystem(
+        room.id,
+        'REQUEST_ACCEPTED',
+        { name: actor?.name ?? '상대' },
+        tx,
+      );
+    });
+    if (room.requestedById) {
+      try {
+        await this.notifications.notify({
+          userId: room.requestedById,
+          role: this.roleOf(room, room.requestedById),
+          kind: 'MESSAGE_REQUEST_ACCEPTED',
+          actor: actor ?? { userId, name: '상대', photoPath: null },
+          target: { kind: 'CONVERSATION', id: room.id },
+          dedupeKey: `message-request-accepted:${room.id}`,
+        });
+      } catch (error) {
+        this.logger.warn(
+          `메시지 요청 수락 알림을 남기지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        );
+      }
+    }
+    return this.get(userId, id);
+  }
+
+  // 받은 사람이 메시지 요청을 거절한다: REQUESTED → DECLINED, 협업 INQUIRY → DROPPED(REQUEST_DECLINED).
+  // 상대에게 알리지 않는다(알림도 안내 줄도 없다). 협업이 끝나 같은 캠페인으로 다시 요청할 수 없다.
+  // 잠금 순서는 협업 → 대화방이다: 서로 관심(협업 INQUIRY → MATCHED 뒤 방 열기)과 같은 순서라 엇갈려 막히지 않는다.
+  // 둘 중 하나라도 이미 바뀌었으면(동시에 수락했거나 서로 관심이 닿았다) 던져 협업 변경도 되돌린다.
+  async declineRequest(userId: string, id: string): Promise<void> {
+    const room = await this.requireReceiver(userId, id);
+    const now = this.clock.now();
+    await this.repository.transaction(async (tx) => {
+      const dropped = await this.collaborations.advance(
+        room.collaborationId,
+        'INQUIRY',
+        'DROPPED',
+        { dropReason: 'REQUEST_DECLINED', droppedById: userId },
+        tx,
+      );
+      if (!dropped) throw requestAnswered();
+      const declined = await this.repository.transitionRoom(
+        room.id,
+        'REQUESTED',
+        'DECLINED',
+        now,
+        tx,
+      );
+      if (!declined) throw requestAnswered();
+    });
+  }
+
+  // 내 방이고, 내가 보낸 요청이 아니고, 아직 답하지 않은 메시지 요청일 때만 돌려준다.
+  private async requireReceiver(
+    userId: string,
+    id: string,
+  ): Promise<RoomWithCollaboration> {
+    const room = await this.requireMember(userId, id);
+    if (room.requestedById === userId) {
+      throw new AppError('FORBIDDEN', '내가 보낸 요청은 내가 답할 수 없어요.');
+    }
+    if (room.status !== 'REQUESTED') throw requestAnswered();
+    return room;
+  }
+
+  private roleOf(room: RoomWithCollaboration, userId: string): UserRole {
+    const { collaboration } = room;
+    if (collaboration.creatorId === userId) return 'CREATOR';
+    return collaboration.kind === 'BRAND_CONTRACT' ? 'BRAND' : 'STORE';
+  }
+
+  // 안내 줄과 알림에 쓸 내 이름 사본. 못 읽으면 null이라 쓰는 쪽이 기본 이름으로 대신한다(수락이 되돌아가지 않게).
+  private async actorOf(
+    room: RoomWithCollaboration,
+    userId: string,
+  ): Promise<{
+    userId: string;
+    name: string;
+    photoPath: string | null;
+  } | null> {
+    try {
+      const role = this.roleOf(room, userId);
+      if (role === 'CREATOR') return await this.creators.getActor(userId);
+      if (role === 'BRAND') return await this.brands.getActor(userId);
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   // 저장된 메시지를 구독자(푸시, 실시간)에게 알린다. 이미 커밋된 메시지에만 부른다.

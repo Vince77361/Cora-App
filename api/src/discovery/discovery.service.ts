@@ -20,13 +20,20 @@ import {
   UndoneDecisionModel,
 } from './dto/decision-result.model';
 import { PassReasonDto } from './dto/pass-reason.dto';
+import { InquiryDto } from './dto/inquiry.dto';
+import { InquiryResultModel } from './dto/inquiry-result.model';
 import { BrandProposalDto, PutDecisionDto } from './dto/put-decision.dto';
 import {
   DecisionKey,
   DiscoveryRepository,
   isUniqueViolation,
 } from './discovery.repository';
-import { DecisionInput, NOTE_MAX, planDecisionWrite } from './discovery-rules';
+import {
+  DecisionInput,
+  INQUIRY_MESSAGE_MAX,
+  NOTE_MAX,
+  planDecisionWrite,
+} from './discovery-rules';
 
 // 한 결정이 낸 결과. 서로 관심이 이번 결정으로 새로 생겼을 때만 알림을 보낸다.
 interface Outcome {
@@ -55,6 +62,16 @@ interface ActorCopy {
 interface Actors {
   brand: ActorCopy | null;
   creator: ActorCopy | null;
+}
+
+const campaignNotFound = (): AppError =>
+  new AppError('NOT_FOUND', '캠페인을 찾을 수 없어요.');
+
+// 크리에이터의 "받은 제안"에 보이는 관심: 관심(LIKE)에 글이나 조건 제안이 붙어 있다.
+function isProposalLike(row: SwipeDecision | null): boolean {
+  return (
+    row?.decision === 'LIKE' && (row.note !== null || row.proposedFee !== null)
+  );
 }
 
 function alreadyMatched(): AppError {
@@ -259,7 +276,28 @@ export class DiscoveryService {
       );
     }
     const note = this.cleanNote(input.note, NOTE_MAX.CREATOR);
-    const campaign = await this.campaigns.findActiveById(input.targetId);
+    const campaign = await this.requireVisibleCampaign(userId, input.targetId);
+    await this.creators.requireProfile(userId);
+    return this.saveAndMatch({
+      side: 'CREATOR',
+      campaign,
+      creatorId: userId,
+      key: {
+        actorId: userId,
+        targetKind: 'CAMPAIGN',
+        targetId: campaign.id,
+        campaignId: campaign.id,
+      },
+      input: { decision: input.decision, note },
+    });
+  }
+
+  // 크리에이터가 보이는(피하는 업종이 아닌) 진행 중인 캠페인. 없거나 보이지 않으면 404다.
+  private async requireVisibleCampaign(
+    userId: string,
+    campaignId: string,
+  ): Promise<Campaign> {
+    const campaign = await this.campaigns.findActiveById(campaignId);
     const brand = campaign
       ? (await this.brands.findProfiles([campaign.brandId])).get(
           campaign.brandId,
@@ -275,19 +313,133 @@ export class DiscoveryService {
     ) {
       throw new AppError('NOT_FOUND', '캠페인을 찾을 수 없어요.');
     }
+    return campaign;
+  }
+
+  // "조건부터 질문하기": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다.
+  // 한 트랜잭션에서 협업(INQUIRY), 메시지 요청 방(REQUESTED, 요청자 = 나), 첫 메시지(번호 1)를 만든다.
+  // 서로 관심 판정과 같은 (캠페인, 크리에이터) 잠금을 잡아서, 문의와 서로 관심이 동시에 와도 협업이 둘 생기지 않는다.
+  // 브랜드가 나에게 글이나 제안을 붙인 관심을 보낸 캠페인(받은 제안에 보이는 것)만 물을 수 있다: 아니면 404.
+  async inquire(
+    userId: string,
+    campaignId: string,
+    input: InquiryDto,
+  ): Promise<InquiryResultModel> {
+    if ((await this.users.getRole(userId)) !== 'CREATOR') {
+      throw new AppError('FORBIDDEN', '크리에이터 계정만 쓸 수 있어요.');
+    }
+    const message = input.message.trim();
+    if (message === '') {
+      throw new AppError('VALIDATION_FAILED', '메시지를 입력해 주세요.');
+    }
+    // 글자 수는 코드 포인트로 센다(대화 메시지와 같은 기준).
+    if (Array.from(message).length > INQUIRY_MESSAGE_MAX) {
+      throw new AppError('VALIDATION_FAILED', '1,000자까지 보낼 수 있어요.');
+    }
+    const contentLine =
+      this.cleanNote(input.contentLine, NOTE_MAX.CREATOR) ?? null;
+    const campaign = await this.requireVisibleCampaign(userId, campaignId);
     await this.creators.requireProfile(userId);
-    return this.saveAndMatch({
-      side: 'CREATOR',
-      campaign,
-      creatorId: userId,
-      key: {
-        actorId: userId,
-        targetKind: 'CAMPAIGN',
-        targetId: campaign.id,
-        campaignId: campaign.id,
-      },
-      input: { decision: input.decision, note },
-    });
+    const actors = await this.readActors(campaign.brandId, userId);
+    const now = this.clock.now();
+
+    let created: InquiryResultModel;
+    try {
+      created = await this.repository.transaction(async (tx) => {
+        await this.repository.lock(pairLockKey(campaign.id, userId), tx);
+        const like = await this.repository.findDecision(
+          {
+            actorId: campaign.brandId,
+            targetKind: 'CREATOR',
+            targetId: userId,
+            campaignId: campaign.id,
+          },
+          tx,
+        );
+        if (!isProposalLike(like)) throw campaignNotFound();
+        if (
+          await this.collaborations.findBrandContract(campaign.id, userId, tx)
+        ) {
+          throw new AppError(
+            'CONFLICT',
+            '이 캠페인으로 이미 진행한 협업이 있어요.',
+          );
+        }
+        const mine = await this.repository.findDecision(
+          {
+            actorId: userId,
+            targetKind: 'CAMPAIGN',
+            targetId: campaign.id,
+            campaignId: campaign.id,
+          },
+          tx,
+        );
+        // 넘긴 캠페인은 받은 제안에서도 사라진다(보류는 결정이 아니라서 남는다).
+        if (mine && mine.decision !== 'HOLD') throw campaignNotFound();
+
+        const collaboration = await this.collaborations.create(
+          {
+            kind: 'BRAND_CONTRACT',
+            stage: 'INQUIRY',
+            commissionerId: campaign.brandId,
+            creatorId: userId,
+            offerId: null,
+            storeId: null,
+            campaignId: campaign.id,
+            creatorNote: contentLine,
+            terms: {},
+            settlementMethod: 'FIXED',
+            fundedAt: null,
+            submitDueAt: null,
+            createdAt: now,
+          },
+          tx,
+        );
+        const room = await this.conversations.openForCollaboration(
+          collaboration.id,
+          { status: 'REQUESTED', requestedById: userId },
+          tx,
+        );
+        // 두 사람 사이에 차단이 있으면 방이 닫힌 채로 만들어진다. 차단 사실을 알리지 않고 없는 것으로 답하며 되돌린다.
+        if (room.status !== 'REQUESTED') throw campaignNotFound();
+        await this.conversations.postRequestMessage(
+          room.id,
+          userId,
+          message,
+          tx,
+        );
+        return { collaborationId: collaboration.id, conversationId: room.id };
+      });
+    } catch (error) {
+      // 유일 제약이 마지막 안전망이다: 같은 쌍의 협업이 동시에 만들어졌다.
+      if (isUniqueViolation(error)) {
+        throw new AppError(
+          'CONFLICT',
+          '이 캠페인으로 이미 진행한 협업이 있어요.',
+        );
+      }
+      throw error;
+    }
+    // 커밋 뒤에 브랜드에게 알린다. 알림이 실패해도 이미 보낸 요청은 유효하다(원장 판단 R22).
+    try {
+      await this.notifications.notify({
+        userId: campaign.brandId,
+        role: 'BRAND',
+        kind: 'MESSAGE_REQUEST',
+        actor: actors.creator ?? {
+          userId,
+          name: '크리에이터',
+          photoPath: null,
+        },
+        target: { kind: 'CONVERSATION', id: created.conversationId },
+        dedupeKey: `message-request:${created.collaborationId}`,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `메시지 요청 알림을 남기지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
+    return created;
   }
 
   // 결정을 저장하고, 반대쪽에도 관심이 있으면 같은 트랜잭션에서 서로 관심을 만든다.
@@ -447,10 +599,11 @@ export class DiscoveryService {
     );
     if (!(await this.terms.latest(collaboration.id, tx))) {
       const card = await this.creators.getCardCopy(creatorId);
+      // 제목: 관심에 쓴 글, 없으면 문의("조건부터 질문하기")에 적은 한 줄, 없으면 캠페인 한 줄.
       const values = draftTerms(
         campaign,
         { cardHeadline: card?.headline ?? null },
-        creatorRow.note,
+        creatorRow.note ?? collaboration.creatorNote,
         proposalOf(brandRow),
       );
       await this.terms.createVersion(collaboration.id, null, values, tx);

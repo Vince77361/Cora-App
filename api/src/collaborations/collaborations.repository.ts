@@ -3,6 +3,7 @@ import {
   Collaboration,
   CollaborationKind,
   CollaborationStage,
+  DropReason,
   Prisma,
   SettlementMethod,
 } from '@prisma/client';
@@ -22,6 +23,9 @@ export interface CollaborationPatch {
   countingEndsAt?: Date | null;
   haltedReason?: string | null;
   stageBeforeHalt?: CollaborationStage | null;
+  // 계약 전에 그만둘 때(DROPPED) 이유와 그만둔 사람을 함께 적는다. 상대에게는 알리지 않고 저장만 한다.
+  dropReason?: DropReason | null;
+  droppedById?: string | null;
 }
 
 export interface NewCollaboration {
@@ -33,6 +37,8 @@ export interface NewCollaboration {
   storeId: string | null;
   // 브랜드 계약이 나온 캠페인. 가게 오퍼는 생략한다.
   campaignId?: string | null;
+  // 크리에이터가 "조건부터 질문하기"에 적은 콘텐츠 한 줄(40자).
+  creatorNote?: string | null;
   terms: Prisma.InputJsonValue;
   settlementMethod: SettlementMethod;
   fundedAt: Date | null;
@@ -72,6 +78,24 @@ export class CollaborationsRepository {
     return this.client(tx).collaboration.findFirst({
       where: { kind: 'BRAND_CONTRACT', campaignId, creatorId, deletedAt: null },
     });
+  }
+
+  // 이 크리에이터가 이미 협업(문의·끝난 것 포함)을 만든 캠페인. 받은 제안에서 빼는 데 쓴다.
+  async listCampaignIdsWithBrandContract(
+    creatorId: string,
+    campaignIds: string[],
+  ): Promise<Set<string>> {
+    if (campaignIds.length === 0) return new Set();
+    const rows = await this.prisma.collaboration.findMany({
+      where: {
+        kind: 'BRAND_CONTRACT',
+        creatorId,
+        campaignId: { in: campaignIds },
+        deletedAt: null,
+      },
+      select: { campaignId: true },
+    });
+    return new Set(rows.flatMap((r) => (r.campaignId ? [r.campaignId] : [])));
   }
 
   // 협업마다 대화방의 id. 방이 없는 협업은 맵에 없다. 이 모듈은 다른 기능 모듈을 import하지 않으므로

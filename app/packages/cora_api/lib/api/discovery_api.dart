@@ -94,6 +94,78 @@ class DiscoveryApi {
     return null;
   }
 
+  /// \"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] campaignId (required):
+  ///
+  /// * [InquiryDto] inquiryDto (required):
+  Future<Response> createInquiryWithHttpInfo(
+    String campaignId,
+    InquiryDto inquiryDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/discovery/received-proposals/{campaignId}/inquiry'
+        .replaceAll('{campaignId}', campaignId);
+
+    // ignore: prefer_final_locals
+    Object? postBody = inquiryDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// \"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] campaignId (required):
+  ///
+  /// * [InquiryDto] inquiryDto (required):
+  Future<InquiryResultModel?> createInquiry(
+    String campaignId,
+    InquiryDto inquiryDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await createInquiryWithHttpInfo(
+      campaignId,
+      inquiryDto,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(
+        await _decodeBodyBytes(response),
+        'InquiryResultModel',
+      ) as InquiryResultModel;
+    }
+    return null;
+  }
+
   /// 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
   ///
   /// Note: This method returns the HTTP [Response].

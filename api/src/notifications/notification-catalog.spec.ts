@@ -191,6 +191,28 @@ describe('NOTIFICATION_CATALOG', () => {
     });
   });
 
+  it('words the message request notices for the brand and the requester', () => {
+    expect(render('MESSAGE_REQUEST', '하루 한 컵')).toBe(
+      '하루 한 컵님이 메시지를 보냈어요.',
+    );
+    expect(render('MESSAGE_REQUEST_ACCEPTED', '느린결')).toBe(
+      '느린결님이 대화를 수락했어요.',
+    );
+    // 메시지 본문은 알림에 싣지 않는다: 이름 말고 받는 값이 없다.
+    for (const kind of [
+      'MESSAGE_REQUEST',
+      'MESSAGE_REQUEST_ACCEPTED',
+    ] as const) {
+      expect(NOTIFICATION_CATALOG[kind]).toMatchObject({
+        tab: 'MATCHING',
+        switch: 'MESSAGES',
+        glyph: null,
+        needsActor: true,
+        requiredParams: {},
+      });
+    }
+  });
+
   it('never puts a phone number or account in a text', () => {
     // 문구는 이름, 숫자, 형식만 쓴다.
     const text = render('OFFER_RECEIVED', '한그릇 라멘', {

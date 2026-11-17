@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { SwipeDecision } from '@prisma/client';
 import { BrandsService } from '../brands/brands.service';
 import { CampaignsService } from '../campaigns/campaigns.service';
+import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
 import { StoragePort } from '../integrations/storage/storage.port';
@@ -28,6 +29,7 @@ export class InterestsService {
     private readonly principles: PrinciplesService,
     private readonly visibility: VisibilityService,
     private readonly terms: TermsService,
+    private readonly collaborations: CollaborationsRepository,
     private readonly repository: DiscoveryRepository,
     private readonly storage: StoragePort,
   ) {}
@@ -152,6 +154,7 @@ export class InterestsService {
 
   // 나에게 온 글이나 조건 제안이 붙은 관심 가운데 내가 아직 결정하지 않은 것.
   // 내가 관심을 보냈거나 넘긴 캠페인은 빠진다(보류는 결정이 아니라서 남는다). 제안이 붙어 있으면 금액과 혜택은 제안의 값이다.
+  // 이미 협업이 생긴 캠페인도 빠진다: 조건부터 질문한 것(INQUIRY)과, 질문이 거절돼 끝난 것도 같다.
   async listReceivedProposals(userId: string): Promise<ProposalModel[]> {
     if ((await this.users.getRole(userId)) !== 'CREATOR') {
       throw new AppError('FORBIDDEN', '크리에이터 계정만 쓸 수 있어요.');
@@ -160,9 +163,10 @@ export class InterestsService {
     const campaignIds = likes.flatMap((like) =>
       like.campaignId ? [like.campaignId] : [],
     );
-    const [entries, mine] = await Promise.all([
+    const [entries, mine, withCollaboration] = await Promise.all([
       this.campaigns.listActiveWithBrand(campaignIds),
       this.repository.listDecisionsOn(userId, 'CAMPAIGN', campaignIds),
+      this.collaborations.listCampaignIdsWithBrandContract(userId, campaignIds),
     ]);
     const visibleEntries = await this.visibility.filterCommissioners(
       entries.map((entry) => ({
@@ -181,7 +185,13 @@ export class InterestsService {
 
     return likes.flatMap((like): ProposalModel[] => {
       const entry = like.campaignId ? entryById.get(like.campaignId) : null;
-      if (!entry || settled.has(entry.campaign.id)) return [];
+      if (
+        !entry ||
+        settled.has(entry.campaign.id) ||
+        withCollaboration.has(entry.campaign.id)
+      ) {
+        return [];
+      }
       return [this.toProposal(like, entry.campaign, entry.brand)];
     });
   }

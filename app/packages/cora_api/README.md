@@ -79,6 +79,8 @@ Class | Method | HTTP request | Description
 *CollaborationsApi* | [**requestCollaborationCancel**](doc//CollaborationsApi.md#requestcollaborationcancel) | **POST** /collaborations/{id}/cancel-requests | 사장님이 취소를 요청한다. 3일 안에 답이 없으면 사라진다.
 *ContentDraftsApi* | [**listMyContentDrafts**](doc//ContentDraftsApi.md#listmycontentdrafts) | **GET** /stores/me/content-drafts | 
 *ContentDraftsApi* | [**regenerateMyContentDraft**](doc//ContentDraftsApi.md#regeneratemycontentdraft) | **POST** /stores/me/content-drafts/{kind}/regenerate | 
+*ConversationsApi* | [**acceptMessageRequest**](doc//ConversationsApi.md#acceptmessagerequest) | **POST** /conversations/{id}/request/accept | 메시지 요청을 수락해 대화를 연다. 받은 사람만. 협업은 INQUIRY에 남고, 요청을 보낸 사람에게 알린다.
+*ConversationsApi* | [**declineMessageRequest**](doc//ConversationsApi.md#declinemessagerequest) | **POST** /conversations/{id}/request/decline | 메시지 요청을 거절한다. 받은 사람만. 협업은 끝나 같은 캠페인으로 다시 요청할 수 없고, 상대에게 알리지 않는다.
 *ConversationsApi* | [**getConversation**](doc//ConversationsApi.md#getconversation) | **GET** /conversations/{id} | 방 머리: 상대, 협업 단계, 조건, 내가 할 수 있는 일.
 *ConversationsApi* | [**listConversations**](doc//ConversationsApi.md#listconversations) | **GET** /conversations | 내 대화 목록. 답해야 하는 메시지 요청이 먼저, 다음은 마지막 메시지가 최근인 순. 내가 거절한 요청은 빠진다.
 *ConversationsApi* | [**listMessages**](doc//ConversationsApi.md#listmessages) | **GET** /conversations/{id}/messages | 메시지를 번호 오름차순으로. afterSeq(빠진 번호 받기)나 beforeSeq(위로 넘기기)를 주고, 둘 다 없으면 마지막 50개.
@@ -90,6 +92,7 @@ Class | Method | HTTP request | Description
 *CreatorsApi* | [**listMyCreatorSeries**](doc//CreatorsApi.md#listmycreatorseries) | **GET** /creators/me/series | 
 *CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
 *DiscoveryApi* | [**compareCandidates**](doc//DiscoveryApi.md#comparecandidates) | **GET** /discovery/compare | 후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.
+*DiscoveryApi* | [**createInquiry**](doc//DiscoveryApi.md#createinquiry) | **POST** /discovery/received-proposals/{campaignId}/inquiry | \"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.
 *DiscoveryApi* | [**listInterests**](doc//DiscoveryApi.md#listinterests) | **GET** /discovery/interests | 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
 *DiscoveryApi* | [**listReceivedProposals**](doc//DiscoveryApi.md#listreceivedproposals) | **GET** /discovery/received-proposals | 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.
 *DiscoveryApi* | [**putDecision**](doc//DiscoveryApi.md#putdecision) | **PUT** /discovery/decisions | 관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.
@@ -239,6 +242,8 @@ Class | Method | HTTP request | Description
  - [FixedCashRangeModel](doc//FixedCashRangeModel.md)
  - [HealthModel](doc//HealthModel.md)
  - [IndustryCategory](doc//IndustryCategory.md)
+ - [InquiryDto](doc//InquiryDto.md)
+ - [InquiryResultModel](doc//InquiryResultModel.md)
  - [InstagramConnectUrlModel](doc//InstagramConnectUrlModel.md)
  - [InstagramConnectionModel](doc//InstagramConnectionModel.md)
  - [InterestCardModel](doc//InterestCardModel.md)

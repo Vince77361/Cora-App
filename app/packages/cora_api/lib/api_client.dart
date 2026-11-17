@@ -356,6 +356,10 @@ class ApiClient {
           return HealthModel.fromJson(value);
         case 'IndustryCategory':
           return IndustryCategoryTypeTransformer().decode(value);
+        case 'InquiryDto':
+          return InquiryDto.fromJson(value);
+        case 'InquiryResultModel':
+          return InquiryResultModel.fromJson(value);
         case 'InstagramConnectUrlModel':
           return InstagramConnectUrlModel.fromJson(value);
         case 'InstagramConnectionModel':

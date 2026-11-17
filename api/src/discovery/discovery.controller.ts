@@ -5,13 +5,16 @@ import {
   Get,
   HttpCode,
   Param,
+  Post,
   ParseUUIDPipe,
   Put,
   Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
   ApiNoContentResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiExtraModels,
   ApiOperation,
@@ -32,6 +35,8 @@ import {
   ListInterestsQuery,
   ProposalModel,
 } from './dto/interest-card.model';
+import { InquiryDto } from './dto/inquiry.dto';
+import { InquiryResultModel } from './dto/inquiry-result.model';
 import { PassReasonDto } from './dto/pass-reason.dto';
 import { PutDecisionDto } from './dto/put-decision.dto';
 
@@ -84,6 +89,25 @@ export class DiscoveryController {
     @CurrentUser() user: AuthUser,
   ): Promise<ProposalModel[]> {
     return this.interests.listReceivedProposals(user.userId);
+  }
+
+  @Post('received-proposals/:campaignId/inquiry')
+  @ApiOperation({
+    operationId: 'createInquiry',
+    summary:
+      '"조건부터 질문하기": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.',
+  })
+  @ApiCreatedResponse({ type: InquiryResultModel })
+  @ApiNotFoundResponse({
+    description:
+      '그 캠페인의 브랜드가 나에게 글이나 제안을 붙인 관심을 보내지 않았다.',
+  })
+  createInquiry(
+    @CurrentUser() user: AuthUser,
+    @Param('campaignId', ParseUUIDPipe) campaignId: string,
+    @Body() body: InquiryDto,
+  ): Promise<InquiryResultModel> {
+    return this.discovery.inquire(user.userId, campaignId, body);
   }
 
   @Get('compare')

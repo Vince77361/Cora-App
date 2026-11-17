@@ -877,6 +877,8 @@ enum NotificationKind {
   MUTUAL_INTEREST
   TERMS_CONFIRMED
   TERMS_PROPOSED
+  MESSAGE_REQUEST
+  MESSAGE_REQUEST_ACCEPTED
 
   @@map("notification_kind")
 }

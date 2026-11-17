@@ -88,6 +88,8 @@ doc/FixedCashRangeModel.md
 doc/HealthApi.md
 doc/HealthModel.md
 doc/IndustryCategory.md
+doc/InquiryDto.md
+doc/InquiryResultModel.md
 doc/InstagramApi.md
 doc/InstagramConnectUrlModel.md
 doc/InstagramConnectionModel.md
@@ -350,6 +352,8 @@ lib/model/fixed_cash_max_model.dart
 lib/model/fixed_cash_range_model.dart
 lib/model/health_model.dart
 lib/model/industry_category.dart
+lib/model/inquiry_dto.dart
+lib/model/inquiry_result_model.dart
 lib/model/instagram_connect_url_model.dart
 lib/model/instagram_connection_model.dart
 lib/model/interest_card_model.dart
@@ -568,6 +572,8 @@ test/fixed_cash_range_model_test.dart
 test/health_api_test.dart
 test/health_model_test.dart
 test/industry_category_test.dart
+test/inquiry_dto_test.dart
+test/inquiry_result_model_test.dart
 test/instagram_api_test.dart
 test/instagram_connect_url_model_test.dart
 test/instagram_connection_model_test.dart

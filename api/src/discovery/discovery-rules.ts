@@ -4,6 +4,9 @@ import type { BrandProposal } from '../terms/draft-terms';
 // 관심에 붙이는 글의 길이. 크리에이터는 조건 버전의 제목이 되고(40자), 브랜드는 "좋아한 점"이다(100자).
 export const NOTE_MAX = { CREATOR: 40, BRAND: 100 } as const;
 
+// "조건부터 질문하기"의 첫 메시지 길이(대화 메시지의 한도와 같다).
+export const INQUIRY_MESSAGE_MAX = 1000;
+
 // 저장돼 있는 결정 한 줄에서 규칙이 읽는 값.
 export interface StoredDecision {
   id: string;

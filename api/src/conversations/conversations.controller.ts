@@ -108,6 +108,38 @@ export class ConversationsController {
     await this.conversations.markRead(user.userId, id, body.seq);
   }
 
+  @Post(':id/request/accept')
+  @HttpCode(200)
+  @ApiOperation({
+    operationId: 'acceptMessageRequest',
+    summary:
+      '메시지 요청을 수락해 대화를 연다. 받은 사람만. 협업은 INQUIRY에 남고, 요청을 보낸 사람에게 알린다.',
+  })
+  @ApiOkResponse({ type: ConversationDetailModel })
+  @ApiNotFoundResponse({ description: '방이 없거나 내가 참가자가 아니다.' })
+  acceptRequest(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<ConversationDetailModel> {
+    return this.conversations.acceptRequest(user.userId, id);
+  }
+
+  @Post(':id/request/decline')
+  @HttpCode(204)
+  @ApiOperation({
+    operationId: 'declineMessageRequest',
+    summary:
+      '메시지 요청을 거절한다. 받은 사람만. 협업은 끝나 같은 캠페인으로 다시 요청할 수 없고, 상대에게 알리지 않는다.',
+  })
+  @ApiNoContentResponse()
+  @ApiNotFoundResponse({ description: '방이 없거나 내가 참가자가 아니다.' })
+  async declineRequest(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.conversations.declineRequest(user.userId, id);
+  }
+
   @Put(':id/mute')
   @ApiOperation({
     operationId: 'setConversationMuted',

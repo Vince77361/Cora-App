@@ -134,6 +134,8 @@ part 'model/fixed_cash_max_model.dart';
 part 'model/fixed_cash_range_model.dart';
 part 'model/health_model.dart';
 part 'model/industry_category.dart';
+part 'model/inquiry_dto.dart';
+part 'model/inquiry_result_model.dart';
 part 'model/instagram_connect_url_model.dart';
 part 'model/instagram_connection_model.dart';
 part 'model/interest_card_model.dart';
