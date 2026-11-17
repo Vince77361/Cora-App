@@ -73,6 +73,12 @@ describe('NOTIFICATION_CATALOG', () => {
     expect(render('CANCEL_REQUESTED', '한그릇 라멘')).toBe(
       '한그릇 라멘이 협업 취소를 요청했어요.',
     );
+    expect(render('CONTRACT_CONCLUDED', null)).toBe(
+      '계약이 체결됐어요. 이제 제작을 시작할 수 있어요.',
+    );
+    expect(render('CREATOR_CONSENTED', '하루 한 컵')).toBe(
+      '하루 한 컵님이 계약에 동의했어요.',
+    );
     expect(render('COLLABORATION_DROPPED', null)).toBe(
       '이번에는 함께하기 어렵대요.',
     );
@@ -276,6 +282,8 @@ describe('NOTIFICATION_CATALOG', () => {
       'CANCEL_REQUESTED',
       'COLLABORATION_HALTED',
       'COLLABORATION_DROPPED',
+      'CREATOR_CONSENTED',
+      'CONTRACT_CONCLUDED',
     ] as const) {
       expect(NOTIFICATION_CATALOG[kind]).toMatchObject({
         tab: 'COLLABORATION',

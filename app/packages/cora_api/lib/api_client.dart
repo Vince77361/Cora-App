@@ -296,6 +296,8 @@ class ApiClient {
           return ContentDraftModel.fromJson(value);
         case 'ContentFormat':
           return ContentFormatTypeTransformer().decode(value);
+        case 'ContractModel':
+          return ContractModel.fromJson(value);
         case 'ContractProgress':
           return ContractProgressTypeTransformer().decode(value);
         case 'ConversationCounterpartModel':
@@ -326,6 +328,8 @@ class ApiClient {
           return CreatorCardDetailModel.fromJson(value);
         case 'CreatorCardModel':
           return CreatorCardModel.fromJson(value);
+        case 'CreatorConsentDto':
+          return CreatorConsentDto.fromJson(value);
         case 'CreatorProfileModel':
           return CreatorProfileModel.fromJson(value);
         case 'CreatorRecommendationsModel':

@@ -55,7 +55,9 @@ doc/ContentDraftKind.md
 doc/ContentDraftModel.md
 doc/ContentDraftsApi.md
 doc/ContentFormat.md
+doc/ContractModel.md
 doc/ContractProgress.md
+doc/ContractsApi.md
 doc/ConversationCounterpartModel.md
 doc/ConversationDetailModel.md
 doc/ConversationLastMessageModel.md
@@ -71,6 +73,7 @@ doc/CreatePhotoUploadDto.md
 doc/CreateReportDto.md
 doc/CreatorCardDetailModel.md
 doc/CreatorCardModel.md
+doc/CreatorConsentDto.md
 doc/CreatorProfileModel.md
 doc/CreatorRecommendationsModel.md
 doc/CreatorSeriesModel.md
@@ -260,6 +263,7 @@ lib/api/campaigns_api.dart
 lib/api/card_details_api.dart
 lib/api/collaborations_api.dart
 lib/api/content_drafts_api.dart
+lib/api/contracts_api.dart
 lib/api/conversations_api.dart
 lib/api/creators_api.dart
 lib/api/discovery_api.dart
@@ -338,6 +342,7 @@ lib/model/content_count_model.dart
 lib/model/content_draft_kind.dart
 lib/model/content_draft_model.dart
 lib/model/content_format.dart
+lib/model/contract_model.dart
 lib/model/contract_progress.dart
 lib/model/conversation_counterpart_model.dart
 lib/model/conversation_detail_model.dart
@@ -353,6 +358,7 @@ lib/model/create_photo_upload_dto.dart
 lib/model/create_report_dto.dart
 lib/model/creator_card_detail_model.dart
 lib/model/creator_card_model.dart
+lib/model/creator_consent_dto.dart
 lib/model/creator_profile_model.dart
 lib/model/creator_recommendations_model.dart
 lib/model/creator_series_model.dart
@@ -565,7 +571,9 @@ test/content_draft_kind_test.dart
 test/content_draft_model_test.dart
 test/content_drafts_api_test.dart
 test/content_format_test.dart
+test/contract_model_test.dart
 test/contract_progress_test.dart
+test/contracts_api_test.dart
 test/conversation_counterpart_model_test.dart
 test/conversation_detail_model_test.dart
 test/conversation_last_message_model_test.dart
@@ -581,6 +589,7 @@ test/create_photo_upload_dto_test.dart
 test/create_report_dto_test.dart
 test/creator_card_detail_model_test.dart
 test/creator_card_model_test.dart
+test/creator_consent_dto_test.dart
 test/creator_profile_model_test.dart
 test/creator_recommendations_model_test.dart
 test/creator_series_model_test.dart

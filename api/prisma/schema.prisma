@@ -881,6 +881,8 @@ enum NotificationKind {
   MESSAGE_REQUEST_ACCEPTED
   MESSAGE
   COLLABORATION_DROPPED
+  CREATOR_CONSENTED
+  CONTRACT_CONCLUDED
 
   @@map("notification_kind")
 }

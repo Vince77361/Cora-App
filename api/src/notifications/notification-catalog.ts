@@ -26,7 +26,9 @@ export type NotificationTarget = {
     // 조건 판본 화면(id = 협업 id). 조건을 확인하거나 제안했다는 알림이 간다.
     | 'TERMS'
     // 대화방(id = 방 id). 메시지 요청과 그 수락 알림이 간다.
-    | 'CONVERSATION';
+    | 'CONVERSATION'
+    // 계약 화면(id = 협업 id). 크리에이터의 동의와 계약 체결 알림이 간다.
+    | 'CONTRACT';
   id: string | null;
 };
 
@@ -356,6 +358,25 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     needsActor: true,
     render: ({ actorName, params }) =>
       `${josa(actorName ?? OTHER_FALLBACK, '이/가')} 조건 버전 ${josa(String(params.version ?? 1), '을/를')} 제안했어요.`,
+  },
+  // 크리에이터가 계약에 동의했다(브랜드에게). 끌 수 없다. 대화방 안내 줄이 같은 말이라 안내 줄의 메시지 푸시는 보내지 않는다.
+  CREATOR_CONSENTED: {
+    tab: 'COLLABORATION',
+    switch: 'ESSENTIAL',
+    glyph: null,
+    requiredParams: {},
+    needsActor: true,
+    render: ({ actorName }) =>
+      `${actorName ?? CREATOR_FALLBACK}님이 계약에 동의했어요.`,
+  },
+  // 결제가 승인돼 계약이 체결됐다(양쪽에게). 끌 수 없다. 같은 일로 두 번 울리지 않게 안내 줄의 메시지 푸시는 보내지 않는다.
+  CONTRACT_CONCLUDED: {
+    tab: 'COLLABORATION',
+    switch: 'ESSENTIAL',
+    glyph: null,
+    requiredParams: {},
+    needsActor: false,
+    render: () => '계약이 체결됐어요. 이제 제작을 시작할 수 있어요.',
   },
   // 표 "메시지 요청": 브랜드 / 매칭 / 대화 메시지 / 사진. 누르면 11 메시지 요청(대화방)이 열린다.
   MESSAGE_REQUEST: {
