@@ -2,6 +2,7 @@ import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/features/auth/domain/current_user_provider.dart';
+import 'package:cora/features/chat/domain/realtime_connection.dart';
 import 'package:cora/features/collaboration/domain/collaboration.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/negotiation/domain/negotiation_repository.dart';
@@ -16,11 +17,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
+import '../chat/chat_fixtures.dart' show FakeRealtimeConnection;
 import '../collaboration/fake_collaboration_repository.dart';
 import 'brand_collaboration_harness.dart';
 import 'fake_negotiation_repository.dart';
 
 const _id = brandCollabId;
+const _room = 'room-12';
 
 /// 캔버스 12의 견본: 버전 2를 내가(크리에이터) 냈고(`나 · 확인함`), 브랜드는 아직이다. 제작비 300,000원 → 350,000원,
 /// 제작 시작 11월 16일 → 11월 23일.
@@ -55,6 +58,7 @@ Future<List<String>> _pump(
   int? doneCount = 2,
   ThemeData? theme,
   bool smallPhoneLargeText = false,
+  FakeRealtimeConnection? realtime,
 }) async {
   if (smallPhoneLargeText) {
     useSmallPhoneWithLargeText(tester);
@@ -91,6 +95,9 @@ Future<List<String>> _pump(
       overrides: [
         currentUserIdProvider.overrideWithValue('user-1'),
         negotiationRepositoryProvider.overrideWithValue(repo),
+        realtimeConnectionProvider.overrideWithValue(
+          realtime ?? FakeRealtimeConnection(),
+        ),
         collaborationRepositoryProvider.overrideWithValue(
           FakeCollaborationRepository(
             active: [
@@ -98,6 +105,7 @@ Future<List<String>> _pump(
                 role: role,
                 doneCount: doneCount ?? 0,
                 withProgress: doneCount != null,
+                conversationId: _room,
               ),
             ],
           ),
@@ -663,5 +671,114 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('수정 제안'), findsOneWidget);
+  });
+
+  group('realtime refresh', () {
+    FakeNegotiationRepository waiting() => FakeNegotiationRepository(
+      history: canvasHistory(
+        creatorConfirmed: false,
+        brandConfirmed: true,
+        v2By: TermsProposer.brand,
+      ),
+    )..iAmBrand = false;
+
+    testWidgets('reloads when the room of this collaboration says the terms '
+        'changed', (tester) async {
+      final realtime = FakeRealtimeConnection();
+      final repo = waiting();
+      await _pump(tester, repo, realtime: realtime);
+      expect(find.text('버전 2'), findsNWidgets(2));
+      final reads = repo.historyCalls;
+
+      // 상대가 판본 3을 냈다.
+      repo.history = termsHistory([
+        termsVersion(
+          version: 3,
+          fee: 400000,
+          previousMaxCash: 350000,
+          changedFields: const [TermsField.fee],
+          proposedBy: TermsProposer.brand,
+          brandConfirmed: true,
+        ),
+        ...repo.history.versions,
+      ]);
+      realtime.emit(
+        const ConversationUpdated(
+          conversationId: _room,
+          reason: ConversationUpdateReason.terms,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repo.historyCalls, greaterThan(reads));
+      expect(find.text('350,000원 → 400,000원'), findsOneWidget);
+      expect(find.text('이전 판본이라 수락할 수 없어요'), findsNothing);
+    });
+
+    testWidgets('ignores another room and read-only updates', (tester) async {
+      final realtime = FakeRealtimeConnection();
+      final repo = waiting();
+      await _pump(tester, repo, realtime: realtime);
+      final reads = repo.historyCalls;
+
+      realtime
+        ..emit(
+          const ConversationUpdated(
+            conversationId: 'other-room',
+            reason: ConversationUpdateReason.terms,
+          ),
+        )
+        ..emit(
+          const ConversationUpdated(
+            conversationId: _room,
+            reason: ConversationUpdateReason.read,
+          ),
+        );
+      await tester.pumpAndSettle();
+
+      expect(repo.historyCalls, reads);
+    });
+
+    testWidgets('reloads after a reconnect and keeps the screen when the read '
+        'fails', (tester) async {
+      final realtime = FakeRealtimeConnection();
+      final repo = waiting();
+      await _pump(tester, repo, realtime: realtime);
+      final reads = repo.historyCalls;
+
+      realtime.emitReconnected();
+      await tester.pumpAndSettle();
+      expect(repo.historyCalls, greaterThan(reads));
+
+      repo.failFetch = true;
+      realtime.emit(
+        const ConversationUpdated(
+          conversationId: _room,
+          reason: ConversationUpdateReason.status,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 못 읽어도 화면과 안내는 그대로다.
+      expect(find.text('버전 2'), findsNWidgets(2));
+      expect(find.text('처리하지 못했어요. 다시 시도해 주세요.'), findsNothing);
+    });
+  });
+
+  testWidgets('keeps the confirm mark on one line in the narrow cell', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      FakeNegotiationRepository(
+        history: canvasHistory(creatorConfirmed: true, brandConfirmed: false),
+      )..iAmBrand = false,
+      role: CollaborationRole.commissioner,
+    );
+
+    final line = find.text('크리에이터 · 확인함');
+    expect(line, findsOneWidget);
+    // 14px 글자 한 줄(줄 높이 1.448)이다.
+    expect(tester.getSize(line).height, lessThan(14 * 1.448 * 1.5));
   });
 }

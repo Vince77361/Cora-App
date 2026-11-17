@@ -400,4 +400,43 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('제안 보내기'), findsOneWidget);
   });
+
+  testWidgets('shows the measurement period equal to the payout term', (
+    tester,
+  ) async {
+    await _pump(tester, _repo());
+
+    await _scrollTo(tester, find.text('게시 후 7일'));
+    expect(find.text('게시 후 7일'), findsOneWidget);
+
+    await _tap(tester, '게시 후 14일 이내');
+
+    await _scrollTo(tester, find.text('게시 후 14일'));
+    expect(find.text('게시 후 14일'), findsOneWidget);
+    expect(find.text('게시 후 7일'), findsNothing);
+  });
+
+  testWidgets('a blank title is not a change and cannot be sent', (
+    tester,
+  ) async {
+    await _pump(tester, _repo());
+
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.pumpAndSettle();
+
+    expect(_sendEnabled(tester), isFalse);
+    expect(find.bySemanticsLabel('바뀐 항목'), findsNothing);
+
+    // 다른 항목을 바꿔도 제목이 비어 있으면 보낼 수 없다.
+    await _tap(tester, '2편');
+    expect(_sendEnabled(tester), isFalse);
+  });
+
+  testWidgets('the start date has one label, not two', (tester) async {
+    await _pump(tester, _repo());
+
+    await _scrollTo(tester, find.text('날짜 고르기'));
+    expect(find.text('제작 시작'), findsOneWidget);
+    expect(find.text('날짜 고르기'), findsOneWidget);
+  });
 }

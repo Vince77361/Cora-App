@@ -59,6 +59,7 @@ Collaboration collaboration({
   int? securedAmount,
   CampaignBudgetLeft? campaignBudgetLeft,
   CollaborationNextAction? nextAction,
+  String? conversationId,
 }) => Collaboration(
   id: id,
   kind: kind,
@@ -98,6 +99,7 @@ Collaboration collaboration({
   payoutScheduledFor: payoutScheduledFor,
   settlement: settlement,
   viewReportStatus: viewReportStatus,
+  conversationId: conversationId,
 );
 
 /// 사장님이 취소를 요청한 뒤의 협업(서버처럼 요청이 생기고 다시 요청할 수 없다).

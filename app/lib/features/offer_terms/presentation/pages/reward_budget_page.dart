@@ -225,9 +225,13 @@ class _Body extends ConsumerWidget {
 /// 보상 세 요소(제공 혜택, 고정 현금, 조회수 수당)를 고치는 카드 셋. F1과 크리에이터 역제안(F6)의
 /// `희망 보상` 시트가 함께 쓴다. 고르는 값은 [target]의 [proposalDraftViewModelProvider]에 바로 반영된다.
 class RewardEditor extends ConsumerWidget {
-  const RewardEditor({super.key, required this.target});
+  const RewardEditor({super.key, required this.target, this.countingDays});
 
   final ProposalTarget target;
+
+  /// `측정 기간`에 보일 일수. 주지 않으면 서버 설정의 기본(가게 오퍼는 7일)이다. 브랜드 계약의 수정 제안은 지급 조건과 같은
+  /// 일수를 준다. 초안 provider의 키([target])에 넣으면 바꿀 때마다 고르던 값이 새로 시작해서 따로 받는다.
+  final int? countingDays;
 
   ProposalDraftViewModel _vm(WidgetRef ref) =>
       ref.read(proposalDraftViewModelProvider(target).notifier);
@@ -348,7 +352,7 @@ class RewardEditor extends ConsumerWidget {
               : RewardBudgetPage.viewPayHint,
           viewPay: reward.viewPay,
           allowed: terms.viewPayAllowed,
-          countingDays: config.reward.countingDays,
+          countingDays: countingDays ?? config.reward.countingDays,
           onToggle: _vm(ref).setViewPayEnabled,
           onRate: () => _pickRate(context, ref, terms, config),
           onCap: () => _pickCap(context, ref, terms, config),

@@ -68,13 +68,17 @@ class _TermsProposalPageState extends ConsumerState<TermsProposalPage> {
     }
   }
 
+  /// 알림은 화면 위쪽에 띄운다: 아래에는 12의 버튼 막대가 있어 겹친다.
   void _toast(String text) {
     final c = context.colors;
+    final media = MediaQuery.of(context);
+    final bottom = math.max(16.0, media.size.height - media.padding.top - 72);
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.fromLTRB(16, 0, 16, bottom),
           backgroundColor: c.text,
           duration: const Duration(seconds: 3),
           shape: const StadiumBorder(),
@@ -282,7 +286,11 @@ class _FormState extends ConsumerState<_Form> {
                   children: [
                     if (rewardChanged.isNotEmpty)
                       _ChangedLine(text: rewardChanged.join(' · ')),
-                    RewardEditor(target: state.target),
+                    RewardEditor(
+                      target: state.target,
+                      // 성과 추가의 측정 기간은 지급 조건과 같다(따로 고르지 않는다).
+                      countingDays: state.payoutDays,
+                    ),
                     MaxCashRow(
                       value: wonExact(draft.reward.maxCashBurden),
                       bottomGap: 0,
@@ -293,7 +301,7 @@ class _FormState extends ConsumerState<_Form> {
                   label: cellName(TermsField.startDate),
                   changed: changed.contains(TermsField.startDate),
                   child: CoraPickBox(
-                    label: cellName(TermsField.startDate),
+                    label: AgreementTexts.startPick,
                     value: monthDayLabel(state.startDate),
                     placeholder: AgreementTexts.startPick,
                     onTap: () => _pickStart(state.startDate),
@@ -357,7 +365,7 @@ class _FormState extends ConsumerState<_Form> {
               CoraPrimaryButton(
                 label: AgreementTexts.send,
                 look: CoraPrimaryButtonLook.accent,
-                onPressed: changed.isEmpty || state.busy
+                onPressed: !state.canSendWith(draft) || state.busy
                     ? null
                     : () => widget.onSend(draft),
               ),

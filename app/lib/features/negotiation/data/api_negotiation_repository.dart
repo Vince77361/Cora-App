@@ -43,7 +43,8 @@ class ApiNegotiationRepository implements NegotiationRepository {
           api.TermsAgreement.NONE => TermsAgreement.none,
           api.TermsAgreement.WAITING_BRAND => TermsAgreement.waitingBrand,
           api.TermsAgreement.WAITING_CREATOR => TermsAgreement.waitingCreator,
-          _ => TermsAgreement.agreed,
+          // 마지막 칸을 `_`로 받지 않는다: 새 상태가 생겨도 합의로 오해하지 않고 분석이 먼저 알려 준다.
+          api.TermsAgreement.AGREED => TermsAgreement.agreed,
         },
         editable: m.editable,
       );

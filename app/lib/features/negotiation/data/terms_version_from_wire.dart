@@ -54,7 +54,8 @@ TermsField _field(api.TermsField f) => switch (f) {
   api.TermsField.PRODUCT => TermsField.product,
   api.TermsField.REVISION => TermsField.revision,
   api.TermsField.USAGE => TermsField.usage,
-  _ => TermsField.payout,
+  // 마지막 칸을 `_`로 받지 않는다: 서버가 항목을 더하면 지급 조건으로 오해하지 않고 분석이 먼저 알려 준다.
+  api.TermsField.PAYOUT => TermsField.payout,
 };
 
 /// 서버가 날짜를 UTC 시각으로 보내도 앱 시계의 그날 0시로 둔다(날짜만 뜻이 있다).

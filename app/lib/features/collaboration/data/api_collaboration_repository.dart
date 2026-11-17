@@ -187,6 +187,7 @@ class ApiCollaborationRepository implements CollaborationRepository {
             refundAmount: m.settlement!.refundAmount,
           ),
     expectedRefund: m.expectedRefund,
+    conversationId: m.conversationId,
     viewReportStatus: switch (m.viewReportStatus) {
       api.CollaborationViewReportStatus.COUNTING => ViewReportStatus.counting,
       api.CollaborationViewReportStatus.UNCONFIRMED =>

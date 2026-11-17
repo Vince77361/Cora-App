@@ -134,6 +134,7 @@ class Collaboration {
     this.settlement,
     this.expectedRefund,
     this.viewReportStatus,
+    this.conversationId,
   });
 
   final String id;
@@ -195,6 +196,9 @@ class Collaboration {
   /// 조회 자료 확인(F4)의 단계. null이면 확인할 자료가 없다(조회수 수당이 없거나 링크를 내기 전이거나 끝난
   /// 협업). 값이 있으면 A7·사장님 진행 화면에 `조회 자료와 보상 계산 확인` 줄이 보인다.
   final ViewReportStatus? viewReportStatus;
+
+  /// 이 협업의 대화방 번호. 방이 없으면 null. 실시간 알림이 어느 협업의 것인지 가릴 때 쓴다.
+  final String? conversationId;
 
   /// 협업 번호의 앞 8자리. 식사권 화면과 문의 메일 제목에 쓴다.
   String get shortId => id.length <= 8 ? id : id.substring(0, 8);

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../chat/domain/realtime_connection.dart';
 import '../../../auth/domain/current_user_provider.dart';
 import '../../../collaboration/domain/collaboration.dart';
 import '../../../collaboration/domain/collaboration_repository.dart';
@@ -110,7 +111,40 @@ class AgreementViewModel extends AsyncNotifier<AgreementState> {
   @override
   Future<AgreementState> build() async {
     ref.watch(currentUserIdProvider);
+    // 대화방과 같은 실시간 연결을 듣는다. 상대가 새 판본을 내거나 확인하거나 계약하면 이 협업의 방이 `조건`·`계약`·`상태`로
+    // 바뀌었다고 알려 오고, 그때 조용히 다시 읽는다. 끊겼다 붙었을 때도 놓친 것을 다시 읽는다.
+    final connection = ref.watch(realtimeConnectionProvider);
+    final events = connection.events.listen(_onEvent);
+    final reconnected = connection.reconnected.listen((_) => _refreshQuietly());
+    ref.onDispose(() {
+      events.cancel();
+      reconnected.cancel();
+    });
     return _load();
+  }
+
+  void _onEvent(RealtimeEvent event) {
+    if (event is! ConversationUpdated) return;
+    if (event.reason == ConversationUpdateReason.read) return;
+    final roomId = state.value?.collaboration.conversationId;
+    if (roomId == null || roomId != event.conversationId) return;
+    _refreshQuietly();
+  }
+
+  /// 화면을 그대로 두고 새로 읽는다. 읽는 중이거나 옛 판본 화면이 떠 있으면 건드리지 않고, 못 읽어도 안내를 띄우지
+  /// 않는다(다음 알림이나 사용자의 동작이 다시 읽는다).
+  Future<void> _refreshQuietly() async {
+    final current = state.value;
+    if (current == null || current.busy || current.staleVersion != null) return;
+    try {
+      final fresh = await _load();
+      if (!ref.mounted) return;
+      final now = state.value;
+      if (now == null || now.busy || now.staleVersion != null) return;
+      state = AsyncData(fresh.copyWith(notice: now.notice));
+    } catch (_) {
+      // 조용히 넘긴다.
+    }
   }
 
   Future<AgreementState> _load() async {

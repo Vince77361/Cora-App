@@ -18,6 +18,7 @@ Collaboration brandCollab({
   int? securedAmount = 350000,
   CampaignBudgetLeft? budget = const CampaignBudgetLeft(left: 150000, over: 0),
   bool withProgress = true,
+  String? conversationId,
 }) => collaboration(
   id: id,
   kind: CollaborationKind.brandContract,
@@ -34,4 +35,5 @@ Collaboration brandCollab({
   nextAction: nextAction,
   securedAmount: securedAmount,
   campaignBudgetLeft: role == CollaborationRole.commissioner ? budget : null,
+  conversationId: conversationId,
 );

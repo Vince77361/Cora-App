@@ -78,12 +78,20 @@ class TermsProposalState {
     payoutDays: payoutDays,
   );
 
+  /// 제목이 비어 있지 않다(1~40자).
+  bool get titleFilled => title.trim().isNotEmpty;
+
+  /// 지금 보낼 수 있다: 하나 이상 바꿨고 제목이 비어 있지 않다.
+  bool canSendWith(OfferTerms draft) =>
+      titleFilled && changedWith(draft).isNotEmpty;
+
   /// 바탕 판본과 달라진 항목(고정 순서). 하나도 없으면 보낼 수 없다.
   List<TermsField> changedWith(OfferTerms draft) {
     final b = base;
     final c = changesWith(draft);
     return [
-      if (c.title != b.title) TermsField.title,
+      // 공백뿐인 제목은 바꾼 것이 아니다(비운 채로는 보낼 수 없다).
+      if (c.title.isNotEmpty && c.title != b.title) TermsField.title,
       if (c.fee != b.fee) TermsField.fee,
       if (c.performance != b.performance) TermsField.performance,
       if (c.startDate != b.startDate) TermsField.startDate,
@@ -161,7 +169,7 @@ class TermsProposalViewModel extends AsyncNotifier<TermsProposalState> {
   Future<TermsProposalOutcome> send(OfferTerms draft) async {
     final current = state.value;
     if (current == null || current.busy) return const TermsProposalFailed();
-    if (current.changedWith(draft).isEmpty) return const TermsProposalFailed();
+    if (!current.canSendWith(draft)) return const TermsProposalFailed();
     state = AsyncData(current.copyWith(busy: true, clearError: true));
     try {
       final made = await _repo.propose(
