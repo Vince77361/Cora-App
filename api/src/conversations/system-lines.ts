@@ -43,7 +43,7 @@ const versionWithJosa = (params: SystemParams): string =>
   josa(text(params, 'version'), '을/를');
 
 // 저장하는 값(params)의 키:
-// MATCHED { commissionerName, creatorName } · OFFER_ACCEPTED { by, name } · REQUEST_ACCEPTED { name }
+// MATCHED { commissionerName, creatorName } · OFFER_ACCEPTED { by, name } · REQUEST_ACCEPTED { name, byId }
 // TERMS_PROPOSED { name, version, proposerId } · TERMS_CONFIRMED { name, version } · TERMS_AGREED { version }
 // CREATOR_CONSENTED { name } · DROPPED { droppedById }. 나머지는 값이 없다.
 export function renderSystemLine(
@@ -65,7 +65,10 @@ export function renderSystemLine(
         ? `${josa(text(params, 'name'), '이/가')} 제안을 수락했어요.`
         : `${text(params, 'name')}님이 오퍼를 수락했어요.`;
     case 'REQUEST_ACCEPTED':
-      return `${text(params, 'name')}님이 대화를 수락했어요.`;
+      // 수락한 본인에게는 자기 이름 대신 본인 문구로 보인다(계획 표에 본인 문구가 없어 계획 밖 문구). byId가 없는 옛 줄은 이름 문구 그대로다.
+      return params.byId !== undefined && params.byId === viewer.userId
+        ? '대화를 수락했어요.'
+        : `${text(params, 'name')}님이 대화를 수락했어요.`;
     case 'TERMS_PROPOSED':
       return params.proposerId === viewer.userId
         ? `조건 버전 ${versionWithJosa(params)} 제안했어요.`

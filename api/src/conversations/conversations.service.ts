@@ -264,7 +264,8 @@ export class ConversationsService {
       const line = await this.postSystem(
         room.id,
         'REQUEST_ACCEPTED',
-        { name: actor?.name ?? '상대' },
+        // byId: 수락한 본인에게는 이름 대신 본인 문구로 보이게 하려고 남긴다.
+        { name: actor?.name ?? '상대', byId: userId },
         tx,
       );
       lineId = line.id;

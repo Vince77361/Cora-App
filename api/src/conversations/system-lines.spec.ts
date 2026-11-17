@@ -50,9 +50,6 @@ describe('renderSystemLine', () => {
 
   it('renders the plain lines from the copy table', () => {
     const p = { name: '느린결', version: 3 };
-    expect(renderSystemLine('REQUEST_ACCEPTED', p, CREATOR)).toBe(
-      '느린결님이 대화를 수락했어요.',
-    );
     expect(renderSystemLine('TERMS_CONFIRMED', p, CREATOR)).toBe(
       '느린결님이 조건 버전 3을 확인했어요.',
     );
@@ -68,6 +65,22 @@ describe('renderSystemLine', () => {
     expect(renderSystemLine('CONTRACT_CONCLUDED', {}, CREATOR)).toBe(
       '계약이 체결됐어요.',
     );
+  });
+
+  it('shows the one who accepted a request a self form and the other side the name', () => {
+    const params = { name: '느린결', byId: 'brand-1' };
+    expect(renderSystemLine('REQUEST_ACCEPTED', params, COMMISSIONER)).toBe(
+      '대화를 수락했어요.',
+    );
+    expect(renderSystemLine('REQUEST_ACCEPTED', params, CREATOR)).toBe(
+      '느린결님이 대화를 수락했어요.',
+    );
+  });
+
+  it('keeps the named form for an accepted-request line saved before the acceptor was recorded', () => {
+    expect(
+      renderSystemLine('REQUEST_ACCEPTED', { name: '느린결' }, COMMISSIONER),
+    ).toBe('느린결님이 대화를 수락했어요.');
   });
 
   it('picks the particle after a version number by how the digit is read', () => {

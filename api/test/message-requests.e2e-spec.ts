@@ -502,6 +502,10 @@ describe('message requests and the inquiry', () => {
         [1, 'TEXT', '조건이 궁금해요.'],
         [2, 'SYSTEM', '느린결님이 대화를 수락했어요.'],
       ]);
+      // 수락한 브랜드가 읽으면 자기 이름 대신 본인 문구다.
+      expect(
+        (await messages(authBrand, conversationId)).map((m) => m.text),
+      ).toEqual(['조건이 궁금해요.', '대화를 수락했어요.']);
       // 열린 방에서는 양쪽이 메시지를 보낼 수 있고, 크리에이터가 관심을 보낼 수 있다.
       await sendText(conversationId, authCreator).expect(201);
       await sendText(conversationId, authBrand).expect(201);
@@ -524,6 +528,11 @@ describe('message requests and the inquiry', () => {
       realtime.sent.length = 0;
       await accept(conversationId).expect(200);
       await flushMessages(app);
+      // 수락한 브랜드(USER_A)에게는 본인 문구, 요청한 크리에이터에게는 이름 문구로 보인다.
+      const lineFor = new Map([
+        [USER_A, '대화를 수락했어요.'],
+        [OTHER, '느린결님이 대화를 수락했어요.'],
+      ]);
       for (const user of [USER_A, OTHER]) {
         const lines = realtime.receivedBy(user, 'message.created');
         expect(lines).toHaveLength(1);
@@ -533,7 +542,7 @@ describe('message requests and the inquiry', () => {
             seq: 2,
             kind: 'SYSTEM',
             mine: false,
-            text: '느린결님이 대화를 수락했어요.',
+            text: lineFor.get(user),
           },
         });
         expect(
