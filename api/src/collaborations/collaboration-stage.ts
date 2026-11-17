@@ -56,6 +56,21 @@ const BRAND_NEXT: Partial<Record<Stage, Stage[]>> = {
   PUBLISHED: ['SETTLED'],
 };
 
+// 계약 전 브랜드 협업의 단계(순서대로). 이 안에서는 그만둘 수 있고(DROPPED), 계약하면 벗어난다.
+export const preContractStages: CollaborationStage[] = [
+  'INQUIRY',
+  'MATCHED',
+  'NEGOTIATING',
+  'AGREED',
+];
+
+// 조건을 확인하거나 새 판본을 낼 수 있는 단계. INQUIRY는 아직 서로 관심이 아니라 협의할 조건이 없다.
+export const negotiableStages: CollaborationStage[] = [
+  'MATCHED',
+  'NEGOTIATING',
+  'AGREED',
+];
+
 // 캠페인 예산의 확보액에 세지 않는 브랜드 협업 단계: 아직 서로 관심이 아니거나(INQUIRY), 계약 전에 그만뒀거나(DROPPED),
 // 보관 중이던 돈이 환급된(REFUNDED) 협업이다. 멈춘(HALTED) 협업은 돈이 그대로 보관 중이라 센다.
 export const UNSECURED_BRAND_STAGES: CollaborationStage[] = [

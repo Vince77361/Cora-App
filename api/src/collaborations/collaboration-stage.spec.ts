@@ -4,7 +4,9 @@ import {
   canTransition,
   initialStoreOfferState,
   isMoneyHeld,
+  negotiableStages,
   nextActionFor,
+  preContractStages,
   storeInProgressStages,
   UNSECURED_BRAND_STAGES,
 } from './collaboration-stage';
@@ -278,5 +280,29 @@ describe('nextActionFor', () => {
 describe('UNSECURED_BRAND_STAGES', () => {
   it('lists the stages whose amount the campaign budget does not count', () => {
     expect(UNSECURED_BRAND_STAGES).toEqual([S.INQUIRY, S.DROPPED, S.REFUNDED]);
+  });
+});
+
+describe('brand stage groups', () => {
+  it('lists the stages before the contract in order', () => {
+    expect(preContractStages).toEqual([
+      S.INQUIRY,
+      S.MATCHED,
+      S.NEGOTIATING,
+      S.AGREED,
+    ]);
+  });
+
+  it('lists the stages where terms can still be negotiated, without INQUIRY', () => {
+    expect(negotiableStages).toEqual([S.MATCHED, S.NEGOTIATING, S.AGREED]);
+    for (const stage of negotiableStages) {
+      expect(preContractStages).toContain(stage);
+    }
+  });
+
+  it('lets every pre-contract stage be dropped', () => {
+    for (const stage of preContractStages) {
+      expect(canTransition('BRAND_CONTRACT', stage, S.DROPPED)).toBe(true);
+    }
   });
 });

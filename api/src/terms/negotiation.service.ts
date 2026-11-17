@@ -7,7 +7,10 @@ import {
 } from '@prisma/client';
 import { BrandsService } from '../brands/brands.service';
 import { CampaignsService } from '../campaigns/campaigns.service';
-import { canTransition } from '../collaborations/collaboration-stage';
+import {
+  canTransition,
+  negotiableStages,
+} from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
@@ -31,11 +34,8 @@ import { TermsService } from './terms.service';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// 판본을 확인할 수 있는 단계. AGREED는 이미 한 확인을 다시 눌렀을 때 같은 결과를 돌려주기 위한 것이다.
-const CONFIRMABLE: CollaborationStage[] = ['MATCHED', 'NEGOTIATING', 'AGREED'];
-
-// 새 판본을 낼 수 있는 단계: 결제(CONTRACTED) 전이다. AGREED에서 내면 합의가 취소되고 협의로 돌아간다.
-const PROPOSABLE: CollaborationStage[] = ['MATCHED', 'NEGOTIATING', 'AGREED'];
+// 판본을 확인하거나 새로 낼 수 있는 단계. AGREED는 이미 한 확인을 다시 눌렀을 때 같은 결과를 돌려주고,
+// AGREED에서 새 판본을 내면 합의가 취소되고 협의로 돌아간다(결제 CONTRACTED 전까지).
 
 const INSTAGRAM_REQUIRED_MESSAGE = '인스타그램을 연동하면 수락할 수 있어요.';
 
@@ -121,7 +121,7 @@ export class NegotiationService {
       await this.repository.lockCollaboration(collaboration.id, tx);
       const fresh = await this.collaborations.findById(collaboration.id, tx);
       const latest = await this.terms.latest(collaboration.id, tx);
-      if (!fresh || !latest || !CONFIRMABLE.includes(fresh.stage)) {
+      if (!fresh || !latest || !negotiableStages.includes(fresh.stage)) {
         throw new AppError('CONFLICT', '지금은 조건을 확인할 수 없어요.');
       }
       if (latest.version !== version) {
@@ -194,7 +194,7 @@ export class NegotiationService {
       await this.repository.lockCollaboration(collaboration.id, tx);
       const fresh = await this.collaborations.findById(collaboration.id, tx);
       const latest = await this.terms.latest(collaboration.id, tx);
-      if (!fresh || !latest || !PROPOSABLE.includes(fresh.stage)) {
+      if (!fresh || !latest || !negotiableStages.includes(fresh.stage)) {
         throw new AppError('CONFLICT', '지금은 조건을 제안할 수 없어요.');
       }
       if (latest.version !== input.baseVersion) {

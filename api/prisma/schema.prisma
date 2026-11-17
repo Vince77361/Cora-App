@@ -49,6 +49,14 @@ model User {
   dailyRecommendations  DailyRecommendation[]
   proposedTermsVersions TermsVersion[]
 
+  conversationMemberships ConversationMember[]
+  requestedConversations  Conversation[]
+  sentMessages            Message[]
+  blocksMade              Block[]              @relation("BlockBlocker")
+  blocksReceived          Block[]              @relation("BlockBlocked")
+  reportsMade             Report[]             @relation("ReportReporter")
+  droppedCollaborations   Collaboration[]      @relation("CollaborationDroppedBy")
+
   @@map("users")
 }
 
@@ -478,32 +486,41 @@ enum CancelRequestStatus {
 // 협업 한 건. "이 협업이 지금 어디인가"는 stage 하나로 답한다.
 // commissionerId는 맡기는 쪽(가게 사장님 또는 브랜드) 사용자다.
 model Collaboration {
-  id               String              @id @default(uuid()) @db.Uuid
-  kind             CollaborationKind
-  stage            CollaborationStage
-  commissionerId   String              @map("commissioner_id") @db.Uuid
-  creatorId        String              @map("creator_id") @db.Uuid
+  id                    String              @id @default(uuid()) @db.Uuid
+  kind                  CollaborationKind
+  stage                 CollaborationStage
+  commissionerId        String              @map("commissioner_id") @db.Uuid
+  creatorId             String              @map("creator_id") @db.Uuid
   // 오퍼 하나에 협업 하나. null은 브랜드 계약처럼 오퍼 없이 생기는 협업이다.
-  offerId          String?             @unique @map("offer_id") @db.Uuid
-  storeId          String?             @map("store_id") @db.Uuid
+  offerId               String?             @unique @map("offer_id") @db.Uuid
+  storeId               String?             @map("store_id") @db.Uuid
   // 브랜드 협업이 나온 캠페인. 같은 캠페인·크리에이터의 브랜드 협업은 하나뿐이다.
   // 이 제약은 부분 유니크 인덱스라 Prisma 스키마로 적을 수 없어 마이그레이션의 직접 SQL에 있다.
-  campaignId       String?             @map("campaign_id") @db.Uuid
+  campaignId            String?             @map("campaign_id") @db.Uuid
   // 수락할 때의 조건(OfferTermsModel) 사본. 이후 가게 기본 조건이 바뀌어도 이 협업은 그대로다.
-  terms            Json
-  settlementMethod SettlementMethod    @map("settlement_method")
-  fundedAt         DateTime?           @map("funded_at") @db.Timestamptz(3)
-  submitDueAt      DateTime?           @map("submit_due_at") @db.Timestamptz(3)
-  submittedUrl     String?             @map("submitted_url")
-  submittedAt      DateTime?           @map("submitted_at") @db.Timestamptz(3)
-  countingEndsAt   DateTime?           @map("counting_ends_at") @db.Timestamptz(3)
-  haltedReason     String?             @map("halted_reason")
-  stageBeforeHalt  CollaborationStage? @map("stage_before_halt")
-  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt        DateTime?           @map("deleted_at") @db.Timestamptz(3)
+  terms                 Json
+  settlementMethod      SettlementMethod    @map("settlement_method")
+  fundedAt              DateTime?           @map("funded_at") @db.Timestamptz(3)
+  submitDueAt           DateTime?           @map("submit_due_at") @db.Timestamptz(3)
+  submittedUrl          String?             @map("submitted_url")
+  submittedAt           DateTime?           @map("submitted_at") @db.Timestamptz(3)
+  countingEndsAt        DateTime?           @map("counting_ends_at") @db.Timestamptz(3)
+  haltedReason          String?             @map("halted_reason")
+  stageBeforeHalt       CollaborationStage? @map("stage_before_halt")
+  // 크리에이터가 서로 관심 때 남긴 한마디(40자). 대화방 제목의 대체 글에 쓴다.
+  creatorNote           String?             @map("creator_note")
+  // 계약 전에 그만둔 이유와 그만둔 사람. 상대에게는 이유를 알리지 않으므로 저장만 한다.
+  dropReason            DropReason?         @map("drop_reason")
+  droppedById           String?             @map("dropped_by_id") @db.Uuid
+  contractedAt          DateTime?           @map("contracted_at") @db.Timestamptz(3)
+  // 브랜드가 "수정 한 번 더 허용"한 횟수. 제작·검토 계획이 올린다.
+  extraRevisionsAllowed Int                 @default(0) @map("extra_revisions_allowed")
+  createdAt             DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt             DateTime?           @map("deleted_at") @db.Timestamptz(3)
 
   commissioner User      @relation("CollaborationCommissioner", fields: [commissionerId], references: [id])
+  droppedBy    User?     @relation("CollaborationDroppedBy", fields: [droppedById], references: [id])
   creator      User      @relation("CollaborationCreator", fields: [creatorId], references: [id])
   offer        Offer?    @relation(fields: [offerId], references: [id])
   store        Store?    @relation(fields: [storeId], references: [id])
@@ -521,6 +538,8 @@ model Collaboration {
   opsAuditLogs   OpsAuditLog[]
   viewEvidences  ViewEvidence[]
   disputes       SettlementDispute[]
+  conversation   Conversation?
+  contracts      Contract[]
 
   @@index([storeId, stage])
   @@index([creatorId, stage])
@@ -547,6 +566,7 @@ model Payment {
   deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz(3)
 
   collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+  contract      Contract?
 
   @@index([collaborationId, status])
   @@map("payments")
@@ -1178,4 +1198,193 @@ model TermsVersion {
 
   @@unique([collaborationId, version])
   @@map("terms_versions")
+}
+
+// 대화방 상태. REQUESTED는 크리에이터가 먼저 건 대화 요청이 수락되기 전, DECLINED는 요청 거절,
+// CLOSED는 차단 등으로 닫힌 방이다.
+enum ConversationStatus {
+  REQUESTED
+  OPEN
+  DECLINED
+  CLOSED
+
+  @@map("conversation_status")
+}
+
+enum MessageKind {
+  TEXT
+  CONTENT_CARD
+  SYSTEM
+
+  @@map("message_kind")
+}
+
+// 7번 계획이 CONTENT를 더한다.
+enum ReportTargetKind {
+  USER
+  CONVERSATION
+
+  @@map("report_target_kind")
+}
+
+enum ReportReason {
+  SPAM
+  ABUSE
+  FRAUD
+  OTHER
+
+  @@map("report_reason")
+}
+
+// 계약 전에 협업을 그만둔 이유. REQUEST_DECLINED(요청 거절)와 BLOCKED(차단)는 사용자가 고르는 이유가 아니다.
+enum DropReason {
+  SCHEDULE
+  BUDGET
+  DIRECTION
+  OTHER
+  REQUEST_DECLINED
+  BLOCKED
+
+  @@map("drop_reason")
+}
+
+enum ContractStatus {
+  AWAITING_BRAND
+  CONCLUDED
+  VOIDED
+
+  @@map("contract_status")
+}
+
+// 협업 하나에 대화방 하나. 메시지 번호는 lastSeq를 조건부로 올린 값이다.
+model Conversation {
+  id              String             @id @default(uuid()) @db.Uuid
+  collaborationId String             @unique @map("collaboration_id") @db.Uuid
+  status          ConversationStatus
+  requestedById   String?            @map("requested_by_id") @db.Uuid
+  lastSeq         Int                @default(0) @map("last_seq")
+  lastMessageAt   DateTime?          @map("last_message_at") @db.Timestamptz(3)
+  // 닫힌 이유. 지금은 BLOCKED뿐이라 DB 제약이 값을 지킨다.
+  closedReason    String?            @map("closed_reason")
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?          @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration        @relation(fields: [collaborationId], references: [id])
+  requestedBy   User?                @relation(fields: [requestedById], references: [id])
+  members       ConversationMember[]
+  messages      Message[]
+
+  @@map("conversations")
+}
+
+model ConversationMember {
+  id             String    @id @default(uuid()) @db.Uuid
+  conversationId String    @map("conversation_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  lastReadSeq    Int       @default(0) @map("last_read_seq")
+  // 방별 알림 끄기.
+  mutedAt        DateTime? @map("muted_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_members")
+}
+
+// 안내 줄(SYSTEM)은 코드와 값만 저장하고 문구는 읽을 때 만든다. 보낸 사람과 clientId가 없다.
+// (conversation_id, sender_id, client_id)의 NULL은 서로 다른 값이라 안내 줄은 여러 줄이 될 수 있다.
+model Message {
+  id             String      @id @default(uuid()) @db.Uuid
+  conversationId String      @map("conversation_id") @db.Uuid
+  seq            Int
+  senderId       String?     @map("sender_id") @db.Uuid
+  // 앱이 보낸 중복 방지 값. 같은 값의 두 번째 요청은 첫 행을 돌려준다.
+  clientId       String?     @map("client_id")
+  kind           MessageKind
+  text           String?
+  cardTitle      String?     @map("card_title")
+  cardPhotoPath  String?     @map("card_photo_path")
+  systemCode     String?     @map("system_code")
+  systemParams   Json?       @map("system_params")
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?   @map("deleted_at") @db.Timestamptz(3)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       User?        @relation(fields: [senderId], references: [id])
+
+  @@unique([conversationId, seq])
+  @@unique([conversationId, senderId, clientId])
+  @@map("messages")
+}
+
+model Block {
+  id        String    @id @default(uuid()) @db.Uuid
+  blockerId String    @map("blocker_id") @db.Uuid
+  blockedId String    @map("blocked_id") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  blocker User @relation("BlockBlocker", fields: [blockerId], references: [id])
+  blocked User @relation("BlockBlocked", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("blocks")
+}
+
+// targetId는 targetKind에 따라 사용자나 대화방의 ID라 외래 키를 걸지 않는다.
+model Report {
+  id         String           @id @default(uuid()) @db.Uuid
+  reporterId String           @map("reporter_id") @db.Uuid
+  targetKind ReportTargetKind @map("target_kind")
+  targetId   String           @map("target_id") @db.Uuid
+  reason     ReportReason
+  detail     String?
+  resolvedAt DateTime?        @map("resolved_at") @db.Timestamptz(3)
+  resolvedBy String?          @map("resolved_by")
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt  DateTime?        @map("deleted_at") @db.Timestamptz(3)
+
+  reporter User @relation("ReportReporter", fields: [reporterId], references: [id])
+
+  @@unique([reporterId, targetKind, targetId])
+  @@index([resolvedAt])
+  @@map("reports")
+}
+
+// 계약서. termsSnapshot은 동의한 판본(TermsVersionModel)의 값 사본이고 결제의 보상 사본을 대신한다.
+// 협업마다 살아 있는(VOIDED가 아닌) 계약은 하나뿐이라 부분 유니크 인덱스가 마이그레이션의 직접 SQL에 있다.
+model Contract {
+  id                  String         @id @default(uuid()) @db.Uuid
+  collaborationId     String         @map("collaboration_id") @db.Uuid
+  status              ContractStatus
+  termsVersion        Int            @map("terms_version")
+  termsSnapshot       Json           @map("terms_snapshot")
+  creatorConsentedAt  DateTime       @map("creator_consented_at") @db.Timestamptz(3)
+  creatorConsentTexts String[]       @map("creator_consent_texts")
+  brandConsentTexts   String[]       @map("brand_consent_texts")
+  brandConsentedAt    DateTime?      @map("brand_consented_at") @db.Timestamptz(3)
+  paymentId           String?        @unique @map("payment_id") @db.Uuid
+  concludedAt         DateTime?      @map("concluded_at") @db.Timestamptz(3)
+  voidedAt            DateTime?      @map("voided_at") @db.Timestamptz(3)
+  // NEW_TERMS | DROPPED | BLOCKED. DB 제약이 값을 지킨다.
+  voidReason          String?        @map("void_reason")
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?      @map("deleted_at") @db.Timestamptz(3)
+
+  collaboration Collaboration @relation(fields: [collaborationId], references: [id])
+  payment       Payment?      @relation(fields: [paymentId], references: [id])
+
+  @@index([collaborationId])
+  @@map("contracts")
 }
