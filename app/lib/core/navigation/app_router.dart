@@ -28,6 +28,7 @@ import '../../features/negotiation/presentation/pages/brand_progress_page.dart';
 import '../../features/negotiation/presentation/pages/brand_proposals_placeholder_page.dart';
 import '../../features/negotiation/presentation/pages/collaboration_hub_page.dart';
 import '../../features/negotiation/presentation/pages/draft_terms_page.dart';
+import '../../features/negotiation/presentation/pages/terms_proposal_page.dart';
 import '../../features/interests/presentation/pages/interests_page.dart';
 import '../../features/interests/presentation/viewmodels/interests_view_model.dart'
     show InterestTab;
@@ -285,11 +286,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      // 조건 수정 제안은 다음 커밋이 만든다. 12의 `수정 제안`, 06의 `조건 수정 제안`, 대화방의 더하기 메뉴가 열 자리라 그때까지 자리 화면이다.
+      // 조건 수정 제안. 12의 `수정 제안`, 06의 `조건 수정 제안`, 대화방의 더하기 메뉴가 연다. 12에서 열면 `extra`로 알려 준다.
       GoRoute(
         path: AppRoutes.collaborationTermsProposePattern,
         pageBuilder: (context, state) => CoraTransitions.push(
-          const CoraComingSoonPage(title: '조건 수정 제안'),
+          TermsProposalPage(
+            collaborationId: state.pathParameters['id']!,
+            fromAgreement: state.extra == AppRoutes.fromAgreement,
+          ),
           key: state.pageKey,
         ),
       ),
