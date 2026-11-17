@@ -7,10 +7,12 @@ import { CreatorsModule } from '../creators/creators.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PrinciplesModule } from '../principles/principles.module';
 import { NegotiationService } from './negotiation.service';
+import { ProposalInboxController } from './proposal-inbox.controller';
+import { ProposalInboxService } from './proposal-inbox.service';
 import { TermsController } from './terms.controller';
 import { TermsModule } from './terms.module';
 
-// 조건 판본을 당사자에게 보여 주고 확인받고 새로 내는 API(06·12 화면, 수정 제안).
+// 조건 판본을 당사자에게 보여 주고 확인받고 새로 내는 API(06·12 화면, 수정 제안)와 제안함(F3)의 브랜드 계약 줄.
 // 확인과 새 판본은 대화방에 안내 줄을 남기므로 ConversationsModule을 쓴다. 그 모듈이 TermsModule을 import하기 때문에
 // 이 모듈은 TermsModule과 따로 둔다. 아무도 이 모듈을 import하지 않아 순환이 없다.
 @Module({
@@ -24,7 +26,7 @@ import { TermsModule } from './terms.module';
     NotificationsModule,
     ConversationsModule,
   ],
-  controllers: [TermsController],
-  providers: [NegotiationService],
+  controllers: [TermsController, ProposalInboxController],
+  providers: [NegotiationService, ProposalInboxService],
 })
 export class TermsApiModule {}

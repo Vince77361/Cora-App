@@ -379,6 +379,39 @@ export class CollaborationsRepository {
     });
   }
 
+  // 제안함(F3)에 올릴 브랜드 계약 협업: 내가 당사자이고 stages에 있는 것. 끝난 줄 가운데 요청을 거절했거나 차단으로 끝난 것,
+  // 받은 사람이 답하기 전에 그만두어 거둔 메시지 요청(방이 DECLINED)은 사람이 협의하다 끝낸 것이 아니라서 뺀다.
+  // dropReason이 비어 있거나 chosenDropReasons에 있는 것만 남기는 것은 NOT IN이 빈 값을 걸러 내는 것을 피하려는 것이다.
+  listBrandContractsForInbox(
+    userId: string,
+    stages: CollaborationStage[],
+    chosenDropReasons: DropReason[],
+  ): Promise<Collaboration[]> {
+    return this.prisma.collaboration.findMany({
+      where: {
+        kind: 'BRAND_CONTRACT',
+        stage: { in: stages },
+        deletedAt: null,
+        AND: [
+          { OR: [{ commissionerId: userId }, { creatorId: userId }] },
+          {
+            OR: [
+              { dropReason: null },
+              { dropReason: { in: chosenDropReasons } },
+            ],
+          },
+          {
+            OR: [
+              { conversation: null },
+              { conversation: { status: { not: 'DECLINED' } } },
+            ],
+          },
+        ],
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+  }
+
   // 캠페인들의 확보액을 셀 브랜드 협업(INQUIRY·DROPPED·REFUNDED는 뺀다)의 id와 캠페인. 캠페인마다 부르지 않고 한 번에 읽는다.
   listSecuredBrandContracts(
     campaignIds: string[],

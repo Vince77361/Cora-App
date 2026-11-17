@@ -578,4 +578,228 @@ describe('terms version 1 and its confirmation', () => {
       expect(await stageOf(id)).toBe('NEGOTIATING');
     });
   });
+
+  describe('the proposal inbox rows', () => {
+    interface InboxRow {
+      kind: string;
+      collaborationId: string;
+      counterpart: { name: string; photoUrl: string | null };
+      group: string;
+      version: number;
+      counter: boolean;
+      format: string;
+      pieces: number;
+      endKind: string | null;
+      myDropReason: string | null;
+      updatedAt: string;
+    }
+    const inbox = async (auth: Record<string, string>) =>
+      (await request(server).get('/terms/proposal-inbox').set(auth).expect(200))
+        .body as InboxRow[];
+    const rowOf = async (auth: Record<string, string>, id: string) =>
+      (await inbox(auth)).find((r) => r.collaborationId === id);
+    const drop = (auth: Record<string, string>, id: string, reason: string) =>
+      request(server)
+        .post(`/collaborations/${id}/drop`)
+        .set(auth)
+        .send({ reason });
+    // 진행 중인 캠페인은 하나뿐이라 이전 캠페인을 마감하고 새 캠페인에 같은 크리에이터가 다시 관심을 보이게 해 협업을 하나 더 만든다.
+    let activeCampaign = '';
+    async function matchAnother(): Promise<string> {
+      await request(server)
+        .post(`/campaigns/${activeCampaign}/close`)
+        .set(authBrand)
+        .expect(200);
+      const campaign = await request(server)
+        .post('/campaigns')
+        .set(authBrand)
+        .send(CAMPAIGN)
+        .expect(201);
+      activeCampaign = (campaign.body as { id: string }).id;
+      return matchUp(activeCampaign);
+    }
+    async function firstMatch(): Promise<string> {
+      activeCampaign = await makeBoth();
+      return matchUp(activeCampaign);
+    }
+
+    it('rejects requests with no token', async () => {
+      await request(server).get('/terms/proposal-inbox').expect(401);
+    });
+
+    it('puts a server-made version 1 in the turn of both sides', async () => {
+      const id = await firstMatch();
+      for (const auth of [authBrand, authCreator]) {
+        expect(await rowOf(auth, id)).toMatchObject({
+          kind: 'BRAND_CONTRACT',
+          collaborationId: id,
+          group: 'MY_TURN',
+          version: 1,
+          counter: false,
+          format: 'REELS',
+          pieces: 1,
+          endKind: null,
+          myDropReason: null,
+        });
+      }
+      // 브랜드에게는 크리에이터가, 크리에이터에게는 브랜드가 상대다.
+      expect((await rowOf(authBrand, id))?.counterpart.name).toBe('하루 한 컵');
+      expect((await rowOf(authCreator, id))?.counterpart.name).toBe('느린결');
+    });
+
+    it('groups a collaboration as my turn until I confirm the latest version', async () => {
+      const id = await firstMatch();
+      await confirm(authBrand, id).expect(200);
+      expect((await rowOf(authBrand, id))?.group).toBe('WAITING');
+      expect((await rowOf(authCreator, id))?.group).toBe('MY_TURN');
+    });
+
+    it('marks a version written by the other side as a counter-proposal', async () => {
+      const id = await firstMatch();
+      await request(server)
+        .post(`/collaborations/${id}/terms`)
+        .set(authCreator)
+        .send({ baseVersion: 1, fee: 350000 })
+        .expect(201);
+      // 낸 쪽은 확인한 것이라 기다리고, 받은 쪽은 응답할 차례이며 역제안으로 본다.
+      expect(await rowOf(authCreator, id)).toMatchObject({
+        group: 'WAITING',
+        version: 2,
+        counter: false,
+      });
+      expect(await rowOf(authBrand, id)).toMatchObject({
+        group: 'MY_TURN',
+        version: 2,
+        counter: true,
+      });
+    });
+
+    it('moves an agreed collaboration to ended and leaves contracted ones out', async () => {
+      const id = await firstMatch();
+      await confirm(authBrand, id).expect(200);
+      await confirm(authCreator, id).expect(200);
+      for (const auth of [authBrand, authCreator]) {
+        expect(await rowOf(auth, id)).toMatchObject({
+          group: 'ENDED',
+          endKind: 'AGREED',
+          myDropReason: null,
+        });
+      }
+      await prisma.collaboration.update({
+        where: { id },
+        data: { stage: 'CONTRACTED' },
+      });
+      expect(await inbox(authBrand)).toEqual([]);
+      expect(await inbox(authCreator)).toEqual([]);
+    });
+
+    it('shows the drop reason only to the side that dropped', async () => {
+      const id = await firstMatch();
+      await drop(authCreator, id, 'BUDGET').expect(200);
+      expect(await rowOf(authCreator, id)).toMatchObject({
+        group: 'ENDED',
+        endKind: 'ENDED',
+        myDropReason: 'BUDGET',
+      });
+      expect(await rowOf(authBrand, id)).toMatchObject({
+        group: 'ENDED',
+        endKind: 'ENDED',
+        myDropReason: null,
+      });
+    });
+
+    it('leaves out a declined request, a block and a withdrawn request', async () => {
+      const id = await firstMatch();
+      const other = await matchAnother();
+      const third = await matchAnother();
+      await prisma.collaboration.update({
+        where: { id },
+        data: { stage: 'DROPPED', dropReason: 'REQUEST_DECLINED' },
+      });
+      await prisma.collaboration.update({
+        where: { id: other },
+        data: { stage: 'DROPPED', dropReason: 'BLOCKED' },
+      });
+      // 받은 사람이 답하기 전에 그만두어 거둔 요청: 협업은 DROPPED, 방은 DECLINED다.
+      await prisma.collaboration.update({
+        where: { id: third },
+        data: {
+          stage: 'DROPPED',
+          dropReason: 'SCHEDULE',
+          droppedById: OTHER,
+        },
+      });
+      await prisma.conversation.update({
+        where: { collaborationId: third },
+        data: { status: 'DECLINED', requestedById: OTHER },
+      });
+      expect(await inbox(authBrand)).toEqual([]);
+      expect(await inbox(authCreator)).toEqual([]);
+    });
+
+    it('lists only collaborations I am a party to', async () => {
+      const id = await firstMatch();
+      const brandId = randomUUID();
+      const creatorId = randomUUID();
+      await prisma.user.create({ data: { id: brandId, role: 'BRAND' } });
+      await prisma.user.create({ data: { id: creatorId, role: 'CREATOR' } });
+      const foreign = await prisma.collaboration.create({
+        data: {
+          kind: 'BRAND_CONTRACT',
+          stage: 'MATCHED',
+          commissionerId: brandId,
+          creatorId,
+          terms: {},
+          settlementMethod: 'FIXED',
+        },
+      });
+      await prisma.termsVersion.create({
+        data: {
+          collaborationId: foreign.id,
+          version: 1,
+          title: '남의 협업',
+          fee: 300000,
+          startDate: new Date('2026-11-20'),
+          format: 'REELS',
+          pieces: 1,
+          productProvided: true,
+          revisionScope: 'DRAFT_1',
+          usageRights: 'REPOST_ONLY',
+          payoutDays: 7,
+        },
+      });
+      for (const auth of [authBrand, authCreator]) {
+        expect((await inbox(auth)).map((r) => r.collaborationId)).toEqual([id]);
+      }
+    });
+
+    it('lists my turn first, then waiting, then ended, newest first within a group', async () => {
+      const first = await firstMatch();
+      const second = await matchAnother();
+      const third = await matchAnother();
+      const fourth = await matchAnother();
+      // first: 합의 완료(끝남), second: 내가 확인함(기다림), third·fourth: 내 차례(나중 것이 위).
+      await confirm(authBrand, first).expect(200);
+      await confirm(authCreator, first).expect(200);
+      await confirm(authCreator, second).expect(200);
+      const rows = await inbox(authCreator);
+      expect(rows.map((r) => [r.collaborationId, r.group])).toEqual([
+        [fourth, 'MY_TURN'],
+        [third, 'MY_TURN'],
+        [second, 'WAITING'],
+        [first, 'ENDED'],
+      ]);
+    });
+
+    it('is empty for a user with no brand contract', async () => {
+      await makeBoth();
+      const rows = (
+        await request(server)
+          .get('/terms/proposal-inbox')
+          .set({ Authorization: 'Bearer user-c' })
+          .expect(200)
+      ).body as InboxRow[];
+      expect(rows).toEqual([]);
+    });
+  });
 });

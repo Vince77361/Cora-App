@@ -3818,6 +3818,86 @@
         ],
         "type": "string"
       },
+      "ProposalInboxRowModel": {
+        "properties": {
+          "collaborationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "counter": {
+            "description": "상대가 쓴 최신 판본이 번호 2 이상이면 true(역제안).",
+            "type": "boolean"
+          },
+          "counterpart": {
+            "$ref": "#/components/schemas/ProposalCounterpartModel"
+          },
+          "endKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProposalEndKind"
+              }
+            ],
+            "description": "끝난 제안(ENDED)의 갈래. AGREED: 합의 완료, ENDED: 사유를 골라 끝냄, EXPIRED: 기한이 지나 끝남. 그 밖에는 null.",
+            "nullable": true
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "group": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProposalGroup"
+              }
+            ],
+            "description": "MY_TURN: 내가 응답할 차례. WAITING: 상대 대기. ENDED: 끝난 제안."
+          },
+          "kind": {
+            "enum": [
+              "BRAND_CONTRACT"
+            ],
+            "type": "string"
+          },
+          "myDropReason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DropReasonChoice"
+              }
+            ],
+            "description": "그만두는 이유. 서버에만 남고 상대에게는 알리지 않는다(상대는 \"이번에는 함께하기 어렵대요.\"만 본다).",
+            "nullable": true
+          },
+          "pieces": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "description": "최신 판본의 확인이나 협업 상태가 마지막으로 바뀐 시각.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "description": "최신 판본의 번호.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "collaborationId",
+          "counterpart",
+          "group",
+          "version",
+          "counter",
+          "format",
+          "pieces",
+          "endKind",
+          "myDropReason",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "ProposalModel": {
         "properties": {
           "brandName": {
@@ -10077,6 +10157,36 @@
         "summary": "",
         "tags": [
           "Offers"
+        ]
+      }
+    },
+    "/terms/proposal-inbox": {
+      "get": {
+        "operationId": "listTermsProposalInbox",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProposalInboxRowModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "제안함의 브랜드 계약 줄(브랜드와 크리에이터 모두). 내가 당사자인 협업만, 내가 응답할 차례 → 상대 대기 → 끝남 순이고 같은 묶음에서는 최근 순이다. 계약 이후와 요청 거절·차단으로 끝난 협업은 없다.",
+        "tags": [
+          "ProposalInbox"
         ]
       }
     },

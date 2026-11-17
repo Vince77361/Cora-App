@@ -470,6 +470,8 @@ class ApiClient {
           return ProposalEndKindTypeTransformer().decode(value);
         case 'ProposalGroup':
           return ProposalGroupTypeTransformer().decode(value);
+        case 'ProposalInboxRowModel':
+          return ProposalInboxRowModel.fromJson(value);
         case 'ProposalModel':
           return ProposalModel.fromJson(value);
         case 'ProposalPerformanceDto':

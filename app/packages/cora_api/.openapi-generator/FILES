@@ -153,6 +153,8 @@ doc/ProposalCounterpartModel.md
 doc/ProposalDetailModel.md
 doc/ProposalEndKind.md
 doc/ProposalGroup.md
+doc/ProposalInboxApi.md
+doc/ProposalInboxRowModel.md
 doc/ProposalModel.md
 doc/ProposalPerformanceDto.md
 doc/ProposalPerformanceModel.md
@@ -269,6 +271,7 @@ lib/api/offers_api.dart
 lib/api/payments_api.dart
 lib/api/payout_accounts_api.dart
 lib/api/principles_api.dart
+lib/api/proposal_inbox_api.dart
 lib/api/proposals_api.dart
 lib/api/recommendations_api.dart
 lib/api/reports_api.dart
@@ -422,6 +425,7 @@ lib/model/proposal_counterpart_model.dart
 lib/model/proposal_detail_model.dart
 lib/model/proposal_end_kind.dart
 lib/model/proposal_group.dart
+lib/model/proposal_inbox_row_model.dart
 lib/model/proposal_model.dart
 lib/model/proposal_performance_dto.dart
 lib/model/proposal_performance_model.dart
@@ -659,6 +663,8 @@ test/proposal_counterpart_model_test.dart
 test/proposal_detail_model_test.dart
 test/proposal_end_kind_test.dart
 test/proposal_group_test.dart
+test/proposal_inbox_api_test.dart
+test/proposal_inbox_row_model_test.dart
 test/proposal_model_test.dart
 test/proposal_performance_dto_test.dart
 test/proposal_performance_model_test.dart
