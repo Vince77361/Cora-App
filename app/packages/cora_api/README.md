@@ -79,6 +79,12 @@ Class | Method | HTTP request | Description
 *CollaborationsApi* | [**requestCollaborationCancel**](doc//CollaborationsApi.md#requestcollaborationcancel) | **POST** /collaborations/{id}/cancel-requests | 사장님이 취소를 요청한다. 3일 안에 답이 없으면 사라진다.
 *ContentDraftsApi* | [**listMyContentDrafts**](doc//ContentDraftsApi.md#listmycontentdrafts) | **GET** /stores/me/content-drafts | 
 *ContentDraftsApi* | [**regenerateMyContentDraft**](doc//ContentDraftsApi.md#regeneratemycontentdraft) | **POST** /stores/me/content-drafts/{kind}/regenerate | 
+*ConversationsApi* | [**getConversation**](doc//ConversationsApi.md#getconversation) | **GET** /conversations/{id} | 방 머리: 상대, 협업 단계, 조건, 내가 할 수 있는 일.
+*ConversationsApi* | [**listConversations**](doc//ConversationsApi.md#listconversations) | **GET** /conversations | 내 대화 목록. 답해야 하는 메시지 요청이 먼저, 다음은 마지막 메시지가 최근인 순. 내가 거절한 요청은 빠진다.
+*ConversationsApi* | [**listMessages**](doc//ConversationsApi.md#listmessages) | **GET** /conversations/{id}/messages | 메시지를 번호 오름차순으로. afterSeq(빠진 번호 받기)나 beforeSeq(위로 넘기기)를 주고, 둘 다 없으면 마지막 50개.
+*ConversationsApi* | [**markConversationRead**](doc//ConversationsApi.md#markconversationread) | **POST** /conversations/{id}/read | 여기까지 읽었다고 알린다. 읽은 번호는 줄어들지 않는다.
+*ConversationsApi* | [**sendMessage**](doc//ConversationsApi.md#sendmessage) | **POST** /conversations/{id}/messages | 글이나 콘텐츠 카드를 보낸다. 같은 clientId로 다시 보내면 첫 메시지를 돌려준다. 열린 방에만 보낼 수 있다.
+*ConversationsApi* | [**setConversationMuted**](doc//ConversationsApi.md#setconversationmuted) | **PUT** /conversations/{id}/mute | 이 방의 알림을 끄거나 켠다.
 *CreatorsApi* | [**createMyCreatorSeries**](doc//CreatorsApi.md#createmycreatorseries) | **POST** /creators/me/series | 
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
 *CreatorsApi* | [**listMyCreatorSeries**](doc//CreatorsApi.md#listmycreatorseries) | **GET** /creators/me/series | 
@@ -180,6 +186,7 @@ Class | Method | HTTP request | Description
  - [CampaignModel](doc//CampaignModel.md)
  - [CampaignRecommendationsModel](doc//CampaignRecommendationsModel.md)
  - [CampaignStatus](doc//CampaignStatus.md)
+ - [CampaignTermsModel](doc//CampaignTermsModel.md)
  - [CancelRequestModel](doc//CancelRequestModel.md)
  - [CollaborationCampaignModel](doc//CollaborationCampaignModel.md)
  - [CollaborationCounterpartModel](doc//CollaborationCounterpartModel.md)
@@ -202,6 +209,13 @@ Class | Method | HTTP request | Description
  - [ContentDraftKind](doc//ContentDraftKind.md)
  - [ContentDraftModel](doc//ContentDraftModel.md)
  - [ContentFormat](doc//ContentFormat.md)
+ - [ContractProgress](doc//ContractProgress.md)
+ - [ConversationCounterpartModel](doc//ConversationCounterpartModel.md)
+ - [ConversationDetailModel](doc//ConversationDetailModel.md)
+ - [ConversationLastMessageModel](doc//ConversationLastMessageModel.md)
+ - [ConversationSection](doc//ConversationSection.md)
+ - [ConversationStatus](doc//ConversationStatus.md)
+ - [ConversationSummaryModel](doc//ConversationSummaryModel.md)
  - [CoraSideModel](doc//CoraSideModel.md)
  - [CreateCampaignDto](doc//CreateCampaignDto.md)
  - [CreateCreatorSeriesDto](doc//CreateCreatorSeriesDto.md)
@@ -232,8 +246,13 @@ Class | Method | HTTP request | Description
  - [InterestTab](doc//InterestTab.md)
  - [ManualBranchDto](doc//ManualBranchDto.md)
  - [ManualStoreDto](doc//ManualStoreDto.md)
+ - [MarkReadDto](doc//MarkReadDto.md)
  - [MatchReason](doc//MatchReason.md)
  - [MeModel](doc//MeModel.md)
+ - [MessageCardModel](doc//MessageCardModel.md)
+ - [MessageKind](doc//MessageKind.md)
+ - [MessageModel](doc//MessageModel.md)
+ - [MutedModel](doc//MutedModel.md)
  - [MyApplicationStatus](doc//MyApplicationStatus.md)
  - [MyOpenOfferModel](doc//MyOpenOfferModel.md)
  - [MyStoreModel](doc//MyStoreModel.md)
@@ -293,9 +312,12 @@ Class | Method | HTTP request | Description
  - [RewardPerformanceDto](doc//RewardPerformanceDto.md)
  - [RewardRangeModel](doc//RewardRangeModel.md)
  - [SavedDecision](doc//SavedDecision.md)
+ - [SendMessageDto](doc//SendMessageDto.md)
  - [SendOfferDto](doc//SendOfferDto.md)
+ - [SendableMessageKind](doc//SendableMessageKind.md)
  - [SentOfferModel](doc//SentOfferModel.md)
  - [SetDefaultTermsDto](doc//SetDefaultTermsDto.md)
+ - [SetMutedDto](doc//SetMutedDto.md)
  - [SettlementMethod](doc//SettlementMethod.md)
  - [SourceLinkInputDto](doc//SourceLinkInputDto.md)
  - [SourceLinkKind](doc//SourceLinkKind.md)

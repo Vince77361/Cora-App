@@ -66,6 +66,8 @@ interface Context {
   // 브랜드 계약 칸의 재료. 목록 전체에 한 번씩만 읽는다(행마다 읽지 않는다).
   campaigns: Map<string, { campaign: Campaign; brand: BrandProfileModel }>;
   latestTerms: Map<string, TermsVersion>;
+  conversationIds: Map<string, string>;
+  contractProgress: Map<string, 'AWAITING_BRAND' | 'CONCLUDED'>;
   // 캠페인마다, 확보액을 세는 브랜드 협업들의 확보액. 그 캠페인의 브랜드가 보는 행에서만 채운다.
   securedByCampaign: Map<string, number[]>;
 }
@@ -499,8 +501,14 @@ export class CollaborationsService {
       this.cancelRequests.mapPendingFor(ids, now),
     ]);
     const brandContext = await this.brandContext(userId, rows);
+    const [conversationIds, contractProgress] = await Promise.all([
+      this.collaborations.mapConversationIds(ids),
+      this.collaborations.mapContractProgress(ids),
+    ]);
     const context: Context = {
       ...brandContext,
+      conversationIds,
+      contractProgress,
       now,
       funded,
       views,
@@ -622,6 +630,9 @@ export class CollaborationsService {
         : null,
       canCancel: funded && role === 'CREATOR',
       canRequestCancel: funded && role === 'COMMISSIONER' && !pendingRequest,
+      conversationId: c.conversationIds.get(row.id) ?? null,
+      contractStatus: c.contractProgress.get(row.id) ?? 'NONE',
+      extraRevisionsAllowed: row.extraRevisionsAllowed,
     };
   }
 
@@ -686,6 +697,9 @@ export class CollaborationsService {
       cancelRequest: null,
       canCancel: false,
       canRequestCancel: false,
+      conversationId: c.conversationIds.get(row.id) ?? null,
+      contractStatus: c.contractProgress.get(row.id) ?? 'NONE',
+      extraRevisionsAllowed: row.extraRevisionsAllowed,
     };
   }
 

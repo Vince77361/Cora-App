@@ -34,9 +34,6 @@ import { TermsService } from './terms.service';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// 판본을 확인하거나 새로 낼 수 있는 단계. AGREED는 이미 한 확인을 다시 눌렀을 때 같은 결과를 돌려주고,
-// AGREED에서 새 판본을 내면 합의가 취소되고 협의로 돌아간다(결제 CONTRACTED 전까지).
-
 const INSTAGRAM_REQUIRED_MESSAGE = '인스타그램을 연동하면 수락할 수 있어요.';
 
 // 브랜드 계약의 조건 판본을 당사자에게 보여 주고 확인받는 서비스(06 화면).

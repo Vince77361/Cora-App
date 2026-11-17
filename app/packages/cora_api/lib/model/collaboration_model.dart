@@ -19,12 +19,15 @@ class CollaborationModel {
     required this.canCancel,
     required this.canRequestCancel,
     required this.cancelRequest,
+    required this.contractStatus,
+    required this.conversationId,
     required this.counterpart,
     required this.countingEndsAt,
     required this.currentViews,
     required this.earnedSoFar,
     required this.escrowAmount,
     required this.expectedRefund,
+    required this.extraRevisionsAllowed,
     required this.id,
     required this.kind,
     required this.nextAction,
@@ -61,6 +64,12 @@ class CollaborationModel {
   /// 답을 기다리는 취소 요청.
   CancelRequestModel? cancelRequest;
 
+  /// NONE: 계약 동의 전, AWAITING_BRAND: 크리에이터가 동의해 브랜드 결제 대기, CONCLUDED: 체결.
+  ContractProgress contractStatus;
+
+  /// 이 협업의 대화방. 방이 없으면 null.
+  String? conversationId;
+
   CollaborationCounterpartModel counterpart;
 
   /// 조회수 집계가 끝나는 시각(제출 뒤 7일).
@@ -77,6 +86,9 @@ class CollaborationModel {
 
   /// 예상 환급액(원). 집계 중일 때 사장님에게만 숫자다.
   int? expectedRefund;
+
+  /// 브랜드가 더 허용한 수정 횟수. 기본 0.
+  int extraRevisionsAllowed;
 
   String id;
 
@@ -132,12 +144,15 @@ class CollaborationModel {
           other.canCancel == canCancel &&
           other.canRequestCancel == canRequestCancel &&
           other.cancelRequest == cancelRequest &&
+          other.contractStatus == contractStatus &&
+          other.conversationId == conversationId &&
           other.counterpart == counterpart &&
           other.countingEndsAt == countingEndsAt &&
           other.currentViews == currentViews &&
           other.earnedSoFar == earnedSoFar &&
           other.escrowAmount == escrowAmount &&
           other.expectedRefund == expectedRefund &&
+          other.extraRevisionsAllowed == extraRevisionsAllowed &&
           other.id == id &&
           other.kind == kind &&
           other.nextAction == nextAction &&
@@ -164,12 +179,15 @@ class CollaborationModel {
       (canCancel.hashCode) +
       (canRequestCancel.hashCode) +
       (cancelRequest == null ? 0 : cancelRequest!.hashCode) +
+      (contractStatus.hashCode) +
+      (conversationId == null ? 0 : conversationId!.hashCode) +
       (counterpart.hashCode) +
       (countingEndsAt == null ? 0 : countingEndsAt!.hashCode) +
       (currentViews == null ? 0 : currentViews!.hashCode) +
       (earnedSoFar == null ? 0 : earnedSoFar!.hashCode) +
       (escrowAmount.hashCode) +
       (expectedRefund == null ? 0 : expectedRefund!.hashCode) +
+      (extraRevisionsAllowed.hashCode) +
       (id.hashCode) +
       (kind.hashCode) +
       (nextAction == null ? 0 : nextAction!.hashCode) +
@@ -189,7 +207,7 @@ class CollaborationModel {
 
   @override
   String toString() =>
-      'CollaborationModel[brandProgress=$brandProgress, campaign=$campaign, campaignBudgetLeft=$campaignBudgetLeft, canCancel=$canCancel, canRequestCancel=$canRequestCancel, cancelRequest=$cancelRequest, counterpart=$counterpart, countingEndsAt=$countingEndsAt, currentViews=$currentViews, earnedSoFar=$earnedSoFar, escrowAmount=$escrowAmount, expectedRefund=$expectedRefund, id=$id, kind=$kind, nextAction=$nextAction, payoutScheduledFor=$payoutScheduledFor, payoutStatus=$payoutStatus, role=$role, securedAmount=$securedAmount, settlement=$settlement, stage=$stage, steps=$steps, store=$store, submitDueAt=$submitDueAt, submittedUrl=$submittedUrl, terms=$terms, title=$title, viewReportStatus=$viewReportStatus]';
+      'CollaborationModel[brandProgress=$brandProgress, campaign=$campaign, campaignBudgetLeft=$campaignBudgetLeft, canCancel=$canCancel, canRequestCancel=$canRequestCancel, cancelRequest=$cancelRequest, contractStatus=$contractStatus, conversationId=$conversationId, counterpart=$counterpart, countingEndsAt=$countingEndsAt, currentViews=$currentViews, earnedSoFar=$earnedSoFar, escrowAmount=$escrowAmount, expectedRefund=$expectedRefund, extraRevisionsAllowed=$extraRevisionsAllowed, id=$id, kind=$kind, nextAction=$nextAction, payoutScheduledFor=$payoutScheduledFor, payoutStatus=$payoutStatus, role=$role, securedAmount=$securedAmount, settlement=$settlement, stage=$stage, steps=$steps, store=$store, submitDueAt=$submitDueAt, submittedUrl=$submittedUrl, terms=$terms, title=$title, viewReportStatus=$viewReportStatus]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -215,6 +233,12 @@ class CollaborationModel {
     } else {
       json[r'cancelRequest'] = null;
     }
+    json[r'contractStatus'] = this.contractStatus;
+    if (this.conversationId != null) {
+      json[r'conversationId'] = this.conversationId;
+    } else {
+      json[r'conversationId'] = null;
+    }
     json[r'counterpart'] = this.counterpart;
     if (this.countingEndsAt != null) {
       json[r'countingEndsAt'] = this.countingEndsAt!.toUtc().toIso8601String();
@@ -237,6 +261,7 @@ class CollaborationModel {
     } else {
       json[r'expectedRefund'] = null;
     }
+    json[r'extraRevisionsAllowed'] = this.extraRevisionsAllowed;
     json[r'id'] = this.id;
     json[r'kind'] = this.kind;
     if (this.nextAction != null) {
@@ -320,6 +345,12 @@ class CollaborationModel {
             'Required key "CollaborationModel[canRequestCancel]" has a null value in JSON.');
         assert(json.containsKey(r'cancelRequest'),
             'Required key "CollaborationModel[cancelRequest]" is missing from JSON.');
+        assert(json.containsKey(r'contractStatus'),
+            'Required key "CollaborationModel[contractStatus]" is missing from JSON.');
+        assert(json[r'contractStatus'] != null,
+            'Required key "CollaborationModel[contractStatus]" has a null value in JSON.');
+        assert(json.containsKey(r'conversationId'),
+            'Required key "CollaborationModel[conversationId]" is missing from JSON.');
         assert(json.containsKey(r'counterpart'),
             'Required key "CollaborationModel[counterpart]" is missing from JSON.');
         assert(json[r'counterpart'] != null,
@@ -336,6 +367,10 @@ class CollaborationModel {
             'Required key "CollaborationModel[escrowAmount]" has a null value in JSON.');
         assert(json.containsKey(r'expectedRefund'),
             'Required key "CollaborationModel[expectedRefund]" is missing from JSON.');
+        assert(json.containsKey(r'extraRevisionsAllowed'),
+            'Required key "CollaborationModel[extraRevisionsAllowed]" is missing from JSON.');
+        assert(json[r'extraRevisionsAllowed'] != null,
+            'Required key "CollaborationModel[extraRevisionsAllowed]" has a null value in JSON.');
         assert(json.containsKey(r'id'),
             'Required key "CollaborationModel[id]" is missing from JSON.');
         assert(json[r'id'] != null,
@@ -393,6 +428,8 @@ class CollaborationModel {
         canCancel: mapValueOfType<bool>(json, r'canCancel')!,
         canRequestCancel: mapValueOfType<bool>(json, r'canRequestCancel')!,
         cancelRequest: CancelRequestModel.fromJson(json[r'cancelRequest']),
+        contractStatus: ContractProgress.fromJson(json[r'contractStatus'])!,
+        conversationId: mapValueOfType<String>(json, r'conversationId'),
         counterpart:
             CollaborationCounterpartModel.fromJson(json[r'counterpart'])!,
         countingEndsAt: mapDateTime(json, r'countingEndsAt', r''),
@@ -400,6 +437,8 @@ class CollaborationModel {
         earnedSoFar: mapValueOfType<int>(json, r'earnedSoFar'),
         escrowAmount: mapValueOfType<int>(json, r'escrowAmount')!,
         expectedRefund: mapValueOfType<int>(json, r'expectedRefund'),
+        extraRevisionsAllowed:
+            mapValueOfType<int>(json, r'extraRevisionsAllowed')!,
         id: mapValueOfType<String>(json, r'id')!,
         kind: CollaborationKind.fromJson(json[r'kind'])!,
         nextAction: CollaborationNextAction.fromJson(json[r'nextAction']),
@@ -479,12 +518,15 @@ class CollaborationModel {
     'canCancel',
     'canRequestCancel',
     'cancelRequest',
+    'contractStatus',
+    'conversationId',
     'counterpart',
     'countingEndsAt',
     'currentViews',
     'earnedSoFar',
     'escrowAmount',
     'expectedRefund',
+    'extraRevisionsAllowed',
     'id',
     'kind',
     'nextAction',

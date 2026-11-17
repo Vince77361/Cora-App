@@ -49,6 +49,13 @@ class FakeCollaborationsRepository extends CollaborationsRepository {
   listForParty() {
     return Promise.resolve([{ ...this.row }]);
   }
+  // 대화방·계약 표는 이 spec이 보지 않는다(e2e가 확인한다).
+  mapConversationIds() {
+    return Promise.resolve(new Map<string, string>());
+  }
+  mapContractProgress() {
+    return Promise.resolve(new Map<string, 'AWAITING_BRAND' | 'CONCLUDED'>());
+  }
   advance(
     id: string,
     from: Collaboration['stage'],

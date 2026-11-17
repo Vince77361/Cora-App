@@ -74,6 +74,42 @@ export class CollaborationsRepository {
     });
   }
 
+  // 협업마다 대화방의 id. 방이 없는 협업은 맵에 없다. 이 모듈은 다른 기능 모듈을 import하지 않으므로
+  // 대화방·계약 표는 저장소 안에서 직접 읽는다(오퍼·지원 표와 같다).
+  async mapConversationIds(
+    collaborationIds: string[],
+  ): Promise<Map<string, string>> {
+    if (collaborationIds.length === 0) return new Map();
+    const rows = await this.prisma.conversation.findMany({
+      where: { collaborationId: { in: collaborationIds }, deletedAt: null },
+      select: { id: true, collaborationId: true },
+    });
+    return new Map(rows.map((row) => [row.collaborationId, row.id]));
+  }
+
+  // 협업마다 살아 있는(무효가 아닌) 계약의 진행. 계약이 없는 협업은 맵에 없다(NONE으로 읽는다).
+  async mapContractProgress(
+    collaborationIds: string[],
+    tx?: Prisma.TransactionClient,
+  ): Promise<Map<string, 'AWAITING_BRAND' | 'CONCLUDED'>> {
+    if (collaborationIds.length === 0) return new Map();
+    const rows = await this.client(tx).contract.findMany({
+      where: {
+        collaborationId: { in: collaborationIds },
+        status: { not: 'VOIDED' },
+        deletedAt: null,
+      },
+      select: { collaborationId: true, status: true },
+    });
+    const map = new Map<string, 'AWAITING_BRAND' | 'CONCLUDED'>();
+    for (const row of rows) {
+      if (row.status === 'AWAITING_BRAND' || row.status === 'CONCLUDED') {
+        map.set(row.collaborationId, row.status);
+      }
+    }
+    return map;
+  }
+
   findByOfferId(offerId: string): Promise<Collaboration | null> {
     return this.prisma.collaboration.findFirst({
       where: { offerId, deletedAt: null },

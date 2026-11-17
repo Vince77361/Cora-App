@@ -14,12 +14,15 @@ Name | Type | Description | Notes
 **canCancel** | **bool** | 크리에이터가 지금 협업을 그만둘 수 있으면 true(링크를 제출하기 전). | 
 **canRequestCancel** | **bool** | 사장님이 지금 취소 요청을 보낼 수 있으면 true. | 
 **cancelRequest** | [**CancelRequestModel**](CancelRequestModel.md) | 답을 기다리는 취소 요청. | 
+**contractStatus** | [**ContractProgress**](ContractProgress.md) | NONE: 계약 동의 전, AWAITING_BRAND: 크리에이터가 동의해 브랜드 결제 대기, CONCLUDED: 체결. | 
+**conversationId** | **String** | 이 협업의 대화방. 방이 없으면 null. | 
 **counterpart** | [**CollaborationCounterpartModel**](CollaborationCounterpartModel.md) |  | 
 **countingEndsAt** | [**DateTime**](DateTime.md) | 조회수 집계가 끝나는 시각(제출 뒤 7일). | 
 **currentViews** | **int** | 가장 최근에 읽은 조회수. 아직 읽은 값이 없으면 null. | 
 **earnedSoFar** | **int** | 지금까지 받을 금액(원). 집계 중일 때 크리에이터에게만 숫자다. | 
 **escrowAmount** | **int** | 결제할 때 에스크로에 맡긴 금액(원). 협업이 끝날 때까지 그대로이고, 결제 전이거나 식사권만 있으면 0. | 
 **expectedRefund** | **int** | 예상 환급액(원). 집계 중일 때 사장님에게만 숫자다. | 
+**extraRevisionsAllowed** | **int** | 브랜드가 더 허용한 수정 횟수. 기본 0. | 
 **id** | **String** |  | 
 **kind** | [**CollaborationKind**](CollaborationKind.md) |  | 
 **nextAction** | [**CollaborationNextAction**](CollaborationNextAction.md) | 지금 내가 할 일. RESPOND_TERMS: 최신 조건 판본을 아직 확인하지 않음, SIGN_CONTRACT: 양쪽이 합의해 계약할 차례. 그 밖은 null. | 

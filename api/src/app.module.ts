@@ -7,6 +7,7 @@ import { BrandsModule } from './brands/brands.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { CollaborationsApiModule } from './collaborations/collaborations-api.module';
 import { CommonModule } from './common/common.module';
+import { ConversationsModule } from './conversations/conversations.module';
 import { ContentDraftsModule } from './content-drafts/content-drafts.module';
 import { CreatorsModule } from './creators/creators.module';
 import { DiscoveryModule } from './discovery/discovery.module';
@@ -59,6 +60,7 @@ import { WalletModule } from './wallet/wallet.module';
     PayoutAccountsModule,
     SettlementsModule,
     CollaborationsApiModule,
+    ConversationsModule,
     StoreInsightsModule,
     WalletModule,
     OpsModule,

@@ -52,6 +52,18 @@ void main() {
       // TODO
     });
 
+    // NONE: 계약 동의 전, AWAITING_BRAND: 크리에이터가 동의해 브랜드 결제 대기, CONCLUDED: 체결.
+    // ContractProgress contractStatus
+    test('to test the property `contractStatus`', () async {
+      // TODO
+    });
+
+    // 이 협업의 대화방. 방이 없으면 null.
+    // String conversationId
+    test('to test the property `conversationId`', () async {
+      // TODO
+    });
+
     // CollaborationCounterpartModel counterpart
     test('to test the property `counterpart`', () async {
       // TODO
@@ -84,6 +96,12 @@ void main() {
     // 예상 환급액(원). 집계 중일 때 사장님에게만 숫자다.
     // int expectedRefund
     test('to test the property `expectedRefund`', () async {
+      // TODO
+    });
+
+    // 브랜드가 더 허용한 수정 횟수. 기본 0.
+    // int extraRevisionsAllowed
+    test('to test the property `extraRevisionsAllowed`', () async {
       // TODO
     });
 

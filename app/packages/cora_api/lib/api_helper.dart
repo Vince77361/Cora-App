@@ -118,6 +118,15 @@ String parameterToString(dynamic value) {
   if (value is ContentFormat) {
     return ContentFormatTypeTransformer().encode(value).toString();
   }
+  if (value is ContractProgress) {
+    return ContractProgressTypeTransformer().encode(value).toString();
+  }
+  if (value is ConversationSection) {
+    return ConversationSectionTypeTransformer().encode(value).toString();
+  }
+  if (value is ConversationStatus) {
+    return ConversationStatusTypeTransformer().encode(value).toString();
+  }
   if (value is DecisionTargetKind) {
     return DecisionTargetKindTypeTransformer().encode(value).toString();
   }
@@ -135,6 +144,9 @@ String parameterToString(dynamic value) {
   }
   if (value is MatchReason) {
     return MatchReasonTypeTransformer().encode(value).toString();
+  }
+  if (value is MessageKind) {
+    return MessageKindTypeTransformer().encode(value).toString();
   }
   if (value is MyApplicationStatus) {
     return MyApplicationStatusTypeTransformer().encode(value).toString();
@@ -198,6 +210,9 @@ String parameterToString(dynamic value) {
   }
   if (value is SavedDecision) {
     return SavedDecisionTypeTransformer().encode(value).toString();
+  }
+  if (value is SendableMessageKind) {
+    return SendableMessageKindTypeTransformer().encode(value).toString();
   }
   if (value is SettlementMethod) {
     return SettlementMethodTypeTransformer().encode(value).toString();

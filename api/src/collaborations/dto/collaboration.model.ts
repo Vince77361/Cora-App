@@ -29,6 +29,13 @@ export const PAYOUT_STATUSES = [
   'FAILED',
 ] as const;
 
+// 계약 진행. NONE: 크리에이터가 아직 동의하지 않음(또는 무효가 됨), AWAITING_BRAND: 크리에이터가 동의해 브랜드 결제 대기, CONCLUDED: 체결.
+export const CONTRACT_PROGRESS = [
+  'NONE',
+  'AWAITING_BRAND',
+  'CONCLUDED',
+] as const;
+
 export const COLLABORATION_NEXT_ACTIONS = [
   'RESPOND_TERMS',
   'SIGN_CONTRACT',
@@ -342,4 +349,26 @@ export class CollaborationModel {
     description: '사장님이 지금 취소 요청을 보낼 수 있으면 true.',
   })
   canRequestCancel!: boolean;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description: '이 협업의 대화방. 방이 없으면 null.',
+  })
+  conversationId!: string | null;
+
+  @ApiProperty({
+    enum: CONTRACT_PROGRESS,
+    enumName: 'ContractProgress',
+    description:
+      'NONE: 계약 동의 전, AWAITING_BRAND: 크리에이터가 동의해 브랜드 결제 대기, CONCLUDED: 체결.',
+  })
+  contractStatus!: (typeof CONTRACT_PROGRESS)[number];
+
+  @ApiProperty({
+    type: 'integer',
+    description: '브랜드가 더 허용한 수정 횟수. 기본 0.',
+  })
+  extraRevisionsAllowed!: number;
 }

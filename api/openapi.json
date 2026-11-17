@@ -608,6 +608,36 @@
         ],
         "type": "string"
       },
+      "CampaignTermsModel": {
+        "properties": {
+          "fee": {
+            "description": "캠페인의 제작비(원).",
+            "type": "integer"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "productProvided": {
+            "type": "boolean"
+          },
+          "startFrom": {
+            "description": "제작 시작.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fee",
+          "format",
+          "productProvided",
+          "startFrom"
+        ],
+        "type": "object"
+      },
       "CancelRequestModel": {
         "properties": {
           "expiresAt": {
@@ -727,6 +757,20 @@
             "nullable": true,
             "type": "object"
           },
+          "contractStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContractProgress"
+              }
+            ],
+            "description": "NONE: 계약 동의 전, AWAITING_BRAND: 크리에이터가 동의해 브랜드 결제 대기, CONCLUDED: 체결."
+          },
+          "conversationId": {
+            "description": "이 협업의 대화방. 방이 없으면 null.",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
           "counterpart": {
             "$ref": "#/components/schemas/CollaborationCounterpartModel"
           },
@@ -753,6 +797,10 @@
           "expectedRefund": {
             "description": "예상 환급액(원). 집계 중일 때 사장님에게만 숫자다.",
             "nullable": true,
+            "type": "integer"
+          },
+          "extraRevisionsAllowed": {
+            "description": "브랜드가 더 허용한 수정 횟수. 기본 0.",
             "type": "integer"
           },
           "id": {
@@ -898,7 +946,10 @@
           "payoutScheduledFor",
           "cancelRequest",
           "canCancel",
-          "canRequestCancel"
+          "canRequestCancel",
+          "conversationId",
+          "contractStatus",
+          "extraRevisionsAllowed"
         ],
         "type": "object"
       },
@@ -1256,6 +1307,317 @@
           "BLOG"
         ],
         "type": "string"
+      },
+      "ContractProgress": {
+        "description": "NONE: 계약 동의 전, AWAITING_BRAND: 크리에이터가 동의해 브랜드 결제 대기, CONCLUDED: 체결.",
+        "enum": [
+          "NONE",
+          "AWAITING_BRAND",
+          "CONCLUDED"
+        ],
+        "type": "string"
+      },
+      "ConversationCounterpartModel": {
+        "properties": {
+          "name": {
+            "description": "크리에이터에게는 브랜드 이름이나 가게 이름, 맡긴 쪽에게는 크리에이터의 활동 이름.",
+            "type": "string"
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "photoUrl"
+        ],
+        "type": "object"
+      },
+      "ConversationDetailModel": {
+        "properties": {
+          "blockedByMe": {
+            "description": "내가 이 상대를 차단했으면 true.",
+            "type": "boolean"
+          },
+          "campaignTerms": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CampaignTermsModel"
+              }
+            ],
+            "description": "서로 관심 전(INQUIRY)의 캠페인 조건. 그 밖은 null.",
+            "nullable": true,
+            "type": "object"
+          },
+          "canDrop": {
+            "description": "협의를 그만둘 수 있는 단계이면 true.",
+            "type": "boolean"
+          },
+          "canLikeCampaign": {
+            "description": "서로 관심 전, 크리에이터가 캠페인에 관심을 보낼 수 있으면 true.",
+            "type": "boolean"
+          },
+          "canProposeTerms": {
+            "description": "조건 수정 제안을 보낼 수 있는 단계이면 true.",
+            "type": "boolean"
+          },
+          "canSend": {
+            "description": "지금 글을 보낼 수 있으면 true(방이 열려 있다).",
+            "type": "boolean"
+          },
+          "canSendContentCard": {
+            "description": "크리에이터가 콘텐츠 카드를 보낼 수 있으면 true(카드가 있다).",
+            "type": "boolean"
+          },
+          "collaborationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "contextLabel": {
+            "description": "캠페인 한 줄 또는 가게 이름.",
+            "type": "string"
+          },
+          "contractStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContractProgress"
+              }
+            ],
+            "description": "NONE: 계약 동의 전, AWAITING_BRAND: 크리에이터가 동의해 브랜드 결제 대기, CONCLUDED: 체결."
+          },
+          "counterpart": {
+            "$ref": "#/components/schemas/ConversationCounterpartModel"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CollaborationKind"
+              }
+            ]
+          },
+          "lastMessage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConversationLastMessageModel"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "lastReadSeq": {
+            "type": "integer"
+          },
+          "lastSeq": {
+            "type": "integer"
+          },
+          "muted": {
+            "description": "이 방의 알림을 꺼 두었으면 true.",
+            "type": "boolean"
+          },
+          "myRole": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CollaborationRole"
+              }
+            ]
+          },
+          "requestedByMe": {
+            "description": "내가 먼저 보낸 메시지 요청이면 true.",
+            "type": "boolean"
+          },
+          "section": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConversationSection"
+              }
+            ],
+            "description": "REQUEST: 내가 답해야 하는 메시지 요청(목록 맨 위에 모인다). 그 밖은 NORMAL."
+          },
+          "stage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CollaborationStage"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConversationStatus"
+              }
+            ]
+          },
+          "storeTerms": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OfferTermsModel"
+              }
+            ],
+            "description": "가게 오퍼의 수락된 판본의 조건(사본). 브랜드 계약은 null.",
+            "nullable": true,
+            "type": "object"
+          },
+          "terms": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TermsVersionModel"
+              }
+            ],
+            "description": "브랜드 계약의 최신 조건 버전. 아직 없으면 null.",
+            "nullable": true,
+            "type": "object"
+          },
+          "unreadCount": {
+            "description": "내 읽은 번호 뒤에 상대나 안내로 온 메시지의 수.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "section",
+          "counterpart",
+          "contextLabel",
+          "lastMessage",
+          "unreadCount",
+          "muted",
+          "collaborationId",
+          "stage",
+          "myRole",
+          "requestedByMe",
+          "blockedByMe",
+          "lastSeq",
+          "lastReadSeq",
+          "terms",
+          "campaignTerms",
+          "storeTerms",
+          "contractStatus",
+          "canSend",
+          "canSendContentCard",
+          "canProposeTerms",
+          "canDrop",
+          "canLikeCampaign"
+        ],
+        "type": "object"
+      },
+      "ConversationLastMessageModel": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageKind"
+              }
+            ]
+          },
+          "preview": {
+            "description": "한 줄 미리 보기. 글은 60자에서 자르고 …을 붙인다. 안내 줄은 읽는 사람에 맞춘 문구.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "preview",
+          "at"
+        ],
+        "type": "object"
+      },
+      "ConversationSection": {
+        "description": "REQUEST: 내가 답해야 하는 메시지 요청(목록 맨 위에 모인다). 그 밖은 NORMAL.",
+        "enum": [
+          "REQUEST",
+          "NORMAL"
+        ],
+        "type": "string"
+      },
+      "ConversationStatus": {
+        "enum": [
+          "REQUESTED",
+          "OPEN",
+          "DECLINED",
+          "CLOSED"
+        ],
+        "type": "string"
+      },
+      "ConversationSummaryModel": {
+        "properties": {
+          "contextLabel": {
+            "description": "캠페인 한 줄 또는 가게 이름.",
+            "type": "string"
+          },
+          "counterpart": {
+            "$ref": "#/components/schemas/ConversationCounterpartModel"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CollaborationKind"
+              }
+            ]
+          },
+          "lastMessage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConversationLastMessageModel"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "muted": {
+            "description": "이 방의 알림을 꺼 두었으면 true.",
+            "type": "boolean"
+          },
+          "section": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConversationSection"
+              }
+            ],
+            "description": "REQUEST: 내가 답해야 하는 메시지 요청(목록 맨 위에 모인다). 그 밖은 NORMAL."
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConversationStatus"
+              }
+            ]
+          },
+          "unreadCount": {
+            "description": "내 읽은 번호 뒤에 상대나 안내로 온 메시지의 수.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "section",
+          "counterpart",
+          "contextLabel",
+          "lastMessage",
+          "unreadCount",
+          "muted"
+        ],
+        "type": "object"
       },
       "CoraSideModel": {
         "properties": {
@@ -2130,6 +2492,19 @@
         ],
         "type": "object"
       },
+      "MarkReadDto": {
+        "properties": {
+          "seq": {
+            "description": "여기까지 읽었다는 번호. 방의 마지막 번호를 넘을 수 없다.",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seq"
+        ],
+        "type": "object"
+      },
       "MatchReason": {
         "description": "크리에이터의 협업 원칙과 겹치는 규칙. 많을수록 잘 맞는다.",
         "enum": [
@@ -2159,6 +2534,100 @@
         "required": [
           "id",
           "role"
+        ],
+        "type": "object"
+      },
+      "MessageCardModel": {
+        "properties": {
+          "photoUrl": {
+            "description": "카드를 보낸 시점의 사진(사본). 없으면 null.",
+            "nullable": true,
+            "type": "string"
+          },
+          "title": {
+            "description": "카드를 보낸 시점의 콘텐츠 제목(사본).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "photoUrl"
+        ],
+        "type": "object"
+      },
+      "MessageKind": {
+        "enum": [
+          "TEXT",
+          "CONTENT_CARD",
+          "SYSTEM"
+        ],
+        "type": "string"
+      },
+      "MessageModel": {
+        "properties": {
+          "card": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageCardModel"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "clientId": {
+            "description": "앱이 보낸 중복 방지 값. 내가 보낸 메시지에만 있다.",
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageKind"
+              }
+            ]
+          },
+          "mine": {
+            "description": "내가 보낸 메시지이면 true. 안내 줄은 false.",
+            "type": "boolean"
+          },
+          "seq": {
+            "description": "방 안의 번호(1부터, 빠짐없이 늘어난다).",
+            "type": "integer"
+          },
+          "text": {
+            "description": "글 메시지의 글, 안내 줄은 읽는 사람에 맞춰 서버가 만든 문구. 콘텐츠 카드는 null.",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "kind",
+          "mine",
+          "clientId",
+          "text",
+          "card",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "MutedModel": {
+        "properties": {
+          "muted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "muted"
         ],
         "type": "object"
       },
@@ -3858,6 +4327,34 @@
         ],
         "type": "string"
       },
+      "SendMessageDto": {
+        "properties": {
+          "clientId": {
+            "description": "앱이 만든 중복 방지 값. 같은 값으로 다시 보내면 새 메시지를 만들지 않고 첫 메시지를 돌려준다.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SendableMessageKind"
+              }
+            ],
+            "description": "CONTENT_CARD는 크리에이터만 보낼 수 있다."
+          },
+          "text": {
+            "description": "글 메시지의 글(1~1000자). 콘텐츠 카드에는 쓰지 않는다.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "kind"
+        ],
+        "type": "object"
+      },
       "SendOfferDto": {
         "properties": {
           "creatorId": {
@@ -3890,6 +4387,14 @@
           "reward"
         ],
         "type": "object"
+      },
+      "SendableMessageKind": {
+        "description": "CONTENT_CARD는 크리에이터만 보낼 수 있다.",
+        "enum": [
+          "TEXT",
+          "CONTENT_CARD"
+        ],
+        "type": "string"
       },
       "SentOfferModel": {
         "properties": {
@@ -3973,6 +4478,18 @@
         "required": [
           "format",
           "reward"
+        ],
+        "type": "object"
+      },
+      "SetMutedDto": {
+        "properties": {
+          "muted": {
+            "description": "이 방의 알림을 끄려면 true.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "muted"
         ],
         "type": "object"
       },
@@ -6484,6 +7001,286 @@
         "summary": "",
         "tags": [
           "AppConfig"
+        ]
+      }
+    },
+    "/conversations": {
+      "get": {
+        "operationId": "listConversations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationSummaryModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "내 대화 목록. 답해야 하는 메시지 요청이 먼저, 다음은 마지막 메시지가 최근인 순. 내가 거절한 요청은 빠진다.",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/conversations/{id}": {
+      "get": {
+        "operationId": "getConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetailModel"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "description": "방이 없거나 내가 참가자가 아니다."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "방 머리: 상대, 협업 단계, 조건, 내가 할 수 있는 일.",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/conversations/{id}/messages": {
+      "get": {
+        "operationId": "listMessages",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "이 번호보다 큰 메시지(빠진 번호를 받을 때).",
+            "in": "query",
+            "name": "afterSeq",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "이 번호보다 작은 메시지(위로 넘겨 볼 때).",
+            "in": "query",
+            "name": "beforeSeq",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MessageModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "description": "방이 없거나 내가 참가자가 아니다."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "메시지를 번호 오름차순으로. afterSeq(빠진 번호 받기)나 beforeSeq(위로 넘기기)를 주고, 둘 다 없으면 마지막 50개.",
+        "tags": [
+          "Conversations"
+        ]
+      },
+      "post": {
+        "operationId": "sendMessage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageModel"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "description": "방이 없거나 내가 참가자가 아니다."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "글이나 콘텐츠 카드를 보낸다. 같은 clientId로 다시 보내면 첫 메시지를 돌려준다. 열린 방에만 보낼 수 있다.",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/conversations/{id}/mute": {
+      "put": {
+        "operationId": "setConversationMuted",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMutedDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutedModel"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "description": "방이 없거나 내가 참가자가 아니다."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "이 방의 알림을 끄거나 켠다.",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/conversations/{id}/read": {
+      "post": {
+        "operationId": "markConversationRead",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkReadDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": "방이 없거나 내가 참가자가 아니다."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "여기까지 읽었다고 알린다. 읽은 번호는 줄어들지 않는다.",
+        "tags": [
+          "Conversations"
         ]
       }
     },

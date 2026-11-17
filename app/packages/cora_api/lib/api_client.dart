@@ -250,6 +250,8 @@ class ApiClient {
           return CampaignRecommendationsModel.fromJson(value);
         case 'CampaignStatus':
           return CampaignStatusTypeTransformer().decode(value);
+        case 'CampaignTermsModel':
+          return CampaignTermsModel.fromJson(value);
         case 'CancelRequestModel':
           return CancelRequestModel.fromJson(value);
         case 'CollaborationCampaignModel':
@@ -294,6 +296,20 @@ class ApiClient {
           return ContentDraftModel.fromJson(value);
         case 'ContentFormat':
           return ContentFormatTypeTransformer().decode(value);
+        case 'ContractProgress':
+          return ContractProgressTypeTransformer().decode(value);
+        case 'ConversationCounterpartModel':
+          return ConversationCounterpartModel.fromJson(value);
+        case 'ConversationDetailModel':
+          return ConversationDetailModel.fromJson(value);
+        case 'ConversationLastMessageModel':
+          return ConversationLastMessageModel.fromJson(value);
+        case 'ConversationSection':
+          return ConversationSectionTypeTransformer().decode(value);
+        case 'ConversationStatus':
+          return ConversationStatusTypeTransformer().decode(value);
+        case 'ConversationSummaryModel':
+          return ConversationSummaryModel.fromJson(value);
         case 'CoraSideModel':
           return CoraSideModel.fromJson(value);
         case 'CreateCampaignDto':
@@ -354,10 +370,20 @@ class ApiClient {
           return ManualBranchDto.fromJson(value);
         case 'ManualStoreDto':
           return ManualStoreDto.fromJson(value);
+        case 'MarkReadDto':
+          return MarkReadDto.fromJson(value);
         case 'MatchReason':
           return MatchReasonTypeTransformer().decode(value);
         case 'MeModel':
           return MeModel.fromJson(value);
+        case 'MessageCardModel':
+          return MessageCardModel.fromJson(value);
+        case 'MessageKind':
+          return MessageKindTypeTransformer().decode(value);
+        case 'MessageModel':
+          return MessageModel.fromJson(value);
+        case 'MutedModel':
+          return MutedModel.fromJson(value);
         case 'MyApplicationStatus':
           return MyApplicationStatusTypeTransformer().decode(value);
         case 'MyOpenOfferModel':
@@ -476,12 +502,18 @@ class ApiClient {
           return RewardRangeModel.fromJson(value);
         case 'SavedDecision':
           return SavedDecisionTypeTransformer().decode(value);
+        case 'SendMessageDto':
+          return SendMessageDto.fromJson(value);
         case 'SendOfferDto':
           return SendOfferDto.fromJson(value);
+        case 'SendableMessageKind':
+          return SendableMessageKindTypeTransformer().decode(value);
         case 'SentOfferModel':
           return SentOfferModel.fromJson(value);
         case 'SetDefaultTermsDto':
           return SetDefaultTermsDto.fromJson(value);
+        case 'SetMutedDto':
+          return SetMutedDto.fromJson(value);
         case 'SettlementMethod':
           return SettlementMethodTypeTransformer().decode(value);
         case 'SourceLinkInputDto':

@@ -118,6 +118,9 @@ Map<String, Object?> _collaboration({required String role}) => {
   'campaignBudgetLeft': null,
   'canCancel': false,
   'canRequestCancel': false,
+  'conversationId': null,
+  'contractStatus': 'NONE',
+  'extraRevisionsAllowed': 0,
   'cancelRequest': null,
   'counterpart': role == 'COMMISSIONER'
       ? {'name': '서윤의 작은 취향', 'photoUrl': 'https://x/creator.jpg'}
