@@ -81,6 +81,8 @@ doc/DecisionTargetKind.md
 doc/DiscoveryApi.md
 doc/DisputeViewReportDto.md
 doc/DraftSceneModel.md
+doc/DropCollaborationDto.md
+doc/DropReasonChoice.md
 doc/EndOfferDto.md
 doc/EndedOfferModel.md
 doc/FeeBand.md
@@ -206,7 +208,10 @@ doc/SubmitContentDto.md
 doc/SubmitViewEvidenceDto.md
 doc/SwipeDecisionKind.md
 doc/SwipeTargetKind.md
+doc/TermsAgreement.md
 doc/TermsApi.md
+doc/TermsField.md
+doc/TermsHistoryModel.md
 doc/TermsLatestModel.md
 doc/TermsPerformanceModel.md
 doc/TermsProposer.md
@@ -353,6 +358,8 @@ lib/model/decision_result_model.dart
 lib/model/decision_target_kind.dart
 lib/model/dispute_view_report_dto.dart
 lib/model/draft_scene_model.dart
+lib/model/drop_collaboration_dto.dart
+lib/model/drop_reason_choice.dart
 lib/model/end_offer_dto.dart
 lib/model/ended_offer_model.dart
 lib/model/fee_band.dart
@@ -463,6 +470,9 @@ lib/model/submit_content_dto.dart
 lib/model/submit_view_evidence_dto.dart
 lib/model/swipe_decision_kind.dart
 lib/model/swipe_target_kind.dart
+lib/model/terms_agreement.dart
+lib/model/terms_field.dart
+lib/model/terms_history_model.dart
 lib/model/terms_latest_model.dart
 lib/model/terms_performance_model.dart
 lib/model/terms_proposer.dart
@@ -577,6 +587,8 @@ test/decision_target_kind_test.dart
 test/discovery_api_test.dart
 test/dispute_view_report_dto_test.dart
 test/draft_scene_model_test.dart
+test/drop_collaboration_dto_test.dart
+test/drop_reason_choice_test.dart
 test/end_offer_dto_test.dart
 test/ended_offer_model_test.dart
 test/fee_band_test.dart
@@ -702,7 +714,10 @@ test/submit_content_dto_test.dart
 test/submit_view_evidence_dto_test.dart
 test/swipe_decision_kind_test.dart
 test/swipe_target_kind_test.dart
+test/terms_agreement_test.dart
 test/terms_api_test.dart
+test/terms_field_test.dart
+test/terms_history_model_test.dart
 test/terms_latest_model_test.dart
 test/terms_performance_model_test.dart
 test/terms_proposer_test.dart

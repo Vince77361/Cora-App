@@ -71,6 +71,10 @@ export const negotiableStages: CollaborationStage[] = [
   'AGREED',
 ];
 
+// 브랜드가 결제창을 연 채 두는 동안 조건 변경과 그만두기를 막는 시간(분). PENDING 결제의 요청 시각부터 센다.
+// 이 시간이 지나면 열려 있던 결제는 없는 것으로 본다(결제창을 닫고 가 버린 경우를 풀어 준다).
+export const BRAND_PAYMENT_LOCK_MINUTES = 60;
+
 // 캠페인 예산의 확보액에 세지 않는 브랜드 협업 단계: 아직 서로 관심이 아니거나(INQUIRY), 계약 전에 그만뒀거나(DROPPED),
 // 보관 중이던 돈이 환급된(REFUNDED) 협업이다. 멈춘(HALTED) 협업은 돈이 그대로 보관 중이라 센다.
 export const UNSECURED_BRAND_STAGES: CollaborationStage[] = [

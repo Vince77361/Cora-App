@@ -130,6 +130,9 @@ String parameterToString(dynamic value) {
   if (value is DecisionTargetKind) {
     return DecisionTargetKindTypeTransformer().encode(value).toString();
   }
+  if (value is DropReasonChoice) {
+    return DropReasonChoiceTypeTransformer().encode(value).toString();
+  }
   if (value is FeeBand) {
     return FeeBandTypeTransformer().encode(value).toString();
   }
@@ -237,6 +240,12 @@ String parameterToString(dynamic value) {
   }
   if (value is SwipeTargetKind) {
     return SwipeTargetKindTypeTransformer().encode(value).toString();
+  }
+  if (value is TermsAgreement) {
+    return TermsAgreementTypeTransformer().encode(value).toString();
+  }
+  if (value is TermsField) {
+    return TermsFieldTypeTransformer().encode(value).toString();
   }
   if (value is TermsProposer) {
     return TermsProposerTypeTransformer().encode(value).toString();

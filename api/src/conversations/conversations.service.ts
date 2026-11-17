@@ -550,6 +550,9 @@ export class ConversationsService {
         this.collaborations.mapContractProgress([collaboration.id]),
         this.repository.hasBlocked(userId, header.counterpart.userId),
       ]);
+    const previousTerms = latestTerms
+      ? await this.terms.versionBefore(collaboration.id, latestTerms.version)
+      : null;
     const viewer: SystemViewer = { userId, role: header.role };
     const last = lastMessages[0] ?? null;
     const campaign = collaboration.campaignId
@@ -583,7 +586,11 @@ export class ConversationsService {
       lastSeq: room.lastSeq,
       lastReadSeq: member.lastReadSeq,
       terms: latestTerms
-        ? toTermsVersionModel(latestTerms, collaboration.commissionerId)
+        ? toTermsVersionModel(
+            latestTerms,
+            collaboration.commissionerId,
+            previousTerms,
+          )
         : null,
       campaignTerms:
         brandContract && collaboration.stage === 'INQUIRY' && campaign

@@ -14,6 +14,8 @@ class TermsVersionModel {
   /// Returns a new [TermsVersionModel] instance.
   TermsVersionModel({
     required this.brandConfirmed,
+    this.changedFields = const [],
+    required this.createdAt,
     required this.creatorConfirmed,
     required this.fee,
     required this.format,
@@ -21,6 +23,7 @@ class TermsVersionModel {
     required this.payoutDays,
     required this.performance,
     required this.pieces,
+    required this.previousMaxCash,
     required this.productProvided,
     required this.proposedBy,
     required this.revisionScope,
@@ -32,6 +35,12 @@ class TermsVersionModel {
 
   /// 브랜드가 이 판본을 확인했다.
   bool brandConfirmed;
+
+  /// 바로 앞 판본에서 바뀐 항목. 판본 1은 빈 배열이다.
+  List<TermsField> changedFields;
+
+  /// 판본을 낸 시각.
+  DateTime createdAt;
 
   /// 크리에이터가 이 판본을 확인했다.
   bool creatorConfirmed;
@@ -52,6 +61,9 @@ class TermsVersionModel {
 
   /// 편 수(1~3).
   int pieces;
+
+  /// 바로 앞 판본의 최대 현금 부담. 판본 1은 null이다(화면이 \"A원 → B원\"으로 보여 준다).
+  int? previousMaxCash;
 
   /// 제품 제공 여부.
   bool productProvided;
@@ -77,6 +89,8 @@ class TermsVersionModel {
       identical(this, other) ||
       other is TermsVersionModel &&
           other.brandConfirmed == brandConfirmed &&
+          _deepEquality.equals(other.changedFields, changedFields) &&
+          other.createdAt == createdAt &&
           other.creatorConfirmed == creatorConfirmed &&
           other.fee == fee &&
           other.format == format &&
@@ -84,6 +98,7 @@ class TermsVersionModel {
           other.payoutDays == payoutDays &&
           other.performance == performance &&
           other.pieces == pieces &&
+          other.previousMaxCash == previousMaxCash &&
           other.productProvided == productProvided &&
           other.proposedBy == proposedBy &&
           other.revisionScope == revisionScope &&
@@ -96,6 +111,8 @@ class TermsVersionModel {
   int get hashCode =>
       // ignore: unnecessary_parenthesis
       (brandConfirmed.hashCode) +
+      (changedFields.hashCode) +
+      (createdAt.hashCode) +
       (creatorConfirmed.hashCode) +
       (fee.hashCode) +
       (format.hashCode) +
@@ -103,6 +120,7 @@ class TermsVersionModel {
       (payoutDays.hashCode) +
       (performance == null ? 0 : performance!.hashCode) +
       (pieces.hashCode) +
+      (previousMaxCash == null ? 0 : previousMaxCash!.hashCode) +
       (productProvided.hashCode) +
       (proposedBy.hashCode) +
       (revisionScope.hashCode) +
@@ -113,11 +131,13 @@ class TermsVersionModel {
 
   @override
   String toString() =>
-      'TermsVersionModel[brandConfirmed=$brandConfirmed, creatorConfirmed=$creatorConfirmed, fee=$fee, format=$format, maxCash=$maxCash, payoutDays=$payoutDays, performance=$performance, pieces=$pieces, productProvided=$productProvided, proposedBy=$proposedBy, revisionScope=$revisionScope, startDate=$startDate, title=$title, usageRights=$usageRights, version=$version]';
+      'TermsVersionModel[brandConfirmed=$brandConfirmed, changedFields=$changedFields, createdAt=$createdAt, creatorConfirmed=$creatorConfirmed, fee=$fee, format=$format, maxCash=$maxCash, payoutDays=$payoutDays, performance=$performance, pieces=$pieces, previousMaxCash=$previousMaxCash, productProvided=$productProvided, proposedBy=$proposedBy, revisionScope=$revisionScope, startDate=$startDate, title=$title, usageRights=$usageRights, version=$version]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
     json[r'brandConfirmed'] = this.brandConfirmed;
+    json[r'changedFields'] = this.changedFields;
+    json[r'createdAt'] = this.createdAt.toUtc().toIso8601String();
     json[r'creatorConfirmed'] = this.creatorConfirmed;
     json[r'fee'] = this.fee;
     json[r'format'] = this.format;
@@ -129,6 +149,11 @@ class TermsVersionModel {
       json[r'performance'] = null;
     }
     json[r'pieces'] = this.pieces;
+    if (this.previousMaxCash != null) {
+      json[r'previousMaxCash'] = this.previousMaxCash;
+    } else {
+      json[r'previousMaxCash'] = null;
+    }
     json[r'productProvided'] = this.productProvided;
     json[r'proposedBy'] = this.proposedBy;
     json[r'revisionScope'] = this.revisionScope;
@@ -154,6 +179,14 @@ class TermsVersionModel {
             'Required key "TermsVersionModel[brandConfirmed]" is missing from JSON.');
         assert(json[r'brandConfirmed'] != null,
             'Required key "TermsVersionModel[brandConfirmed]" has a null value in JSON.');
+        assert(json.containsKey(r'changedFields'),
+            'Required key "TermsVersionModel[changedFields]" is missing from JSON.');
+        assert(json[r'changedFields'] != null,
+            'Required key "TermsVersionModel[changedFields]" has a null value in JSON.');
+        assert(json.containsKey(r'createdAt'),
+            'Required key "TermsVersionModel[createdAt]" is missing from JSON.');
+        assert(json[r'createdAt'] != null,
+            'Required key "TermsVersionModel[createdAt]" has a null value in JSON.');
         assert(json.containsKey(r'creatorConfirmed'),
             'Required key "TermsVersionModel[creatorConfirmed]" is missing from JSON.');
         assert(json[r'creatorConfirmed'] != null,
@@ -180,6 +213,8 @@ class TermsVersionModel {
             'Required key "TermsVersionModel[pieces]" is missing from JSON.');
         assert(json[r'pieces'] != null,
             'Required key "TermsVersionModel[pieces]" has a null value in JSON.');
+        assert(json.containsKey(r'previousMaxCash'),
+            'Required key "TermsVersionModel[previousMaxCash]" is missing from JSON.');
         assert(json.containsKey(r'productProvided'),
             'Required key "TermsVersionModel[productProvided]" is missing from JSON.');
         assert(json[r'productProvided'] != null,
@@ -213,6 +248,8 @@ class TermsVersionModel {
 
       return TermsVersionModel(
         brandConfirmed: mapValueOfType<bool>(json, r'brandConfirmed')!,
+        changedFields: TermsField.listFromJson(json[r'changedFields']),
+        createdAt: mapDateTime(json, r'createdAt', r'')!,
         creatorConfirmed: mapValueOfType<bool>(json, r'creatorConfirmed')!,
         fee: mapValueOfType<int>(json, r'fee')!,
         format: ContentFormat.fromJson(json[r'format'])!,
@@ -220,6 +257,7 @@ class TermsVersionModel {
         payoutDays: mapValueOfType<int>(json, r'payoutDays')!,
         performance: TermsPerformanceModel.fromJson(json[r'performance']),
         pieces: mapValueOfType<int>(json, r'pieces')!,
+        previousMaxCash: mapValueOfType<int>(json, r'previousMaxCash'),
         productProvided: mapValueOfType<bool>(json, r'productProvided')!,
         proposedBy: TermsProposer.fromJson(json[r'proposedBy'])!,
         revisionScope: RevisionScope.fromJson(json[r'revisionScope'])!,
@@ -284,6 +322,8 @@ class TermsVersionModel {
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
     'brandConfirmed',
+    'changedFields',
+    'createdAt',
     'creatorConfirmed',
     'fee',
     'format',
@@ -291,6 +331,7 @@ class TermsVersionModel {
     'payoutDays',
     'performance',
     'pieces',
+    'previousMaxCash',
     'productProvided',
     'proposedBy',
     'revisionScope',

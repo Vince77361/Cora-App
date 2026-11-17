@@ -2203,6 +2203,32 @@
         ],
         "type": "object"
       },
+      "DropCollaborationDto": {
+        "properties": {
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DropReasonChoice"
+              }
+            ],
+            "description": "그만두는 이유. 서버에만 남고 상대에게는 알리지 않는다(상대는 \"이번에는 함께하기 어렵대요.\"만 본다)."
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "DropReasonChoice": {
+        "description": "그만두는 이유. 서버에만 남고 상대에게는 알리지 않는다(상대는 \"이번에는 함께하기 어렵대요.\"만 본다).",
+        "enum": [
+          "SCHEDULE",
+          "BUDGET",
+          "DIRECTION",
+          "OTHER"
+        ],
+        "type": "string"
+      },
       "EndOfferDto": {
         "properties": {
           "reason": {
@@ -4029,7 +4055,18 @@
             "type": "integer"
           },
           "fee": {
-            "description": "제작비(원). 1만 원 단위, 10000~10000000.",
+            "description": "제작비(원). 1만 원 단위, 10000~10000000. 빠지면 그대로.",
+            "type": "integer"
+          },
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentFormat"
+              }
+            ]
+          },
+          "payoutDays": {
+            "description": "게시 뒤 지급까지 걸리는 날(7 또는 14).",
             "type": "integer"
           },
           "performance": {
@@ -4038,19 +4075,48 @@
                 "$ref": "#/components/schemas/RewardPerformanceDto"
               }
             ],
-            "description": "성과 추가. 없으면 null. 블로그 글에는 붙일 수 없다.",
+            "description": "성과 추가. 빠지면 그대로, null이면 끈다. 블로그 글에는 붙일 수 없다.",
             "nullable": true,
             "type": "object"
           },
+          "pieces": {
+            "maximum": 3,
+            "minimum": 1,
+            "type": "integer"
+          },
           "productProvided": {
-            "description": "제품 제공 여부.",
+            "description": "제품 제공 여부. 빠지면 그대로.",
             "type": "boolean"
+          },
+          "revisionScope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RevisionScope"
+              }
+            ]
+          },
+          "startDate": {
+            "description": "제작 시작(YYYY-MM-DD). 바꾸는 값은 한국 시간 오늘 이후.",
+            "example": "2026-11-20",
+            "format": "date",
+            "type": "string"
+          },
+          "title": {
+            "description": "콘텐츠 제목(1~40자). 빠지면 그대로.",
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "usageRights": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BrandUsageRights"
+              }
+            ]
           }
         },
         "required": [
-          "baseVersion",
-          "fee",
-          "productProvided"
+          "baseVersion"
         ],
         "type": "object"
       },
@@ -5089,6 +5155,60 @@
         ],
         "type": "string"
       },
+      "TermsAgreement": {
+        "description": "최신 판본의 확인 상태. NONE = 아무도 확인하지 않음, WAITING_BRAND = 크리에이터만 확인, WAITING_CREATOR = 브랜드만 확인, AGREED = 양쪽 확인.",
+        "enum": [
+          "NONE",
+          "WAITING_BRAND",
+          "WAITING_CREATOR",
+          "AGREED"
+        ],
+        "type": "string"
+      },
+      "TermsField": {
+        "description": "바로 앞 판본에서 바뀐 항목. 판본 1은 빈 배열이다.",
+        "enum": [
+          "TITLE",
+          "FEE",
+          "PERFORMANCE",
+          "START_DATE",
+          "DELIVERABLE",
+          "PRODUCT",
+          "REVISION",
+          "USAGE",
+          "PAYOUT"
+        ],
+        "type": "string"
+      },
+      "TermsHistoryModel": {
+        "properties": {
+          "agreement": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TermsAgreement"
+              }
+            ],
+            "description": "최신 판본의 확인 상태. NONE = 아무도 확인하지 않음, WAITING_BRAND = 크리에이터만 확인, WAITING_CREATOR = 브랜드만 확인, AGREED = 양쪽 확인."
+          },
+          "editable": {
+            "description": "조건 수정 제안을 낼 수 있다: 협의할 수 있는 단계이고 브랜드 결제가 진행 중이 아니다.",
+            "type": "boolean"
+          },
+          "versions": {
+            "description": "판본 목록. 최신이 먼저다.",
+            "items": {
+              "$ref": "#/components/schemas/TermsVersionModel"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "versions",
+          "agreement",
+          "editable"
+        ],
+        "type": "object"
+      },
       "TermsLatestModel": {
         "properties": {
           "fields": {
@@ -5184,6 +5304,18 @@
             "description": "브랜드가 이 판본을 확인했다.",
             "type": "boolean"
           },
+          "changedFields": {
+            "description": "바로 앞 판본에서 바뀐 항목. 판본 1은 빈 배열이다.",
+            "items": {
+              "$ref": "#/components/schemas/TermsField"
+            },
+            "type": "array"
+          },
+          "createdAt": {
+            "description": "판본을 낸 시각.",
+            "format": "date-time",
+            "type": "string"
+          },
           "creatorConfirmed": {
             "description": "크리에이터가 이 판본을 확인했다.",
             "type": "boolean"
@@ -5219,6 +5351,11 @@
           },
           "pieces": {
             "description": "편 수(1~3).",
+            "type": "integer"
+          },
+          "previousMaxCash": {
+            "description": "바로 앞 판본의 최대 현금 부담. 판본 1은 null이다(화면이 \"A원 → B원\"으로 보여 준다).",
+            "nullable": true,
             "type": "integer"
           },
           "productProvided": {
@@ -5268,6 +5405,7 @@
           "fee",
           "performance",
           "maxCash",
+          "previousMaxCash",
           "startDate",
           "format",
           "pieces",
@@ -5276,7 +5414,9 @@
           "usageRights",
           "payoutDays",
           "brandConfirmed",
-          "creatorConfirmed"
+          "creatorConfirmed",
+          "changedFields",
+          "createdAt"
         ],
         "type": "object"
       },
@@ -6641,6 +6781,52 @@
         ]
       }
     },
+    "/collaborations/{id}/drop": {
+      "post": {
+        "operationId": "dropCollaboration",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DropCollaborationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollaborationModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "계약 전 협의를 그만둔다(당사자만). 이유는 상대에게 알리지 않는다. 계약 전 단계가 아니거나 브랜드가 결제를 진행 중이면 409.",
+        "tags": [
+          "Collaborations"
+        ]
+      }
+    },
     "/collaborations/{id}/payment-quote": {
       "get": {
         "operationId": "getPaymentQuote",
@@ -6806,6 +6992,40 @@
       }
     },
     "/collaborations/{id}/terms": {
+      "get": {
+        "operationId": "listTermsVersions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermsHistoryModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "조건 판본 이력(당사자만). 최신이 먼저이고 판본마다 바뀐 항목을 담는다. agreement는 최신 판본의 확인 상태, editable은 지금 수정 제안을 낼 수 있는가.",
+        "tags": [
+          "Terms"
+        ]
+      },
       "post": {
         "operationId": "proposeReward",
         "parameters": [
@@ -6845,7 +7065,7 @@
             "bearer": []
           }
         ],
-        "summary": "돈과 혜택만 바꿔 새 판본을 낸다(나머지 항목은 직전 판본에서 옮긴다). 낸 쪽은 확인함이고 단계는 협의가 된다. 최신 판본이 아니면 409 STALE_VERSION, 바뀐 것이 없으면 400.",
+        "summary": "새 판본을 낸다(조건 수정 제안). 빠진 항목은 직전 판본에서 옮기고 성과 추가는 null이면 끈다. 낸 쪽은 확인함이고 단계는 협의가 되며 크리에이터의 계약 동의는 취소된다. 최신 판본이 아니면 409 STALE_VERSION, 브랜드 결제가 진행 중이면 409, 바뀐 것이 없으면 400.",
         "tags": [
           "Terms"
         ]

@@ -22,6 +22,18 @@ void main() {
       // TODO
     });
 
+    // 바로 앞 판본에서 바뀐 항목. 판본 1은 빈 배열이다.
+    // List<TermsField> changedFields (default value: const [])
+    test('to test the property `changedFields`', () async {
+      // TODO
+    });
+
+    // 판본을 낸 시각.
+    // DateTime createdAt
+    test('to test the property `createdAt`', () async {
+      // TODO
+    });
+
     // 크리에이터가 이 판본을 확인했다.
     // bool creatorConfirmed
     test('to test the property `creatorConfirmed`', () async {
@@ -60,6 +72,12 @@ void main() {
     // 편 수(1~3).
     // int pieces
     test('to test the property `pieces`', () async {
+      // TODO
+    });
+
+    // 바로 앞 판본의 최대 현금 부담. 판본 1은 null이다(화면이 \"A원 → B원\"으로 보여 준다).
+    // int previousMaxCash
+    test('to test the property `previousMaxCash`', () async {
       // TODO
     });
 

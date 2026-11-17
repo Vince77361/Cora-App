@@ -30,6 +30,13 @@ void main() {
       // TODO
     });
 
+    // 계약 전 협의를 그만둔다(당사자만). 이유는 상대에게 알리지 않는다. 계약 전 단계가 아니거나 브랜드가 결제를 진행 중이면 409.
+    //
+    //Future<CollaborationModel> dropCollaboration(String id, DropCollaborationDto dropCollaborationDto) async
+    test('test dropCollaboration', () async {
+      // TODO
+    });
+
     //
     //
     //Future<CollaborationModel> getCollaboration(String id) async

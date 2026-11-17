@@ -7,6 +7,8 @@ import {
 } from '@prisma/client';
 import { MATCH_REASONS } from '../../recommendations/dto/recommendation-cards.model';
 import type { MatchReason } from '../../recommendations/match-score';
+import { TERMS_FIELDS } from '../terms-diff';
+import type { TermsField } from '../terms-diff';
 
 export const TERMS_PROPOSERS = ['BRAND', 'CREATOR', 'SYSTEM'] as const;
 
@@ -52,6 +54,14 @@ export class TermsVersionModel {
   })
   maxCash!: number;
 
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    description:
+      '바로 앞 판본의 최대 현금 부담. 판본 1은 null이다(화면이 "A원 → B원"으로 보여 준다).',
+  })
+  previousMaxCash!: number | null;
+
   @ApiProperty({ type: String, format: 'date', description: '제작 시작.' })
   startDate!: string;
 
@@ -81,6 +91,21 @@ export class TermsVersionModel {
 
   @ApiProperty({ description: '크리에이터가 이 판본을 확인했다.' })
   creatorConfirmed!: boolean;
+
+  @ApiProperty({
+    enum: TERMS_FIELDS,
+    enumName: 'TermsField',
+    isArray: true,
+    description: '바로 앞 판본에서 바뀐 항목. 판본 1은 빈 배열이다.',
+  })
+  changedFields!: TermsField[];
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    description: '판본을 낸 시각.',
+  })
+  createdAt!: string;
 }
 
 // 협업의 가장 최근 판본과 화면(06)이 함께 보여 주는 값.

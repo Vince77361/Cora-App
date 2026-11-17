@@ -28,6 +28,8 @@ export interface TermsValues {
   perfCap: number | null;
   brandConfirmedAt: Date | null;
   creatorConfirmedAt: Date | null;
+  // 판본을 낸 시각. 주면 그 값(Clock의 시각)을 쓰고, 안 주면 DB 기본값이다.
+  createdAt?: Date;
 }
 
 // 버전 1의 고정 값(공통 모델 7장 항목 표). 바꾸려면 새 판본을 낸다.

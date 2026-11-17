@@ -16,6 +16,7 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { ProposeRewardDto } from './dto/propose-reward.dto';
+import { TermsHistoryModel } from './dto/terms-history.model';
 import { TermsLatestModel, TermsVersionModel } from './dto/terms-version.model';
 import { NegotiationService } from './negotiation.service';
 
@@ -23,6 +24,20 @@ import { NegotiationService } from './negotiation.service';
 @Controller('collaborations/:id/terms')
 export class TermsController {
   constructor(private readonly negotiation: NegotiationService) {}
+
+  @Get()
+  @ApiOperation({
+    operationId: 'listTermsVersions',
+    summary:
+      '조건 판본 이력(당사자만). 최신이 먼저이고 판본마다 바뀐 항목을 담는다. agreement는 최신 판본의 확인 상태, editable은 지금 수정 제안을 낼 수 있는가.',
+  })
+  @ApiOkResponse({ type: TermsHistoryModel })
+  list(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<TermsHistoryModel> {
+    return this.negotiation.list(user.userId, id);
+  }
 
   @Get('latest')
   @ApiOperation({
@@ -41,7 +56,7 @@ export class TermsController {
   @ApiOperation({
     operationId: 'proposeReward',
     summary:
-      '돈과 혜택만 바꿔 새 판본을 낸다(나머지 항목은 직전 판본에서 옮긴다). 낸 쪽은 확인함이고 단계는 협의가 된다. 최신 판본이 아니면 409 STALE_VERSION, 바뀐 것이 없으면 400.',
+      '새 판본을 낸다(조건 수정 제안). 빠진 항목은 직전 판본에서 옮기고 성과 추가는 null이면 끈다. 낸 쪽은 확인함이고 단계는 협의가 되며 크리에이터의 계약 동의는 취소된다. 최신 판본이 아니면 409 STALE_VERSION, 브랜드 결제가 진행 중이면 409, 바뀐 것이 없으면 400.',
   })
   @ApiCreatedResponse({ type: TermsVersionModel })
   propose(
@@ -49,7 +64,7 @@ export class TermsController {
     @Param('id') id: string,
     @Body() body: ProposeRewardDto,
   ): Promise<TermsVersionModel> {
-    return this.negotiation.proposeReward(user.userId, id, body);
+    return this.negotiation.proposeTerms(user.userId, id, body);
   }
 
   @Post(':version/confirm')

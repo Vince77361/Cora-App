@@ -219,6 +219,9 @@ describe('terms version 1 and its confirmation', () => {
           payoutDays: 7,
           brandConfirmed: false,
           creatorConfirmed: false,
+          changedFields: [],
+          createdAt: expect.any(String) as string,
+          previousMaxCash: null,
         });
         expect(body.myTurn).toBe(true);
         expect(body.mine).toBe(false);

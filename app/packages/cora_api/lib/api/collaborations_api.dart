@@ -153,6 +153,77 @@ class CollaborationsApi {
     return null;
   }
 
+  /// 계약 전 협의를 그만둔다(당사자만). 이유는 상대에게 알리지 않는다. 계약 전 단계가 아니거나 브랜드가 결제를 진행 중이면 409.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [DropCollaborationDto] dropCollaborationDto (required):
+  Future<Response> dropCollaborationWithHttpInfo(
+    String id,
+    DropCollaborationDto dropCollaborationDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/collaborations/{id}/drop'.replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = dropCollaborationDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 계약 전 협의를 그만둔다(당사자만). 이유는 상대에게 알리지 않는다. 계약 전 단계가 아니거나 브랜드가 결제를 진행 중이면 409.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [DropCollaborationDto] dropCollaborationDto (required):
+  Future<CollaborationModel?> dropCollaboration(
+    String id,
+    DropCollaborationDto dropCollaborationDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await dropCollaborationWithHttpInfo(
+      id,
+      dropCollaborationDto,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(
+        await _decodeBodyBytes(response),
+        'CollaborationModel',
+      ) as CollaborationModel;
+    }
+    return null;
+  }
+
   ///
   ///
   /// Note: This method returns the HTTP [Response].

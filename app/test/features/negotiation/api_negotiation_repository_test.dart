@@ -19,6 +19,8 @@ ApiNegotiationRepository _repo(FakeHttpClient fake) => ApiNegotiationRepository(
 
 Map<String, Object?> _version({Map<String, Object?>? performance}) => {
   'brandConfirmed': false,
+  'changedFields': <String>[],
+  'createdAt': '2026-11-11T03:00:00.000Z',
   'creatorConfirmed': true,
   'fee': 300000,
   'format': 'REELS',
@@ -26,6 +28,7 @@ Map<String, Object?> _version({Map<String, Object?>? performance}) => {
   'payoutDays': 14,
   'performance': performance,
   'pieces': 2,
+  'previousMaxCash': null,
   'productProvided': true,
   'proposedBy': 'CREATOR',
   'revisionScope': 'DRAFT_2',

@@ -30,7 +30,14 @@ void main() {
       // TODO
     });
 
-    // 돈과 혜택만 바꿔 새 판본을 낸다(나머지 항목은 직전 판본에서 옮긴다). 낸 쪽은 확인함이고 단계는 협의가 된다. 최신 판본이 아니면 409 STALE_VERSION, 바뀐 것이 없으면 400.
+    // 조건 판본 이력(당사자만). 최신이 먼저이고 판본마다 바뀐 항목을 담는다. agreement는 최신 판본의 확인 상태, editable은 지금 수정 제안을 낼 수 있는가.
+    //
+    //Future<TermsHistoryModel> listTermsVersions(String id) async
+    test('test listTermsVersions', () async {
+      // TODO
+    });
+
+    // 새 판본을 낸다(조건 수정 제안). 빠진 항목은 직전 판본에서 옮기고 성과 추가는 null이면 끈다. 낸 쪽은 확인함이고 단계는 협의가 되며 크리에이터의 계약 동의는 취소된다. 최신 판본이 아니면 409 STALE_VERSION, 브랜드 결제가 진행 중이면 409, 바뀐 것이 없으면 400.
     //
     //Future<TermsVersionModel> proposeReward(String id, ProposeRewardDto proposeRewardDto) async
     test('test proposeReward', () async {

@@ -8,22 +8,27 @@ import {
 import { BrandsService } from '../brands/brands.service';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import {
+  BRAND_PAYMENT_LOCK_MINUTES,
   canTransition,
   negotiableStages,
 } from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
+import { kstDateString } from '../common/kst';
 import { AppError } from '../common/errors/app-error';
+import { ConversationsService } from '../conversations/conversations.service';
 import { CreatorsService } from '../creators/creators.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { needsInstagram } from '../offers/offer-rules';
 import { PrinciplesService } from '../principles/principles.service';
 import { matchScore } from '../recommendations/match-score';
-import { BrandProposal } from './draft-terms';
 import { ProposeRewardDto } from './dto/propose-reward.dto';
+import { TermsHistoryModel } from './dto/terms-history.model';
 import { TermsLatestModel, TermsVersionModel } from './dto/terms-version.model';
-import { nextTermsValues, proposalProblem, sameReward } from './proposal-rules';
+import { nextTermsValues, termsProblem, TermsEdit } from './proposal-rules';
+import { diffTerms } from './terms-diff';
 import {
+  agreementOf,
   isMyTurn,
   principleFieldLabels,
   termsNotice,
@@ -35,6 +40,9 @@ import { TermsService } from './terms.service';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const INSTAGRAM_REQUIRED_MESSAGE = '인스타그램을 연동하면 수락할 수 있어요.';
+const PAYMENT_IN_PROGRESS_MESSAGE =
+  '브랜드가 결제를 진행하고 있어요. 잠시 뒤 다시 시도해 주세요.';
+const MINUTE_MS = 60 * 1000;
 
 // 브랜드 계약의 조건 판본을 당사자에게 보여 주고 확인받는 서비스(06 화면).
 // 확인은 협업 행을 잠근 트랜잭션 안에서 조건부로 한 번만 반영한다: 같은 판본을 양쪽이 동시에 눌러도,
@@ -52,6 +60,7 @@ export class NegotiationService {
     private readonly creators: CreatorsService,
     private readonly principles: PrinciplesService,
     private readonly notifications: NotificationsService,
+    private readonly conversations: ConversationsService,
     private readonly clock: Clock,
   ) {}
 
@@ -67,14 +76,19 @@ export class NegotiationService {
     if (!latest || !campaign) throw this.notFound();
 
     const isCreator = collaboration.creatorId === userId;
-    const [principles, creator, brands] = await Promise.all([
+    const [previous, principles, creator, brands] = await Promise.all([
+      this.terms.versionBefore(collaboration.id, latest.version),
       this.principles.find(collaboration.creatorId),
       this.creators.getSummary(collaboration.creatorId),
       this.brands.findProfiles([collaboration.commissionerId]),
     ]);
     const brand = brands.get(collaboration.commissionerId);
     return {
-      terms: toTermsVersionModel(latest, collaboration.commissionerId),
+      terms: toTermsVersionModel(
+        latest,
+        collaboration.commissionerId,
+        previous,
+      ),
       notice: termsNotice(principles),
       fields: principleFieldLabels(principles),
       reasons:
@@ -99,8 +113,36 @@ export class NegotiationService {
     };
   }
 
+  // 판본 이력(12 화면). 최신이 먼저이고, 판본마다 바로 앞 판본과 비교한 바뀐 항목을 담는다.
+  // editable은 지금 조건 수정 제안을 낼 수 있는가: 협의할 수 있는 단계이고 브랜드 결제가 진행 중이 아니다.
+  async list(
+    userId: string,
+    collaborationId: string,
+  ): Promise<TermsHistoryModel> {
+    const collaboration = await this.requireParty(userId, collaborationId);
+    const rows = await this.terms.list(collaboration.id);
+    const latest = rows[0];
+    if (!latest) throw this.notFound();
+    const paymentOpen = await this.collaborations.hasOpenBrandPayment(
+      collaboration.id,
+      this.paymentLockSince(this.clock.now()),
+    );
+    return {
+      versions: rows.map((row, index) =>
+        toTermsVersionModel(
+          row,
+          collaboration.commissionerId,
+          rows[index + 1] ?? null,
+        ),
+      ),
+      agreement: agreementOf(latest),
+      editable: negotiableStages.includes(collaboration.stage) && !paymentOpen,
+    };
+  }
+
   // 내 쪽 확인 시각을 조건부로 채운다. 협업이 MATCHED면 NEGOTIATING으로, 양쪽이 다 확인했으면 AGREED로 옮긴다.
-  // 이미 확인한 판본을 다시 누르면 아무것도 바꾸지 않고 같은 판본을 돌려준다(알림도 다시 보내지 않는다).
+  // 이미 확인한 판본을 다시 누르면 아무것도 바꾸지 않고 같은 판본을 돌려준다(안내 줄도 알림도 다시 남기지 않는다).
+  // 확인이 반영되면 같은 트랜잭션에서 대화방에 안내 줄을 남기고(한쪽 TERMS_CONFIRMED, 양쪽 TERMS_AGREED) 커밋 뒤에 내보낸다.
   async confirm(
     userId: string,
     collaborationId: string,
@@ -112,60 +154,96 @@ export class NegotiationService {
     const connected = isCreator
       ? ((await this.creators.getSummary(userId))?.instagramConnected ?? false)
       : true;
+    const actor = await this.actorOf(collaboration, userId);
     const now = this.clock.now();
 
-    const { row, applied } = await this.repository.transaction(async (tx) => {
-      await this.repository.lockCollaboration(collaboration.id, tx);
-      const fresh = await this.collaborations.findById(collaboration.id, tx);
-      const latest = await this.terms.latest(collaboration.id, tx);
-      if (!fresh || !latest || !negotiableStages.includes(fresh.stage)) {
-        throw new AppError('CONFLICT', '지금은 조건을 확인할 수 없어요.');
-      }
-      if (latest.version !== version) {
-        throw new AppError('STALE_VERSION', '이전 판본이라 수락할 수 없어요.', {
-          latestVersion: latest.version,
-        });
-      }
-      if (
-        isCreator &&
-        needsInstagram(
-          { format: latest.format, perViewCap: latest.perfCap },
-          connected,
-        )
-      ) {
-        throw new AppError('CONFLICT', INSTAGRAM_REQUIRED_MESSAGE);
-      }
-      const applied = await this.repository.markConfirmed(
-        collaboration.id,
-        version,
-        isCreator ? 'CREATOR' : 'BRAND',
-        now,
-        tx,
-      );
-      if (!applied) return { row: latest, applied };
-      if (fresh.stage === 'MATCHED') {
-        await this.advanceOrFail(
+    const { row, applied, roomId, lineId } = await this.repository.transaction(
+      async (tx) => {
+        await this.repository.lockCollaboration(collaboration.id, tx);
+        const fresh = await this.collaborations.findById(collaboration.id, tx);
+        const latest = await this.terms.latest(collaboration.id, tx);
+        if (!fresh || !latest || !negotiableStages.includes(fresh.stage)) {
+          throw new AppError('CONFLICT', '지금은 조건을 확인할 수 없어요.');
+        }
+        if (latest.version !== version) {
+          throw new AppError(
+            'STALE_VERSION',
+            '이전 판본이라 수락할 수 없어요.',
+            { latestVersion: latest.version },
+          );
+        }
+        if (
+          isCreator &&
+          needsInstagram(
+            { format: latest.format, perViewCap: latest.perfCap },
+            connected,
+          )
+        ) {
+          throw new AppError('CONFLICT', INSTAGRAM_REQUIRED_MESSAGE);
+        }
+        const applied = await this.repository.markConfirmed(
           collaboration.id,
-          'MATCHED',
-          'NEGOTIATING',
+          version,
+          isCreator ? 'CREATOR' : 'BRAND',
+          now,
           tx,
         );
-      }
-      const after = (await this.terms.latest(collaboration.id, tx)) ?? latest;
-      if (after.brandConfirmedAt && after.creatorConfirmedAt) {
-        await this.advanceOrFail(collaboration.id, 'NEGOTIATING', 'AGREED', tx);
-      }
-      return { row: after, applied };
-    });
+        if (!applied) {
+          return { row: latest, applied, roomId: null, lineId: null };
+        }
+        if (fresh.stage === 'MATCHED') {
+          await this.advanceOrFail(
+            collaboration.id,
+            'MATCHED',
+            'NEGOTIATING',
+            tx,
+          );
+        }
+        const after = (await this.terms.latest(collaboration.id, tx)) ?? latest;
+        const agreed = !!after.brandConfirmedAt && !!after.creatorConfirmedAt;
+        if (agreed) {
+          await this.advanceOrFail(
+            collaboration.id,
+            'NEGOTIATING',
+            'AGREED',
+            tx,
+          );
+        }
+        const roomId = await this.conversations.idForCollaboration(
+          collaboration.id,
+          tx,
+        );
+        const line = roomId
+          ? await this.conversations.postSystem(
+              roomId,
+              agreed ? 'TERMS_AGREED' : 'TERMS_CONFIRMED',
+              agreed
+                ? { version: after.version }
+                : { name: actor.name, version: after.version },
+              tx,
+            )
+          : null;
+        return { row: after, applied, roomId, lineId: line?.id ?? null };
+      },
+    );
 
-    if (applied) await this.notifyConfirmed(collaboration, userId, row);
-    return toTermsVersionModel(row, collaboration.commissionerId);
+    if (applied) {
+      await this.publishRoom(roomId, lineId, 'TERMS');
+      await this.notifyConfirmed(collaboration, userId, row);
+    }
+    return toTermsVersionModel(
+      row,
+      collaboration.commissionerId,
+      await this.terms.versionBefore(collaboration.id, row.version),
+    );
   }
 
-  // 협업 중에 돈과 혜택(제작비, 제품 제공, 성과 추가)만 바꿔 새 판본을 낸다. 나머지 항목은 직전 판본에서 옮긴다.
-  // 확인과 같은 잠금 안에서 한다: 같은 판본을 보고 두 쪽이 동시에 내면 하나만 다음 판본이 되고 나머지는 409 STALE_VERSION이다.
-  // 낸 쪽은 "확인함", 상대는 "대기"이고 단계는 NEGOTIATING이다(합의돼 있었다면 합의가 취소된다).
-  async proposeReward(
+  // 협업 중에 새 판본을 낸다. 돈과 혜택만 바꾸는 길(F2)과 모든 항목을 바꾸는 수정 제안 화면이 이 한 함수를 쓴다.
+  // 빠진 항목은 직전 판본에서 옮기고, 낸 쪽은 "확인함", 상대는 "대기"이며 단계는 NEGOTIATING이다(합의돼 있었다면 합의가 취소된다).
+  // 확인·그만두기와 같은 잠금 안에서 한다: 같은 판본을 보고 두 쪽이 동시에 내면 하나만 다음 판본이 되고 나머지는 409 STALE_VERSION이고,
+  // 확인과 새 판본이 엇갈려도 지난 판본이 합의되지 않는다.
+  // 같은 트랜잭션에서: 브랜드가 아직 결제하지 않은 계약은 무효가 되고(크리에이터의 동의 취소) 안내 줄이 남는다.
+  async proposeTerms(
     userId: string,
     collaborationId: string,
     input: ProposeRewardDto,
@@ -175,68 +253,187 @@ export class NegotiationService {
     const connected = isCreator
       ? ((await this.creators.getSummary(userId))?.instagramConnected ?? false)
       : true;
-    const proposal: BrandProposal = {
-      fee: input.fee,
-      productProvided: input.productProvided,
-      performance: input.performance
-        ? {
-            ratePer1000: input.performance.ratePer1000,
-            cap: input.performance.cap,
-          }
-        : null,
+    const actor = await this.actorOf(collaboration, userId);
+    // 생성된 앱 클라이언트는 안 쓴 칸을 null로 보낸다: 성과 추가 말고는 null을 "빠짐"으로 읽는다(성과 추가의 null은 끔이다).
+    const edit: TermsEdit = {
+      title: input.title ?? undefined,
+      fee: input.fee ?? undefined,
+      performance:
+        input.performance === undefined || input.performance === null
+          ? input.performance
+          : {
+              ratePer1000: input.performance.ratePer1000,
+              cap: input.performance.cap,
+            },
+      startDate: input.startDate ?? undefined,
+      format: input.format ?? undefined,
+      pieces: input.pieces ?? undefined,
+      productProvided: input.productProvided ?? undefined,
+      revisionScope: input.revisionScope ?? undefined,
+      usageRights: input.usageRights ?? undefined,
+      payoutDays: input.payoutDays ?? undefined,
     };
     const now = this.clock.now();
 
-    const created = await this.repository.transaction(async (tx) => {
-      await this.repository.lockCollaboration(collaboration.id, tx);
-      const fresh = await this.collaborations.findById(collaboration.id, tx);
-      const latest = await this.terms.latest(collaboration.id, tx);
-      if (!fresh || !latest || !negotiableStages.includes(fresh.stage)) {
-        throw new AppError('CONFLICT', '지금은 조건을 제안할 수 없어요.');
-      }
-      if (latest.version !== input.baseVersion) {
-        throw new AppError('STALE_VERSION', '이전 판본이라 제안할 수 없어요.', {
-          latestVersion: latest.version,
-        });
-      }
-      const problem = proposalProblem(proposal, latest.format);
-      if (problem) throw new AppError('VALIDATION_FAILED', problem);
-      if (sameReward(latest, proposal)) {
-        throw new AppError('VALIDATION_FAILED', '바꾼 조건이 없어요.');
-      }
-      if (
-        isCreator &&
-        proposal.performance !== null &&
-        needsInstagram(
-          { format: latest.format, perViewCap: proposal.performance.cap },
-          connected,
-        )
-      ) {
-        throw new AppError('CONFLICT', INSTAGRAM_REQUIRED_MESSAGE);
-      }
-      const row = await this.terms.createVersion(
-        collaboration.id,
-        userId,
-        nextTermsValues(latest, proposal, isCreator ? 'CREATOR' : 'BRAND', now),
-        tx,
-      );
-      if (fresh.stage !== 'NEGOTIATING') {
-        // 단계 표가 원본이다: MATCHED와 AGREED만 협의로 옮길 수 있다.
-        if (!canTransition('BRAND_CONTRACT', fresh.stage, 'NEGOTIATING')) {
+    const { created, previous, roomId, lineIds } =
+      await this.repository.transaction(async (tx) => {
+        await this.repository.lockCollaboration(collaboration.id, tx);
+        const fresh = await this.collaborations.findById(collaboration.id, tx);
+        const latest = await this.terms.latest(collaboration.id, tx);
+        if (!fresh || !latest || !negotiableStages.includes(fresh.stage)) {
           throw new AppError('CONFLICT', '지금은 조건을 제안할 수 없어요.');
         }
-        await this.advanceOrFail(
+        if (latest.version !== input.baseVersion) {
+          throw new AppError(
+            'STALE_VERSION',
+            '상대가 먼저 새 조건을 제안했어요.',
+            { latestVersion: latest.version },
+          );
+        }
+        // 브랜드가 결제창을 연 사이에 조건이 바뀌면 결제 금액이 달라지므로 막는다(60분이 지나면 풀린다).
+        if (
+          await this.collaborations.hasOpenBrandPayment(
+            collaboration.id,
+            this.paymentLockSince(now),
+            tx,
+          )
+        ) {
+          throw new AppError('CONFLICT', PAYMENT_IN_PROGRESS_MESSAGE);
+        }
+        const values = nextTermsValues(
+          latest,
+          edit,
+          isCreator ? 'CREATOR' : 'BRAND',
+          now,
+        );
+        // 시작일은 이번에 바꾸는 값만 오늘 이후인지 본다(지난 시작일이 그대로인 판본에서 제작비만 바꾸는 협의를 막지 않는다).
+        const startDateChange =
+          edit.startDate !== undefined &&
+          edit.startDate !== latest.startDate.toISOString().slice(0, 10)
+            ? edit.startDate
+            : undefined;
+        const problem = termsProblem(
+          values,
+          startDateChange,
+          kstDateString(now),
+        );
+        if (problem) throw new AppError('VALIDATION_FAILED', problem);
+        if (diffTerms(latest, values).length === 0) {
+          throw new AppError('VALIDATION_FAILED', '바꾼 조건이 없어요.');
+        }
+        if (
+          isCreator &&
+          values.perfCap !== null &&
+          needsInstagram(
+            { format: values.format, perViewCap: values.perfCap },
+            connected,
+          )
+        ) {
+          throw new AppError('CONFLICT', INSTAGRAM_REQUIRED_MESSAGE);
+        }
+        const row = await this.terms.createVersion(
           collaboration.id,
-          fresh.stage,
-          'NEGOTIATING',
+          userId,
+          values,
           tx,
         );
-      }
-      return row;
-    });
+        if (fresh.stage !== 'NEGOTIATING') {
+          // 단계 표가 원본이다: MATCHED와 AGREED만 협의로 옮길 수 있다.
+          if (!canTransition('BRAND_CONTRACT', fresh.stage, 'NEGOTIATING')) {
+            throw new AppError('CONFLICT', '지금은 조건을 제안할 수 없어요.');
+          }
+          await this.advanceOrFail(
+            collaboration.id,
+            fresh.stage,
+            'NEGOTIATING',
+            tx,
+          );
+        }
+        const voided = await this.collaborations.voidPendingContract(
+          collaboration.id,
+          'NEW_TERMS',
+          now,
+          tx,
+        );
+        const roomId = await this.conversations.idForCollaboration(
+          collaboration.id,
+          tx,
+        );
+        const lineIds: string[] = [];
+        if (roomId) {
+          if (voided) {
+            lineIds.push(
+              (
+                await this.conversations.postSystem(
+                  roomId,
+                  'CONSENT_VOIDED',
+                  {},
+                  tx,
+                )
+              ).id,
+            );
+          }
+          lineIds.push(
+            (
+              await this.conversations.postSystem(
+                roomId,
+                'TERMS_PROPOSED',
+                {
+                  name: actor.name,
+                  version: row.version,
+                  proposerId: userId,
+                },
+                tx,
+              )
+            ).id,
+          );
+        }
+        return { created: row, previous: latest, roomId, lineIds };
+      });
 
+    for (const lineId of lineIds) {
+      await this.conversations.publishCreated(lineId);
+    }
+    if (roomId) await this.conversations.publishUpdated(roomId, 'TERMS');
     await this.notifyProposed(collaboration, userId, created);
-    return toTermsVersionModel(created, collaboration.commissionerId);
+    return toTermsVersionModel(created, collaboration.commissionerId, previous);
+  }
+
+  // 커밋 뒤에 안내 줄과 방의 변경을 참가자의 화면으로 밀어 준다(전달이 실패해도 던지지 않는다).
+  private async publishRoom(
+    roomId: string | null,
+    lineId: string | null,
+    reason: 'TERMS',
+  ): Promise<void> {
+    if (!roomId) return;
+    if (lineId) await this.conversations.publishCreated(lineId);
+    await this.conversations.publishUpdated(roomId, reason);
+  }
+
+  // 결제 잠금이 시작되는 시각의 경계: 이보다 늦게 요청된 PENDING 결제가 있으면 잠겨 있다.
+  private paymentLockSince(now: Date): Date {
+    return new Date(now.getTime() - BRAND_PAYMENT_LOCK_MINUTES * MINUTE_MS);
+  }
+
+  // 안내 줄과 알림에 쓰는 내 이름 사본. 못 읽으면 기본 이름으로 대신한다(조건 변경이 되돌아가지 않게).
+  private async actorOf(
+    collaboration: Collaboration,
+    userId: string,
+  ): Promise<{ userId: string; name: string; photoPath: string | null }> {
+    const byCreator = collaboration.creatorId === userId;
+    try {
+      const actor = byCreator
+        ? await this.creators.getActor(userId)
+        : await this.brands.getActor(userId);
+      if (actor) return actor;
+    } catch {
+      // 아래 기본 이름으로 대신한다.
+    }
+    return {
+      userId,
+      name: byCreator ? '크리에이터' : '브랜드',
+      photoPath: null,
+    };
   }
 
   // 잠금 안이라 실패할 길이 없지만, 실패하면 확인만 남고 단계가 안 움직인 채 끝나므로 트랜잭션째 되돌린다.
@@ -292,13 +489,7 @@ export class NegotiationService {
   ): Promise<void> {
     const byCreator = collaboration.creatorId === userId;
     try {
-      const actor = (byCreator
-        ? await this.creators.getActor(userId)
-        : await this.brands.getActor(userId)) ?? {
-        userId,
-        name: byCreator ? '크리에이터' : '브랜드',
-        photoPath: null,
-      };
+      const actor = await this.actorOf(collaboration, userId);
       await this.notifications.notify({
         userId: byCreator
           ? collaboration.commissionerId

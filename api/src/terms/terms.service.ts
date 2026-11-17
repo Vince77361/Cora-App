@@ -15,6 +15,25 @@ export class TermsService {
     return this.repository.findLatest(collaborationId, tx);
   }
 
+  // 바로 앞 판본(changedFields와 이전 최대 현금 부담을 읽는 쪽이 쓴다). 판본 1이면 null.
+  versionBefore(
+    collaborationId: string,
+    version: number,
+    tx?: Prisma.TransactionClient,
+  ): Promise<TermsVersion | null> {
+    return version <= 1
+      ? Promise.resolve(null)
+      : this.repository.findVersion(collaborationId, version - 1, tx);
+  }
+
+  // 협업의 모든 판본, 최신이 먼저.
+  list(
+    collaborationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<TermsVersion[]> {
+    return this.repository.listAll(collaborationId, tx);
+  }
+
   // 여러 협업의 가장 최근 판본(목록이 협업마다 읽지 않게). 판본이 없는 협업은 맵에 없다.
   latestMany(collaborationIds: string[]): Promise<Map<string, TermsVersion>> {
     return this.repository.findLatestMany(collaborationIds);

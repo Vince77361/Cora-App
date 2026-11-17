@@ -56,6 +56,28 @@ export class TermsRepository {
     });
   }
 
+  // 한 판본. 없으면 null.
+  findVersion(
+    collaborationId: string,
+    version: number,
+    tx?: Prisma.TransactionClient,
+  ): Promise<TermsVersion | null> {
+    return this.client(tx).termsVersion.findFirst({
+      where: { collaborationId, version, deletedAt: null },
+    });
+  }
+
+  // 협업의 모든 판본, 최신이 먼저.
+  listAll(
+    collaborationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<TermsVersion[]> {
+    return this.client(tx).termsVersion.findMany({
+      where: { collaborationId, deletedAt: null },
+      orderBy: { version: 'desc' },
+    });
+  }
+
   // 여러 협업의 가장 큰 번호 판본을 한 번에(협업마다 하나).
   async findLatestMany(
     collaborationIds: string[],

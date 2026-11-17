@@ -9,6 +9,8 @@ import 'package:cora_api/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **brandConfirmed** | **bool** | 브랜드가 이 판본을 확인했다. | 
+**changedFields** | [**List<TermsField>**](TermsField.md) | 바로 앞 판본에서 바뀐 항목. 판본 1은 빈 배열이다. | [default to const []]
+**createdAt** | [**DateTime**](DateTime.md) | 판본을 낸 시각. | 
 **creatorConfirmed** | **bool** | 크리에이터가 이 판본을 확인했다. | 
 **fee** | **int** | 제작비(원, 현금 고정비). | 
 **format** | [**ContentFormat**](ContentFormat.md) |  | 
@@ -16,6 +18,7 @@ Name | Type | Description | Notes
 **payoutDays** | **int** | 게시 뒤 지급까지 걸리는 날(7 또는 14). | 
 **performance** | [**TermsPerformanceModel**](TermsPerformanceModel.md) | 성과 추가(조회수 수당). 없으면 null. | 
 **pieces** | **int** | 편 수(1~3). | 
+**previousMaxCash** | **int** | 바로 앞 판본의 최대 현금 부담. 판본 1은 null이다(화면이 \"A원 → B원\"으로 보여 준다). | 
 **productProvided** | **bool** | 제품 제공 여부. | 
 **proposedBy** | [**TermsProposer**](TermsProposer.md) | SYSTEM은 서로 관심이 닿을 때 서버가 만든 버전 1이다. | 
 **revisionScope** | [**RevisionScope**](RevisionScope.md) |  | 

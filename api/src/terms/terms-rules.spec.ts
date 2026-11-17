@@ -1,5 +1,6 @@
 import type { TermsVersion } from '@prisma/client';
 import {
+  agreementOf,
   isMyTurn,
   proposedByOf,
   termsMaxCash,
@@ -75,7 +76,7 @@ describe('proposedByOf', () => {
 
 describe('toTermsVersionModel', () => {
   it('maps the stored version and uses the cash burden function for maxCash', () => {
-    expect(toTermsVersionModel(row(), 'brand')).toEqual({
+    expect(toTermsVersionModel(row(), 'brand', null)).toEqual({
       version: 1,
       proposedBy: 'SYSTEM',
       title: '출근길 한 컵 이야기',
@@ -91,13 +92,34 @@ describe('toTermsVersionModel', () => {
       payoutDays: 7,
       brandConfirmed: false,
       creatorConfirmed: false,
+      changedFields: [],
+      createdAt: '2026-11-11T03:00:00.000Z',
+      previousMaxCash: null,
     });
+  });
+
+  it('reports the fields and the maximum cash burden of the version before', () => {
+    const previous = row({ fee: 300000 });
+    const model = toTermsVersionModel(
+      row({
+        version: 2,
+        fee: 350000,
+        perfRatePerThousand: 2000,
+        perfCap: 60000,
+      }),
+      'brand',
+      previous,
+    );
+    expect(model.changedFields).toEqual(['FEE', 'PERFORMANCE']);
+    expect(model.maxCash).toBe(410000);
+    expect(model.previousMaxCash).toBe(300000);
   });
 
   it('adds the performance cap to the maximum cash burden', () => {
     const model = toTermsVersionModel(
       row({ perfRatePerThousand: 2000, perfCap: 60000 }),
       'brand',
+      null,
     );
     expect(model.performance).toEqual({ ratePer1000: 2000, cap: 60000 });
     expect(model.maxCash).toBe(360000);
@@ -107,6 +129,7 @@ describe('toTermsVersionModel', () => {
     const model = toTermsVersionModel(
       row({ brandConfirmedAt: new Date('2026-11-11T04:00:00.000Z') }),
       'brand',
+      null,
     );
     expect(model.brandConfirmed).toBe(true);
     expect(model.creatorConfirmed).toBe(false);
@@ -129,6 +152,18 @@ describe('termsMaxCash', () => {
     const withPerf = row({ perfRatePerThousand: 2000, perfCap: 60000 });
     expect(termsMaxCash(row())).toBe(300000);
     expect(termsMaxCash(withPerf)).toBe(360000);
-    expect(toTermsVersionModel(withPerf, 'brand').maxCash).toBe(360000);
+    expect(toTermsVersionModel(withPerf, 'brand', null).maxCash).toBe(360000);
+  });
+});
+
+describe('agreementOf', () => {
+  const at = new Date('2026-11-11T04:00:00.000Z');
+  it('reads only the confirmations of the version it is given', () => {
+    expect(agreementOf(row())).toBe('NONE');
+    expect(agreementOf(row({ creatorConfirmedAt: at }))).toBe('WAITING_BRAND');
+    expect(agreementOf(row({ brandConfirmedAt: at }))).toBe('WAITING_CREATOR');
+    expect(
+      agreementOf(row({ brandConfirmedAt: at, creatorConfirmedAt: at })),
+    ).toBe('AGREED');
   });
 });

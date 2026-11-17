@@ -174,6 +174,37 @@ export class CollaborationsRepository {
     });
   }
 
+  transaction<T>(
+    run: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return this.prisma.$transaction(run);
+  }
+
+  // 이 협업 행 하나를 트랜잭션이 끝날 때까지 잠근다. 조건 확인·새 판본·그만두기가 같은 협업에서는 한 줄로 서게 한다.
+  async lock(id: string, tx: Prisma.TransactionClient): Promise<void> {
+    await tx.$queryRaw`
+      SELECT id FROM collaborations WHERE id = ${id}::uuid FOR UPDATE`;
+  }
+
+  // 브랜드의 결제가 진행 중인가: PENDING이고 요청한 지 since 이후다(since = 지금 - 결제 잠금 시간).
+  // 결제를 만드는 쪽(7번 작업)이 이 표에 행을 넣는다. 다른 모듈의 표라 이 저장소가 직접 읽는다(R10). 읽기만 하고 잠그지 않는다:
+  // 결제 승인은 결제 → 협업 순서로 잠그므로 여기서 결제 행을 잠그면 거꾸로 잡힌다.
+  async hasOpenBrandPayment(
+    collaborationId: string,
+    since: Date,
+    tx?: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const count = await this.client(tx).payment.count({
+      where: {
+        collaborationId,
+        status: 'PENDING',
+        requestedAt: { gt: since },
+        deletedAt: null,
+      },
+    });
+    return count > 0;
+  }
+
   // 아직 브랜드가 결제하지 않은(AWAITING_BRAND) 계약을 무효로 만든다. 협업이 끝나거나 조건이 바뀔 때 부른다.
   // 체결된(CONCLUDED) 계약은 건드리지 않는다: 체결된 협업은 돈이 보관 중이라 이 길로 끝나지 않는다.
   async voidPendingContract(

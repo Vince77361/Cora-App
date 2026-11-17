@@ -342,6 +342,10 @@ class ApiClient {
           return DisputeViewReportDto.fromJson(value);
         case 'DraftSceneModel':
           return DraftSceneModel.fromJson(value);
+        case 'DropCollaborationDto':
+          return DropCollaborationDto.fromJson(value);
+        case 'DropReasonChoice':
+          return DropReasonChoiceTypeTransformer().decode(value);
         case 'EndOfferDto':
           return EndOfferDto.fromJson(value);
         case 'EndedOfferModel':
@@ -562,6 +566,12 @@ class ApiClient {
           return SwipeDecisionKindTypeTransformer().decode(value);
         case 'SwipeTargetKind':
           return SwipeTargetKindTypeTransformer().decode(value);
+        case 'TermsAgreement':
+          return TermsAgreementTypeTransformer().decode(value);
+        case 'TermsField':
+          return TermsFieldTypeTransformer().decode(value);
+        case 'TermsHistoryModel':
+          return TermsHistoryModel.fromJson(value);
         case 'TermsLatestModel':
           return TermsLatestModel.fromJson(value);
         case 'TermsPerformanceModel':

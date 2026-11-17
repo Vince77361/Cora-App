@@ -4,10 +4,13 @@ import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
+import { RealtimePublisher } from '../src/realtime/realtime-publisher';
 import { createTestApp, httpOf } from './helpers/create-test-app';
+import { flushMessages } from './helpers/flush-messages';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
 import { FakePushPort } from './support/fake-push.port';
+import { FakeRealtimePublisher } from './support/fake-realtime-publisher';
 import { OTHER, USER_A } from './support/fake-token-verifier';
 
 // user-a는 브랜드, user-b는 크리에이터다.
@@ -53,6 +56,9 @@ interface TermsBody {
   payoutDays: number;
   brandConfirmed: boolean;
   creatorConfirmed: boolean;
+  changedFields: string[];
+  previousMaxCash: number | null;
+  createdAt: string;
 }
 interface LatestBody {
   terms: TermsBody;
@@ -67,6 +73,7 @@ describe('proposing a new terms version (proposeReward)', () => {
   let server: ReturnType<typeof httpOf>;
   let clock: FakeClock;
   let push: FakePushPort;
+  let realtime: FakeRealtimePublisher;
 
   const codeOf = (res: request.Response) =>
     (res.body as { error: { code: string } }).error.code;
@@ -162,15 +169,17 @@ describe('proposing a new terms version (proposeReward)', () => {
 
   beforeAll(async () => {
     prisma = new PrismaClient();
-    app = await createTestApp();
+    app = await createTestApp([], { fakeRealtime: true });
     server = httpOf(app);
     clock = app.get<FakeClock>(Clock);
     push = app.get<FakePushPort>(PushPort);
+    realtime = app.get<FakeRealtimePublisher>(RealtimePublisher);
   });
   beforeEach(async () => {
     await truncateTestDb(prisma);
     clock.set(NOON);
     push.sent.length = 0;
+    realtime.sent.length = 0;
   });
   afterAll(async () => {
     await app.close();
@@ -499,6 +508,591 @@ describe('proposing a new terms version (proposeReward)', () => {
       push.sent.length = 0;
       await propose(authCreator, id, same({ fee: 280000 })).expect(201);
       expect(push.sent.map((p) => p.userId)).toEqual([USER_A]);
+    });
+  });
+  // --- 5번 계획 Task 6: 모든 항목을 바꾸는 수정 제안, 안내 줄, 결제 잠금 ---
+  describe('the full terms edit', () => {
+    interface Line {
+      kind: string;
+      text: string | null;
+      mine: boolean;
+    }
+    const roomOf = async (collaborationId: string) =>
+      (
+        await prisma.conversation.findUniqueOrThrow({
+          where: { collaborationId },
+        })
+      ).id;
+    const linesOf = async (
+      auth: Record<string, string>,
+      collaborationId: string,
+    ): Promise<string[]> =>
+      (
+        (
+          await request(server)
+            .get(`/conversations/${await roomOf(collaborationId)}/messages`)
+            .set(auth)
+            .expect(200)
+        ).body as Line[]
+      )
+        .filter((m) => m.kind === 'SYSTEM')
+        .map((m) => m.text ?? '');
+    const insertContract = (collaborationId: string, version = 1) =>
+      prisma.contract.create({
+        data: {
+          collaborationId,
+          status: 'AWAITING_BRAND',
+          termsVersion: version,
+          termsSnapshot: {},
+          creatorConsentedAt: NOON,
+          creatorConsentTexts: ['a', 'b', 'c'],
+          brandConsentTexts: [],
+        },
+      });
+    const insertPayment = (
+      collaborationId: string,
+      status: 'PENDING' | 'APPROVED',
+      requestedAt: Date,
+    ) =>
+      prisma.payment.create({
+        data: {
+          collaborationId,
+          amountEscrow: 300000,
+          amountFee: 30000,
+          feeRate: 10,
+          method: 'CARD',
+          status,
+          requestedAt,
+        },
+      });
+    const minutes = (n: number) => new Date(NOON.getTime() + n * 60_000);
+    const listTerms = async (auth: Record<string, string>, id: string) =>
+      (
+        await request(server)
+          .get(`/collaborations/${id}/terms`)
+          .set(auth)
+          .expect(200)
+      ).body as {
+        versions: TermsBody[] & { changedFields: string[] }[];
+        agreement: string;
+        editable: boolean;
+      };
+
+    it('lists the changed fields and both max cash values of a new version', async () => {
+      const id = await matchUp(await makeBoth());
+      const res = await propose(
+        authBrand,
+        id,
+        same({
+          fee: 350000,
+          startDate: '2026-11-25',
+          performance: PERFORMANCE,
+        }),
+      ).expect(201);
+      expect(res.body).toMatchObject({
+        version: 2,
+        changedFields: ['FEE', 'PERFORMANCE', 'START_DATE'],
+        maxCash: 410000,
+        previousMaxCash: 300000,
+        startDate: '2026-11-25',
+        createdAt: NOON.toISOString(),
+      });
+    });
+
+    it('changes every item at once and leaves an absent item as it was', async () => {
+      const id = await matchUp(await makeBoth());
+      const res = await propose(authBrand, id, {
+        baseVersion: 1,
+        title: '새 제목',
+        startDate: '2026-12-01',
+        format: 'SHORTS',
+        pieces: 3,
+        productProvided: false,
+        revisionScope: 'DRAFT_2',
+        usageRights: 'ADS_TOO',
+        payoutDays: 14,
+      }).expect(201);
+      expect(res.body).toMatchObject({
+        version: 2,
+        title: '새 제목',
+        fee: 300000,
+        startDate: '2026-12-01',
+        format: 'SHORTS',
+        pieces: 3,
+        productProvided: false,
+        revisionScope: 'DRAFT_2',
+        usageRights: 'ADS_TOO',
+        payoutDays: 14,
+        performance: null,
+        changedFields: [
+          'TITLE',
+          'START_DATE',
+          'DELIVERABLE',
+          'PRODUCT',
+          'REVISION',
+          'USAGE',
+          'PAYOUT',
+        ],
+      });
+    });
+
+    it('reads a null item as left out, the way the generated app client sends unused items', async () => {
+      const id = await matchUp(await makeBoth());
+      const res = await propose(authBrand, id, {
+        baseVersion: 1,
+        fee: 350000,
+        productProvided: null,
+        performance: null,
+        title: null,
+        startDate: null,
+        format: null,
+        pieces: null,
+        revisionScope: null,
+        usageRights: null,
+        payoutDays: null,
+      }).expect(201);
+      expect(res.body).toMatchObject({
+        version: 2,
+        fee: 350000,
+        title: '아침 한 컵',
+        startDate: '2026-11-20',
+        format: 'REELS',
+        pieces: 1,
+        productProvided: true,
+        payoutDays: 7,
+        changedFields: ['FEE'],
+      });
+    });
+
+    it('keeps the performance bonus when it is left out and drops it only for null', async () => {
+      const id = await matchUp(await makeBoth());
+      await propose(
+        authBrand,
+        id,
+        same({ fee: 350000, performance: PERFORMANCE }),
+      ).expect(201);
+      const kept = await propose(authCreator, id, {
+        baseVersion: 2,
+        title: '아침 한 컵 2',
+      });
+      // 성과 추가를 새로 켜지 않고 그대로 두는 제안이어도 결과 판본에 릴스의 성과 추가가 있으면 연동 검사가 걸린다.
+      expect(kept.status).toBe(409);
+      await connectInstagram();
+      const ok = await propose(authCreator, id, {
+        baseVersion: 2,
+        title: '아침 한 컵 2',
+      }).expect(201);
+      expect((ok.body as TermsBody).performance).toEqual(PERFORMANCE);
+      const off = await propose(authBrand, id, {
+        baseVersion: 3,
+        performance: null,
+      }).expect(201);
+      expect(off.body).toMatchObject({
+        performance: null,
+        changedFields: ['PERFORMANCE'],
+        maxCash: 350000,
+        previousMaxCash: 410000,
+      });
+    });
+
+    it('rejects values outside the limits', async () => {
+      const id = await matchUp(await makeBoth());
+      const bad = (body: Record<string, unknown>) =>
+        propose(authBrand, id, { baseVersion: 1, ...body }).expect(400);
+      await bad({ title: '가'.repeat(41) });
+      await bad({ title: '   ' });
+      await bad({ pieces: 4 });
+      await bad({ pieces: 0 });
+      await bad({ payoutDays: 10 });
+      await bad({ startDate: '2026-11-10' });
+      await bad({ startDate: '2026-02-30' });
+      await bad({ format: 'PODCAST' });
+      await bad({ fee: 455000 });
+      expect(await prisma.termsVersion.count()).toBe(1);
+      // 시작일은 오늘(한국 날짜)도 된다.
+      await propose(authBrand, id, {
+        baseVersion: 1,
+        startDate: '2026-11-11',
+      }).expect(201);
+    });
+
+    it('rejects a performance bonus on a blog post with the blog message, also when only the format changes', async () => {
+      const id = await matchUp(await makeBoth());
+      const withBonus = await propose(
+        authBrand,
+        id,
+        same({ performance: PERFORMANCE }),
+      ).expect(201);
+      expect((withBonus.body as TermsBody).version).toBe(2);
+      const res = await propose(authBrand, id, {
+        baseVersion: 2,
+        format: 'BLOG',
+      }).expect(400);
+      expect(messageOf(res)).toBe('블로그 글은 조회수를 셀 수 없어요.');
+      // 성과 추가를 함께 끄면 블로그로 바꿀 수 있다.
+      await propose(authBrand, id, {
+        baseVersion: 2,
+        format: 'BLOG',
+        performance: null,
+      }).expect(201);
+    });
+
+    it('requires a linked instagram account when a creator changes the format to reels on a version with a performance bonus', async () => {
+      const id = await matchUp(await makeBoth({ format: 'SHORTS' }));
+      await propose(authBrand, id, same({ performance: PERFORMANCE })).expect(
+        201,
+      );
+      // 쇼츠에서 바꾸는 제안은 검사하지 않는다.
+      const res = await propose(authCreator, id, {
+        baseVersion: 2,
+        format: 'REELS',
+      }).expect(409);
+      expect(messageOf(res)).toBe('인스타그램을 연동하면 수락할 수 있어요.');
+      await propose(authCreator, id, {
+        baseVersion: 2,
+        title: '쇼츠 제목',
+      }).expect(201);
+      // 카드뉴스도 같다. 연동하면 통과한다.
+      await propose(authBrand, id, { baseVersion: 3, fee: 310000 }).expect(201);
+      await propose(authCreator, id, {
+        baseVersion: 4,
+        format: 'CARD_NEWS',
+      }).expect(409);
+      await connectInstagram();
+      await propose(authCreator, id, {
+        baseVersion: 4,
+        format: 'CARD_NEWS',
+      }).expect(201);
+    });
+
+    it('creates the same kind of version from the reward-only call and the full proposal call', async () => {
+      const id = await matchUp(await makeBoth());
+      await propose(
+        authBrand,
+        id,
+        same({ fee: 400000, productProvided: false, performance: PERFORMANCE }),
+      ).expect(201);
+      // 아무것도 바꾸지 않은 전체 본문도 "바꾼 조건이 없어요."다.
+      const full = {
+        baseVersion: 2,
+        fee: 400000,
+        productProvided: false,
+        performance: PERFORMANCE,
+        title: '아침 한 컵',
+        startDate: '2026-11-20',
+        format: 'REELS',
+        pieces: 1,
+        revisionScope: 'GUIDE_1',
+        usageRights: 'REPOST_ONLY',
+        payoutDays: 7,
+      };
+      expect(messageOf(await propose(authBrand, id, full).expect(400))).toBe(
+        '바꾼 조건이 없어요.',
+      );
+      const second = await propose(authBrand, id, {
+        ...full,
+        fee: 410000,
+      }).expect(201);
+      expect((second.body as TermsBody).changedFields).toEqual(['FEE']);
+      const rows = await prisma.termsVersion.findMany({
+        where: { version: { in: [2, 3] } },
+        orderBy: { version: 'asc' },
+      });
+      const shape = (r: (typeof rows)[number]) => ({
+        ...r,
+        id: undefined,
+        version: undefined,
+        fee: undefined,
+        createdAt: undefined,
+        updatedAt: undefined,
+      });
+      // 두 길이 만든 판본은 제작비와 번호 말고는 같은 모양이다(같은 서비스 함수).
+      expect(shape(rows[1])).toEqual(shape(rows[0]));
+    });
+
+    it('voids the creator consent when a new version is proposed', async () => {
+      const id = await matchUp(await makeBoth());
+      await confirm(authBrand, id, 1).expect(200);
+      await confirm(authCreator, id, 1).expect(200);
+      const contract = await insertContract(id);
+      await propose(authBrand, id, same({ fee: 400000 })).expect(201);
+      expect(
+        await prisma.contract.findUniqueOrThrow({ where: { id: contract.id } }),
+      ).toMatchObject({ status: 'VOIDED', voidReason: 'NEW_TERMS' });
+      expect(await stageOf(id)).toBe('NEGOTIATING');
+      // 안내 줄은 동의 취소가 먼저, 그다음 제안이다.
+      expect((await linesOf(authCreator, id)).slice(-2)).toEqual([
+        '조건이 바뀌어 계약 동의가 취소됐어요.',
+        '느린결님이 조건 버전 2를 제안했어요.',
+      ]);
+    });
+
+    it('leaves a concluded contract alone', async () => {
+      const id = await matchUp(await makeBoth());
+      const contract = await insertContract(id);
+      await prisma.contract.update({
+        where: { id: contract.id },
+        data: { status: 'CONCLUDED', concludedAt: NOON },
+      });
+      await prisma.collaboration.update({
+        where: { id },
+        data: { stage: 'CONTRACTED' },
+      });
+      await propose(authBrand, id, same({ fee: 400000 })).expect(409);
+      expect(
+        (
+          await prisma.contract.findUniqueOrThrow({
+            where: { id: contract.id },
+          })
+        ).status,
+      ).toBe('CONCLUDED');
+    });
+
+    it('refuses a proposal while the brand payment is pending and allows it once the lock has passed', async () => {
+      const id = await matchUp(await makeBoth());
+      await confirm(authBrand, id, 1).expect(200);
+      await confirm(authCreator, id, 1).expect(200);
+      await insertPayment(id, 'PENDING', NOON);
+      clock.set(minutes(59));
+      const res = await propose(authCreator, id, same({ fee: 280000 })).expect(
+        409,
+      );
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect(messageOf(res)).toBe(
+        '브랜드가 결제를 진행하고 있어요. 잠시 뒤 다시 시도해 주세요.',
+      );
+      expect(await prisma.termsVersion.count()).toBe(1);
+      expect(await stageOf(id)).toBe('AGREED');
+      expect((await listTerms(authCreator, id)).editable).toBe(false);
+      // 61분 뒤에는 열려 있던 결제를 없는 것으로 본다.
+      clock.set(minutes(61));
+      expect((await listTerms(authCreator, id)).editable).toBe(true);
+      await propose(authCreator, id, same({ fee: 280000 })).expect(201);
+    });
+
+    it('does not lock on a payment that is not pending', async () => {
+      const id = await matchUp(await makeBoth());
+      await insertPayment(id, 'APPROVED', NOON);
+      await propose(authBrand, id, same({ fee: 400000 })).expect(201);
+    });
+
+    it('does not count confirmations of an older version toward agreement', async () => {
+      const id = await matchUp(await makeBoth());
+      await confirm(authBrand, id, 1).expect(200);
+      await propose(authCreator, id, same({ fee: 280000 })).expect(201);
+      // 브랜드의 판본 1 확인과 크리에이터의 판본 2 제안은 서로 다른 판본이라 합의가 아니다.
+      expect(await stageOf(id)).toBe('NEGOTIATING');
+      const view = await listTerms(authBrand, id);
+      expect(view.agreement).toBe('WAITING_BRAND');
+      const stale = await confirm(authCreator, id, 1).expect(409);
+      expect(codeOf(stale)).toBe('STALE_VERSION');
+      expect(await stageOf(id)).toBe('NEGOTIATING');
+    });
+
+    it('still returns STALE_VERSION when confirming version 2 once version 3 exists', async () => {
+      const id = await matchUp(await makeBoth());
+      await propose(authBrand, id, same({ fee: 280000 })).expect(201);
+      await propose(
+        authBrand,
+        id,
+        same({ baseVersion: 2, fee: 270000 }),
+      ).expect(201);
+      const before = await prisma.termsVersion.findFirstOrThrow({
+        where: { version: 2 },
+      });
+      const res = await confirm(authCreator, id, 2).expect(409);
+      expect(codeOf(res)).toBe('STALE_VERSION');
+      expect(JSON.stringify(res.body)).toContain('"latestVersion":3');
+      const after = await prisma.termsVersion.findFirstOrThrow({
+        where: { version: 2 },
+      });
+      expect(after.creatorConfirmedAt).toEqual(before.creatorConfirmedAt);
+    });
+
+    it('never agrees the older version when a confirmation and a proposal cross', async () => {
+      const id = await matchUp(await makeBoth());
+      await confirm(authBrand, id, 1).expect(200);
+      await Promise.all([
+        confirm(authCreator, id, 1),
+        propose(authBrand, id, same({ fee: 400000 })),
+      ]);
+      // 어느 쪽이 먼저든 새 판본이 있고, 새 판본은 브랜드만 확인했으므로 합의가 아니다.
+      expect(await prisma.termsVersion.count()).toBe(2);
+      expect(await stageOf(id)).toBe('NEGOTIATING');
+    });
+  });
+
+  describe('the terms history', () => {
+    const history = async (auth: Record<string, string>, id: string) =>
+      (
+        await request(server)
+          .get(`/collaborations/${id}/terms`)
+          .set(auth)
+          .expect(200)
+      ).body as {
+        versions: (TermsBody & {
+          changedFields: string[];
+          previousMaxCash: number | null;
+        })[];
+        agreement: string;
+        editable: boolean;
+      };
+
+    it('lists the versions newest first with what changed and whom it is waiting for', async () => {
+      const id = await matchUp(await makeBoth());
+      let view = await history(authBrand, id);
+      expect(view.versions.map((v) => v.version)).toEqual([1]);
+      expect(view).toMatchObject({ agreement: 'NONE', editable: true });
+      expect(view.versions[0]).toMatchObject({
+        changedFields: [],
+        previousMaxCash: null,
+      });
+
+      await propose(authBrand, id, same({ fee: 350000 })).expect(201);
+      view = await history(authCreator, id);
+      expect(view.versions.map((v) => v.version)).toEqual([2, 1]);
+      expect(view.versions[0]).toMatchObject({
+        changedFields: ['FEE'],
+        previousMaxCash: 300000,
+        maxCash: 350000,
+      });
+      expect(view.versions[1].changedFields).toEqual([]);
+      expect(view.agreement).toBe('WAITING_CREATOR');
+
+      await confirm(authCreator, id, 2).expect(200);
+      expect((await history(authBrand, id)).agreement).toBe('AGREED');
+      await propose(
+        authCreator,
+        id,
+        same({ baseVersion: 2, fee: 340000 }),
+      ).expect(201);
+      expect((await history(authBrand, id)).agreement).toBe('WAITING_BRAND');
+    });
+
+    it('is not editable once the contract is concluded or after the negotiation was dropped', async () => {
+      const id = await matchUp(await makeBoth());
+      await prisma.collaboration.update({
+        where: { id },
+        data: { stage: 'CONTRACTED' },
+      });
+      expect((await history(authBrand, id)).editable).toBe(false);
+    });
+
+    it('returns 404 to someone who is not a party', async () => {
+      await matchUp(await makeBoth());
+      await request(server)
+        .get(`/collaborations/${randomUUID()}/terms`)
+        .set(authBrand)
+        .expect(404);
+      await request(server)
+        .get('/collaborations/not-a-uuid/terms')
+        .set(authBrand)
+        .expect(404);
+      await request(server)
+        .get(`/collaborations/${randomUUID()}/terms`)
+        .expect(401);
+    });
+
+    it('also reads latest with the changed fields of that version', async () => {
+      const id = await matchUp(await makeBoth());
+      await propose(authBrand, id, same({ fee: 350000 })).expect(201);
+      expect((await latestOf(authCreator, id)).terms).toMatchObject({
+        changedFields: ['FEE'],
+        previousMaxCash: 300000,
+      });
+    });
+  });
+
+  describe('system lines and conversation updates', () => {
+    interface Line {
+      kind: string;
+      text: string | null;
+    }
+    const systemLines = async (auth: Record<string, string>, id: string) => {
+      const room = await prisma.conversation.findUniqueOrThrow({
+        where: { collaborationId: id },
+      });
+      return (
+        (
+          await request(server)
+            .get(`/conversations/${room.id}/messages`)
+            .set(auth)
+            .expect(200)
+        ).body as Line[]
+      )
+        .filter((m) => m.kind === 'SYSTEM')
+        .map((m) => m.text ?? '');
+    };
+    const updates = (userId: string, reason: string) =>
+      realtime
+        .receivedBy(userId, 'conversation.updated')
+        .filter((e) => (e.payload as { reason: string }).reason === reason);
+
+    it('writes a proposal line worded for each reader and pushes it live to both', async () => {
+      const id = await matchUp(await makeBoth());
+      realtime.sent.length = 0;
+      await propose(authBrand, id, same({ fee: 400000 })).expect(201);
+      await flushMessages(app);
+      expect((await systemLines(authCreator, id)).pop()).toBe(
+        '느린결님이 조건 버전 2를 제안했어요.',
+      );
+      expect((await systemLines(authBrand, id)).pop()).toBe(
+        '조건 버전 2를 제안했어요.',
+      );
+      expect(realtime.receivedBy(OTHER, 'message.created')).toHaveLength(1);
+      expect(realtime.receivedBy(USER_A, 'message.created')).toHaveLength(1);
+      expect(updates(OTHER, 'TERMS')).toHaveLength(1);
+      expect(updates(USER_A, 'TERMS')).toHaveLength(1);
+    });
+
+    it('writes a line for one confirmation and a single agreement line for both', async () => {
+      const id = await matchUp(await makeBoth());
+      realtime.sent.length = 0;
+      await confirm(authBrand, id, 1).expect(200);
+      expect((await systemLines(authCreator, id)).pop()).toBe(
+        '느린결님이 조건 버전 1을 확인했어요.',
+      );
+      expect(updates(OTHER, 'TERMS')).toHaveLength(1);
+      const before = (await systemLines(authCreator, id)).length;
+      await confirm(authCreator, id, 1).expect(200);
+      const lines = await systemLines(authBrand, id);
+      expect(lines).toHaveLength(before + 1);
+      expect(lines.pop()).toBe('양쪽이 조건 버전 1을 확인했어요.');
+      expect(updates(USER_A, 'TERMS')).toHaveLength(2);
+    });
+
+    it('does not repeat the line or the update when the same version is confirmed again', async () => {
+      const id = await matchUp(await makeBoth());
+      await confirm(authBrand, id, 1).expect(200);
+      const count = (await systemLines(authBrand, id)).length;
+      realtime.sent.length = 0;
+      await confirm(authBrand, id, 1).expect(200);
+      expect(await systemLines(authBrand, id)).toHaveLength(count);
+      expect(realtime.sent).toHaveLength(0);
+    });
+
+    it('sends the terms notification but no message push for the system line', async () => {
+      const id = await matchUp(await makeBoth());
+      push.sent.length = 0;
+      await propose(authBrand, id, same({ fee: 400000 })).expect(201);
+      await confirm(authCreator, id, 2).expect(200);
+      await flushMessages(app);
+      // 제안과 확인 각각 알림 하나씩만 나간다(안내 줄의 대화 메시지 푸시는 없다).
+      expect(push.sent.map((p) => p.userId)).toEqual([OTHER, USER_A]);
+    });
+
+    it('does not write a line or update when the proposal is refused', async () => {
+      const id = await matchUp(await makeBoth());
+      const lines = (await systemLines(authBrand, id)).length;
+      realtime.sent.length = 0;
+      await propose(authBrand, id, same()).expect(400);
+      await propose(
+        authBrand,
+        id,
+        same({ baseVersion: 7, fee: 400000 }),
+      ).expect(409);
+      expect(await systemLines(authBrand, id)).toHaveLength(lines);
+      expect(realtime.sent).toHaveLength(0);
     });
   });
 });

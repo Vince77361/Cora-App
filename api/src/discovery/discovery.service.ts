@@ -619,7 +619,12 @@ export class DiscoveryService {
         creatorRow.note ?? collaboration.creatorNote,
         proposalOf(brandRow),
       );
-      await this.terms.createVersion(collaboration.id, null, values, tx);
+      await this.terms.createVersion(
+        collaboration.id,
+        null,
+        { ...values, createdAt: now },
+        tx,
+      );
     }
     // 협업과 같은 트랜잭션에서 방을 연다(방 없는 협업이 생기지 않게). 문의로 먼저 생긴 협업은 방이 이미 있다.
     const room = await this.conversations.openForCollaboration(

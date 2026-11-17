@@ -14,9 +14,16 @@ class ProposeRewardDto {
   /// Returns a new [ProposeRewardDto] instance.
   ProposeRewardDto({
     required this.baseVersion,
-    required this.fee,
+    this.fee,
+    this.format,
+    this.payoutDays,
     this.performance,
-    required this.productProvided,
+    this.pieces,
+    this.productProvided,
+    this.revisionScope,
+    this.startDate,
+    this.title,
+    this.usageRights,
   });
 
   /// 내가 보고 있던 판본 번호. 최신이 아니면 409 STALE_VERSION이다.
@@ -24,14 +31,87 @@ class ProposeRewardDto {
   /// Minimum value: 1
   int baseVersion;
 
-  /// 제작비(원). 1만 원 단위, 10000~10000000.
-  int fee;
+  /// 제작비(원). 1만 원 단위, 10000~10000000. 빠지면 그대로.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  int? fee;
 
-  /// 성과 추가. 없으면 null. 블로그 글에는 붙일 수 없다.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  ContentFormat? format;
+
+  /// 게시 뒤 지급까지 걸리는 날(7 또는 14).
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  int? payoutDays;
+
+  /// 성과 추가. 빠지면 그대로, null이면 끈다. 블로그 글에는 붙일 수 없다.
   RewardPerformanceDto? performance;
 
-  /// 제품 제공 여부.
-  bool productProvided;
+  /// Minimum value: 1
+  /// Maximum value: 3
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  int? pieces;
+
+  /// 제품 제공 여부. 빠지면 그대로.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  bool? productProvided;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  RevisionScope? revisionScope;
+
+  /// 제작 시작(YYYY-MM-DD). 바꾸는 값은 한국 시간 오늘 이후.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  DateTime? startDate;
+
+  /// 콘텐츠 제목(1~40자). 빠지면 그대로.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? title;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  BrandUsageRights? usageRights;
 
   @override
   bool operator ==(Object other) =>
@@ -39,31 +119,88 @@ class ProposeRewardDto {
       other is ProposeRewardDto &&
           other.baseVersion == baseVersion &&
           other.fee == fee &&
+          other.format == format &&
+          other.payoutDays == payoutDays &&
           other.performance == performance &&
-          other.productProvided == productProvided;
+          other.pieces == pieces &&
+          other.productProvided == productProvided &&
+          other.revisionScope == revisionScope &&
+          other.startDate == startDate &&
+          other.title == title &&
+          other.usageRights == usageRights;
 
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
       (baseVersion.hashCode) +
-      (fee.hashCode) +
+      (fee == null ? 0 : fee!.hashCode) +
+      (format == null ? 0 : format!.hashCode) +
+      (payoutDays == null ? 0 : payoutDays!.hashCode) +
       (performance == null ? 0 : performance!.hashCode) +
-      (productProvided.hashCode);
+      (pieces == null ? 0 : pieces!.hashCode) +
+      (productProvided == null ? 0 : productProvided!.hashCode) +
+      (revisionScope == null ? 0 : revisionScope!.hashCode) +
+      (startDate == null ? 0 : startDate!.hashCode) +
+      (title == null ? 0 : title!.hashCode) +
+      (usageRights == null ? 0 : usageRights!.hashCode);
 
   @override
   String toString() =>
-      'ProposeRewardDto[baseVersion=$baseVersion, fee=$fee, performance=$performance, productProvided=$productProvided]';
+      'ProposeRewardDto[baseVersion=$baseVersion, fee=$fee, format=$format, payoutDays=$payoutDays, performance=$performance, pieces=$pieces, productProvided=$productProvided, revisionScope=$revisionScope, startDate=$startDate, title=$title, usageRights=$usageRights]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
     json[r'baseVersion'] = this.baseVersion;
-    json[r'fee'] = this.fee;
+    if (this.fee != null) {
+      json[r'fee'] = this.fee;
+    } else {
+      json[r'fee'] = null;
+    }
+    if (this.format != null) {
+      json[r'format'] = this.format;
+    } else {
+      json[r'format'] = null;
+    }
+    if (this.payoutDays != null) {
+      json[r'payoutDays'] = this.payoutDays;
+    } else {
+      json[r'payoutDays'] = null;
+    }
     if (this.performance != null) {
       json[r'performance'] = this.performance;
     } else {
       json[r'performance'] = null;
     }
-    json[r'productProvided'] = this.productProvided;
+    if (this.pieces != null) {
+      json[r'pieces'] = this.pieces;
+    } else {
+      json[r'pieces'] = null;
+    }
+    if (this.productProvided != null) {
+      json[r'productProvided'] = this.productProvided;
+    } else {
+      json[r'productProvided'] = null;
+    }
+    if (this.revisionScope != null) {
+      json[r'revisionScope'] = this.revisionScope;
+    } else {
+      json[r'revisionScope'] = null;
+    }
+    if (this.startDate != null) {
+      json[r'startDate'] = _dateFormatter.format(this.startDate!);
+    } else {
+      json[r'startDate'] = null;
+    }
+    if (this.title != null) {
+      json[r'title'] = this.title;
+    } else {
+      json[r'title'] = null;
+    }
+    if (this.usageRights != null) {
+      json[r'usageRights'] = this.usageRights;
+    } else {
+      json[r'usageRights'] = null;
+    }
     return json;
   }
 
@@ -82,22 +219,21 @@ class ProposeRewardDto {
             'Required key "ProposeRewardDto[baseVersion]" is missing from JSON.');
         assert(json[r'baseVersion'] != null,
             'Required key "ProposeRewardDto[baseVersion]" has a null value in JSON.');
-        assert(json.containsKey(r'fee'),
-            'Required key "ProposeRewardDto[fee]" is missing from JSON.');
-        assert(json[r'fee'] != null,
-            'Required key "ProposeRewardDto[fee]" has a null value in JSON.');
-        assert(json.containsKey(r'productProvided'),
-            'Required key "ProposeRewardDto[productProvided]" is missing from JSON.');
-        assert(json[r'productProvided'] != null,
-            'Required key "ProposeRewardDto[productProvided]" has a null value in JSON.');
         return true;
       }());
 
       return ProposeRewardDto(
         baseVersion: mapValueOfType<int>(json, r'baseVersion')!,
-        fee: mapValueOfType<int>(json, r'fee')!,
+        fee: mapValueOfType<int>(json, r'fee'),
+        format: ContentFormat.fromJson(json[r'format']),
+        payoutDays: mapValueOfType<int>(json, r'payoutDays'),
         performance: RewardPerformanceDto.fromJson(json[r'performance']),
-        productProvided: mapValueOfType<bool>(json, r'productProvided')!,
+        pieces: mapValueOfType<int>(json, r'pieces'),
+        productProvided: mapValueOfType<bool>(json, r'productProvided'),
+        revisionScope: RevisionScope.fromJson(json[r'revisionScope']),
+        startDate: mapDateTime(json, r'startDate', r''),
+        title: mapValueOfType<String>(json, r'title'),
+        usageRights: BrandUsageRights.fromJson(json[r'usageRights']),
       );
     }
     return null;
@@ -155,7 +291,5 @@ class ProposeRewardDto {
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
     'baseVersion',
-    'fee',
-    'productProvided',
   };
 }

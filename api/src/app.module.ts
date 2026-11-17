@@ -30,6 +30,7 @@ import { SafetyModule } from './safety/safety.module';
 import { SettlementsModule } from './settlements/settlements.module';
 import { StoreInsightsModule } from './store-insights/store-insights.module';
 import { StoresModule } from './stores/stores.module';
+import { TermsApiModule } from './terms/terms-api.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { WalletModule } from './wallet/wallet.module';
@@ -54,6 +55,7 @@ import { WalletModule } from './wallet/wallet.module';
     RecommendationsModule,
     DiscoveryModule,
     StoresModule,
+    TermsApiModule,
     ContentDraftsModule,
     ApplicationsModule,
     InstagramModule,

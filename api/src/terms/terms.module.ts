@@ -1,27 +1,12 @@
 import { Module } from '@nestjs/common';
-import { BrandsModule } from '../brands/brands.module';
-import { CampaignsModule } from '../campaigns/campaigns.module';
-import { CollaborationsModule } from '../collaborations/collaborations.module';
-import { CreatorsModule } from '../creators/creators.module';
-import { NotificationsModule } from '../notifications/notifications.module';
-import { PrinciplesModule } from '../principles/principles.module';
-import { NegotiationService } from './negotiation.service';
-import { TermsController } from './terms.controller';
 import { TermsRepository } from './terms.repository';
 import { TermsService } from './terms.service';
 
-// 조건 판본. 서로 관심 트랜잭션(발견)과 새 판본 제안(5번 계획)이 TermsService만 쓴다.
+// 조건 판본의 저장과 읽기. 서로 관심 트랜잭션(발견)과 대화방(머리의 최신 조건)이 TermsService만 쓴다.
+// 이 모듈은 다른 기능 모듈을 import하지 않는다: 대화 모듈이 이 모듈을 import하므로, 대화방에 안내 줄을 남기는
+// 조건 확인·새 판본 API는 TermsApiModule이 맡아 순환을 피한다(원장 판단 R10과 같은 모양).
 @Module({
-  imports: [
-    CollaborationsModule,
-    CampaignsModule,
-    BrandsModule,
-    CreatorsModule,
-    PrinciplesModule,
-    NotificationsModule,
-  ],
-  controllers: [TermsController],
-  providers: [TermsService, TermsRepository, NegotiationService],
-  exports: [TermsService],
+  providers: [TermsService, TermsRepository],
+  exports: [TermsService, TermsRepository],
 })
 export class TermsModule {}

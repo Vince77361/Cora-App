@@ -75,6 +75,7 @@ Class | Method | HTTP request | Description
 *CardDetailsApi* | [**getCreatorCard**](doc//CardDetailsApi.md#getcreatorcard) | **GET** /creators/{id}/card | 크리에이터 카드 상세(브랜드). 보이지 않거나 내가 넘긴 크리에이터는 404.
 *CollaborationsApi* | [**acceptCollaborationCancel**](doc//CollaborationsApi.md#acceptcollaborationcancel) | **POST** /collaborations/{id}/cancel-requests/{requestId}/accept | 크리에이터가 사장님의 취소 요청에 동의한다(직접 그만두는 것과 같은 처리).
 *CollaborationsApi* | [**cancelCollaboration**](doc//CollaborationsApi.md#cancelcollaboration) | **POST** /collaborations/{id}/cancel | 크리에이터가 링크를 제출하기 전에 협업을 그만둔다(수수료까지 전액 환급).
+*CollaborationsApi* | [**dropCollaboration**](doc//CollaborationsApi.md#dropcollaboration) | **POST** /collaborations/{id}/drop | 계약 전 협의를 그만둔다(당사자만). 이유는 상대에게 알리지 않는다. 계약 전 단계가 아니거나 브랜드가 결제를 진행 중이면 409.
 *CollaborationsApi* | [**getCollaboration**](doc//CollaborationsApi.md#getcollaboration) | **GET** /collaborations/{id} | 
 *CollaborationsApi* | [**listCollaborations**](doc//CollaborationsApi.md#listcollaborations) | **GET** /collaborations | 
 *CollaborationsApi* | [**requestCollaborationCancel**](doc//CollaborationsApi.md#requestcollaborationcancel) | **POST** /collaborations/{id}/cancel-requests | 사장님이 취소를 요청한다. 3일 안에 답이 없으면 사라진다.
@@ -155,7 +156,8 @@ Class | Method | HTTP request | Description
 *SubmissionsApi* | [**submitContentLink**](doc//SubmissionsApi.md#submitcontentlink) | **POST** /collaborations/{id}/submission | 
 *TermsApi* | [**confirmTerms**](doc//TermsApi.md#confirmterms) | **POST** /collaborations/{id}/terms/{version}/confirm | 이 판본 수락. 최신이 아니면 409 STALE_VERSION(본문에 latestVersion), 성과 추가가 있는데 인스타그램 연동이 없으면 크리에이터는 409.
 *TermsApi* | [**getLatestTerms**](doc//TermsApi.md#getlatestterms) | **GET** /collaborations/{id}/terms/latest | 브랜드 계약의 가장 최근 조건 판본(당사자만).
-*TermsApi* | [**proposeReward**](doc//TermsApi.md#proposereward) | **POST** /collaborations/{id}/terms | 돈과 혜택만 바꿔 새 판본을 낸다(나머지 항목은 직전 판본에서 옮긴다). 낸 쪽은 확인함이고 단계는 협의가 된다. 최신 판본이 아니면 409 STALE_VERSION, 바뀐 것이 없으면 400.
+*TermsApi* | [**listTermsVersions**](doc//TermsApi.md#listtermsversions) | **GET** /collaborations/{id}/terms | 조건 판본 이력(당사자만). 최신이 먼저이고 판본마다 바뀐 항목을 담는다. agreement는 최신 판본의 확인 상태, editable은 지금 수정 제안을 낼 수 있는가.
+*TermsApi* | [**proposeReward**](doc//TermsApi.md#proposereward) | **POST** /collaborations/{id}/terms | 새 판본을 낸다(조건 수정 제안). 빠진 항목은 직전 판본에서 옮기고 성과 추가는 null이면 끈다. 낸 쪽은 확인함이고 단계는 협의가 되며 크리에이터의 계약 동의는 취소된다. 최신 판본이 아니면 409 STALE_VERSION, 브랜드 결제가 진행 중이면 409, 바뀐 것이 없으면 400.
 *UploadsApi* | [**createPhotoUpload**](doc//UploadsApi.md#createphotoupload) | **POST** /uploads/photos | 
 *UsersApi* | [**getMe**](doc//UsersApi.md#getme) | **GET** /me | 
 *UsersApi* | [**updateMyRole**](doc//UsersApi.md#updatemyrole) | **PATCH** /me/role | 
@@ -237,6 +239,8 @@ Class | Method | HTTP request | Description
  - [DecisionTargetKind](doc//DecisionTargetKind.md)
  - [DisputeViewReportDto](doc//DisputeViewReportDto.md)
  - [DraftSceneModel](doc//DraftSceneModel.md)
+ - [DropCollaborationDto](doc//DropCollaborationDto.md)
+ - [DropReasonChoice](doc//DropReasonChoice.md)
  - [EndOfferDto](doc//EndOfferDto.md)
  - [EndedOfferModel](doc//EndedOfferModel.md)
  - [FeeBand](doc//FeeBand.md)
@@ -347,6 +351,9 @@ Class | Method | HTTP request | Description
  - [SubmitViewEvidenceDto](doc//SubmitViewEvidenceDto.md)
  - [SwipeDecisionKind](doc//SwipeDecisionKind.md)
  - [SwipeTargetKind](doc//SwipeTargetKind.md)
+ - [TermsAgreement](doc//TermsAgreement.md)
+ - [TermsField](doc//TermsField.md)
+ - [TermsHistoryModel](doc//TermsHistoryModel.md)
  - [TermsLatestModel](doc//TermsLatestModel.md)
  - [TermsPerformanceModel](doc//TermsPerformanceModel.md)
  - [TermsProposer](doc//TermsProposer.md)
