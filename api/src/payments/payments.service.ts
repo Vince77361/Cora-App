@@ -193,12 +193,26 @@ export class PaymentsService {
     payment: Payment,
     orderName: string,
   ): Promise<PaymentCreatedModel> {
-    const { checkoutUrl } = await this.paymentPort.createCheckout({
-      paymentId: payment.id,
-      amount: payment.amountEscrow + payment.amountFee,
-      method: payment.method,
-      orderName,
-    });
+    let checkoutUrl: string;
+    try {
+      ({ checkoutUrl } = await this.paymentPort.createCheckout({
+        paymentId: payment.id,
+        amount: payment.amountEscrow + payment.amountFee,
+        method: payment.method,
+        orderName,
+      }));
+    } catch (error) {
+      // 결제창을 열지 못한 결제가 PENDING으로 남으면 60분 동안 조건 제안과 그만두기를 막는다: 실패로 바꿔 잠금을 푼다.
+      // 바꾸지 못해도(이미 승인·취소됨) 원래 오류를 그대로 던진다. 조건부 갱신이라 승인된 결제는 건드리지 않는다.
+      try {
+        await this.payments.markFailed(payment.id);
+      } catch (markError) {
+        this.logger.warn(
+          `결제창을 열지 못한 결제를 실패로 바꾸지 못했어요: ${markError instanceof Error ? markError.name : 'unknown'}`,
+        );
+      }
+      throw error;
+    }
     try {
       await this.scheduleRecheck(payment.id, 1, this.clock.now());
     } catch (error) {

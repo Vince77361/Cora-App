@@ -4,6 +4,7 @@ import {
   CollaborationKind,
   CollaborationStage,
   DropReason,
+  Payment,
   Prisma,
   SettlementMethod,
 } from '@prisma/client';
@@ -210,6 +211,26 @@ export class CollaborationsRepository {
       },
     });
     return count > 0;
+  }
+
+  // 결제창이 열려 있는 결제(hasOpenBrandPayment와 같은 기준) 가운데 가장 최근 것. 계약 화면이 "지금 결제 중"의 금액을 그 행에서 읽는다.
+  findOpenBrandPayment(
+    collaborationId: string,
+    now: Date,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Payment | null> {
+    const since = new Date(
+      now.getTime() - BRAND_PAYMENT_LOCK_MINUTES * 60 * 1000,
+    );
+    return this.client(tx).payment.findFirst({
+      where: {
+        collaborationId,
+        status: 'PENDING',
+        requestedAt: { gt: since },
+        deletedAt: null,
+      },
+      orderBy: { requestedAt: 'desc' },
+    });
   }
 
   // 아직 브랜드가 결제하지 않은(AWAITING_BRAND) 계약을 무효로 만든다. 협업이 끝나거나 조건이 바뀔 때 부른다.

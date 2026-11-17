@@ -52,6 +52,11 @@ function build(
     stage?: Collaboration['stage'];
     live?: Contract | null;
     feeRate?: number;
+    openPayment?: {
+      amountEscrow: number;
+      amountFee: number;
+      feeRate: number;
+    } | null;
   } = {},
 ) {
   const state = {
@@ -78,7 +83,7 @@ function build(
     {
       findById: () => Promise.resolve(collaboration({ stage: state.stage })),
       lock: () => Promise.resolve(),
-      hasOpenBrandPayment: () => Promise.resolve(false),
+      findOpenBrandPayment: () => Promise.resolve(opts.openPayment ?? null),
     } as never,
     {
       transaction: (run: (tx: object) => Promise<unknown>) => run({}),
@@ -164,6 +169,42 @@ describe('ContractsService', () => {
         fee: 52500,
         total: 402500,
       });
+    });
+  });
+
+  describe('quote on the contract screen', () => {
+    const awaitingBrand = (): Contract =>
+      ({
+        id: 'contract-1',
+        status: 'AWAITING_BRAND',
+        termsVersion: 2,
+        termsSnapshot: snapshotOf(toTermsVersionModel(terms(), BRAND, null)),
+        creatorConsentedAt: NOW,
+        brandConsentTexts: [],
+      }) as unknown as Contract;
+
+    it('shows the stored fee and escrow of the open payment even after the fee rate setting changed', async () => {
+      // 결제는 수수료율 10%로 만들어졌고(35,000원) 지금 설정은 15%다.
+      const t = build({
+        feeRate: 15,
+        live: awaitingBrand(),
+        openPayment: { amountEscrow: 350000, amountFee: 35000, feeRate: 10 },
+      });
+      const res = await t.service.get(BRAND, COLLAB);
+      expect(res.status).toBe('PAYING');
+      expect(res.quote).toMatchObject({
+        escrow: 350000,
+        fee: 35000,
+        feeRate: 10,
+        total: 385000,
+      });
+    });
+
+    it('quotes with the current fee rate while no payment is open', async () => {
+      const t = build({ feeRate: 15, live: awaitingBrand() });
+      const res = await t.service.get(BRAND, COLLAB);
+      expect(res.status).toBe('AWAITING_BRAND');
+      expect(res.quote).toMatchObject({ fee: 52500, feeRate: 15 });
     });
   });
 

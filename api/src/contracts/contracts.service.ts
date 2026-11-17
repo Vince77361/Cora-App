@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Collaboration, Contract, TermsVersion } from '@prisma/client';
+import { Collaboration, Contract, Payment, TermsVersion } from '@prisma/client';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import { BrandsService } from '../brands/brands.service';
 import { negotiableStages } from '../collaborations/collaboration-stage';
@@ -65,14 +65,14 @@ export class ContractsService {
       !!latest?.creatorConfirmedAt;
 
     let status: ContractModel['status'] = 'NOT_READY';
+    let openPayment: Payment | null = null;
     if (live?.status === 'CONCLUDED') status = 'CONCLUDED';
     else if (live) {
-      status = (await this.collaborations.hasOpenBrandPayment(
+      openPayment = await this.collaborations.findOpenBrandPayment(
         collaboration.id,
         this.clock.now(),
-      ))
-        ? 'PAYING'
-        : 'AWAITING_BRAND';
+      );
+      status = openPayment ? 'PAYING' : 'AWAITING_BRAND';
     } else if (agreed) status = 'AWAITING_CREATOR';
 
     // 계약 행이 있으면 그 사본, 없으면 협의 중인 판본의 미리 보기.
@@ -112,8 +112,11 @@ export class ContractsService {
       creatorConsentedAt: live?.creatorConsentedAt.toISOString() ?? null,
       brandConsentedAt: live?.brandConsentedAt?.toISOString() ?? null,
       concludedAt: live?.concludedAt?.toISOString() ?? null,
+      // 결제 중에는 결제 행에 저장된 금액을 보여 준다: 그 뒤 수수료율 설정이 바뀌어도 결제창에 뜬 금액과 같다(Review Focus 7).
       quote:
-        showQuote && terms ? await this.quoteFor(collaboration, terms) : null,
+        showQuote && terms
+          ? await this.quoteFor(collaboration, terms, openPayment ?? undefined)
+          : null,
       voidedNotice: await this.voidedNotice(
         collaboration,
         isCreator,
@@ -326,13 +329,15 @@ export class ContractsService {
 
   // 결제 견적. 보관액 = 최대 현금 부담(제작비 + 성과 추가 상한), 수수료 = 보관액 × 브랜드 계약 수수료율(내림).
   // 줄 칸에는 제작비와 성과 추가 상한을 싣는다(식사권 칸은 없다).
+  // payment를 주면(이미 만든 결제) 보관액·수수료·수수료율을 그 행의 값으로 쓰고 다시 계산하지 않는다.
   async quoteFor(
     collaboration: Collaboration,
     terms: TermsVersionModel,
+    payment?: Pick<Payment, 'amountEscrow' | 'amountFee' | 'feeRate'>,
   ): Promise<PaymentQuoteModel> {
-    const escrow = maxCashOfSnapshot(terms);
-    const feeRate = this.payments.brandFeeRate();
-    const fee = feeFor(escrow, feeRate);
+    const escrow = payment?.amountEscrow ?? maxCashOfSnapshot(terms);
+    const feeRate = payment?.feeRate ?? this.payments.brandFeeRate();
+    const fee = payment?.amountFee ?? feeFor(escrow, feeRate);
     const [campaign, creator] = await Promise.all([
       collaboration.campaignId
         ? this.campaigns.getById(collaboration.campaignId)

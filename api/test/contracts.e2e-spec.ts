@@ -6,6 +6,7 @@ import { Clock } from '../src/common/clock';
 import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
 import { FakePaymentAdapter } from '../src/integrations/payment/fake-payment.adapter';
 import { PaymentPort } from '../src/integrations/payment/payment.port';
+import { PaymentsService } from '../src/payments/payments.service';
 import { PushPort } from '../src/integrations/push/push.port';
 import { JobScheduler } from '../src/jobs/job-scheduler';
 import { RealtimePublisher } from '../src/realtime/realtime-publisher';
@@ -774,6 +775,64 @@ describe('brand contract consent and payment', () => {
         .expect(409);
       // 요청한 지 60분이 지나면 풀린다.
       clock.advance(61 * MINUTE);
+      await propose(authCreator, id, {
+        baseVersion: 1,
+        fee: 340000,
+        productProvided: true,
+        performance: null,
+      }).expect(201);
+    });
+  });
+
+  describe('payment in progress', () => {
+    it('keeps showing the stored fee while paying even after the fee rate setting changed', async () => {
+      const id = await agreed();
+      await creatorConsented(id);
+      await brandPaying(id);
+      // 결제를 만든 뒤 수수료율이 15%로 바뀌었다: 결제 행(10%)의 금액이 그대로 보인다.
+      const rate = jest
+        .spyOn(app.get(PaymentsService), 'brandFeeRate')
+        .mockReturnValue(15);
+      try {
+        const brand = await contractOf(authBrand, id);
+        expect(brand.status).toBe('PAYING');
+        expect(brand.quote).toMatchObject({
+          escrow: 350000,
+          fee: 35000,
+          feeRate: 10,
+          total: 385000,
+        });
+        // 결제창이 닫히면(60분) 결제 전으로 돌아가 지금 설정으로 계산한다.
+        clock.advance(61 * MINUTE);
+        expect((await contractOf(authBrand, id)).quote).toMatchObject({
+          fee: 52500,
+          feeRate: 15,
+        });
+      } finally {
+        rate.mockRestore();
+      }
+    });
+
+    it('marks the payment failed and frees the lock when the checkout cannot be opened', async () => {
+      const id = await agreed();
+      await creatorConsented(id);
+      const texts = await textsOf(authBrand, id);
+      const checkout = jest
+        .spyOn(pg, 'createCheckout')
+        .mockRejectedValueOnce(new Error('pg down'));
+      try {
+        await brandConsent(id, {
+          termsVersion: 1,
+          accepted: texts,
+          method: 'CARD',
+        }).expect(500);
+      } finally {
+        checkout.mockRestore();
+      }
+      const payment = await prisma.payment.findFirstOrThrow({});
+      expect(payment.status).toBe('FAILED');
+      // 60분을 기다리지 않아도 조건 제안과 그만두기가 막히지 않는다.
+      expect((await contractOf(authBrand, id)).status).toBe('AWAITING_BRAND');
       await propose(authCreator, id, {
         baseVersion: 1,
         fee: 340000,

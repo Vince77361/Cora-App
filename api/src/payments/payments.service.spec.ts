@@ -856,6 +856,32 @@ describe('PaymentsService', () => {
       expect(t.ledgerPosts).toHaveLength(0);
     });
 
+    it('marks a brand payment failed when the checkout cannot be opened so the 60 minute lock does not hold', async () => {
+      const t = build();
+      t.collaborations.row = brandCollaboration();
+      const pending = payment();
+      t.payments.rows.push(pending);
+      jest
+        .spyOn(t.pg, 'createCheckout')
+        .mockRejectedValue(new Error('pg down'));
+      await expect(t.service.openCheckout(pending, '주문')).rejects.toThrow(
+        'pg down',
+      );
+      expect(t.payments.rows[0].status).toBe('FAILED');
+      expect(t.scheduler.jobs).toHaveLength(0);
+    });
+
+    it('leaves an already approved payment alone when opening the checkout fails', async () => {
+      const t = build();
+      const approved = payment({ status: 'APPROVED' });
+      t.payments.rows.push(approved);
+      jest
+        .spyOn(t.pg, 'createCheckout')
+        .mockRejectedValue(new Error('pg down'));
+      await expect(t.service.openCheckout(approved, '주문')).rejects.toThrow();
+      expect(t.payments.rows[0].status).toBe('APPROVED');
+    });
+
     it('lets a brand read its own payment status', async () => {
       const t = build();
       t.collaborations.row = brandCollaboration();
