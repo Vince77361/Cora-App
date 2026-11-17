@@ -72,6 +72,7 @@ class _ProposalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final proposedOn = ReceivedProposalsTexts.proposedOn(proposal);
+    final lines = ReceivedProposalsTexts.proposedOnLines(proposal);
     return Semantics(
       container: true,
       button: true,
@@ -118,15 +119,16 @@ class _ProposalCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            proposedOn,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: CoraTextStyles.caption.copyWith(
-                              fontWeight: FontWeight.w400,
-                              color: c.textSecondary,
+                          for (final line in [lines.head, ?lines.tail])
+                            Text(
+                              line,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: CoraTextStyles.caption.copyWith(
+                                fontWeight: FontWeight.w400,
+                                color: c.textSecondary,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),

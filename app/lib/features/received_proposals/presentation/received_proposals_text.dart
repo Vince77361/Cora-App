@@ -40,6 +40,16 @@ abstract final class ReceivedProposalsTexts {
     return t == null || t.isEmpty ? proposedOnProfile : proposedOnContent(t);
   }
 
+  /// 03 묶음 카드의 좁은 자리에 같은 문장을 두 줄로 나눠 둔다. 한 덩어리로 흘리면 글자 가운데에서 줄이
+  /// 바뀌므로(`제안` / `했어요`) 낱말 경계에서 미리 나눈다. [head]는 한 줄에 말줄임으로 두고 [tail]이 있으면
+  /// 다음 줄이다. 두 줄을 이으면 [proposedOn]과 같다.
+  static ({String head, String? tail}) proposedOnLines(ReceivedProposal p) {
+    final t = p.contentTitle;
+    return t == null || t.isEmpty
+        ? (head: proposedOnProfile, tail: null)
+        : (head: '내 콘텐츠 「$t」에', tail: '제안했어요');
+  }
+
   // 03 맨 위 묶음(캔버스에 없는 화면, 계획 Task 11의 문구)
   static String group(int n) => '받은 제안 $n';
 

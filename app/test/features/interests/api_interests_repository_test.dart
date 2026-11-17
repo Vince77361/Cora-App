@@ -84,6 +84,8 @@ const _brandCardJson = {
 
 Map<String, Object?> _termsVersion({int version = 2}) => {
   'brandConfirmed': true,
+  'changedFields': <String>[],
+  'createdAt': '2026-11-11T03:00:00.000Z',
   'creatorConfirmed': false,
   'fee': 300000,
   'format': 'REELS',
@@ -91,6 +93,7 @@ Map<String, Object?> _termsVersion({int version = 2}) => {
   'payoutDays': 7,
   'performance': null,
   'pieces': 1,
+  'previousMaxCash': null,
   'productProvided': true,
   'proposedBy': 'SYSTEM',
   'revisionScope': 'NONE',
@@ -519,11 +522,19 @@ void main() {
       final request = client.requests.single;
       expect(request.method, 'POST');
       expect(request.url.path, '/collaborations/collab-1/terms');
+      // 생성된 클라이언트는 안 쓴 칸(수정 제안 화면의 항목)을 null로 보낸다. 서버는 그것을 "그대로"로 읽는다.
       expect(jsonDecode(request.body), {
         'baseVersion': 2,
         'fee': 350000,
         'productProvided': false,
         'performance': {'ratePer1000': 2000, 'cap': 60000},
+        'title': null,
+        'startDate': null,
+        'format': null,
+        'pieces': null,
+        'revisionScope': null,
+        'usageRights': null,
+        'payoutDays': null,
       });
     });
 

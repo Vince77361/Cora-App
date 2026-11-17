@@ -17,6 +17,8 @@ import '../../../discovery/presentation/discovery_text.dart';
 import '../../../discovery/presentation/widgets/brand_bottom_nav.dart';
 import '../../../discovery/presentation/widgets/discovery_toast.dart';
 import '../../../received_proposals/domain/received_proposal.dart';
+import '../../../received_proposals/presentation/pages/received_proposal_page.dart'
+    show ReceivedProposalResult;
 import '../../../received_proposals/presentation/viewmodels/received_proposals_view_model.dart';
 import '../../../received_proposals/presentation/widgets/received_proposals_group.dart';
 import '../../../store_browse/presentation/widgets/creator_bottom_nav.dart';
@@ -133,14 +135,18 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
     await _vm.refresh();
   }
 
-  /// 받은 제안(10)을 연다. 10이 질문을 보내거나 관심만 보내고 닫히면 알려 줄 문구를 돌려준다.
+  /// 받은 제안(10)을 연다. 10이 닫히면서 돌려주는 안내 문구를 띄우고, 서로 관심이 닿았으면 이 화면이 05를 연다.
   Future<void> _openProposal(ReceivedProposal proposal) async {
-    final notice = await context.push<String>(
+    final result = await context.push<ReceivedProposalResult>(
       AppRoutes.creatorReceivedProposal(proposal.campaignId),
     );
     if (!mounted) return;
+    final notice = result?.notice;
     if (notice != null) _vm.showNotice(notice);
+    // 관심을 보낸 캠페인은 받은 제안에서 빠졌다. 05 뒤의 목록이 옛 묶음을 쥐지 않게 먼저 새로 읽는다.
     await _refreshAfterReturn();
+    final matchId = result?.matchCollaborationId;
+    if (matchId != null && mounted) await _openMatch(matchId);
   }
 
   Future<void> _decideHeld(InterestCard card, SwipeOutcome outcome) async {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/features/chat/domain/chat_repository.dart';
@@ -270,9 +272,28 @@ void main() {
 
     await tester.enterText(find.byType(TextField), '첫 인사예요');
     await tester.tap(find.text('받은 제안 보기 · 1건'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(env.opened, ['/collaborations/collab-9/terms']);
+    // 시트는 사라졌으니 이동한 화면 위에 실패 안내를 띄운다. 3초 뒤에 걷힌다.
+    expect(find.text('첫 인사를 보내지 못했어요. 대화에서 다시 보내 주세요.'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(find.text('첫 인사를 보내지 못했어요. 대화에서 다시 보내 주세요.'), findsNothing);
+  });
+
+  testWidgets('a greeting that was sent shows no failure toast after moving', (
+    tester,
+  ) async {
+    final chat = FakeChatRepository();
+    await _pump(tester, matchInfo(), chat: chat);
+
+    await tester.enterText(find.byType(TextField), '첫 인사예요');
+    await tester.tap(find.text('받은 제안 보기 · 1건'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('첫 인사를 보내지 못했어요. 대화에서 다시 보내 주세요.'), findsNothing);
   });
 
   testWidgets('propose-first sends a written greeting first and a failed '
@@ -286,6 +307,95 @@ void main() {
 
     expect(chat.sends, hasLength(1));
     expect(find.text('1 / 2'), findsOneWidget);
+
+    // 제안을 접고 시트로 돌아오면 쓴 글이 그대로 있고 실패 안내가 보인다.
+    await tester.tap(find.bySemanticsLabel('뒤로'));
+    await tester.pumpAndSettle();
+    expect(find.text('첫 인사를 보내지 못했어요. 대화에서 다시 보내 주세요.'), findsOneWidget);
+    expect(find.text('첫 인사예요'), findsOneWidget);
+    // 시트의 버튼은 다시 눌린다.
+    chat.sendFailure = null;
+    await tester.tap(find.bySemanticsLabel('첫 메시지 보내기'));
+    await tester.pumpAndSettle();
+    expect(chat.sends, hasLength(2));
+  });
+
+  testWidgets('a greeting that failed before the reward proposal was sent '
+      'is announced on the progress screen', (tester) async {
+    final chat = FakeChatRepository()..sendFailure = const ChatFailure.failed();
+    final repo = FakeInterestsRepository()..proposalBase = proposalBase();
+    final env = await _pump(tester, matchInfo(), repo: repo, chat: chat);
+
+    await tester.enterText(find.byType(TextField), '첫 인사예요');
+    await tester.tap(find.text('내가 먼저 제안하기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('성과 추가'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('검토하고 보내기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('이 조건으로 보내기'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(env.opened, [AppRoutes.collaborationProgress('collab-1')]);
+    expect(find.text('첫 인사를 보내지 못했어요. 대화에서 다시 보내 주세요.'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('the send circle and the move buttons share one busy guard', (
+    tester,
+  ) async {
+    final chat = FakeChatRepository()..holdSend = Completer<void>();
+    final env = await _pump(tester, matchInfo(), chat: chat);
+
+    await tester.enterText(find.byType(TextField), '첫 인사예요');
+    await tester.tap(find.bySemanticsLabel('첫 메시지 보내기'));
+    await tester.pump();
+    // 보내는 동안 다른 버튼을 눌러도 같은 글을 또 보내거나 또 이동하지 않는다.
+    await tester.tap(find.text('받은 제안 보기 · 1건'));
+    await tester.tap(find.text('내가 먼저 제안하기'));
+    await tester.pump();
+    chat.holdSend!.complete();
+    await tester.pumpAndSettle();
+
+    expect(chat.sends, hasLength(1));
+    expect(env.opened, ['/chats/conv-1']);
+    expect(env.results, [MatchSheetResult.moved]);
+  });
+
+  testWidgets('the sheet scrolls and keeps the input above an open keyboard '
+      'on a 393 x 852 phone', (tester) async {
+    await _pump(tester, matchInfo());
+    tester.view.physicalSize = const Size(1179, 2556);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.resetViewInsets);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 336 * 3);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final field = tester.getRect(find.byType(TextField));
+    expect(field.bottom, lessThan(852 - 336));
+    expect(field.top, greaterThan(0));
+  });
+
+  testWidgets('a small phone scrolls the focused input above the keyboard', (
+    tester,
+  ) async {
+    await _pump(tester, matchInfo());
+    tester.view.physicalSize = const Size(1080, 1920);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.resetViewInsets);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 260 * 3);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getRect(find.byType(TextField)).bottom,
+      lessThanOrEqualTo(640 - 260),
+    );
   });
 
   testWidgets('the received-proposal button opens the terms screen', (

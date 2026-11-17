@@ -17,6 +17,7 @@ import '../../../chat/domain/chat_repository.dart';
 import '../../../chat/domain/message.dart';
 import '../../../chat/presentation/chat_text.dart';
 import '../../../chat/presentation/widgets/chat_glyphs.dart';
+import '../../../discovery/presentation/widgets/discovery_toast.dart';
 import '../../domain/match_info.dart';
 import '../interests_text.dart';
 import '../reward_proposal_entry.dart';
@@ -66,8 +67,14 @@ class _MatchSheetState extends ConsumerState<MatchSheet>
   /// 첫 인사를 보낼 때 쓰는 중복 방지 값. 보내기가 실패해 다시 보내도 서버가 새 메시지를 만들지 않는다. 보내고
   /// 나면 다음 글을 위해 새로 만든다.
   String _greetingClientId = uuidV4();
-  bool _greetingBusy = false;
+
+  /// 보내기 원과 두 이동 버튼이 함께 쓰는 한 줄 막이. 하나가 도는 동안 다른 것은 눌러도 아무 일도 하지 않는다
+  /// (같은 첫 인사를 두 번 보내거나 시트를 두 번 닫아 막 연 화면을 닫지 않게).
+  bool _busy = false;
   String? _greetingError;
+
+  /// 이동 버튼 길에서 보내지 못한 첫 인사가 있다. 이동한 뒤 그 화면에서 알린다.
+  bool _greetingFailed = false;
 
   @override
   void didChangeDependencies() {
@@ -111,20 +118,20 @@ class _MatchSheetState extends ConsumerState<MatchSheet>
 
   /// 보내기 원: 첫 인사를 보내고 그 방(D3)으로 간다. 보내지 못하면 시트에 남아 안내를 보인다.
   Future<void> _greet() async {
-    if (_greetingBusy || _greeting.text.trim().isEmpty) return;
+    if (_busy || _greeting.text.trim().isEmpty) return;
     final conversationId = widget.info.conversationId;
     if (conversationId == null) return;
     final router = GoRouter.of(context);
     final navigator = Navigator.of(context);
     setState(() {
-      _greetingBusy = true;
+      _busy = true;
       _greetingError = null;
     });
     final ok = await _sendGreeting();
     if (!mounted) return;
     if (!ok) {
       setState(() {
-        _greetingBusy = false;
+        _busy = false;
         _greetingError = InterestsTexts.greetingFailed;
       });
       return;
@@ -133,33 +140,35 @@ class _MatchSheetState extends ConsumerState<MatchSheet>
     router.push(AppRoutes.chat(conversationId));
   }
 
-  /// 이동 버튼을 연달아 눌러 첫 인사와 화면이 두 번 가지 않게 한다.
-  bool _moving = false;
-
   Future<void> _viewProposals() async {
-    if (_moving) return;
-    _moving = true;
+    if (_busy) return;
+    setState(() => _busy = true);
     final router = GoRouter.of(context);
     final navigator = Navigator.of(context);
-    // 첫 인사를 보내지 못해도 이동은 막지 않는다(그 방에서 다시 보낼 수 있다).
-    await _sendGreeting();
+    final overlay = Overlay.of(context, rootOverlay: true);
+    // 첫 인사를 보내지 못해도 이동은 막지 않는다. 이동한 화면에서 알린다.
+    _greetingFailed = !await _sendGreeting();
     if (!mounted) return;
     navigator.pop(MatchSheetResult.moved);
     router.push(AppRoutes.collaborationTerms(widget.info.collaborationId));
+    if (_greetingFailed) _toastAfterMove(overlay);
   }
 
-  /// 제안 흐름이 열려 있는 동안 다시 눌러 자리 화면이 두 번 쌓이지 않게 한다.
-  bool _proposing = false;
-
   Future<void> _proposeFirst() async {
-    if (_proposing || _moving) return;
-    _proposing = true;
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _greetingError = null;
+    });
     try {
-      await _sendGreeting();
+      // 보내지 못해도 제안 화면은 연다. 제안을 접고 시트로 돌아오면 글이 남아 있고 안내가 보인다.
+      final ok = await _sendGreeting();
       if (!mounted) return;
+      _greetingFailed = !ok;
+      if (!ok) setState(() => _greetingError = InterestsTexts.greetingFailed);
       await _proposeFirstOnce();
     } finally {
-      _proposing = false;
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -167,6 +176,7 @@ class _MatchSheetState extends ConsumerState<MatchSheet>
     final info = widget.info;
     final router = GoRouter.of(context);
     final navigator = Navigator.of(context);
+    final overlay = Overlay.of(context, rootOverlay: true);
     final sent = await openRewardProposal(
       context,
       AfterMatch(info.collaborationId, info.baseVersion),
@@ -176,6 +186,34 @@ class _MatchSheetState extends ConsumerState<MatchSheet>
     // 받은 오퍼 탭이 아니라 이 협업으로 곧바로 간다.
     navigator.pop(MatchSheetResult.moved);
     router.go(AppRoutes.collaborationProgress(info.collaborationId));
+    if (_greetingFailed) _toastAfterMove(overlay);
+  }
+
+  /// 시트가 닫히고 다른 화면이 열린 뒤 그 위에 첫 인사 실패 안내를 3초 띄운다(시트는 이미 사라져 거기에는 보일
+  /// 곳이 없다). 새 화면이 그려진 다음 프레임에 맨 위에 올린다.
+  void _toastAfterMove(OverlayState overlay) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!overlay.mounted) return;
+      late final OverlayEntry entry;
+      entry = OverlayEntry(
+        builder: (context) => Positioned(
+          top: MediaQuery.paddingOf(context).top + 12,
+          left: 22,
+          right: 22,
+          child: Material(
+            type: MaterialType.transparency,
+            child: DiscoveryToastBanner(
+              message: InterestsTexts.greetingFailed,
+              onDismiss: () {
+                entry.remove();
+                entry.dispose();
+              },
+            ),
+          ),
+        ),
+      );
+      overlay.insert(entry);
+    });
   }
 
   @override
@@ -196,7 +234,9 @@ class _MatchSheetState extends ConsumerState<MatchSheet>
       ),
       child: Stack(
         children: [
-          Padding(
+          // 화면 키보드가 올라오면 내용(약 580)이 남는 높이보다 커질 수 있어 스크롤로 둔다. 키보드 높이는 아래
+          // 여백으로 더해, 입력줄을 눌러 올리면 키보드 위로 스크롤된다.
+          SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(24, 30, 24, bottom),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -261,7 +301,7 @@ class _MatchSheetState extends ConsumerState<MatchSheet>
                 if (info.conversationId != null) ...[
                   _GreetingField(
                     controller: _greeting,
-                    busy: _greetingBusy,
+                    busy: _busy,
                     onChanged: () {
                       if (_greetingError != null) {
                         setState(() => _greetingError = null);

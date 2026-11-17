@@ -27,7 +27,16 @@ import 'inquiry_sheet.dart';
 /// `관심 보내기`는 입력한 한 줄을 붙여 관심을 보내고(서로 관심이 되면 05가 열린다), `조건부터 질문하기`는 서로
 /// 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다.
 ///
-/// 질문을 보내거나 관심만 보내고 닫히면 03이 보여 줄 안내 문구를 `pop`의 값으로 돌려준다.
+/// 질문을 보내거나 관심을 보내고 닫히면 03이 이어서 할 일을 [ReceivedProposalResult]로 `pop`에 실어 돌려준다.
+/// 10이 닫히며 03에 돌려주는 값. [notice]는 03이 띄울 안내 문구, [matchCollaborationId]는 서로 관심이 닿아
+/// 03이 05를 열 협업이다(03을 한 장 더 쌓지 않고 아래의 03이 연다).
+class ReceivedProposalResult {
+  const ReceivedProposalResult({this.notice, this.matchCollaborationId});
+
+  final String? notice;
+  final String? matchCollaborationId;
+}
+
 class ReceivedProposalPage extends ConsumerStatefulWidget {
   const ReceivedProposalPage({super.key, required this.campaignId});
 
@@ -48,9 +57,8 @@ class _ReceivedProposalPageState extends ConsumerState<ReceivedProposalPage> {
     super.dispose();
   }
 
-  ReceivedProposalViewModel get _vm => ref.read(
-    receivedProposalViewModelProvider(widget.campaignId).notifier,
-  );
+  ReceivedProposalViewModel get _vm =>
+      ref.read(receivedProposalViewModelProvider(widget.campaignId).notifier);
 
   Future<void> _sendInterest() async {
     setState(() => _notice = null);
@@ -58,10 +66,19 @@ class _ReceivedProposalPageState extends ConsumerState<ReceivedProposalPage> {
     if (!mounted || outcome == null) return;
     switch (outcome) {
       case InterestMatched(:final collaborationId):
-        // 서로 관심이 닿았다. 이 제안은 더 볼 일이 없으니 05(03이 시트로 연다)로 바꿔 연다.
-        context.pushReplacement(AppRoutes.creatorMatch(collaborationId));
+        // 서로 관심이 닿았다. 이 제안은 더 볼 일이 없으니 닫고, 아래의 03이 05를 시트로 연다. 아래에 03이 없으면
+        // (링크로 바로 열렸을 때) 05가 열리는 03으로 간다.
+        if (context.canPop()) {
+          context.pop(
+            ReceivedProposalResult(matchCollaborationId: collaborationId),
+          );
+        } else {
+          context.go(AppRoutes.creatorMatch(collaborationId));
+        }
       case InterestSent():
-        context.pop(CreatorDiscoveryTexts.likeToast);
+        context.pop(
+          const ReceivedProposalResult(notice: CreatorDiscoveryTexts.likeToast),
+        );
       case InterestFailed():
         setState(() => _notice = ReceivedProposalsTexts.interestFailed);
     }
@@ -74,12 +91,19 @@ class _ReceivedProposalPageState extends ConsumerState<ReceivedProposalPage> {
       onSubmit: (message) => _vm.inquire(message, _idea.text),
     );
     if (sent == true && mounted) {
-      context.pop(ReceivedProposalsTexts.inquirySent);
+      context.pop(
+        const ReceivedProposalResult(
+          notice: ReceivedProposalsTexts.inquirySent,
+        ),
+      );
     }
   }
 
-  void _retry() {
-    ref.invalidate(receivedProposalsViewModelProvider);
+  /// 목록을 조용히 다시 읽은 뒤 이 제안을 다시 찾는다. 목록 상태를 무효화하지 않아 아래 03의 묶음이 로딩으로
+  /// 깜빡이지 않는다.
+  Future<void> _retry() async {
+    await ref.read(receivedProposalsViewModelProvider.notifier).refresh();
+    if (!mounted) return;
     ref.invalidate(receivedProposalViewModelProvider(widget.campaignId));
   }
 
@@ -273,9 +297,7 @@ class _Card extends StatelessWidget {
                 child: Row(
                   spacing: 4,
                   children: [
-                    Expanded(
-                      child: _ProgressSegment(color: c.swipeProgressOn),
-                    ),
+                    Expanded(child: _ProgressSegment(color: c.swipeProgressOn)),
                     const Expanded(
                       child: _ProgressSegment(
                         color: CoraSwipeTokens.progressIdle,

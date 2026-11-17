@@ -53,24 +53,27 @@ void main() {
   setUp(() => debugPrint = (message, {wrapWidth}) {});
   tearDown(() => debugPrint = originalDebugPrint);
 
-  test('maps a received proposal with the brand note and performance', () async {
-    final client = _Client(200, [_proposalJson]);
-    final rows = await _repo(client).fetchAll();
+  test(
+    'maps a received proposal with the brand note and performance',
+    () async {
+      final client = _Client(200, [_proposalJson]);
+      final rows = await _repo(client).fetchAll();
 
-    expect(client.requests.single.url.path, '/discovery/received-proposals');
-    final p = rows.single;
-    expect(p.campaignId, 'c1');
-    expect(p.brandName, '모아 스튜디오');
-    expect(p.brandPhotoUrl, 'https://x/moa.jpg');
-    expect(p.contentPhotoUrl, 'https://x/content.jpg');
-    expect(p.contentTitle, '매일 손이 가는 물건들');
-    expect(p.fee, 350000);
-    expect(p.format, ContentFormat.cardNews);
-    expect(p.note, '실제로 사용하는 장면이 좋았어요.');
-    expect(p.performance?.ratePerThousand, 2000);
-    expect(p.performance?.cap, 60000);
-    expect(p.productProvided, isTrue);
-  });
+      expect(client.requests.single.url.path, '/discovery/received-proposals');
+      final p = rows.single;
+      expect(p.campaignId, 'c1');
+      expect(p.brandName, '모아 스튜디오');
+      expect(p.brandPhotoUrl, 'https://x/moa.jpg');
+      expect(p.contentPhotoUrl, 'https://x/content.jpg');
+      expect(p.contentTitle, '매일 손이 가는 물건들');
+      expect(p.fee, 350000);
+      expect(p.format, ContentFormat.cardNews);
+      expect(p.note, '실제로 사용하는 장면이 좋았어요.');
+      expect(p.performance?.ratePerThousand, 2000);
+      expect(p.performance?.cap, 60000);
+      expect(p.productProvided, isTrue);
+    },
+  );
 
   test('maps a proposal with only terms and no copied content', () async {
     final rows = await _repo(
@@ -123,33 +126,32 @@ void main() {
     expect(result.conversationId, 'room-1');
   });
 
-  test('a 409 on the inquiry is a conflict and anything else a failure', () async {
-    const conflictBody = {
-      'error': {
-        'code': 'CONFLICT',
-        'message': '이미 질문했어요.',
-        'details': null,
-      },
-    };
-    await expectLater(
-      _repo(_Client(409, conflictBody)).inquire('c1', message: '질문'),
-      throwsA(
-        isA<ReceivedProposalsFailure>().having(
-          (e) => e.isConflict,
-          'isConflict',
-          isTrue,
+  test(
+    'a 409 on the inquiry is a conflict and anything else a failure',
+    () async {
+      const conflictBody = {
+        'error': {'code': 'CONFLICT', 'message': '이미 질문했어요.', 'details': null},
+      };
+      await expectLater(
+        _repo(_Client(409, conflictBody)).inquire('c1', message: '질문'),
+        throwsA(
+          isA<ReceivedProposalsFailure>().having(
+            (e) => e.isConflict,
+            'isConflict',
+            isTrue,
+          ),
         ),
-      ),
-    );
-    await expectLater(
-      _repo(_Client(500, null)).inquire('c1', message: '질문'),
-      throwsA(
-        isA<ReceivedProposalsFailure>().having(
-          (e) => e.isConflict,
-          'isConflict',
-          isFalse,
+      );
+      await expectLater(
+        _repo(_Client(500, null)).inquire('c1', message: '질문'),
+        throwsA(
+          isA<ReceivedProposalsFailure>().having(
+            (e) => e.isConflict,
+            'isConflict',
+            isFalse,
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 }
