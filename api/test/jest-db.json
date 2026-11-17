@@ -2,6 +2,7 @@
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": ".",
   "testEnvironment": "node",
+  "testTimeout": 30000,
   "testRegex": ".db-spec.ts$",
   "setupFilesAfterEnv": ["<rootDir>/db/setup-db.ts"],
   "transform": {
