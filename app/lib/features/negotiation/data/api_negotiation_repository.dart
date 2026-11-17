@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:cora_api/api.dart' as api;
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../core/network/api_error.dart';
 import '../../discovery/domain/discovery_card.dart' show MatchReason;
@@ -7,7 +10,10 @@ import '../../offer_terms/data/offer_terms_from_wire.dart'
     show formatFromWire, formatToWire;
 import '../../proposals/domain/proposal.dart'
     show BrandContractRow, ProposalEndKind, ProposalGroup;
+import '../../payment/domain/payment_quote.dart';
+import '../../payment/domain/payment_repository.dart' show PaymentMethod;
 import '../domain/brand_usage_rights.dart';
+import '../domain/contract.dart';
 import '../domain/negotiation_repository.dart';
 import '../domain/terms_version.dart';
 import 'terms_version_from_wire.dart';
@@ -17,11 +23,13 @@ class ApiNegotiationRepository implements NegotiationRepository {
   ApiNegotiationRepository(api.ApiClient client)
     : _terms = api.TermsApi(client),
       _inbox = api.ProposalInboxApi(client),
-      _collaborations = api.CollaborationsApi(client);
+      _collaborations = api.CollaborationsApi(client),
+      _contracts = api.ContractsApi(client);
 
   final api.TermsApi _terms;
   final api.ProposalInboxApi _inbox;
   final api.CollaborationsApi _collaborations;
+  final api.ContractsApi _contracts;
 
   @override
   Future<TermsLatest> fetchLatest(String collaborationId) async {
@@ -165,6 +173,129 @@ class ApiNegotiationRepository implements NegotiationRepository {
       throw const NegotiationFailure();
     }
   }
+
+  @override
+  Future<Contract> fetchContract(String collaborationId) async {
+    try {
+      return _contractFrom(
+        await _contracts.getContractWithHttpInfo(collaborationId),
+      );
+    } catch (error) {
+      _log('계약 읽기', error);
+      throw const NegotiationFailure();
+    }
+  }
+
+  @override
+  Future<Contract> consentAsCreator(
+    String collaborationId,
+    int version,
+    List<String> accepted,
+  ) async {
+    try {
+      return _contractFrom(
+        await _contracts.consentContractAsCreatorWithHttpInfo(
+          collaborationId,
+          api.CreatorConsentDto(termsVersion: version, accepted: accepted),
+        ),
+      );
+    } catch (error) {
+      throw _consentError('크리에이터 동의', error);
+    }
+  }
+
+  @override
+  Future<({String paymentId, String checkoutUrl})> consentAsBrand(
+    String collaborationId,
+    int version,
+    List<String> accepted,
+    PaymentMethod method,
+  ) async {
+    try {
+      final made = await _contracts.consentContractAsBrand(
+        collaborationId,
+        api.BrandConsentDto(
+          termsVersion: version,
+          accepted: accepted,
+          method: switch (method) {
+            PaymentMethod.card => api.PaymentMethod.CARD,
+            PaymentMethod.transfer => api.PaymentMethod.TRANSFER,
+            PaymentMethod.easyPay => api.PaymentMethod.EASY_PAY,
+          },
+        ),
+      );
+      if (made == null) throw const NegotiationFailure();
+      return (paymentId: made.paymentId, checkoutUrl: made.checkoutUrl);
+    } catch (error) {
+      throw _consentError('브랜드 동의', error);
+    }
+  }
+
+  /// 동의가 거절된 이유를 화면이 가를 수 있게 바꾼다. 옛 판본은 [NegotiationStale], 서버가 사용자 문구와 함께 거절한
+  /// 409(지금은 동의할 수 없음)와 400(확인란 문구가 다름)은 [NegotiationRejected], 나머지는 [NegotiationFailure]다.
+  static Exception _consentError(String action, Object error) {
+    if (error is NegotiationFailure) return error;
+    final parsed = _log(action, error);
+    if (parsed.isStaleVersion) return NegotiationStale(parsed.latestVersion);
+    final status = parsed.status;
+    if ((parsed.isConflict || status == 400) &&
+        status != null &&
+        status < 500) {
+      return NegotiationRejected(parsed.message);
+    }
+    return const NegotiationFailure();
+  }
+
+  /// 계약 응답을 직접 푼다. 생성된 `ContractModel`은 쓰지 않는다: 서버 문서(OpenAPI)에서 계약의 진행(`status`)이
+  /// 협업·대화방의 `ContractProgress`(3값)와 같은 이름이라 한 열거형으로 합쳐졌고, 그대로 풀면 `NOT_READY`·
+  /// `AWAITING_CREATOR`·`PAYING`에서 실패한다.
+  static Contract _contractFrom(http.Response response) {
+    final body = utf8.decode(response.bodyBytes);
+    if (response.statusCode >= 400) {
+      throw api.ApiException(response.statusCode, body);
+    }
+    final json = jsonDecode(body);
+    if (json is! Map<String, dynamic>) throw const NegotiationFailure();
+    final terms = api.TermsVersionModel.fromJson(json['terms']);
+    final quote = api.PaymentQuoteModel.fromJson(json['quote']);
+    return Contract(
+      status: switch (json['status']) {
+        'NOT_READY' => ContractStatus.notReady,
+        'AWAITING_CREATOR' => ContractStatus.awaitingCreator,
+        'AWAITING_BRAND' => ContractStatus.awaitingBrand,
+        'PAYING' => ContractStatus.paying,
+        'CONCLUDED' => ContractStatus.concluded,
+        _ => throw const NegotiationFailure(),
+      },
+      brandName: json['brandName'] as String,
+      creatorName: json['creatorName'] as String,
+      terms: terms == null ? null : termsVersionFromWire(terms),
+      myConsentTexts: [
+        for (final text in (json['myConsentTexts'] as List? ?? const []))
+          text as String,
+      ],
+      voidedNotice: json['voidedNotice'] == true,
+      quote: quote == null ? null : _quote(quote),
+      creatorConsentedAt: _time(json['creatorConsentedAt']),
+      brandConsentedAt: _time(json['brandConsentedAt']),
+      concludedAt: _time(json['concludedAt']),
+    );
+  }
+
+  static DateTime? _time(Object? value) =>
+      value is String ? DateTime.tryParse(value) : null;
+
+  static PaymentQuote _quote(api.PaymentQuoteModel m) => PaymentQuote(
+    creatorName: m.creatorName,
+    creatorPhotoUrl: m.creatorPhotoUrl,
+    format: formatFromWire(m.format),
+    pieces: m.pieces,
+    fixedCash: m.fixedCash,
+    viewPayCap: m.perViewCap,
+    escrow: m.escrow,
+    fee: m.fee,
+    total: m.total,
+  );
 
   static BrandContractRow _inboxRow(api.ProposalInboxRowModel m) =>
       BrandContractRow(

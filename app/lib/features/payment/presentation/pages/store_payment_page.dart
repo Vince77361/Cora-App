@@ -11,7 +11,6 @@ import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_network_photo.dart';
-import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../../core/ui/cora_step_header.dart';
@@ -20,6 +19,7 @@ import '../../../store_home/presentation/viewmodels/store_home_view_model.dart';
 import '../../domain/payment_quote.dart';
 import '../../domain/payment_repository.dart';
 import '../viewmodels/payment_view_model.dart';
+import '../widgets/payment_parts.dart';
 
 /// A8 가게 결제(NPay / DarkNPay). 크리에이터가 수락한 오퍼의 결제 내역과 수단을 보이고,
 /// `결제하고 보관 맡기기`로 결제창을 연다. 결제가 승인되면 사장님 홈으로 돌아가 안내를 잠깐 보인다.
@@ -36,7 +36,7 @@ class StorePaymentPage extends ConsumerStatefulWidget {
   static const fee = '서비스 수수료';
   static const total = '지금 결제할 금액';
   static const methodGroup = '결제 수단';
-  static const methods = ['카드', '계좌이체', '간편결제'];
+  static const methods = paymentMethodLabels;
   static const escrowNote =
       '결제 금액은 Cora가 보관하다가, 콘텐츠가 올라오고 조회수가 집계되면 크리에이터에게 지급해요.';
   static const submit = '결제하고 보관 맡기기';
@@ -57,11 +57,7 @@ class StorePaymentPage extends ConsumerStatefulWidget {
   static String heading(String creatorName) =>
       '${josa(creatorName, JosaPair.iGa)}\n오퍼를 수락했어요';
 
-  static String methodLabel(PaymentMethod method) => switch (method) {
-    PaymentMethod.card => methods[0],
-    PaymentMethod.transfer => methods[1],
-    PaymentMethod.easyPay => methods[2],
-  };
+  static String methodLabel(PaymentMethod method) => paymentMethodLabel(method);
 
   @override
   ConsumerState<StorePaymentPage> createState() => _StorePaymentPageState();
@@ -212,7 +208,6 @@ class _Content extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final quote = state.quote;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -227,34 +222,15 @@ class _Content extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: _Methods(selected: state.method, onPick: onMethod),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 8,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 3),
-                child: ExcludeSemantics(
-                  child: CustomPaint(
-                    size: const Size.square(16),
-                    painter: _ShieldPainter(c.textSecondary),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  StorePaymentPage.escrowNote,
-                  style: CoraTextStyles.meta.copyWith(
-                    height: 1.6,
-                    color: c.textSecondary,
-                  ),
-                ),
-              ),
-            ],
+          child: PaymentMethodPicker(
+            selected: state.method,
+            onPick: onMethod,
+            groupLabel: StorePaymentPage.methodGroup,
           ),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(24, 16, 24, 0),
+          child: PaymentShieldNote(text: StorePaymentPage.escrowNote),
         ),
       ],
     );
@@ -325,26 +301,29 @@ class _Breakdown extends StatelessWidget {
             Column(
               spacing: 12,
               children: [
-                _Line(
+                PaymentLine(
                   label: StorePaymentPage.content,
                   value: '${formatLabel(quote.format)} ${quote.pieces}편',
                 ),
                 if (quote.voucher != null)
-                  _Line(
+                  PaymentLine(
                     label: benefitLine(quote.voucher!),
                     value: StorePaymentPage.voucherNote,
                   ),
                 if (quote.fixedCash > 0)
-                  _Line(
+                  PaymentLine(
                     label: StorePaymentPage.fixedCash,
                     value: wonExact(quote.fixedCash),
                   ),
                 if (quote.viewPayCap != null)
-                  _Line(
+                  PaymentLine(
                     label: StorePaymentPage.viewPay,
                     value: wonExact(quote.viewPayCap!),
                   ),
-                _Line(label: StorePaymentPage.fee, value: wonExact(quote.fee)),
+                PaymentLine(
+                  label: StorePaymentPage.fee,
+                  value: wonExact(quote.fee),
+                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -395,131 +374,4 @@ class _Breakdown extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 내역 한 줄: 왼쪽 이름(14, 보조색), 오른쪽 값(14/500, 오른쪽 정렬).
-class _Line extends StatelessWidget {
-  const _Line({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return MergeSemantics(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 12,
-        children: [
-          Flexible(
-            child: Text(
-              label,
-              style: CoraTextStyles.bodySmall.copyWith(color: c.textSecondary),
-            ),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: CoraTextStyles.bodySmall.copyWith(
-                fontWeight: FontWeight.w500,
-                color: c.text,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 결제 수단 세 칸(높이 52, 모서리 18, 칸 사이 8). 고른 칸만 `notifyTabSelected`(라이트 #E3E5E9, 다크 #33363D).
-class _Methods extends StatelessWidget {
-  const _Methods({required this.selected, required this.onPick});
-
-  final PaymentMethod selected;
-  final ValueChanged<PaymentMethod> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Semantics(
-      container: true,
-      label: StorePaymentPage.methodGroup,
-      child: Row(
-        spacing: 8,
-        children: [
-          for (final method in PaymentMethod.values)
-            Expanded(
-              child: Semantics(
-                container: true,
-                inMutuallyExclusiveGroup: true,
-                checked: method == selected,
-                onTap: () => onPick(method),
-                child: ExcludeSemantics(
-                  excluding: false,
-                  child: CoraPressable(
-                    onTap: () => onPick(method),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: method == selected
-                            ? c.notifyTabSelected
-                            : c.surface,
-                        borderRadius: BorderRadius.circular(CoraRadius.lg),
-                      ),
-                      child: SizedBox(
-                        height: 52,
-                        child: Center(
-                          child: Text(
-                            StorePaymentPage.methodLabel(method),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: CoraTextStyles.bodySmall.copyWith(
-                              fontWeight: FontWeight.w500,
-                              color: c.text,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 방패 모양(SVG `M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z`, viewBox 24, 선 2)을 16으로 줄여 그린다.
-class _ShieldPainter extends CustomPainter {
-  const _ShieldPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 24);
-    final path = Path()
-      ..moveTo(12, 3)
-      ..relativeLineTo(8, 3)
-      ..relativeLineTo(0, 6)
-      ..relativeCubicTo(0, 5, -3.5, 8, -8, 9)
-      ..relativeCubicTo(-4.5, -1, -8, -4, -8, -9)
-      ..lineTo(4, 6)
-      ..close();
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_ShieldPainter old) => old.color != color;
 }

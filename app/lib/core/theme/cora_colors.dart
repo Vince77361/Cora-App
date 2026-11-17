@@ -82,6 +82,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     this.matchRing = const Color(0xFFFFFFFF),
     this.termsBarShadow = const Color(0x0F17181C),
     this.agreementCell = const Color(0xB3FFFFFF),
+    this.contractCheckOn = const Color(0xFFC6FF3D),
     this.progressRing = const Color(0xFF5C7A00),
     this.myBubble = const Color(0xFFC6FF3D),
     this.onMyBubble = const Color(0xFF1F2A00),
@@ -255,6 +256,9 @@ class CoraColors extends ThemeExtension<CoraColors> {
   /// 12 조건 합의 머리 상자 안의 확인 표시 칸 바탕. 라이트 `rgba(255,255,255,0.7)`, 다크 `rgba(255,255,255,0.06)`.
   final Color agreementCell;
 
+  /// D4 계약의 확인란 켜진 칸 바탕(NContract 라임 #C6FF3D, DarkNContract #F2F3F5). 꺼진 칸은 `line`, 표시는 `onAccent`다.
+  final Color contractCheckOn;
+
   /// 07 진행 단계의 상대 사진을 두른 2px 테두리(Progress #5C7A00, DarkProgress 라임 #C6FF3D).
   final Color progressRing;
 
@@ -413,6 +417,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     toastShadow: Color(0x0017181C),
     termsBarShadow: Color(0x73000000),
     agreementCell: Color(0x0FFFFFFF),
+    contractCheckOn: Color(0xFFF2F3F5),
     progressRing: Color(0xFFC6FF3D),
     myBubble: Color(0xFF0F1012),
     onMyBubble: Color(0xFFFFFFFF),
@@ -498,6 +503,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? matchRing,
     Color? termsBarShadow,
     Color? agreementCell,
+    Color? contractCheckOn,
     Color? progressRing,
     Color? myBubble,
     Color? onMyBubble,
@@ -582,6 +588,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
       matchRing: matchRing ?? this.matchRing,
       termsBarShadow: termsBarShadow ?? this.termsBarShadow,
       agreementCell: agreementCell ?? this.agreementCell,
+      contractCheckOn: contractCheckOn ?? this.contractCheckOn,
       progressRing: progressRing ?? this.progressRing,
       myBubble: myBubble ?? this.myBubble,
       onMyBubble: onMyBubble ?? this.onMyBubble,
@@ -674,6 +681,7 @@ class CoraColors extends ThemeExtension<CoraColors> {
       matchRing: mix(matchRing, other.matchRing),
       termsBarShadow: mix(termsBarShadow, other.termsBarShadow),
       agreementCell: mix(agreementCell, other.agreementCell),
+      contractCheckOn: mix(contractCheckOn, other.contractCheckOn),
       progressRing: mix(progressRing, other.progressRing),
       myBubble: mix(myBubble, other.myBubble),
       onMyBubble: mix(onMyBubble, other.onMyBubble),

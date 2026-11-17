@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../proposals/domain/proposal.dart' show BrandContractRow;
+import '../../payment/domain/payment_repository.dart' show PaymentMethod;
+import 'contract.dart';
 import 'terms_version.dart';
 
 /// 협의를 그만두는 이유. 서버의 `SCHEDULE | BUDGET | DIRECTION | OTHER`와 같다. 서버에만 남고 상대에게는 알리지 않는다.
@@ -35,6 +37,27 @@ abstract class NegotiationRepository {
   /// 계약 전 협의를 그만둔다. 더는 그만둘 수 없는 단계이거나 브랜드가 결제를 진행 중이면 서버가 사용자 문구와 함께
   /// 거절해 [NegotiationRejected], 그 밖의 실패는 [NegotiationFailure]다.
   Future<void> drop(String collaborationId, DropReason reason);
+
+  /// 협업 [collaborationId]의 계약(D4). 협업이 없거나 당사자가 아니면 [NegotiationFailure].
+  Future<Contract> fetchContract(String collaborationId);
+
+  /// 크리에이터가 계약에 동의한다. [accepted]는 서버가 준 확인란 문구([Contract.myConsentTexts])를 그대로 보낸다.
+  /// 그사이 새 판본이 나왔으면 [NegotiationStale], 서버가 사용자 문구와 함께 거절하면 [NegotiationRejected],
+  /// 그 밖의 실패는 [NegotiationFailure]다.
+  Future<Contract> consentAsCreator(
+    String collaborationId,
+    int version,
+    List<String> accepted,
+  );
+
+  /// 브랜드가 계약에 동의하고 결제를 시작한다. 결제 금액은 서버가 계약 사본에서 정하므로 보내지 않는다. 결제창 주소를
+  /// 돌려준다. 실패는 [consentAsCreator]와 같다.
+  Future<({String paymentId, String checkoutUrl})> consentAsBrand(
+    String collaborationId,
+    int version,
+    List<String> accepted,
+    PaymentMethod method,
+  );
 }
 
 /// 수락하려던 판본이 최신이 아니다(409 `STALE_VERSION`). [latestVersion]은 서버가 알려 준 최신 판본

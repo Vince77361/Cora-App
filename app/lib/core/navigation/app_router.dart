@@ -25,6 +25,7 @@ import '../../features/discovery/presentation/pages/creator_discovery_page.dart'
 import '../../features/interests/presentation/pages/compare_page.dart';
 import '../../features/negotiation/presentation/pages/agreement_page.dart';
 import '../../features/negotiation/presentation/pages/brand_progress_page.dart';
+import '../../features/negotiation/presentation/pages/contract_page.dart';
 import '../../features/negotiation/presentation/pages/collaboration_hub_page.dart';
 import '../../features/negotiation/presentation/pages/draft_terms_page.dart';
 import '../../features/negotiation/presentation/pages/terms_proposal_page.dart';
@@ -296,11 +297,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      // 협업 계약(D4)은 Task 13이 만든다. 12가 열 자리라 그때까지 자리 화면이다.
+      // 협업 계약(D4). 12의 `계약하러 가기`와 07의 `계약서 확인하고 동의하기`가 연다.
       GoRoute(
         path: AppRoutes.collaborationContractPattern,
         pageBuilder: (context, state) => CoraTransitions.push(
-          const CoraComingSoonPage(title: '협업 계약'),
+          ContractPage(collaborationId: state.pathParameters['id']!),
           key: state.pageKey,
         ),
       ),

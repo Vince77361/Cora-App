@@ -49,16 +49,7 @@ class _BrandProgressPageState extends ConsumerState<BrandProgressPage> {
   }
 
   void _openContract(Collaboration c) {
-    context.push(
-      c.role == CollaborationRole.commissioner
-          ? AppRoutes.brandComingSoon(
-              nextActionLabel(CollaborationNextAction.signContract),
-            )
-          : AppRoutes.creatorComingSoon(
-              nextActionLabel(CollaborationNextAction.signContract),
-            ),
-      extra: AppRoutes.stacked,
-    );
+    context.push(AppRoutes.collaborationContract(c.id));
   }
 
   /// 협업 번호가 가게 오퍼의 것이면(알림이나 링크로 잘못 온 경우) 그 화면으로 보낸다. 이 화면은 브랜드 협업만 그린다.

@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:cora/features/discovery/domain/discovery_card.dart'
     show MatchReason;
 import 'package:cora/features/negotiation/domain/brand_usage_rights.dart';
+import 'package:cora/features/negotiation/domain/contract.dart';
+import 'package:cora/features/payment/domain/payment_quote.dart';
+import 'package:cora/features/payment/domain/payment_repository.dart'
+    show PaymentMethod;
 import 'package:cora/features/negotiation/domain/negotiation_repository.dart';
 import 'package:cora/features/negotiation/domain/terms_version.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart'
@@ -133,6 +137,87 @@ TermsLatest termsLatest({
   followers: followers,
 );
 
+/// 서버가 만드는 확인란 세 줄(`consentTexts`)과 같은 모양. 크리에이터의 둘째 줄은 `광고 표시 의무를 지킬게요`, 브랜드는
+/// `광고 표시를 요청할게요`다.
+List<String> consentTextsOf({
+  required bool brand,
+  int version = 2,
+  String usage = '콘텐츠는 브랜드 계정 재게시에만 쓰여요',
+}) => [
+  '합의한 조건 버전 ${version == 2 ? '2를' : '$version을'} 확인했어요',
+  brand ? '광고 표시를 요청할게요' : '광고 표시 의무를 지킬게요',
+  usage,
+];
+
+/// 서버 견적을 흉내 낸 값: 제작비 35만 원 + 수수료 10%. 성과 추가 상한이 있으면 보관액에 더한다.
+PaymentQuote contractQuote({
+  int fixedCash = 350000,
+  int? viewPayCap,
+  int? fee,
+}) {
+  final escrow = fixedCash + (viewPayCap ?? 0);
+  final feeValue = fee ?? escrow ~/ 10;
+  return PaymentQuote(
+    creatorName: '서윤의 작은 취향',
+    creatorPhotoUrl: null,
+    format: ContentFormat.reels,
+    pieces: 1,
+    fixedCash: fixedCash,
+    viewPayCap: viewPayCap,
+    escrow: escrow,
+    fee: feeValue,
+    total: escrow + feeValue,
+  );
+}
+
+/// 캔버스 D4의 견본 계약: 합의한 버전 2, 제작비 350,000원 + 제품, 11월 23일 시작, 게시 후 7일 이내 지급.
+/// [brand]는 내가 브랜드인지(확인란 문구와 견적이 달라진다).
+Contract sampleContract({
+  ContractStatus status = ContractStatus.awaitingCreator,
+  bool brand = false,
+  TermsVersion? terms,
+  List<String>? texts,
+  PaymentQuote? quote,
+  bool voidedNotice = false,
+  DateTime? concludedAt,
+}) {
+  final t =
+      terms ??
+      termsVersion(
+        version: 2,
+        fee: 350000,
+        startDate: DateTime(2026, 11, 23),
+        brandConfirmed: true,
+        creatorConfirmed: true,
+      );
+  final preview = status == ContractStatus.notReady;
+  return Contract(
+    status: status,
+    brandName: '모아 스튜디오',
+    creatorName: '서윤의 작은 취향',
+    terms: t,
+    myConsentTexts: texts ?? consentTextsOf(brand: brand, version: t.version),
+    voidedNotice: voidedNotice,
+    quote:
+        quote ??
+        (brand &&
+                !preview &&
+                (status == ContractStatus.awaitingBrand ||
+                    status == ContractStatus.paying)
+            ? contractQuote(fixedCash: t.fee, viewPayCap: t.performance?.cap)
+            : null),
+    creatorConsentedAt:
+        status == ContractStatus.awaitingBrand ||
+            status == ContractStatus.paying ||
+            status == ContractStatus.concluded
+        ? DateTime.utc(2026, 11, 20, 3)
+        : null,
+    concludedAt: status == ContractStatus.concluded
+        ? (concludedAt ?? DateTime.utc(2026, 11, 23, 3))
+        : null,
+  );
+}
+
 /// 손으로 쓴 가짜 조건 저장소. 수락하면 내 확인을 기록해 다시 읽을 때 `상대 대기`가 되게 한다.
 class FakeNegotiationRepository implements NegotiationRepository {
   FakeNegotiationRepository({TermsLatest? latest, TermsHistory? history})
@@ -176,6 +261,25 @@ class FakeNegotiationRepository implements NegotiationRepository {
 
   /// [drop]이 성공했을 때 부르는 곳(서버가 방을 바꾸는 것을 흉내 낸다).
   void Function(String collaborationId)? onDropped;
+
+  /// D4가 읽는 계약. 동의가 성공하면 서버처럼 바뀐다([consentAsCreator]).
+  Contract contract = sampleContract();
+  bool failContract = false;
+  int contractCalls = 0;
+
+  /// 설정하면 동의가 이 예외를 던진다. 옛 판본이면 [newerContract]로 바꿔 둔다.
+  Exception? creatorConsentFailure;
+  Exception? brandConsentFailure;
+  Contract? newerContract;
+
+  /// 브랜드 동의가 성공했을 때 부르는 곳(결제창이 열리기 전에 서버가 결제를 만드는 것을 흉내 낸다).
+  void Function()? onBrandConsented;
+
+  final creatorConsents = <({String id, int version, List<String> accepted})>[];
+  final brandConsents =
+      <
+        ({String id, int version, List<String> accepted, PaymentMethod method})
+      >[];
 
   int fetchCalls = 0;
   final dropped = <({String id, DropReason reason})>[];
@@ -277,6 +381,64 @@ class FakeNegotiationRepository implements NegotiationRepository {
       reasons: latest.reasons,
       fields: latest.fields,
       followers: latest.followers,
+    );
+  }
+
+  @override
+  Future<Contract> fetchContract(String collaborationId) async {
+    contractCalls++;
+    if (failContract) throw const NegotiationFailure();
+    return contract;
+  }
+
+  @override
+  Future<Contract> consentAsCreator(
+    String collaborationId,
+    int version,
+    List<String> accepted,
+  ) async {
+    creatorConsents.add((
+      id: collaborationId,
+      version: version,
+      accepted: accepted,
+    ));
+    final failure = creatorConsentFailure;
+    if (failure != null) {
+      final newer = newerContract;
+      if (newer != null) contract = newer;
+      throw failure;
+    }
+    contract = sampleContract(
+      status: ContractStatus.awaitingBrand,
+      terms: contract.terms,
+      texts: contract.myConsentTexts,
+    );
+    return contract;
+  }
+
+  @override
+  Future<({String paymentId, String checkoutUrl})> consentAsBrand(
+    String collaborationId,
+    int version,
+    List<String> accepted,
+    PaymentMethod method,
+  ) async {
+    brandConsents.add((
+      id: collaborationId,
+      version: version,
+      accepted: accepted,
+      method: method,
+    ));
+    final failure = brandConsentFailure;
+    if (failure != null) {
+      final newer = newerContract;
+      if (newer != null) contract = newer;
+      throw failure;
+    }
+    onBrandConsented?.call();
+    return (
+      paymentId: 'pay-1',
+      checkoutUrl: 'cora-dev://fake-pay?paymentId=pay-1',
     );
   }
 }

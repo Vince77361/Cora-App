@@ -57,6 +57,10 @@ Future<List<String>> _pump(
         builder: (context, state) => stub(state),
       ),
       GoRoute(
+        path: AppRoutes.collaborationContractPattern,
+        builder: (context, state) => stub(state),
+      ),
+      GoRoute(
         path: '/brand/coming-soon/:title',
         builder: (context, state) => stub(state),
       ),
@@ -186,7 +190,7 @@ void main() {
   });
 
   testWidgets('progress shows what to do now and opens the terms or the '
-      'contract placeholder', (tester) async {
+      'contract', (tester) async {
     var opened = await _pump(
       tester,
       brandCollab(nextAction: CollaborationNextAction.respondTerms),
@@ -208,12 +212,13 @@ void main() {
     expect(find.text('계약서 확인하고 동의하기'), findsOneWidget);
     await tester.tap(find.text('계약서 확인하고 동의하기'));
     await tester.pumpAndSettle();
-    expect(opened.last, startsWith(AppRoutes.brandComingSoon('계약서 확인하고 동의하기')));
+    expect(
+      opened.last,
+      startsWith(AppRoutes.collaborationContract(brandCollabId)),
+    );
   });
 
-  testWidgets('a creator opens the creator placeholder for the contract', (
-    tester,
-  ) async {
+  testWidgets('a creator opens the same contract route', (tester) async {
     final opened = await _pump(
       tester,
       brandCollab(
@@ -228,7 +233,7 @@ void main() {
 
     expect(
       opened.last,
-      startsWith(AppRoutes.creatorComingSoon('계약서 확인하고 동의하기')),
+      startsWith(AppRoutes.collaborationContract(brandCollabId)),
     );
   });
 
