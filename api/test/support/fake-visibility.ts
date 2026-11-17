@@ -13,7 +13,7 @@ export class FakeVisibility extends VisibilityService {
   hiddenCreators = new Set<string>();
 
   constructor() {
-    super(null as never);
+    super(null as never, null as never);
   }
 
   filterCreators(

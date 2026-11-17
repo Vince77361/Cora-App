@@ -453,6 +453,49 @@ export class OffersService {
     return this.reload(row.id, card, now, collaboration);
   }
 
+  // 차단: 두 사람 사이의 열린 오퍼를 끝낸다. 답을 기다리는 오퍼(SENT)는 CANCELLED로, 결제 전에 수락된 오퍼(ACCEPTED)는
+  // 협업(AWAITING_PAYMENT)과 함께 CANCELLED로 끝낸다. 열린 SENT 오퍼를 남기면 차단 뒤에 수락으로 대화가 열리기 때문이다.
+  // 결제한 뒤의 협업은 부르는 쪽(차단)이 먼저 걸러 내므로 여기서는 건드리지 않는다. 상대에게는 알리지 않는다.
+  // 차단 트랜잭션 안에서 부르고, 오퍼를 협업보다 먼저 잠그는 순서는 부르는 쪽이 지킨다.
+  async cancelForBlock(
+    a: string,
+    b: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    const open = await this.offers.listOpenBetween(a, b, tx);
+    const applicationIds: string[] = [];
+    for (const offer of open) {
+      const collaboration =
+        offer.status === 'ACCEPTED'
+          ? await this.collaborations.findByOfferId(offer.id, tx)
+          : null;
+      // 협업이 이미 결제 단계를 지났으면 부르는 쪽이 막았다. 끝난 협업의 오퍼는 닫혀 있어 여기까지 오지 않는다.
+      if (collaboration && collaboration.stage !== 'AWAITING_PAYMENT') continue;
+      const cancelled = await this.offers.cancelOpen(
+        offer.id,
+        offer.status as 'SENT' | 'ACCEPTED',
+        tx,
+      );
+      const moved =
+        !collaboration ||
+        (await this.collaborations.advanceByOffer(
+          offer.id,
+          'AWAITING_PAYMENT',
+          'CANCELLED',
+          {},
+          tx,
+        ));
+      if (!cancelled || !moved) {
+        throw new AppError(
+          'CONFLICT',
+          '협업의 상태가 바뀌었어요. 잠시 뒤 다시 시도해 주세요.',
+        );
+      }
+      if (offer.applicationId) applicationIds.push(offer.applicationId);
+    }
+    await this.offers.closeApplications(applicationIds, tx);
+  }
+
   // 새 판본을 낸다(양쪽 모두). 검사 순서: 내 오퍼(아니면 404) → 역할 → 기한 → 상태 → 차례 → 열 개 미만 → 조건 → 인스타그램.
   // 읽은 번호를 갱신 조건에 걸어, 같은 오퍼에 수락과 새 판본이 동시에 와도 하나만 이긴다.
   async proposeVersion(

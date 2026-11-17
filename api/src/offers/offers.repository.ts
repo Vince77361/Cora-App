@@ -468,6 +468,54 @@ export class OffersRepository {
     return rows.length === 1;
   }
 
+  // 차단: 두 사람 사이의 열린 오퍼(답을 기다리는 SENT, 협업이 끝나지 않은 ACCEPTED).
+  // 행 잠금은 부르는 쪽이 먼저 잡는다(협업 저장소의 lockAndListBetween이 오퍼를 협업보다 먼저 잠근다).
+  listOpenBetween(
+    a: string,
+    b: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<
+    { id: string; status: OfferStatus; applicationId: string | null }[]
+  > {
+    return tx.offer.findMany({
+      where: {
+        status: { in: ['SENT', 'ACCEPTED'] },
+        closedAt: null,
+        deletedAt: null,
+        OR: [
+          { creatorId: a, store: { ownerId: b } },
+          { creatorId: b, store: { ownerId: a } },
+        ],
+      },
+      select: { id: true, status: true, applicationId: true },
+    });
+  }
+
+  // 읽은 상태가 그대로일 때만 CANCELLED로 바꾼다. 연결된 협업은 부르는 쪽이 같은 트랜잭션에서 옮긴다.
+  async cancelOpen(
+    id: string,
+    from: 'SENT' | 'ACCEPTED',
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const { count } = await tx.offer.updateMany({
+      where: { id, status: from, deletedAt: null },
+      data: { status: 'CANCELLED' },
+    });
+    return count === 1;
+  }
+
+  // 끝난 오퍼에 붙은 지원(아직 오퍼 받음인 것)을 닫는다. 지원은 오퍼 표와 같은 모듈이 맡는다.
+  async closeApplications(
+    applicationIds: string[],
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    if (applicationIds.length === 0) return;
+    await tx.application.updateMany({
+      where: { id: { in: applicationIds }, status: 'OFFERED' },
+      data: { status: 'CLOSED' },
+    });
+  }
+
   // 오퍼 갱신(조건부)과 alongWith를 한 트랜잭션으로 묶는다. 갱신이 0행이면 alongWith는 부르지 않는다.
   // alongWith가 없으면 문장 하나짜리 갱신이라 트랜잭션을 열지 않는다: 목록을 읽을 때 여러 오퍼를
   // 동시에 정리하므로, 불필요한 대화형 트랜잭션이 연결을 붙잡아 풀이 마르는 것을 막는다.

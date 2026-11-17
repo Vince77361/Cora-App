@@ -586,6 +586,24 @@ describe('recommendations', () => {
       expect(list.total).toBe(1);
     });
 
+    it('hides blocked users from recommendations in both directions', async () => {
+      await makeBrand('ACCESSORY');
+      const blockedByMe = await seedCreator('blocked-by-me');
+      const blockedMe = await seedCreator('blocked-me');
+      const stays = await seedCreator('stays');
+      expect((await creatorList()).total).toBe(3);
+
+      await prisma.block.createMany({
+        data: [
+          { blockerId: USER_A, blockedId: blockedByMe },
+          { blockerId: blockedMe, blockedId: USER_A },
+        ],
+      });
+      const list = await creatorList();
+      expect(idsOf(list)).toEqual([stays]);
+      expect(list.total).toBe(1);
+    });
+
     it('leaves out creators without principles and withdrawn creators', async () => {
       await makeBrand();
       const shown = await seedCreator('shown');
@@ -924,6 +942,27 @@ describe('recommendations', () => {
       expect(list.cards.some((c) => c.store?.id === alcoholStore.id)).toBe(
         false,
       );
+    });
+
+    it('hides blocked brands and stores from the creator list in both directions', async () => {
+      const blockedBrand = await seedBrandCampaign('내가 차단', 'ACCESSORY');
+      const blockingBrand = await seedBrandCampaign('나를 차단', 'ACCESSORY');
+      await seedBrandCampaign('보이는 브랜드', 'ACCESSORY');
+      const blockedStore = await seedStore('내가 차단한 가게');
+      const blockingStore = await seedStore('나를 차단한 가게');
+      expect((await campaignList()).total).toBe(5);
+
+      await prisma.block.createMany({
+        data: [
+          { blockerId: OTHER, blockedId: blockedBrand.brandId },
+          { blockerId: blockingBrand.brandId, blockedId: OTHER },
+          { blockerId: OTHER, blockedId: blockedStore.ownerId },
+          { blockerId: blockingStore.ownerId, blockedId: OTHER },
+        ],
+      });
+      const list = await campaignList();
+      expect(list.total).toBe(1);
+      expect(list.cards.map((c) => c.brandName)).toEqual(['보이는 브랜드']);
     });
 
     it('still lists campaigns for a creator without principles, with no reasons', async () => {

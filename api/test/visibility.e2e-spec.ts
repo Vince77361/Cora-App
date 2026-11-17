@@ -137,6 +137,32 @@ describe('visibility', () => {
       await request(server).get(`/stores/${cafe.id}`).set(auth).expect(200);
     });
 
+    it('hides a store whose owner blocked the creator, or whom the creator blocked, and refuses applications and proposals to it', async () => {
+      const store = await seedStore('FOOD_CAFE');
+      for (const [blockerId, blockedId] of [
+        [store.ownerId, USER_A],
+        [USER_A, store.ownerId],
+      ]) {
+        await prisma.block.deleteMany();
+        await prisma.block.create({ data: { blockerId, blockedId } });
+        const list = await request(server).get('/stores').set(auth).expect(200);
+        expect(list.body as unknown[]).toEqual([]);
+        await request(server).get(`/stores/${store.id}`).set(auth).expect(404);
+        await request(server)
+          .post(`/stores/${store.id}/applications`)
+          .set(auth)
+          .send()
+          .expect(404);
+        await request(server)
+          .post(`/stores/${store.id}/proposals`)
+          .set(auth)
+          .send(OFFER_BODY)
+          .expect(404);
+      }
+      expect(await prisma.application.count()).toBe(0);
+      expect(await prisma.offer.count()).toBe(0);
+    });
+
     it('applies a newly added blocked industry immediately', async () => {
       const gambling = await seedStore('GAMBLING');
       const seen = () =>
@@ -219,6 +245,25 @@ describe('visibility', () => {
         .send({ creatorId: avoiding, ...OFFER_BODY })
         .expect(404);
       expect(codeOf(res)).toBe('NOT_FOUND');
+      expect(await prisma.offer.count()).toBe(0);
+      expect(await prisma.application.count()).toBe(0);
+    });
+
+    it('returns 404 when offering to a creator who blocked the store owner, or whom the store owner blocked', async () => {
+      const creator = await seedCreator('차단 관계', []);
+      for (const [blockerId, blockedId] of [
+        [creator, USER_A],
+        [USER_A, creator],
+      ]) {
+        await prisma.block.deleteMany();
+        await prisma.block.create({ data: { blockerId, blockedId } });
+        const res = await request(server)
+          .post('/offers')
+          .set(auth)
+          .send({ creatorId: creator, ...OFFER_BODY })
+          .expect(404);
+        expect(codeOf(res)).toBe('NOT_FOUND');
+      }
       expect(await prisma.offer.count()).toBe(0);
       expect(await prisma.application.count()).toBe(0);
     });
@@ -369,6 +414,95 @@ describe('visibility', () => {
           industry: 'LOAN',
         }),
       ).toBe(false);
+    });
+
+    it('hides a blocked creator from the viewer whichever side blocked', async () => {
+      const blockedByViewer = await seedCreator('내가 차단', []);
+      const blockedViewer = await seedCreator('나를 차단', []);
+      const stays = await seedCreator('그대로', []);
+      const viewer = {
+        userId: randomUUID(),
+        kind: 'BRAND' as const,
+        industry: 'BEAUTY' as const,
+      };
+      await prisma.user.create({ data: { id: viewer.userId, role: 'BRAND' } });
+      await prisma.block.createMany({
+        data: [
+          { blockerId: viewer.userId, blockedId: blockedByViewer },
+          { blockerId: blockedViewer, blockedId: viewer.userId },
+        ],
+      });
+      expect(await visibility.creatorVisibleTo(blockedByViewer, viewer)).toBe(
+        false,
+      );
+      expect(await visibility.creatorVisibleTo(blockedViewer, viewer)).toBe(
+        false,
+      );
+      expect(
+        await visibility.filterCreators(
+          [blockedByViewer, stays, blockedViewer],
+          viewer,
+        ),
+      ).toEqual([stays]);
+      // 다른 사람에게는 그대로 보인다.
+      expect(
+        await visibility.filterCreators([blockedByViewer, blockedViewer], {
+          ...viewer,
+          userId: randomUUID(),
+        }),
+      ).toEqual([blockedByViewer, blockedViewer]);
+    });
+
+    it('hides a blocked commissioner from the creator whichever side blocked', async () => {
+      const creator = await seedCreator('크리에이터', []);
+      const blockedByCreator = {
+        ownerId: randomUUID(),
+        industry: 'BEAUTY' as const,
+      };
+      const blockedCreator = { ...blockedByCreator, ownerId: randomUUID() };
+      const stays = { ...blockedByCreator, ownerId: randomUUID() };
+      for (const target of [blockedByCreator, blockedCreator, stays]) {
+        await prisma.user.create({
+          data: { id: target.ownerId, role: 'BRAND' },
+        });
+      }
+      await prisma.block.createMany({
+        data: [
+          { blockerId: creator, blockedId: blockedByCreator.ownerId },
+          { blockerId: blockedCreator.ownerId, blockedId: creator },
+        ],
+      });
+      expect(
+        await visibility.commissionerVisibleTo(blockedByCreator, creator),
+      ).toBe(false);
+      expect(
+        await visibility.commissionerVisibleTo(blockedCreator, creator),
+      ).toBe(false);
+      expect(
+        await visibility.filterCommissioners(
+          [blockedByCreator, stays, blockedCreator],
+          creator,
+        ),
+      ).toEqual([stays]);
+    });
+
+    it('stops hiding a creator once the block row is removed', async () => {
+      const creator = await seedCreator('크리에이터', []);
+      const viewer = {
+        userId: randomUUID(),
+        kind: 'STORE' as const,
+        industry: 'BEAUTY' as const,
+      };
+      await prisma.user.create({ data: { id: viewer.userId, role: 'STORE' } });
+      const block = await prisma.block.create({
+        data: { blockerId: viewer.userId, blockedId: creator },
+      });
+      expect(await visibility.creatorVisibleTo(creator, viewer)).toBe(false);
+      await prisma.block.update({
+        where: { id: block.id },
+        data: { deletedAt: new Date() },
+      });
+      expect(await visibility.creatorVisibleTo(creator, viewer)).toBe(true);
     });
 
     it('says whether a commissioner is visible to a creator', async () => {

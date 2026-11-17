@@ -239,6 +239,34 @@ describe('discovery decisions', () => {
       await brandLike().expect(404);
     });
 
+    it('returns 404 when a brand likes a creator it is blocked with, whichever side blocked', async () => {
+      await bothSides();
+      for (const [blockerId, blockedId] of [
+        [OTHER, USER_A],
+        [USER_A, OTHER],
+      ]) {
+        await prisma.block.deleteMany();
+        await prisma.block.create({ data: { blockerId, blockedId } });
+        const res = await brandLike().expect(404);
+        expect(codeOf(res)).toBe('NOT_FOUND');
+      }
+      expect(await decisionRows()).toHaveLength(0);
+    });
+
+    it('returns 404 when a creator likes a campaign of a brand it is blocked with, whichever side blocked', async () => {
+      const campaignId = await bothSides();
+      for (const [blockerId, blockedId] of [
+        [OTHER, USER_A],
+        [USER_A, OTHER],
+      ]) {
+        await prisma.block.deleteMany();
+        await prisma.block.create({ data: { blockerId, blockedId } });
+        const res = await creatorLike(campaignId).expect(404);
+        expect(codeOf(res)).toBe('NOT_FOUND');
+      }
+      expect(await decisionRows()).toHaveLength(0);
+    });
+
     it('returns 404 when a creator likes a campaign of an industry they avoid or a closed one', async () => {
       const campaignId = await makeBrand('ALCOHOL');
       await makeCreator({ blockedIndustries: ['ALCOHOL'] });

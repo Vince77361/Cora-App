@@ -134,8 +134,75 @@ export class CollaborationsRepository {
     return map;
   }
 
-  findByOfferId(offerId: string): Promise<Collaboration | null> {
-    return this.prisma.collaboration.findFirst({
+  // 두 사람 사이(어느 쪽이 맡기는 쪽이든)의 협업을 잠그고 읽는다. 차단과 신고가 쓴다.
+  // 잠금 순서는 정산 행 → 오퍼 → 협업이다(운영 명령·결제 승인과 같은 순서): 이 순서로 잡으면 그 길과 서로 기다리지 않는다.
+  // 오퍼는 아직 협업이 없는 열린(SENT) 오퍼까지 모두 잠근다. 다른 모듈의 표(정산·오퍼)는 이 저장소가 직접 읽는다(R10).
+  async lockAndListBetween(
+    a: string,
+    b: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<Collaboration[]> {
+    await tx.$queryRaw`
+      SELECT s.id FROM settlements s
+      JOIN collaborations c ON c.id = s.collaboration_id
+      WHERE c.deleted_at IS NULL AND (
+        (c.commissioner_id = ${a}::uuid AND c.creator_id = ${b}::uuid)
+        OR (c.commissioner_id = ${b}::uuid AND c.creator_id = ${a}::uuid))
+      ORDER BY s.id FOR UPDATE OF s`;
+    await tx.$queryRaw`
+      SELECT o.id FROM offers o
+      JOIN stores st ON st.id = o.store_id
+      WHERE o.deleted_at IS NULL AND o.status IN ('SENT', 'ACCEPTED') AND (
+        (o.creator_id = ${a}::uuid AND st.owner_id = ${b}::uuid)
+        OR (o.creator_id = ${b}::uuid AND st.owner_id = ${a}::uuid))
+      ORDER BY o.id FOR UPDATE OF o`;
+    await tx.$queryRaw`
+      SELECT id FROM collaborations
+      WHERE deleted_at IS NULL AND (
+        (commissioner_id = ${a}::uuid AND creator_id = ${b}::uuid)
+        OR (commissioner_id = ${b}::uuid AND creator_id = ${a}::uuid))
+      ORDER BY id FOR UPDATE`;
+    return tx.collaboration.findMany({
+      where: {
+        deletedAt: null,
+        OR: [
+          { commissionerId: a, creatorId: b },
+          { commissionerId: b, creatorId: a },
+        ],
+      },
+      orderBy: { id: 'asc' },
+    });
+  }
+
+  // 아직 브랜드가 결제하지 않은(AWAITING_BRAND) 계약을 무효로 만든다. 협업이 끝나거나 조건이 바뀔 때 부른다.
+  // 체결된(CONCLUDED) 계약은 건드리지 않는다: 체결된 협업은 돈이 보관 중이라 이 길로 끝나지 않는다.
+  async voidPendingContract(
+    collaborationId: string,
+    reason: 'NEW_TERMS' | 'DROPPED' | 'BLOCKED',
+    now: Date,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const { count } = await tx.contract.updateMany({
+      where: {
+        collaborationId,
+        status: 'AWAITING_BRAND',
+        deletedAt: null,
+      },
+      data: {
+        status: 'VOIDED',
+        voidedAt: now,
+        voidReason: reason,
+        updatedAt: now,
+      },
+    });
+    return count > 0;
+  }
+
+  findByOfferId(
+    offerId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Collaboration | null> {
+    return this.client(tx).collaboration.findFirst({
       where: { offerId, deletedAt: null },
     });
   }

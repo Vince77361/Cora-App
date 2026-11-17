@@ -146,6 +146,51 @@ export class ConversationsRepository {
     );
   }
 
+  // 두 사람 사이의 열려 있거나 요청 중인 방을 모두 닫는다(차단). 닫은 방의 id를 돌려준다.
+  // 거절된(DECLINED) 방은 그대로 둔다: 거절한 쪽 목록에서 빠져 있는 방이 닫힌 방으로 다시 나타나면 안 된다.
+  async closeBetween(
+    a: string,
+    b: string,
+    now: Date,
+    tx: Prisma.TransactionClient,
+  ): Promise<string[]> {
+    const open: ConversationStatus[] = ['OPEN', 'REQUESTED'];
+    const rooms = await tx.conversation.findMany({
+      where: {
+        deletedAt: null,
+        status: { in: open },
+        collaboration: {
+          OR: [
+            { commissionerId: a, creatorId: b },
+            { commissionerId: b, creatorId: a },
+          ],
+        },
+      },
+      select: { id: true },
+    });
+    if (rooms.length === 0) return [];
+    const ids = rooms.map((room) => room.id);
+    await tx.conversation.updateMany({
+      where: { id: { in: ids }, status: { in: open } },
+      data: { status: 'CLOSED', closedReason: 'BLOCKED', updatedAt: now },
+    });
+    return ids;
+  }
+
+  // 내가 참가한 방에 이 사용자도 참가자인가(신고 대상인 "내 방의 상대"인지 본다).
+  async sharesRoom(userId: string, otherId: string): Promise<boolean> {
+    const count = await this.prisma.conversation.count({
+      where: {
+        deletedAt: null,
+        AND: [
+          { members: { some: { userId, deletedAt: null } } },
+          { members: { some: { userId: otherId, deletedAt: null } } },
+        ],
+      },
+    });
+    return count > 0;
+  }
+
   async createRoom(
     input: {
       collaborationId: string;

@@ -173,6 +173,37 @@ export class ConversationsService {
     );
   }
 
+  // 차단: 두 사람 사이의 열려 있거나 요청 중인 방을 모두 닫는다. 협업과 같은 트랜잭션에서 부르고,
+  // 커밋 뒤에 닫은 방마다 publishUpdated를 부른다(안내 줄은 남기지 않는다: 차단 사실은 상대에게 알리지 않는다).
+  closeBetween(
+    a: string,
+    b: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<string[]> {
+    return this.repository.closeBetween(a, b, this.clock.now(), tx);
+  }
+
+  // 차단·신고가 방의 상대와 협업을 알아야 할 때 쓴다. 참가자가 아니면 404다.
+  async participantView(
+    userId: string,
+    id: string,
+  ): Promise<{ id: string; collaborationId: string; counterpartId: string }> {
+    const room = await this.requireMember(userId, id);
+    const other = room.members.find((m) => m.userId !== userId);
+    if (!other) throw notFound();
+    return {
+      id: room.id,
+      collaborationId: room.collaborationId,
+      counterpartId: other.userId,
+    };
+  }
+
+  // 신고 대상이 "내 방의 상대"인가.
+  isRoomPartner(userId: string, otherId: string): Promise<boolean> {
+    if (userId === otherId) return Promise.resolve(false);
+    return this.repository.sharesRoom(userId, otherId);
+  }
+
   async idForCollaboration(
     collaborationId: string,
     tx?: Prisma.TransactionClient,
