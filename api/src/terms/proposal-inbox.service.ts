@@ -108,17 +108,15 @@ export class ProposalInboxService {
         result.set(id, { name: profile.name, photoUrl: profile.photoUrl });
       }
     }
-    await Promise.all(
-      [...creatorIds].map(async (id) => {
-        const summary = await this.creators.getSummary(id);
-        if (summary) {
-          result.set(id, {
-            name: summary.displayName,
-            photoUrl: summary.photoUrl,
-          });
-        }
-      }),
-    );
+    if (creatorIds.size > 0) {
+      const summaries = await this.creators.getSummaries([...creatorIds]);
+      for (const [id, summary] of summaries) {
+        result.set(id, {
+          name: summary.displayName,
+          photoUrl: summary.photoUrl,
+        });
+      }
+    }
     return result;
   }
 }

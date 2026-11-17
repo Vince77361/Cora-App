@@ -41,6 +41,17 @@ class FakeCreatorsRepository extends CreatorsRepository {
     );
   }
 
+  // 한 번의 읽기로 센다(목록이 줄마다 읽지 않는지 보려고).
+  batchReads = 0;
+
+  async findActiveByUserIds(userIds: string[]): Promise<CreatorProfileRow[]> {
+    this.batchReads += 1;
+    const rows = await Promise.all(
+      userIds.map((id) => this.findActiveByUserId(id)),
+    );
+    return rows.flatMap((row) => (row ? [row] : []));
+  }
+
   upsert(userId: string, data: CreatorProfileData): Promise<CreatorProfileRow> {
     const now = new Date();
     const row: CreatorProfileRow = {
@@ -153,6 +164,22 @@ describe('CreatorsService', () => {
     await service.upsertMine(USER, input);
     repo.rows.set(USER, { ...repo.rows.get(USER)!, deletedAt: new Date() });
     expect(await service.getSummary(USER)).toBeNull();
+  });
+
+  it('reads many summaries in one read and leaves out missing and deleted profiles', async () => {
+    const other = '44444444-4444-4444-8444-444444444444';
+    const gone = '55555555-5555-4555-8555-555555555555';
+    await service.upsertMine(USER, input);
+    await service.upsertMine(other, { ...input, displayName: '하나' });
+    await service.upsertMine(gone, { ...input, displayName: '지움' });
+    repo.rows.set(gone, { ...repo.rows.get(gone)!, deletedAt: new Date() });
+
+    const found = await service.getSummaries([USER, other, gone, 'nobody']);
+    expect(repo.batchReads).toBe(1);
+    expect([...found.keys()].sort()).toEqual([USER, other].sort());
+    expect(found.get(other)?.displayName).toBe('하나');
+    // 한 명씩 읽는 getSummary와 같은 모양이다.
+    expect(found.get(USER)).toEqual(await service.getSummary(USER));
   });
 
   it('replaces the whole profile and turns missing or blank optionals into null', async () => {

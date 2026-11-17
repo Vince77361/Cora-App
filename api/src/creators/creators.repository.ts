@@ -29,6 +29,39 @@ export type CreatorProfileRow = CreatorProfile & {
 // 카드로 보여 줄 때 필요한 프로필 열과 가입 시각(최근 가입 순 정렬).
 export type CreatorCardRow = CreatorProfile & { joinedAt: Date };
 
+const PROFILE_INCLUDE = {
+  user: {
+    select: {
+      instagramConnection: {
+        select: { handle: true, followers: true, deletedAt: true },
+      },
+    },
+  },
+} as const;
+
+// 관계로 읽은 연결을 프로필 행의 instagram 칸으로. 연결이 없거나 지워졌으면 null이다.
+function withInstagram(
+  row: CreatorProfile & {
+    user: {
+      instagramConnection: {
+        handle: string;
+        followers: number | null;
+        deletedAt: Date | null;
+      } | null;
+    };
+  },
+): CreatorProfileRow {
+  const { user, ...profile } = row;
+  const connection = user.instagramConnection;
+  return {
+    ...profile,
+    instagram:
+      connection && !connection.deletedAt
+        ? { handle: connection.handle, followers: connection.followers }
+        : null,
+  };
+}
+
 // 크리에이터 조회는 모두 여기를 거친다. 4번 계획이 목록 조건(피하는 업종 등)을 이곳에 끼운다.
 @Injectable()
 export class CreatorsRepository {
@@ -38,26 +71,19 @@ export class CreatorsRepository {
   async findActiveByUserId(userId: string): Promise<CreatorProfileRow | null> {
     const row = await this.prisma.creatorProfile.findFirst({
       where: { userId, deletedAt: null },
-      include: {
-        user: {
-          select: {
-            instagramConnection: {
-              select: { handle: true, followers: true, deletedAt: true },
-            },
-          },
-        },
-      },
+      include: PROFILE_INCLUDE,
     });
-    if (!row) return null;
-    const { user, ...profile } = row;
-    const connection = user.instagramConnection;
-    return {
-      ...profile,
-      instagram:
-        connection && !connection.deletedAt
-          ? { handle: connection.handle, followers: connection.followers }
-          : null,
-    };
+    return row ? withInstagram(row) : null;
+  }
+
+  // 여러 크리에이터의 프로필을 한 번에(목록이 줄마다 읽지 않게). 프로필이 없거나 지워진 사람은 결과에 없다.
+  async findActiveByUserIds(userIds: string[]): Promise<CreatorProfileRow[]> {
+    if (userIds.length === 0) return [];
+    const rows = await this.prisma.creatorProfile.findMany({
+      where: { userId: { in: userIds }, deletedAt: null },
+      include: PROFILE_INCLUDE,
+    });
+    return rows.map(withInstagram);
   }
 
   // 카드를 만들 활동 중인 크리에이터. 탈퇴(지워진 계정)와 지워진 프로필은 없는 것이다. 최근 가입 순.

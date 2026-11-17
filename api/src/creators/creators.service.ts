@@ -135,6 +135,14 @@ export class CreatorsService {
     return row ? this.toSummary(row) : null;
   }
 
+  // getSummary를 여러 명에게 한 번의 읽기로(제안함처럼 줄마다 상대 프로필이 필요한 목록). 프로필이 없거나 지워진 사람은 맵에 없다.
+  async getSummaries(
+    userIds: string[],
+  ): Promise<Map<string, CreatorSummaryModel>> {
+    const rows = await this.creators.findActiveByUserIds(userIds);
+    return new Map(rows.map((row) => [row.userId, this.toSummary(row)]));
+  }
+
   // 브랜드에게 보여 주는 카드의 재료(하루 추천, 둘러보기). 활동 중인 크리에이터 전부를 최근 가입 순으로 준다.
   // 협업 원칙과 피하는 업종은 여기서 모른다: 읽는 쪽이 VisibilityService로 거른다.
   async listCardSources(): Promise<CreatorCardSource[]> {
