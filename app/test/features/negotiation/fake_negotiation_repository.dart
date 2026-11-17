@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cora/features/discovery/domain/discovery_card.dart'
     show MatchReason;
 import 'package:cora/features/negotiation/domain/brand_usage_rights.dart';
@@ -76,7 +78,17 @@ class FakeNegotiationRepository implements NegotiationRepository {
   /// 옛 판본 예외 뒤 다시 읽을 때 돌려줄 최신 판본. 설정하면 [confirm]이 실패하고 [latest]가 이것으로 바뀐다.
   TermsLatest? newerLatest;
 
+  /// 설정하면 [drop]이 이 예외를 던진다.
+  Exception? dropFailure;
+
+  /// 설정하면 [drop]이 이 Completer가 끝날 때까지 기다린다.
+  Completer<void>? holdDrop;
+
+  /// [drop]이 성공했을 때 부르는 곳(서버가 방을 바꾸는 것을 흉내 낸다).
+  void Function(String collaborationId)? onDropped;
+
   int fetchCalls = 0;
+  final dropped = <({String id, DropReason reason})>[];
   final confirmed = <({String id, int version})>[];
 
   @override
@@ -84,6 +96,15 @@ class FakeNegotiationRepository implements NegotiationRepository {
     fetchCalls++;
     if (failFetch) throw const NegotiationFailure();
     return latest;
+  }
+
+  @override
+  Future<void> drop(String collaborationId, DropReason reason) async {
+    dropped.add((id: collaborationId, reason: reason));
+    await holdDrop?.future;
+    final failure = dropFailure;
+    if (failure != null) throw failure;
+    onDropped?.call(collaborationId);
   }
 
   @override

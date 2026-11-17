@@ -9,14 +9,17 @@ import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../chat_text.dart';
 
-/// 대화 관리 시트에서 고른 것. 차단·신고·협의 그만두기는 Task 10b가 더한다.
-enum ThreadMenuAction { toggleMute }
+/// 대화 관리 시트에서 고른 것.
+enum ThreadMenuAction { toggleMute, block, report, drop }
 
 /// 머리의 점 셋이 여는 `대화 관리` 시트(캔버스 D3). 항목을 누르면 그 값을 돌려주며 닫히고, `닫기`나 시트 밖을 누르면
-/// null이다.
+/// null이다. [canBlock]은 아직 차단하지 않았을 때, [canDrop]은 계약 전 협의를 그만둘 수 있을 때(`canDrop`)만 참이다.
+/// `협의 그만두기`는 캔버스에 없는 항목이라 다른 항목과 같은 모양으로 `신고하기` 아래에 둔다.
 Future<ThreadMenuAction?> showThreadMenuSheet(
   BuildContext context, {
   required bool muted,
+  required bool canBlock,
+  required bool canDrop,
 }) {
   return showModalBottomSheet<ThreadMenuAction>(
     context: context,
@@ -33,16 +36,27 @@ Future<ThreadMenuAction?> showThreadMenuSheet(
           top: Radius.circular(CoraRadius.xxl),
         ),
       ),
-      child: ThreadMenuSheet(muted: muted),
+      child: ThreadMenuSheet(
+        muted: muted,
+        canBlock: canBlock,
+        canDrop: canDrop,
+      ),
     ),
   );
 }
 
 /// 안쪽 위 12·아래 28, 손잡이(40 x 5, 모서리 3, `line`), 항목 높이 56·좌우 24·16px, 아래 `닫기`(높이 52, 좌우 16).
 class ThreadMenuSheet extends StatelessWidget {
-  const ThreadMenuSheet({super.key, required this.muted});
+  const ThreadMenuSheet({
+    super.key,
+    required this.muted,
+    this.canBlock = true,
+    this.canDrop = false,
+  });
 
   final bool muted;
+  final bool canBlock;
+  final bool canDrop;
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +88,20 @@ class ThreadMenuSheet extends StatelessWidget {
               onTap: () =>
                   Navigator.of(context).pop(ThreadMenuAction.toggleMute),
             ),
+            if (canBlock)
+              _Row(
+                label: ChatTexts.block,
+                onTap: () => Navigator.of(context).pop(ThreadMenuAction.block),
+              ),
+            _Row(
+              label: ChatTexts.report,
+              onTap: () => Navigator.of(context).pop(ThreadMenuAction.report),
+            ),
+            if (canDrop)
+              _Row(
+                label: ChatTexts.drop,
+                onTap: () => Navigator.of(context).pop(ThreadMenuAction.drop),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Semantics(

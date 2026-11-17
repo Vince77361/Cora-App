@@ -168,29 +168,35 @@ class ConversationDetail {
   bool get isRequestForMe =>
       status == ConversationStatus.requested && !requestedByMe;
 
-  /// 서버가 알려 주기 전에 화면이 먼저 바꾸는 값(알림 끄기·켜기)만 바꾼 사본.
-  ConversationDetail copyWith({bool? muted}) => ConversationDetail(
+  /// 서버가 알려 주기 전에 화면이 먼저 바꾸는 값(알림 끄기·켜기, 차단, 그만두기)만 바꾼 사본.
+  ConversationDetail copyWith({
+    bool? muted,
+    ConversationStatus? status,
+    ConversationStage? stage,
+    bool? blockedByMe,
+    bool? canDrop,
+  }) => ConversationDetail(
     id: id,
     collaborationId: collaborationId,
     kind: kind,
     counterpartName: counterpartName,
     counterpartPhotoUrl: counterpartPhotoUrl,
     contextLabel: contextLabel,
-    status: status,
+    status: status ?? this.status,
     section: section,
     requestedByMe: requestedByMe,
     myRole: myRole,
-    stage: stage,
+    stage: stage ?? this.stage,
     contractStatus: contractStatus,
     lastSeq: lastSeq,
     lastReadSeq: lastReadSeq,
     unreadCount: unreadCount,
     muted: muted ?? this.muted,
-    blockedByMe: blockedByMe,
+    blockedByMe: blockedByMe ?? this.blockedByMe,
     canSend: canSend,
     canSendContentCard: canSendContentCard,
     canProposeTerms: canProposeTerms,
-    canDrop: canDrop,
+    canDrop: canDrop ?? this.canDrop,
     canLikeCampaign: canLikeCampaign,
     lastMessage: lastMessage,
     terms: terms,

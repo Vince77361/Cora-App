@@ -250,16 +250,81 @@ void main() {
     );
   });
 
-  test('block and report are not built yet', () {
-    final repo = _repo(_Client(200, null));
-    expect(() => repo.block('room-1'), throwsA(isA<UnimplementedError>()));
-    expect(
-      () => repo.report(
+  test('blocks the other side through the block endpoint', () async {
+    final client = _Client(200, {
+      ..._detailJson(),
+      'status': 'CLOSED',
+      'blockedByMe': true,
+    });
+    await _repo(client).block('room-1');
+
+    expect(client.requests.single.method, 'POST');
+    expect(client.requests.single.url.path, '/conversations/room-1/block');
+  });
+
+  test('a block refused for held money is a conflict', () async {
+    final client = _Client(409, {
+      'error': {
+        'code': 'CONFLICT',
+        'message': '진행 중인 협업이 있어요. 문의하기로 알려 주세요.',
+        'details': null,
+      },
+    });
+    await expectLater(
+      _repo(client).block('room-1'),
+      throwsA(isA<ChatFailure>().having((f) => f.isConflict, 'conflict', true)),
+    );
+  });
+
+  test('reports a conversation with its reason and detail', () async {
+    final client = _Client(201, {'id': 'report-1'});
+    await _repo(client).report(
+      const ReportTarget(ReportTargetKind.conversation, 'room-1'),
+      ReportReason.fraud,
+      '선입금을 요구해요',
+    );
+
+    expect(client.requests.single.method, 'POST');
+    expect(client.requests.single.url.path, '/reports');
+    expect(jsonDecode(client.requests.single.body), {
+      'targetKind': 'CONVERSATION',
+      'targetId': 'room-1',
+      'reason': 'FRAUD',
+      'detail': '선입금을 요구해요',
+    });
+  });
+
+  test('every report reason and target kind maps to the wire value', () async {
+    const wire = {
+      ReportReason.spam: 'SPAM',
+      ReportReason.abuse: 'ABUSE',
+      ReportReason.fraud: 'FRAUD',
+      ReportReason.other: 'OTHER',
+    };
+    for (final entry in wire.entries) {
+      final client = _Client(201, {'id': 'report-1'});
+      await _repo(client).report(
+        const ReportTarget(ReportTargetKind.user, 'u-2'),
+        entry.key,
+        null,
+      );
+      final body = jsonDecode(client.requests.single.body) as Map;
+      expect(body['reason'], entry.value);
+      expect(body['targetKind'], 'USER');
+    }
+  });
+
+  test('a second report is a conflict', () async {
+    final client = _Client(409, {
+      'error': {'code': 'CONFLICT', 'message': '이미 신고했어요.', 'details': null},
+    });
+    await expectLater(
+      _repo(client).report(
         const ReportTarget(ReportTargetKind.conversation, 'room-1'),
         ReportReason.spam,
         null,
       ),
-      throwsA(isA<UnimplementedError>()),
+      throwsA(isA<ChatFailure>().having((f) => f.isConflict, 'conflict', true)),
     );
   });
 }

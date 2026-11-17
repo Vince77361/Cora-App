@@ -9,6 +9,7 @@ import '../../../auth/domain/current_user_provider.dart';
 import '../../../collaboration/domain/collaboration_repository.dart';
 import '../../../discovery/domain/discovery_repository.dart';
 import '../../../discovery/domain/discovery_target.dart';
+import '../../../negotiation/domain/negotiation_repository.dart';
 import '../../domain/chat_repository.dart';
 import '../../domain/conversation.dart';
 import '../../domain/message.dart';
@@ -418,6 +419,82 @@ class ChatThreadViewModel extends AsyncNotifier<ChatThreadState> {
       if (!ref.mounted || latest == null) return;
       state = AsyncData(latest.copyWith(notice: ChatTexts.muteFailed));
     }
+  }
+
+  /// 이 대화의 상대를 차단한다. 성공하면 null, 실패하면 시트에 보일 문구를 돌려준다. 돈이 보관 중인 협업이 있으면
+  /// 서버가 409로 막는다.
+  ///
+  /// 성공하면 방이 닫힌 모습으로 먼저 바꾼다(서버의 `conversation.updated`와 머리 다시 읽기가 이어서 맞춘다).
+  /// 차단한 쪽에는 `차단한 대화예요.`, 상대 쪽에는 서버가 닫았다고만 알려 `대화가 종료됐어요.`로 보인다.
+  Future<String?> block() async {
+    try {
+      await _repo.block(_id);
+    } on ChatFailure catch (failure) {
+      return failure.isConflict
+          ? ChatTexts.blockConflict
+          : ChatTexts.actionFailed;
+    }
+    final current = state.value;
+    if (!ref.mounted || current == null) return null;
+    state = AsyncData(
+      current.copyWith(
+        detail: current.detail.copyWith(
+          blockedByMe: true,
+          status: ConversationStatus.closed,
+        ),
+        clearNotice: true,
+      ),
+    );
+    _refreshList();
+    unawaited(_refreshDetail());
+    return null;
+  }
+
+  /// 이 대화방을 신고한다. 성공하면 null, 이미 신고했으면 `이미 신고했어요.`, 그 밖의 실패는 일반 문구를 돌려준다.
+  /// 빈 설명은 보내지 않는다.
+  Future<String?> report(ReportReason reason, String? detail) async {
+    final text = detail?.trim();
+    try {
+      await _repo.report(
+        ReportTarget(ReportTargetKind.conversation, _id),
+        reason,
+        text == null || text.isEmpty ? null : text,
+      );
+      return null;
+    } on ChatFailure catch (failure) {
+      return failure.isConflict
+          ? ChatTexts.reportAlready
+          : ChatTexts.actionFailed;
+    }
+  }
+
+  /// 계약 전 협의를 그만둔다. 성공하면 null, 서버가 문구와 함께 거절하면 그 문구, 그 밖의 실패는 일반 문구를
+  /// 돌려준다. 이유는 서버에만 남고 상대에게는 `이번에는 함께하기 어렵대요.` 줄만 간다.
+  Future<String?> drop(DropReason reason) async {
+    final collaborationId = state.value?.detail.collaborationId;
+    if (collaborationId == null) return ChatTexts.actionFailed;
+    try {
+      await ref
+          .read(negotiationRepositoryProvider)
+          .drop(collaborationId, reason);
+    } on NegotiationRejected catch (rejected) {
+      return rejected.message ?? ChatTexts.actionFailed;
+    } on NegotiationFailure {
+      return ChatTexts.actionFailed;
+    }
+    final current = state.value;
+    if (!ref.mounted || current == null) return null;
+    state = AsyncData(
+      current.copyWith(
+        detail: current.detail.copyWith(
+          stage: ConversationStage.dropped,
+          canDrop: false,
+        ),
+      ),
+    );
+    _refreshList();
+    unawaited(_refreshDetail());
+    return null;
   }
 
   /// `관심 보내기`(서로 관심 전, 크리에이터만). 캠페인 번호는 협업에서 읽어 4번의 관심으로 보낸다.

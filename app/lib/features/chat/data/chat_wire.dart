@@ -3,6 +3,7 @@ import 'package:cora_api/api.dart' as api;
 import '../../collaboration/domain/collaboration.dart' show CollaborationKind;
 import '../../negotiation/data/terms_version_from_wire.dart';
 import '../../offer_terms/data/offer_terms_from_wire.dart';
+import '../domain/chat_repository.dart' show ReportReason, ReportTargetKind;
 import '../domain/conversation.dart';
 import '../domain/message.dart';
 import '../domain/realtime_connection.dart' show ConversationUpdateReason;
@@ -20,6 +21,19 @@ api.SendableMessageKind sendableKindToWire(MessageKind kind) =>
     kind == MessageKind.contentCard
     ? api.SendableMessageKind.CONTENT_CARD
     : api.SendableMessageKind.TEXT;
+
+api.ReportTargetKind reportTargetKindToWire(ReportTargetKind kind) =>
+    switch (kind) {
+      ReportTargetKind.user => api.ReportTargetKind.USER,
+      ReportTargetKind.conversation => api.ReportTargetKind.CONVERSATION,
+    };
+
+api.ReportReason reportReasonToWire(ReportReason reason) => switch (reason) {
+  ReportReason.spam => api.ReportReason.SPAM,
+  ReportReason.abuse => api.ReportReason.ABUSE,
+  ReportReason.fraud => api.ReportReason.FRAUD,
+  ReportReason.other => api.ReportReason.OTHER,
+};
 
 ChatMessage chatMessageFromWire(api.MessageModel m) => ChatMessage(
   id: m.id,

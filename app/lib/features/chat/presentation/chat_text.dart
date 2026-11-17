@@ -1,7 +1,9 @@
 import '../../../core/time/kst.dart';
+import '../../negotiation/domain/negotiation_repository.dart' show DropReason;
 import '../../negotiation/domain/terms_version.dart';
 import '../../offer_terms/domain/offer_terms.dart' show OfferTerms;
 import '../../offer_terms/presentation/offer_terms_text.dart';
+import '../domain/chat_repository.dart' show ReportReason;
 import '../domain/conversation.dart';
 
 /// 대화 목록과 메시지 요청(11)의 고정 문구. 캔버스 11과 5번 계획 Task 9의 화면 문구 그대로다.
@@ -48,6 +50,9 @@ abstract final class ChatTexts {
   static const contentCard = '콘텐츠 카드';
   static const mute = '알림 끄기';
   static const unmute = '알림 켜기';
+  static const block = '차단하기';
+  static const report = '신고하기';
+  static const drop = '협의 그만두기';
   static const menuClose = '닫기';
   static const likeCampaign = '관심 보내기';
   static const emptyRoom = '첫 메시지를 보내 보세요.';
@@ -56,6 +61,40 @@ abstract final class ChatTexts {
   static const resend = '다시 보내기';
   static const composerWaiting = '상대가 수락하면 대화를 이어갈 수 있어요.';
   static const composerBlocked = '차단한 대화예요.';
+
+  // 차단 확인 시트
+  static String blockTitle(String name) => '$name님을 차단할까요?';
+  static const blockBody = '이 대화방에서 서로 메시지를 보낼 수 없고, 추천에도 나오지 않아요.';
+  static const blockConfirm = '차단하기';
+  static const blockCancel = '취소';
+  static const blockConflict = '진행 중인 협업이 있어요. 문의하기로 알려 주세요.';
+
+  // 신고 시트
+  static const reportTitle = '신고하기';
+  static const reportSpam = '광고·스팸';
+  static const reportAbuse = '부적절한 말';
+  static const reportFraud = '사기 의심';
+  static const reportOther = '기타';
+  static const reportDetail = '자세한 내용 (선택)';
+  static const reportSubmit = '신고하기';
+  static const reportDone = '신고를 접수했어요.';
+  static const reportAlready = '이미 신고했어요.';
+
+  /// 신고 설명의 최대 글자 수. 서버도 같은 값으로 거른다(UTF-16 단위로 세어도 넘지 않게 앱도 그렇게 센다).
+  static const reportDetailMax = 500;
+
+  // 협의 그만두기 시트
+  static const dropTitle = '협의를 그만둘까요?';
+  static const dropBody = '상대에게는 이유를 알리지 않아요.';
+  static const dropSchedule = '일정이 맞지 않아요';
+  static const dropBudget = '예산이 맞지 않아요';
+  static const dropDirection = '방향이 달라요';
+  static const dropOther = '기타';
+  static const dropConfirm = '그만두기';
+  static const dropKeep = '계속 협의하기';
+
+  /// 캔버스 밖: 차단·신고·그만두기가 연결이나 서버 문제로 실패했을 때(시트 안에 보인다).
+  static const actionFailed = '처리하지 못했어요. 다시 시도해 주세요.';
 
   /// 한 번에 보낼 수 있는 글자 수(코드 포인트). 서버도 같은 값으로 거른다.
   static const messageMax = 1000;
@@ -192,3 +231,19 @@ String requestFee(CampaignTerms terms) => won(terms.fee);
 /// 11의 `촬영` 칸. 캔버스는 칸이 좁아 `11/16 이후`로 줄여 쓴다.
 String requestShooting(CampaignTerms terms) =>
     '${terms.startFrom.month}/${terms.startFrom.day} 이후';
+
+/// 신고 사유의 이름표.
+String reportReasonLabel(ReportReason reason) => switch (reason) {
+  ReportReason.spam => ChatTexts.reportSpam,
+  ReportReason.abuse => ChatTexts.reportAbuse,
+  ReportReason.fraud => ChatTexts.reportFraud,
+  ReportReason.other => ChatTexts.reportOther,
+};
+
+/// 협의 그만두기 이유의 이름표.
+String dropReasonLabel(DropReason reason) => switch (reason) {
+  DropReason.schedule => ChatTexts.dropSchedule,
+  DropReason.budget => ChatTexts.dropBudget,
+  DropReason.direction => ChatTexts.dropDirection,
+  DropReason.other => ChatTexts.dropOther,
+};

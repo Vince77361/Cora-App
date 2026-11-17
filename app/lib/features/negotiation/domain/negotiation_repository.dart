@@ -2,7 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'terms_version.dart';
 
-/// 협업의 조건 판본을 읽고 확인(수락)하는 포트(06). 협업 자체는 `CollaborationRepository`가 읽는다.
+/// 협의를 그만두는 이유. 서버의 `SCHEDULE | BUDGET | DIRECTION | OTHER`와 같다. 서버에만 남고 상대에게는 알리지 않는다.
+enum DropReason { schedule, budget, direction, other }
+
+/// 협업의 조건 판본을 읽고 확인(수락)하고 계약 전 협의를 그만두는 포트(06, 대화방 메뉴). 협업 자체는
+/// `CollaborationRepository`가 읽는다.
 abstract class NegotiationRepository {
   /// 협업 [collaborationId]의 최신 판본. 실패하면 [NegotiationFailure].
   Future<TermsLatest> fetchLatest(String collaborationId);
@@ -10,6 +14,10 @@ abstract class NegotiationRepository {
   /// 판본 [version]을 확인한다. 그사이 새 판본이 나왔으면 [NegotiationStale], 서버가 사용자 문구와 함께
   /// 거절하면(인스타그램 연동 필요 등) [NegotiationRejected], 그 밖의 실패는 [NegotiationFailure]다.
   Future<void> confirm(String collaborationId, int version);
+
+  /// 계약 전 협의를 그만둔다. 더는 그만둘 수 없는 단계이거나 브랜드가 결제를 진행 중이면 서버가 사용자 문구와 함께
+  /// 거절해 [NegotiationRejected], 그 밖의 실패는 [NegotiationFailure]다.
+  Future<void> drop(String collaborationId, DropReason reason);
 }
 
 /// 수락하려던 판본이 최신이 아니다(409 `STALE_VERSION`). [latestVersion]은 서버가 알려 준 최신 판본

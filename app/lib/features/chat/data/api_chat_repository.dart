@@ -9,13 +9,15 @@ import 'chat_wire.dart';
 
 /// 생성된 API 클라이언트(`cora_api`)로 대화를 읽고 쓴다. 생성된 타입은 이 계층 밖으로 내보내지 않는다.
 ///
-/// 차단과 신고의 서버(5번 계획 Task 5)는 아직 없어서 [block]과 [report]는 [UnimplementedError]를
-/// 던진다. 그 Task가 생성 클라이언트를 만들면 여기만 채운다.
 class ApiChatRepository implements ChatRepository {
   ApiChatRepository(api.ApiClient client)
-    : _conversations = api.ConversationsApi(client);
+    : _conversations = api.ConversationsApi(client),
+      _blocks = api.BlocksApi(client),
+      _reports = api.ReportsApi(client);
 
   final api.ConversationsApi _conversations;
+  final api.BlocksApi _blocks;
+  final api.ReportsApi _reports;
 
   @override
   Future<List<ConversationSummary>> fetchList() => _guard(() async {
@@ -75,16 +77,24 @@ class ApiChatRepository implements ChatRepository {
   });
 
   @override
-  Future<void> block(String id) => throw UnimplementedError(
-    'blockConversationMember는 5번 계획 Task 5에서 서버와 함께 만든다.',
-  );
+  Future<void> block(String id) =>
+      _guard(() => _blocks.blockConversationMember(id));
 
   @override
   Future<void> report(
     ReportTarget target,
     ReportReason reason,
     String? detail,
-  ) => throw UnimplementedError('createReport는 5번 계획 Task 5에서 서버와 함께 만든다.');
+  ) => _guard(
+    () => _reports.createReport(
+      api.CreateReportDto(
+        targetKind: reportTargetKindToWire(target.kind),
+        targetId: target.id,
+        reason: reportReasonToWire(reason),
+        detail: detail,
+      ),
+    ),
+  );
 
   @override
   Future<ConversationDetail> acceptRequest(String id) => _guard(() async {

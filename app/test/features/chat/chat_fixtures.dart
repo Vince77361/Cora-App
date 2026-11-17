@@ -106,6 +106,7 @@ ConversationDetail roomDetail({
   bool muted = false,
   bool canSendContentCard = true,
   bool canProposeTerms = true,
+  bool canDrop = true,
   bool canLikeCampaign = false,
   int lastSeq = 3,
   int lastReadSeq = 3,
@@ -131,7 +132,7 @@ ConversationDetail roomDetail({
   canSend: status == ConversationStatus.open,
   canSendContentCard: canSendContentCard,
   canProposeTerms: canProposeTerms,
-  canDrop: true,
+  canDrop: canDrop,
   canLikeCampaign: canLikeCampaign,
   terms: terms,
   storeTerms: storeTerms,
@@ -244,6 +245,13 @@ class FakeChatRepository implements ChatRepository {
   /// 설정하면 [setMuted]가 이 예외를 던진다.
   ChatFailure? muteFailure;
 
+  /// 설정하면 [block]·[report]가 이 예외를 던진다(돈이 보관 중이면 409, 이미 신고했으면 409).
+  ChatFailure? blockFailure;
+  ChatFailure? reportFailure;
+
+  /// 설정하면 [block]이 이 Completer가 끝날 때까지 기다린다.
+  Completer<void>? holdBlock;
+
   /// 설정하면 [fetchMessages]가 이 Completer가 끝날 때까지 기다린다.
   Completer<void>? holdFetch;
 
@@ -254,6 +262,9 @@ class FakeChatRepository implements ChatRepository {
   final sends = <({String id, String clientId, MessageKind kind})>[];
   final reads = <({String id, int seq})>[];
   final mutes = <({String id, bool muted})>[];
+  final blocked = <String>[];
+  final reports =
+      <({ReportTarget target, ReportReason reason, String? detail})>[];
 
   /// 서버가 방에 메시지를 더한다(소켓 이벤트 없이). 가진 번호 다음 번호를 붙인다.
   ChatMessage serverAdds(
@@ -363,14 +374,31 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<void> block(String id) async {}
+  Future<void> block(String id) async {
+    await holdBlock?.future;
+    final failure = blockFailure;
+    if (failure != null) throw failure;
+    blocked.add(id);
+    // 서버처럼 방이 닫히고 차단한 쪽에는 내가 차단했다고 표시된다.
+    final before = details[id];
+    if (before != null) {
+      details[id] = before.copyWith(
+        blockedByMe: true,
+        status: ConversationStatus.closed,
+      );
+    }
+  }
 
   @override
   Future<void> report(
     ReportTarget target,
     ReportReason reason,
     String? detail,
-  ) async {}
+  ) async {
+    final failure = reportFailure;
+    if (failure != null) throw failure;
+    reports.add((target: target, reason: reason, detail: detail));
+  }
 
   @override
   Future<ConversationDetail> acceptRequest(String id) async {

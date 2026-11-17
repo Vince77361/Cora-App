@@ -10,6 +10,7 @@ import 'package:cora/features/offer_terms/domain/offer_terms.dart'
     show ContentFormat, ViewPay;
 import 'package:cora_api/api.dart' as api;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 
 import '../../support/fake_http_client.dart';
 
@@ -223,6 +224,63 @@ void main() {
 
     await expectLater(
       _repo(fake).confirm('col-1', 3),
+      throwsA(isA<NegotiationFailure>()),
+    );
+  });
+
+  test('drop posts the reason to the collaboration drop endpoint', () async {
+    const wire = {
+      DropReason.schedule: 'SCHEDULE',
+      DropReason.budget: 'BUDGET',
+      DropReason.direction: 'DIRECTION',
+      DropReason.other: 'OTHER',
+    };
+    for (final entry in wire.entries) {
+      // 응답 본문은 쓰지 않는다(빈 본문이면 생성 클라이언트가 읽지 않는다).
+      final fake = FakeHttpClient()
+        ..statusCode = 200
+        ..body = '';
+
+      await _repo(fake).drop('col-1', entry.key);
+
+      final request = fake.requests.single as http.Request;
+      expect(request.method, 'POST');
+      expect(request.url.path, '/collaborations/col-1/drop');
+      expect(jsonDecode(request.body), {'reason': entry.value});
+    }
+  });
+
+  test('a refused drop carries the server message', () async {
+    final fake = FakeHttpClient()
+      ..statusCode = 409
+      ..body = jsonEncode({
+        'error': {
+          'code': 'CONFLICT',
+          'message': '지금은 협의를 그만둘 수 없어요.',
+          'details': null,
+        },
+      });
+
+    await expectLater(
+      _repo(fake).drop('col-1', DropReason.budget),
+      throwsA(
+        isA<NegotiationRejected>().having(
+          (e) => e.message,
+          'message',
+          '지금은 협의를 그만둘 수 없어요.',
+        ),
+      ),
+    );
+  });
+
+  test('a failed drop shows no server text', () async {
+    final fake = FakeHttpClient()
+      ..statusCode = 500
+      ..body =
+          '{"error":{"code":"INTERNAL","message":"db down","details":null}}';
+
+    await expectLater(
+      _repo(fake).drop('col-1', DropReason.other),
       throwsA(isA<NegotiationFailure>()),
     );
   });

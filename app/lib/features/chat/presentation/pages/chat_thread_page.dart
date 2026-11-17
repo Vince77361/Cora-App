@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
+import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../domain/conversation.dart';
@@ -12,11 +13,14 @@ import '../chat_text.dart';
 import '../chat_thread_rows.dart';
 import '../viewmodels/chat_thread_view_model.dart';
 import '../widgets/attach_sheet.dart';
+import '../widgets/block_sheet.dart';
 import '../widgets/chat_composer.dart';
 import '../widgets/chat_glyphs.dart';
 import '../widgets/chat_header.dart';
 import '../widgets/content_card_bubble.dart';
+import '../widgets/drop_sheet.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/report_sheet.dart';
 import '../widgets/system_line.dart';
 import '../widgets/thread_menu_sheet.dart';
 
@@ -86,14 +90,54 @@ class _ChatThreadPageState extends ConsumerState<ChatThreadPage>
 
   Future<void> _openMenu(ChatThreadState state) async {
     setState(() => _attachOpen = false);
+    final detail = state.detail;
     final action = await showThreadMenuSheet(
       context,
-      muted: state.detail.muted,
+      muted: detail.muted,
+      canBlock: !detail.blockedByMe,
+      canDrop: detail.canDrop,
     );
-    if (!mounted) return;
-    if (action == ThreadMenuAction.toggleMute) {
-      await _vm.toggleMute();
+    if (!mounted || action == null) return;
+    switch (action) {
+      case ThreadMenuAction.toggleMute:
+        await _vm.toggleMute();
+      case ThreadMenuAction.block:
+        await showBlockSheet(
+          context,
+          name: detail.counterpartName,
+          onConfirm: _vm.block,
+        );
+      case ThreadMenuAction.report:
+        final sent = await showReportSheet(context, onSubmit: _vm.report);
+        if (sent == true && mounted) _toast(ChatTexts.reportDone);
+      case ThreadMenuAction.drop:
+        await showDropSheet(context, onConfirm: _vm.drop);
     }
+  }
+
+  /// 캔버스 밖: 신고를 접수한 뒤 잠깐 보이는 알림. 입력란 자리가 닫힌 방에서도 보이게 SnackBar로 띄운다.
+  void _toast(String text) {
+    final c = context.colors;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          // 입력 줄(보내기 버튼) 위에 뜨게 띄운다.
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+          backgroundColor: c.text,
+          duration: const Duration(seconds: 3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(CoraRadius.pill),
+          ),
+          content: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: CoraTextStyles.bodySmall.copyWith(color: c.background),
+          ),
+        ),
+      );
   }
 
   Future<void> _sendContentCard() async {
