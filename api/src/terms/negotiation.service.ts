@@ -8,7 +8,6 @@ import {
 import { BrandsService } from '../brands/brands.service';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import {
-  BRAND_PAYMENT_LOCK_MINUTES,
   canTransition,
   negotiableStages,
 } from '../collaborations/collaboration-stage';
@@ -34,7 +33,6 @@ import {
   termsNotice,
   toTermsVersionModel,
 } from './terms-rules';
-import { TermsRepository } from './terms.repository';
 import { TermsService } from './terms.service';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -42,7 +40,6 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const INSTAGRAM_REQUIRED_MESSAGE = '인스타그램을 연동하면 수락할 수 있어요.';
 const PAYMENT_IN_PROGRESS_MESSAGE =
   '브랜드가 결제를 진행하고 있어요. 잠시 뒤 다시 시도해 주세요.';
-const MINUTE_MS = 60 * 1000;
 
 // 브랜드 계약의 조건 판본을 당사자에게 보여 주고 확인받는 서비스(06 화면).
 // 확인은 협업 행을 잠근 트랜잭션 안에서 조건부로 한 번만 반영한다: 같은 판본을 양쪽이 동시에 눌러도,
@@ -53,7 +50,6 @@ export class NegotiationService {
 
   constructor(
     private readonly collaborations: CollaborationsRepository,
-    private readonly repository: TermsRepository,
     private readonly terms: TermsService,
     private readonly campaigns: CampaignsService,
     private readonly brands: BrandsService,
@@ -125,7 +121,7 @@ export class NegotiationService {
     if (!latest) throw this.notFound();
     const paymentOpen = await this.collaborations.hasOpenBrandPayment(
       collaboration.id,
-      this.paymentLockSince(this.clock.now()),
+      this.clock.now(),
     );
     return {
       versions: rows.map((row, index) =>
@@ -157,9 +153,9 @@ export class NegotiationService {
     const actor = await this.actorOf(collaboration, userId);
     const now = this.clock.now();
 
-    const { row, applied, roomId, lineId } = await this.repository.transaction(
+    const { row, applied, roomId, lineId } = await this.terms.transaction(
       async (tx) => {
-        await this.repository.lockCollaboration(collaboration.id, tx);
+        await this.terms.lockCollaboration(collaboration.id, tx);
         const fresh = await this.collaborations.findById(collaboration.id, tx);
         const latest = await this.terms.latest(collaboration.id, tx);
         if (!fresh || !latest || !negotiableStages.includes(fresh.stage)) {
@@ -181,7 +177,7 @@ export class NegotiationService {
         ) {
           throw new AppError('CONFLICT', INSTAGRAM_REQUIRED_MESSAGE);
         }
-        const applied = await this.repository.markConfirmed(
+        const applied = await this.terms.markConfirmed(
           collaboration.id,
           version,
           isCreator ? 'CREATOR' : 'BRAND',
@@ -275,9 +271,9 @@ export class NegotiationService {
     };
     const now = this.clock.now();
 
-    const { created, previous, roomId, lineIds } =
-      await this.repository.transaction(async (tx) => {
-        await this.repository.lockCollaboration(collaboration.id, tx);
+    const { created, previous, roomId, lineIds } = await this.terms.transaction(
+      async (tx) => {
+        await this.terms.lockCollaboration(collaboration.id, tx);
         const fresh = await this.collaborations.findById(collaboration.id, tx);
         const latest = await this.terms.latest(collaboration.id, tx);
         if (!fresh || !latest || !negotiableStages.includes(fresh.stage)) {
@@ -294,7 +290,7 @@ export class NegotiationService {
         if (
           await this.collaborations.hasOpenBrandPayment(
             collaboration.id,
-            this.paymentLockSince(now),
+            now,
             tx,
           )
         ) {
@@ -389,7 +385,8 @@ export class NegotiationService {
           );
         }
         return { created: row, previous: latest, roomId, lineIds };
-      });
+      },
+    );
 
     for (const lineId of lineIds) {
       await this.conversations.publishCreated(lineId);
@@ -408,11 +405,6 @@ export class NegotiationService {
     if (!roomId) return;
     if (lineId) await this.conversations.publishCreated(lineId);
     await this.conversations.publishUpdated(roomId, reason);
-  }
-
-  // 결제 잠금이 시작되는 시각의 경계: 이보다 늦게 요청된 PENDING 결제가 있으면 잠겨 있다.
-  private paymentLockSince(now: Date): Date {
-    return new Date(now.getTime() - BRAND_PAYMENT_LOCK_MINUTES * MINUTE_MS);
   }
 
   // 안내 줄과 알림에 쓰는 내 이름 사본. 못 읽으면 기본 이름으로 대신한다(조건 변경이 되돌아가지 않게).

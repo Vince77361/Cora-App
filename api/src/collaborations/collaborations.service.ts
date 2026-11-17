@@ -28,7 +28,6 @@ import { TermsService } from '../terms/terms.service';
 import { hasViewPay, readTerms } from '../stores/reward-terms';
 import { CancelRequestsRepository } from './cancel-requests.repository';
 import {
-  BRAND_PAYMENT_LOCK_MINUTES,
   brandProgress,
   nextActionFor,
   preContractStages,
@@ -140,11 +139,8 @@ export class CollaborationsService {
     const cannot = new AppError('CONFLICT', '지금은 협의를 그만둘 수 없어요.');
     if (!preContractStages.includes(collaboration.stage)) throw cannot;
     const now = this.clock.now();
-    const lockSince = new Date(
-      now.getTime() - BRAND_PAYMENT_LOCK_MINUTES * 60 * 1000,
-    );
 
-    const { roomId, lineId } = await this.collaborations.transaction(
+    const { roomId, lineId, withdrawn } = await this.collaborations.transaction(
       async (tx) => {
         await this.collaborations.lock(collaboration.id, tx);
         const fresh = await this.collaborations.findById(collaboration.id, tx);
@@ -152,7 +148,7 @@ export class CollaborationsService {
         if (
           await this.collaborations.hasOpenBrandPayment(
             collaboration.id,
-            lockSince,
+            now,
             tx,
           )
         ) {
@@ -175,25 +171,34 @@ export class CollaborationsService {
           now,
           tx,
         );
-        const roomId = await this.conversations.idForCollaboration(
+        // 아직 받은 사람이 수락하지 않은 메시지 요청이면 요청을 거둔다(거절과 같은 DECLINED). 그러면 받은 사람의 수락·거절은
+        // 기존의 "이미 답한 요청" 409로 끝나고, 끝난 협업 위에 방이 열리지 않는다. 거둔 요청은 안내 줄도 알림도 남기지 않는다.
+        const pending = await this.conversations.withdrawPendingRequest(
           collaboration.id,
           tx,
         );
-        const line = roomId
+        if (pending.withdrawn) {
+          return { roomId: pending.roomId, lineId: null, withdrawn: true };
+        }
+        const line = pending.roomId
           ? await this.conversations.postSystem(
-              roomId,
+              pending.roomId,
               'DROPPED',
               { droppedById: userId },
               tx,
             )
           : null;
-        return { roomId, lineId: line?.id ?? null };
+        return {
+          roomId: pending.roomId,
+          lineId: line?.id ?? null,
+          withdrawn: false,
+        };
       },
     );
 
     if (lineId) await this.conversations.publishCreated(lineId);
     if (roomId) await this.conversations.publishUpdated(roomId, 'STATUS');
-    await this.notifyDropped(collaboration, userId, roomId);
+    if (!withdrawn) await this.notifyDropped(collaboration, userId, roomId);
     return this.get(userId, id);
   }
 

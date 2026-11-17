@@ -198,6 +198,33 @@ export class ConversationsService {
     };
   }
 
+  // 협업을 그만둘 때 그 방이 아직 답 없는 메시지 요청(REQUESTED)이면 요청을 거둔다: REQUESTED → DECLINED.
+  // 받은 사람이 이미 답할 수 없는 요청이 목록에 남지 않게, 거절(declineRequest)과 같은 상태로 닫는다.
+  // 협업 행을 잡은 트랜잭션 안에서 부른다(잠금 순서 협업 → 방). 요청이 아니었으면(이미 열린 방이거나 방이 없음) withdrawn은 false이고
+  // 부르는 쪽이 평소처럼 안내 줄을 남긴다. 거둔 요청에는 안내 줄도 알림도 남기지 않는다(요청 거절은 알리지 않는다).
+  async withdrawPendingRequest(
+    collaborationId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<{ roomId: string | null; withdrawn: boolean }> {
+    const room = await this.repository.findByCollaborationId(
+      collaborationId,
+      tx,
+    );
+    if (!room) return { roomId: null, withdrawn: false };
+    if (room.status !== 'REQUESTED') {
+      return { roomId: room.id, withdrawn: false };
+    }
+    // 받은 사람이 같은 순간에 수락했으면 조건부 갱신이 0행이라 열린 방으로 본다.
+    const withdrawn = await this.repository.transitionRoom(
+      room.id,
+      'REQUESTED',
+      'DECLINED',
+      this.clock.now(),
+      tx,
+    );
+    return { roomId: room.id, withdrawn };
+  }
+
   // 신고 대상이 "내 방의 상대"인가.
   isRoomPartner(userId: string, otherId: string): Promise<boolean> {
     if (userId === otherId) return Promise.resolve(false);

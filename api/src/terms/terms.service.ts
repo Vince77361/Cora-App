@@ -7,6 +7,39 @@ import { TermsRepository } from './terms.repository';
 export class TermsService {
   constructor(private readonly repository: TermsRepository) {}
 
+  // 조건 확인과 새 판본이 한 트랜잭션에서 도는 길(NegotiationService)이 쓰는 저장소 호출의 얇은 포장.
+  // 저장소를 모듈 밖으로 내보내지 않고 서비스만 내보내려는 것이다.
+  transaction<T>(
+    run: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return this.repository.transaction(run);
+  }
+
+  // 같은 협업의 확인·새 판본 요청을 한 줄로 세운다(트랜잭션이 끝날 때까지 협업 행을 잡는다).
+  lockCollaboration(
+    collaborationId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    return this.repository.lockCollaboration(collaborationId, tx);
+  }
+
+  // 내 쪽 확인 시각을 조건부로 채운다(이미 채워져 있으면 false).
+  markConfirmed(
+    collaborationId: string,
+    version: number,
+    side: 'BRAND' | 'CREATOR',
+    at: Date,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    return this.repository.markConfirmed(
+      collaborationId,
+      version,
+      side,
+      at,
+      tx,
+    );
+  }
+
   // 협업의 가장 최근 판본. 없으면 null.
   latest(
     collaborationId: string,

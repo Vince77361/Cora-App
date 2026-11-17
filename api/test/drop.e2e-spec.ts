@@ -403,4 +403,148 @@ describe('dropping a negotiation before the contract', () => {
     expect([201, 409]).toContain(p.status);
     expect(await prisma.termsVersion.count()).toBe(p.status === 201 ? 2 : 1);
   });
+  describe('a collaboration that is still a message request or an inquiry', () => {
+    // 브랜드가 글을 붙인 관심을 보내고 크리에이터가 조건부터 질문한 상태: 협업 INQUIRY, 방 REQUESTED.
+    async function seedRequest(): Promise<{
+      collaborationId: string;
+      roomId: string;
+    }> {
+      const campaignId = await makeBoth();
+      await request(server)
+        .put('/discovery/decisions')
+        .set(authBrand)
+        .send({
+          targetKind: 'CREATOR',
+          targetId: OTHER,
+          decision: 'LIKE',
+          note: '아침 사진이 좋았어요',
+        })
+        .expect(200);
+      await request(server)
+        .post(`/discovery/received-proposals/${campaignId}/inquiry`)
+        .set(authCreator)
+        .send({ message: '조건이 궁금해요.' })
+        .expect(201);
+      const room = await prisma.conversation.findFirstOrThrow();
+      return { collaborationId: room.collaborationId, roomId: room.id };
+    }
+    const accept = (auth: Record<string, string>, roomId: string) =>
+      request(server).post(`/conversations/${roomId}/request/accept`).set(auth);
+    const decline = (auth: Record<string, string>, roomId: string) =>
+      request(server)
+        .post(`/conversations/${roomId}/request/decline`)
+        .set(auth);
+    const systemLineCount = (roomId: string) =>
+      prisma.message.count({
+        where: { conversationId: roomId, kind: 'SYSTEM' },
+      });
+    const dropNotices = (userId: string) =>
+      prisma.notification.count({
+        where: { userId, kind: 'COLLABORATION_DROPPED' },
+      });
+
+    it('closes a pending message request when the requester drops it', async () => {
+      const { collaborationId, roomId } = await seedRequest();
+      expect(await collaborationOf(collaborationId)).toMatchObject({
+        stage: 'INQUIRY',
+      });
+      push.sent.length = 0;
+      realtime.sent.length = 0;
+
+      await drop(authCreator, collaborationId).expect(200);
+      await flushMessages(app);
+
+      // 거둔 요청: 협업은 끝나고 방은 거절한 것과 같은 DECLINED이다.
+      expect(await collaborationOf(collaborationId)).toMatchObject({
+        stage: 'DROPPED',
+        droppedById: OTHER,
+      });
+      expect(
+        (await prisma.conversation.findUniqueOrThrow({ where: { id: roomId } }))
+          .status,
+      ).toBe('DECLINED');
+      // 받은 사람에게는 안내 줄도 알림도 푸시도 없다.
+      expect(await systemLineCount(roomId)).toBe(0);
+      expect(await dropNotices(USER_A)).toBe(0);
+      expect(push.sent).toHaveLength(0);
+      expect(realtime.receivedBy(USER_A, 'message.created')).toHaveLength(0);
+      // 받은 사람의 목록에서 요청이 사라지도록 방의 변경만 양쪽 화면에 알린다.
+      for (const userId of [USER_A, OTHER]) {
+        expect(
+          realtime
+            .receivedBy(userId, 'conversation.updated')
+            .map((e) => (e.payload as { reason: string }).reason),
+        ).toEqual(['STATUS']);
+      }
+      const brandList = (
+        (await request(server).get('/conversations').set(authBrand).expect(200))
+          .body as { id: string; section: string }[]
+      ).filter((room) => room.section === 'REQUEST');
+      expect(brandList).toHaveLength(0);
+
+      // 받은 사람의 수락과 거절은 이미 답한 요청의 409로 끝나고 아무것도 바뀌지 않는다.
+      for (const answer of [accept, decline]) {
+        const res = await answer(authBrand, roomId).expect(409);
+        expect(codeOf(res)).toBe('CONFLICT');
+        expect(messageOf(res)).toBe('이미 답한 메시지 요청이에요.');
+      }
+      expect(await collaborationOf(collaborationId)).toMatchObject({
+        stage: 'DROPPED',
+      });
+      expect(
+        (await prisma.conversation.findUniqueOrThrow({ where: { id: roomId } }))
+          .status,
+      ).toBe('DECLINED');
+    });
+
+    it('also closes a pending request when the receiver drops it, without telling the requester', async () => {
+      const { collaborationId, roomId } = await seedRequest();
+      push.sent.length = 0;
+      await drop(authBrand, collaborationId, { reason: 'DIRECTION' }).expect(
+        200,
+      );
+      await flushMessages(app);
+      expect(
+        (await prisma.conversation.findUniqueOrThrow({ where: { id: roomId } }))
+          .status,
+      ).toBe('DECLINED');
+      expect(await systemLineCount(roomId)).toBe(0);
+      expect(await dropNotices(OTHER)).toBe(0);
+      expect(push.sent).toHaveLength(0);
+      expect(codeOf(await accept(authBrand, roomId).expect(409))).toBe(
+        'CONFLICT',
+      );
+    });
+
+    it('drops from INQUIRY with an open room like any other negotiation', async () => {
+      const { collaborationId, roomId } = await seedRequest();
+      await accept(authBrand, roomId).expect(200);
+      expect(await collaborationOf(collaborationId)).toMatchObject({
+        stage: 'INQUIRY',
+      });
+      push.sent.length = 0;
+
+      await drop(authCreator, collaborationId, { reason: 'SCHEDULE' }).expect(
+        200,
+      );
+      await flushMessages(app);
+
+      expect(await collaborationOf(collaborationId)).toMatchObject({
+        stage: 'DROPPED',
+        dropReason: 'SCHEDULE',
+      });
+      expect(
+        (await prisma.conversation.findUniqueOrThrow({ where: { id: roomId } }))
+          .status,
+      ).toBe('OPEN');
+      expect((await linesOf(authBrand, collaborationId)).pop()).toBe(
+        '이번에는 함께하기 어렵대요.',
+      );
+      expect((await linesOf(authCreator, collaborationId)).pop()).toBe(
+        '협의를 그만뒀어요.',
+      );
+      expect(await dropNotices(USER_A)).toBe(1);
+      expect(await dropNotices(OTHER)).toBe(0);
+    });
+  });
 });

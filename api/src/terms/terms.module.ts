@@ -7,6 +7,6 @@ import { TermsService } from './terms.service';
 // 조건 확인·새 판본 API는 TermsApiModule이 맡아 순환을 피한다(원장 판단 R10과 같은 모양).
 @Module({
   providers: [TermsService, TermsRepository],
-  exports: [TermsService, TermsRepository],
+  exports: [TermsService],
 })
 export class TermsModule {}
