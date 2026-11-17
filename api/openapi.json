@@ -177,6 +177,34 @@
         ],
         "type": "object"
       },
+      "BrandConsentDto": {
+        "properties": {
+          "accepted": {
+            "description": "사용자가 확인한 세 줄. 서버가 만든 문구(myConsentTexts)와 정확히 같아야 한다.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "method": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentMethod"
+              }
+            ]
+          },
+          "termsVersion": {
+            "description": "동의하려는 판본 번호. 최신이 아니면 409 STALE_VERSION(latestVersion).",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "termsVersion",
+          "accepted",
+          "method"
+        ],
+        "type": "object"
+      },
       "BrandProfileModel": {
         "properties": {
           "industry": {
@@ -6996,6 +7024,52 @@
           }
         ],
         "summary": "계약 화면(당사자만). 양쪽이 같은 판본을 확인하기 전(NOT_READY)에는 최신 판본과 문구를 미리 보기로 준다. 브랜드에게는 동의하면 결제할 금액(quote)이 함께 간다.",
+        "tags": [
+          "Contracts"
+        ]
+      }
+    },
+    "/collaborations/{id}/contract/brand-consent": {
+      "post": {
+        "operationId": "consentContractAsBrand",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandConsentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentCreatedModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "브랜드가 계약에 동의하면서 결제를 시작한다. 크리에이터가 동의하기 전에는 409. 결제 금액은 계약 사본(최대 현금 부담 + 수수료)에서만 계산한다. 결제가 승인되는 순간 계약이 체결된다(CONTRACTED).",
         "tags": [
           "Contracts"
         ]

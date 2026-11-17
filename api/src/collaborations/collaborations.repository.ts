@@ -27,6 +27,8 @@ export interface CollaborationPatch {
   // 계약 전에 그만둘 때(DROPPED) 이유와 그만둔 사람을 함께 적는다. 상대에게는 알리지 않고 저장만 한다.
   dropReason?: DropReason | null;
   droppedById?: string | null;
+  // 브랜드 계약이 체결된(결제가 승인된) 시각. 60일 점검의 기준이다.
+  contractedAt?: Date | null;
 }
 
 export interface NewCollaboration {

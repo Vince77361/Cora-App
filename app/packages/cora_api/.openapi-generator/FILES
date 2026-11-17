@@ -15,6 +15,7 @@ doc/ApplicationsApi.md
 doc/ApplyDto.md
 doc/BankModel.md
 doc/BlocksApi.md
+doc/BrandConsentDto.md
 doc/BrandProfileModel.md
 doc/BrandProgressModel.md
 doc/BrandProgressNote.md
@@ -307,6 +308,7 @@ lib/model/application_model.dart
 lib/model/application_status.dart
 lib/model/apply_dto.dart
 lib/model/bank_model.dart
+lib/model/brand_consent_dto.dart
 lib/model/brand_profile_model.dart
 lib/model/brand_progress_model.dart
 lib/model/brand_progress_note.dart
@@ -531,6 +533,7 @@ test/applications_api_test.dart
 test/apply_dto_test.dart
 test/bank_model_test.dart
 test/blocks_api_test.dart
+test/brand_consent_dto_test.dart
 test/brand_profile_model_test.dart
 test/brand_progress_model_test.dart
 test/brand_progress_note_test.dart

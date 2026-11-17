@@ -75,6 +75,9 @@ export const negotiableStages: CollaborationStage[] = [
 // 이 시간이 지나면 열려 있던 결제는 없는 것으로 본다(결제창을 닫고 가 버린 경우를 풀어 준다).
 export const BRAND_PAYMENT_LOCK_MINUTES = 60;
 
+// 브랜드 계약이 체결된 뒤 이 날수 안에 게시 링크가 없으면 협업을 멈추고 운영자에게 알리는 점검(brand-halt-check)을 건다.
+export const BRAND_HALT_CHECK_DAYS = 60;
+
 // 캠페인 예산의 확보액에 세지 않는 브랜드 협업 단계: 아직 서로 관심이 아니거나(INQUIRY), 계약 전에 그만뒀거나(DROPPED),
 // 보관 중이던 돈이 환급된(REFUNDED) 협업이다. 멈춘(HALTED) 협업은 돈이 그대로 보관 중이라 센다.
 export const UNSECURED_BRAND_STAGES: CollaborationStage[] = [

@@ -73,6 +73,7 @@ part 'model/application_model.dart';
 part 'model/application_status.dart';
 part 'model/apply_dto.dart';
 part 'model/bank_model.dart';
+part 'model/brand_consent_dto.dart';
 part 'model/brand_profile_model.dart';
 part 'model/brand_progress_model.dart';
 part 'model/brand_progress_note.dart';

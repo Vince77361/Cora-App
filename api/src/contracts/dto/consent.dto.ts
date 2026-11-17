@@ -1,8 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { PaymentMethod } from '@prisma/client';
 import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsEnum,
   IsInt,
   IsString,
   MaxLength,
@@ -31,4 +33,10 @@ export class CreatorConsentDto {
   @IsString({ each: true })
   @MaxLength(200, { each: true })
   accepted!: string[];
+}
+
+export class BrandConsentDto extends CreatorConsentDto {
+  @ApiProperty({ enum: PaymentMethod, enumName: 'PaymentMethod' })
+  @IsEnum(PaymentMethod)
+  method!: PaymentMethod;
 }

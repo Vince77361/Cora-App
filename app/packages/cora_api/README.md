@@ -81,6 +81,7 @@ Class | Method | HTTP request | Description
 *CollaborationsApi* | [**requestCollaborationCancel**](doc//CollaborationsApi.md#requestcollaborationcancel) | **POST** /collaborations/{id}/cancel-requests | 사장님이 취소를 요청한다. 3일 안에 답이 없으면 사라진다.
 *ContentDraftsApi* | [**listMyContentDrafts**](doc//ContentDraftsApi.md#listmycontentdrafts) | **GET** /stores/me/content-drafts | 
 *ContentDraftsApi* | [**regenerateMyContentDraft**](doc//ContentDraftsApi.md#regeneratemycontentdraft) | **POST** /stores/me/content-drafts/{kind}/regenerate | 
+*ContractsApi* | [**consentContractAsBrand**](doc//ContractsApi.md#consentcontractasbrand) | **POST** /collaborations/{id}/contract/brand-consent | 브랜드가 계약에 동의하면서 결제를 시작한다. 크리에이터가 동의하기 전에는 409. 결제 금액은 계약 사본(최대 현금 부담 + 수수료)에서만 계산한다. 결제가 승인되는 순간 계약이 체결된다(CONTRACTED).
 *ContractsApi* | [**consentContractAsCreator**](doc//ContractsApi.md#consentcontractascreator) | **POST** /collaborations/{id}/contract/creator-consent | 크리에이터가 계약에 동의한다(브랜드보다 먼저). 협업이 합의(AGREED) 상태이고 termsVersion이 최신일 때만: 최신이 아니면 409 STALE_VERSION(latestVersion), 그 밖의 상태는 409 CONFLICT, 확인한 문구가 서버의 문구와 다르면 400. 같은 판본에 다시 동의하면 바뀌는 것 없이 같은 계약을 돌려준다.
 *ContractsApi* | [**getContract**](doc//ContractsApi.md#getcontract) | **GET** /collaborations/{id}/contract | 계약 화면(당사자만). 양쪽이 같은 판본을 확인하기 전(NOT_READY)에는 최신 판본과 문구를 미리 보기로 준다. 브랜드에게는 동의하면 결제할 금액(quote)이 함께 간다.
 *ConversationsApi* | [**acceptMessageRequest**](doc//ConversationsApi.md#acceptmessagerequest) | **POST** /conversations/{id}/request/accept | 메시지 요청을 수락해 대화를 연다. 받은 사람만. 협업은 INQUIRY에 남고, 요청을 보낸 사람에게 알린다.
@@ -184,6 +185,7 @@ Class | Method | HTTP request | Description
  - [ApplicationStatus](doc//ApplicationStatus.md)
  - [ApplyDto](doc//ApplyDto.md)
  - [BankModel](doc//BankModel.md)
+ - [BrandConsentDto](doc//BrandConsentDto.md)
  - [BrandProfileModel](doc//BrandProfileModel.md)
  - [BrandProgressModel](doc//BrandProgressModel.md)
  - [BrandProgressNote](doc//BrandProgressNote.md)

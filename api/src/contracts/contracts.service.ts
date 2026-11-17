@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Collaboration, Contract, TermsVersion } from '@prisma/client';
+import { CampaignsService } from '../campaigns/campaigns.service';
 import { BrandsService } from '../brands/brands.service';
 import { negotiableStages } from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
@@ -9,16 +10,26 @@ import { securityLog } from '../common/logging/security-log';
 import { ConversationsService } from '../conversations/conversations.service';
 import { CreatorsService } from '../creators/creators.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PaymentCreatedModel } from '../payments/dto/payment-created.model';
+import { PaymentQuoteModel } from '../payments/dto/payment-quote.model';
+import { PaymentsService } from '../payments/payments.service';
+import { feeFor } from '../settlements/settlement-math';
 import { TermsVersionModel } from '../terms/dto/terms-version.model';
 import { toTermsVersionModel } from '../terms/terms-rules';
 import { TermsService } from '../terms/terms.service';
 import { ConsentRole, consentTexts } from './consent-texts';
-import { readSnapshot, snapshotOf } from './contract-snapshot';
+import {
+  maxCashOfSnapshot,
+  readSnapshot,
+  snapshotOf,
+} from './contract-snapshot';
 import { ContractsRepository } from './contracts.repository';
-import { CreatorConsentDto } from './dto/consent.dto';
+import { BrandConsentDto, CreatorConsentDto } from './dto/consent.dto';
 import { ContractModel } from './dto/contract.model';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const WAITING_CREATOR_MESSAGE = '크리에이터의 동의를 기다리고 있어요.';
 
 // 계약 동의: 크리에이터가 먼저 동의하면 계약 행(AWAITING_BRAND)과 조건 사본이 생기고, 브랜드가 동의하면서 결제를 만든다.
 // 계약은 결제가 승인되는 순간에야 체결된다(BrandContractPayments). 동의는 모두 협업 행을 잠근 트랜잭션 안에서 최신 판본과 단계를 다시 보고
@@ -31,6 +42,8 @@ export class ContractsService {
     private readonly contracts: ContractsRepository,
     private readonly collaborations: CollaborationsRepository,
     private readonly terms: TermsService,
+    private readonly payments: PaymentsService,
+    private readonly campaigns: CampaignsService,
     private readonly brands: BrandsService,
     private readonly creators: CreatorsService,
     private readonly conversations: ConversationsService,
@@ -82,6 +95,10 @@ export class ContractsService {
       this.nameOf(collaboration.commissionerId, 'BRAND'),
       this.nameOf(collaboration.creatorId, 'CREATOR'),
     ]);
+    const showQuote =
+      !isCreator &&
+      terms &&
+      (status === 'AWAITING_BRAND' || status === 'PAYING');
 
     return {
       status,
@@ -95,8 +112,8 @@ export class ContractsService {
       creatorConsentedAt: live?.creatorConsentedAt.toISOString() ?? null,
       brandConsentedAt: live?.brandConsentedAt?.toISOString() ?? null,
       concludedAt: live?.concludedAt?.toISOString() ?? null,
-      // 결제 견적은 브랜드 동의와 결제(다음 커밋)가 채운다.
-      quote: null,
+      quote:
+        showQuote && terms ? await this.quoteFor(collaboration, terms) : null,
       voidedNotice: await this.voidedNotice(
         collaboration,
         isCreator,
@@ -191,6 +208,153 @@ export class ContractsService {
       await this.notifyCreatorConsented(collaboration, actor, saved.contract);
     }
     return this.get(userId, collaborationId);
+  }
+
+  async consentAsBrand(
+    userId: string,
+    collaborationId: string,
+    dto: BrandConsentDto,
+  ): Promise<PaymentCreatedModel> {
+    const collaboration = await this.requireParty(userId, collaborationId);
+    if (collaboration.commissionerId !== userId) {
+      throw new AppError('FORBIDDEN', '브랜드만 동의할 수 있어요.');
+    }
+    const feeRate = this.payments.brandFeeRate();
+
+    const saved = await this.terms.transaction(async (tx) => {
+      // 잠금 순서: 결제 → 협업 → 계약(결제 승인과 같다). 협업을 먼저 잠그면 같은 협업의 승인과 서로 기다린다.
+      await this.payments.lockOpenPayments(collaboration.id, tx);
+      await this.collaborations.lock(collaboration.id, tx);
+      const { latest } = await this.requireAgreed(collaboration.id, dto, tx);
+      const contract = await this.contracts.findLive(collaboration.id, tx);
+      if (!contract) throw new AppError('CONFLICT', WAITING_CREATOR_MESSAGE);
+      if (
+        contract.status !== 'AWAITING_BRAND' ||
+        contract.termsVersion !== latest.version
+      ) {
+        throw new AppError('CONFLICT', '지금은 계약에 동의할 수 없어요.');
+      }
+      // 결제 금액은 요청이 아니라 크리에이터가 동의한 계약 사본에서만 읽는다.
+      const snapshot = readSnapshot(contract.termsSnapshot);
+      this.assertTexts(
+        dto.accepted,
+        consentTexts('BRAND', snapshot.version, snapshot.usageRights),
+      );
+      const payment = await this.payments.createForContract(
+        collaboration.id,
+        {
+          fixedCash: snapshot.fee,
+          performance: snapshot.performance
+            ? {
+                ratePer1000: snapshot.performance.ratePer1000,
+                cap: snapshot.performance.cap,
+              }
+            : null,
+          feeRate,
+          method: dto.method,
+        },
+        tx,
+      );
+      if (
+        !(await this.contracts.saveBrandConsent(
+          contract.id,
+          dto.accepted,
+          payment.id,
+          this.clock.now(),
+          tx,
+        ))
+      ) {
+        throw new AppError('CONFLICT', '지금은 계약에 동의할 수 없어요.');
+      }
+      return {
+        payment,
+        roomId: await this.conversations.idForCollaboration(
+          collaboration.id,
+          tx,
+        ),
+      };
+    });
+
+    securityLog('CONSENT_RECORDED', {
+      userId,
+      target: collaboration.id,
+      ref: saved.payment.id,
+      amount: saved.payment.amountEscrow + saved.payment.amountFee,
+      result: 'ALLOWED',
+      reason: 'CONTRACT_BRAND',
+    });
+    if (saved.roomId) {
+      await this.conversations.publishUpdated(saved.roomId, 'CONTRACT');
+    }
+    // 외부 결제창은 트랜잭션 밖에서 연다.
+    const campaign = collaboration.campaignId
+      ? await this.campaigns.getById(collaboration.campaignId)
+      : null;
+    return this.payments.openCheckout(
+      saved.payment,
+      `${campaign?.headline ?? '캠페인'} 제작비`,
+    );
+  }
+
+  // 결제 견적의 브랜드 분기(GET /collaborations/:id/payment-quote). 계약 사본(없으면 합의한 최신 판본)에서 계산한다.
+  async brandQuote(
+    userId: string,
+    collaborationId: string,
+  ): Promise<PaymentQuoteModel> {
+    const collaboration = await this.requireParty(userId, collaborationId);
+    if (collaboration.commissionerId !== userId) {
+      throw new AppError('NOT_FOUND', '협업을 찾을 수 없어요.');
+    }
+    const live = await this.contracts.findLive(collaboration.id);
+    if (live?.status === 'AWAITING_BRAND') {
+      return this.quoteFor(collaboration, readSnapshot(live.termsSnapshot));
+    }
+    const latest = await this.terms.latest(collaboration.id);
+    if (
+      !live &&
+      collaboration.stage === 'AGREED' &&
+      latest?.brandConfirmedAt &&
+      latest.creatorConfirmedAt
+    ) {
+      return this.quoteFor(
+        collaboration,
+        toTermsVersionModel(latest, collaboration.commissionerId, null),
+      );
+    }
+    throw new AppError('CONFLICT', '결제할 수 있는 협업이 아니에요.');
+  }
+
+  // 결제 견적. 보관액 = 최대 현금 부담(제작비 + 성과 추가 상한), 수수료 = 보관액 × 브랜드 계약 수수료율(내림).
+  // 줄 칸에는 제작비와 성과 추가 상한을 싣는다(식사권 칸은 없다).
+  async quoteFor(
+    collaboration: Collaboration,
+    terms: TermsVersionModel,
+  ): Promise<PaymentQuoteModel> {
+    const escrow = maxCashOfSnapshot(terms);
+    const feeRate = this.payments.brandFeeRate();
+    const fee = feeFor(escrow, feeRate);
+    const [campaign, creator] = await Promise.all([
+      collaboration.campaignId
+        ? this.campaigns.getById(collaboration.campaignId)
+        : null,
+      this.creators.getSummary(collaboration.creatorId),
+    ]);
+    return {
+      escrow,
+      fee,
+      feeRate,
+      total: escrow + fee,
+      orderName: `${campaign?.headline ?? '캠페인'} 제작비`,
+      creatorName: creator?.displayName ?? '크리에이터',
+      creatorPhotoUrl: creator?.photoUrl ?? null,
+      format: terms.format,
+      pieces: terms.pieces,
+      voucherName: null,
+      voucherValue: null,
+      voucherPeople: null,
+      fixedCash: terms.fee,
+      perViewCap: terms.performance?.cap ?? null,
+    };
   }
 
   // AGREED이고 같은 최신 판본을 양쪽이 확인했을 때만 동의할 수 있다. 협업 행을 잠근 뒤에 부른다.

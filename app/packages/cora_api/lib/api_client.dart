@@ -226,6 +226,8 @@ class ApiClient {
           return ApplyDto.fromJson(value);
         case 'BankModel':
           return BankModel.fromJson(value);
+        case 'BrandConsentDto':
+          return BrandConsentDto.fromJson(value);
         case 'BrandProfileModel':
           return BrandProfileModel.fromJson(value);
         case 'BrandProgressModel':

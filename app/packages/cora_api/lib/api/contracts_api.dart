@@ -16,6 +16,78 @@ class ContractsApi {
 
   final ApiClient apiClient;
 
+  /// 브랜드가 계약에 동의하면서 결제를 시작한다. 크리에이터가 동의하기 전에는 409. 결제 금액은 계약 사본(최대 현금 부담 + 수수료)에서만 계산한다. 결제가 승인되는 순간 계약이 체결된다(CONTRACTED).
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [BrandConsentDto] brandConsentDto (required):
+  Future<Response> consentContractAsBrandWithHttpInfo(
+    String id,
+    BrandConsentDto brandConsentDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path =
+        r'/collaborations/{id}/contract/brand-consent'.replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = brandConsentDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 브랜드가 계약에 동의하면서 결제를 시작한다. 크리에이터가 동의하기 전에는 409. 결제 금액은 계약 사본(최대 현금 부담 + 수수료)에서만 계산한다. 결제가 승인되는 순간 계약이 체결된다(CONTRACTED).
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [BrandConsentDto] brandConsentDto (required):
+  Future<PaymentCreatedModel?> consentContractAsBrand(
+    String id,
+    BrandConsentDto brandConsentDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await consentContractAsBrandWithHttpInfo(
+      id,
+      brandConsentDto,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(
+        await _decodeBodyBytes(response),
+        'PaymentCreatedModel',
+      ) as PaymentCreatedModel;
+    }
+    return null;
+  }
+
   /// 크리에이터가 계약에 동의한다(브랜드보다 먼저). 협업이 합의(AGREED) 상태이고 termsVersion이 최신일 때만: 최신이 아니면 409 STALE_VERSION(latestVersion), 그 밖의 상태는 409 CONFLICT, 확인한 문구가 서버의 문구와 다르면 400. 같은 판본에 다시 동의하면 바뀌는 것 없이 같은 계약을 돌려준다.
   ///
   /// Note: This method returns the HTTP [Response].

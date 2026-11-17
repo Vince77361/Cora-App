@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { Collaboration, Contract, TermsVersion } from '@prisma/client';
+import { PaymentsService } from '../payments/payments.service';
 import { toTermsVersionModel } from '../terms/terms-rules';
 import { consentTexts } from './consent-texts';
 import { snapshotOf } from './contract-snapshot';
@@ -50,6 +51,7 @@ function build(
     latest?: TermsVersion | null;
     stage?: Collaboration['stage'];
     live?: Contract | null;
+    feeRate?: number;
   } = {},
 ) {
   const state = {
@@ -58,6 +60,7 @@ function build(
     live: opts.live ?? null,
   };
   const created: unknown[] = [];
+  const paymentCalls: unknown[] = [];
   const notified: unknown[] = [];
   const contracts = {
     findLive: () => Promise.resolve(state.live),
@@ -68,6 +71,7 @@ function build(
       state.live = row;
       return Promise.resolve(row);
     },
+    saveBrandConsent: () => Promise.resolve(true),
   };
   const service = new ContractsService(
     contracts as never,
@@ -81,6 +85,17 @@ function build(
       latest: () => Promise.resolve(state.latest),
       versionBefore: () => Promise.resolve(null),
     } as never,
+    {
+      brandFeeRate: () => opts.feeRate ?? 10,
+      lockOpenPayments: () => Promise.resolve(),
+      createForContract: (...args: unknown[]) => {
+        paymentCalls.push(args);
+        return Promise.resolve({ id: 'pay-1' });
+      },
+      openCheckout: () =>
+        Promise.resolve({ paymentId: 'pay-1', checkoutUrl: 'cora-dev://pay' }),
+    } as unknown as PaymentsService,
+    { getById: () => Promise.resolve({ headline: '아침 루틴' }) } as never,
     {
       getActor: () =>
         Promise.resolve({ userId: BRAND, name: '느린결', photoPath: null }),
@@ -109,7 +124,7 @@ function build(
     } as never,
     { now: () => NOW },
   );
-  return { service, state, created, notified };
+  return { service, state, created, paymentCalls, notified };
 }
 
 const texts = (role: 'CREATOR' | 'BRAND', version = 2) =>
@@ -121,6 +136,36 @@ describe('ContractsService', () => {
     jest.spyOn(Logger.prototype, 'log').mockImplementation();
   });
   afterEach(() => jest.restoreAllMocks());
+
+  describe('quoteFor', () => {
+    it('quotes the fixed fee plus the performance cap and a service fee rounded down', async () => {
+      const t = build();
+      const model = toTermsVersionModel(
+        terms({ perfRatePerThousand: 2000, perfCap: 60000 }),
+        BRAND,
+        null,
+      );
+      expect(await t.service.quoteFor(collaboration(), model)).toMatchObject({
+        escrow: 410000,
+        fee: 41000,
+        feeRate: 10,
+        total: 451000,
+        fixedCash: 350000,
+        perViewCap: 60000,
+        orderName: '아침 루틴 제작비',
+        voucherName: null,
+      });
+    });
+
+    it('reads the fee rate from the one brand contract setting', async () => {
+      const t = build({ feeRate: 15 });
+      const model = toTermsVersionModel(terms({ fee: 350000 }), BRAND, null);
+      expect(await t.service.quoteFor(collaboration(), model)).toMatchObject({
+        fee: 52500,
+        total: 402500,
+      });
+    });
+  });
 
   describe('creator consent', () => {
     it('stores the contract with a snapshot of the agreed version and the consented texts', async () => {
@@ -187,6 +232,98 @@ describe('ContractsService', () => {
           accepted: texts('CREATOR'),
         }),
       ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    });
+  });
+
+  describe('brand consent', () => {
+    const consentedContract = (over: Partial<Contract> = {}): Contract =>
+      ({
+        id: 'contract-1',
+        status: 'AWAITING_BRAND',
+        termsVersion: 2,
+        termsSnapshot: snapshotOf(
+          toTermsVersionModel(
+            terms({ perfRatePerThousand: 2000, perfCap: 60000 }),
+            BRAND,
+            null,
+          ),
+        ),
+        creatorConsentedAt: NOW,
+        brandConsentTexts: [],
+        ...over,
+      }) as unknown as Contract;
+
+    it('waits for the creator when no contract exists', async () => {
+      const t = build();
+      await expect(
+        t.service.consentAsBrand(BRAND, COLLAB, {
+          termsVersion: 2,
+          accepted: texts('BRAND'),
+          method: 'CARD',
+        }),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: '크리에이터의 동의를 기다리고 있어요.',
+      });
+      expect(t.paymentCalls).toHaveLength(0);
+    });
+
+    it('creates the payment from the contract snapshot, not from the latest terms row', async () => {
+      // 최신 판본 행은 제작비가 다르지만(거짓 값) 계약 사본의 값으로만 결제를 만든다.
+      const t = build({
+        latest: terms({ fee: 999990 }),
+        live: consentedContract(),
+      });
+      const res = await t.service.consentAsBrand(BRAND, COLLAB, {
+        termsVersion: 2,
+        accepted: texts('BRAND'),
+        method: 'EASY_PAY',
+      });
+      expect(res).toEqual({
+        paymentId: 'pay-1',
+        checkoutUrl: 'cora-dev://pay',
+      });
+      expect(t.paymentCalls).toHaveLength(1);
+      expect(t.paymentCalls[0]).toMatchObject([
+        COLLAB,
+        {
+          fixedCash: 350000,
+          performance: { ratePer1000: 2000, cap: 60000 },
+          feeRate: 10,
+          method: 'EASY_PAY',
+        },
+        {},
+      ]);
+    });
+
+    it('refuses wrong texts and an older version without creating a payment', async () => {
+      const t = build({ live: consentedContract() });
+      await expect(
+        t.service.consentAsBrand(BRAND, COLLAB, {
+          termsVersion: 2,
+          accepted: texts('CREATOR'),
+          method: 'CARD',
+        }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+      await expect(
+        t.service.consentAsBrand(BRAND, COLLAB, {
+          termsVersion: 1,
+          accepted: texts('BRAND', 1),
+          method: 'CARD',
+        }),
+      ).rejects.toMatchObject({ code: 'STALE_VERSION' });
+      expect(t.paymentCalls).toHaveLength(0);
+    });
+
+    it('lets only the commissioning brand consent', async () => {
+      const t = build({ live: consentedContract() });
+      await expect(
+        t.service.consentAsBrand(CREATOR, COLLAB, {
+          termsVersion: 2,
+          accepted: texts('BRAND'),
+          method: 'CARD',
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
     });
   });
 });

@@ -9,6 +9,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { OffersModule } from '../offers/offers.module';
 import { StoresModule } from '../stores/stores.module';
 import { UsersModule } from '../users/users.module';
+import { BrandPayments } from './brand-payments';
 import { PaymentRecheckHandler } from './jobs/payment-recheck.handler';
 import { PaymentsController } from './payments.controller';
 import { PaymentsRepository } from './payments.repository';
@@ -29,9 +30,14 @@ import { PaymentsWebhookController } from './payments.webhook.controller';
     UsersModule,
   ],
   controllers: [PaymentsController, PaymentsWebhookController],
-  providers: [PaymentsService, PaymentsRepository, PaymentRecheckHandler],
-  // 브랜드 계약의 결제(5번 계획)와 운영 명령(10번 작업)이 쓴다.
-  exports: [PaymentsService],
+  providers: [
+    PaymentsService,
+    PaymentsRepository,
+    PaymentRecheckHandler,
+    BrandPayments,
+  ],
+  // 브랜드 계약의 결제(5번 계획)와 운영 명령(10번 작업)이 쓴다. 계약 모듈은 BrandPayments에 자기 처리기를 등록한다.
+  exports: [PaymentsService, BrandPayments],
 })
 export class PaymentsModule implements OnModuleInit {
   constructor(

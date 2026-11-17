@@ -16,6 +16,13 @@ void main() {
   // final instance = ContractsApi();
 
   group('tests for ContractsApi', () {
+    // 브랜드가 계약에 동의하면서 결제를 시작한다. 크리에이터가 동의하기 전에는 409. 결제 금액은 계약 사본(최대 현금 부담 + 수수료)에서만 계산한다. 결제가 승인되는 순간 계약이 체결된다(CONTRACTED).
+    //
+    //Future<PaymentCreatedModel> consentContractAsBrand(String id, BrandConsentDto brandConsentDto) async
+    test('test consentContractAsBrand', () async {
+      // TODO
+    });
+
     // 크리에이터가 계약에 동의한다(브랜드보다 먼저). 협업이 합의(AGREED) 상태이고 termsVersion이 최신일 때만: 최신이 아니면 409 STALE_VERSION(latestVersion), 그 밖의 상태는 409 CONFLICT, 확인한 문구가 서버의 문구와 다르면 400. 같은 판본에 다시 동의하면 바뀌는 것 없이 같은 계약을 돌려준다.
     //
     //Future<ContractModel> consentContractAsCreator(String id, CreatorConsentDto creatorConsentDto) async

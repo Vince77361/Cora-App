@@ -56,6 +56,42 @@ export class ContractsRepository {
     });
   }
 
+  // 브랜드가 동의한 문구와 결제를 계약에 남긴다. 아직 AWAITING_BRAND일 때만이다.
+  async saveBrandConsent(
+    id: string,
+    brandConsentTexts: string[],
+    paymentId: string,
+    now: Date,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const { count } = await tx.contract.updateMany({
+      where: { id, status: 'AWAITING_BRAND', deletedAt: null },
+      data: { brandConsentTexts, paymentId, updatedAt: now },
+    });
+    return count === 1;
+  }
+
+  // 결제가 승인돼 계약이 체결된다. AWAITING_BRAND일 때만이라 같은 승인이 동시에 와도 한 번이다.
+  // 결제가 새 결제에 밀려났다가 승인된 경우도 있어, 체결하는 결제를 계약에 다시 적는다.
+  async conclude(
+    id: string,
+    paymentId: string,
+    now: Date,
+    tx: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const { count } = await tx.contract.updateMany({
+      where: { id, status: 'AWAITING_BRAND', deletedAt: null },
+      data: {
+        status: 'CONCLUDED',
+        paymentId,
+        brandConsentedAt: now,
+        concludedAt: now,
+        updatedAt: now,
+      },
+    });
+    return count === 1;
+  }
+
   transaction<T>(
     run: (tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {

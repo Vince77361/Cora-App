@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Collaboration, Payment, PaymentMethod } from '@prisma/client';
+import { Collaboration, Payment, PaymentMethod, Prisma } from '@prisma/client';
 import { scheduleSubmissionDeadlineJobs } from '../collaborations/collaboration-jobs';
 import { SUBMIT_DUE_DAYS } from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
@@ -23,6 +23,7 @@ import { UsersService } from '../users/users.service';
 import { PaymentCreatedModel } from './dto/payment-created.model';
 import { PaymentQuoteModel } from './dto/payment-quote.model';
 import { PaymentStatusModel } from './dto/payment-status.model';
+import { BrandApproval, BrandPayments } from './brand-payments';
 import { PaymentsRepository } from './payments.repository';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -75,12 +76,17 @@ export class PaymentsService {
     private readonly operatorAlert: OperatorAlertPort,
     private readonly config: ConfigService,
     private readonly clock: Clock,
+    private readonly brandPayments: BrandPayments,
   ) {}
 
   async getQuote(
     userId: string,
     collaborationId: string,
   ): Promise<PaymentQuoteModel> {
+    // 브랜드 계약의 견적은 계약 모듈이 계약 사본에서 만든다(결제 모듈은 계약 모듈을 import할 수 없다).
+    if ((await this.users.getRole(userId)) === 'BRAND') {
+      return this.brandPayments.require().quote(userId, collaborationId);
+    }
     const collaboration = await this.requirePayable(userId, collaborationId);
     return this.quoteOf(collaboration);
   }
@@ -90,6 +96,7 @@ export class PaymentsService {
     collaborationId: string,
     method: PaymentMethod,
   ): Promise<PaymentCreatedModel> {
+    await this.refuseBrandContract(userId, collaborationId);
     const collaboration = await this.requirePayable(userId, collaborationId);
     const quote = await this.quoteOf(collaboration);
     const now = this.clock.now();
@@ -137,6 +144,74 @@ export class PaymentsService {
       );
     }
     return { paymentId: payment.id, checkoutUrl };
+  }
+
+  // 브랜드 계약의 결제를 만든다(계약 모듈의 동의 트랜잭션 안에서 부른다). 보관액은 계약 사본의 최대 현금 부담(제작비 + 성과 추가 상한)이고
+  // 수수료는 그 금액 × 수수료율이다. 값은 요청이 아니라 계약 사본에서 온 인자만 쓴다.
+  // 대기 중인 결제가 있으면 취소로 바꾸고 새로 만든다(3번과 같다). requestedAt을 넣어 60분 동안 조건 제안·그만두기가 막힌다.
+  // 호출한 쪽이 lockOpenPayments로 결제 행을 먼저 잠근 뒤 협업 행을 잠가야 한다(승인과 같은 순서: 결제 → 협업).
+  async createForContract(
+    collaborationId: string,
+    input: {
+      fixedCash: number;
+      performance: { ratePer1000: number; cap: number } | null;
+      feeRate: number;
+      method: PaymentMethod;
+    },
+    tx: Prisma.TransactionClient,
+  ): Promise<Payment> {
+    const escrow = maxCashBurden({
+      fixedCash: input.fixedCash,
+      perViewCap: input.performance?.cap ?? null,
+    });
+    if (escrow <= 0) {
+      throw new Error('계약에 낼 돈이 없어요.');
+    }
+    return this.payments.replacePending(
+      {
+        collaborationId,
+        amountEscrow: escrow,
+        amountFee: feeFor(escrow, input.feeRate),
+        feeRate: input.feeRate,
+        method: input.method,
+        requestedAt: this.clock.now(),
+      },
+      tx,
+    );
+  }
+
+  // 협업의 대기·취소 결제 행을 잠근다. 승인 트랜잭션이 결제 → 협업 순으로 잡으므로, 결제를 바꾸고 협업도 잠그는 쪽은 이것을 먼저 부른다.
+  lockOpenPayments(
+    collaborationId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    return this.payments.lockOpenPayments(collaborationId, tx);
+  }
+
+  // 커밋된 브랜드 결제의 결제창을 연다(외부 포트라 트랜잭션 밖). 재확인 작업은 안전망이라 올리지 못해도 결제는 웹훅으로 완료된다.
+  async openCheckout(
+    payment: Payment,
+    orderName: string,
+  ): Promise<PaymentCreatedModel> {
+    const { checkoutUrl } = await this.paymentPort.createCheckout({
+      paymentId: payment.id,
+      amount: payment.amountEscrow + payment.amountFee,
+      method: payment.method,
+      orderName,
+    });
+    try {
+      await this.scheduleRecheck(payment.id, 1, this.clock.now());
+    } catch (error) {
+      this.logger.warn(
+        `결제 재확인 작업을 올리지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
+    return { paymentId: payment.id, checkoutUrl };
+  }
+
+  // 브랜드 계약의 수수료율(%). 가게 오퍼와 같은 설정 한 곳(FEE_RATE_*)에서 읽고 같은 검사를 거친다.
+  brandFeeRate(): number {
+    return this.feeRate('FEE_RATE_BRAND_CONTRACT');
   }
 
   // 환급이 PG에 돌려보낼 결제. 정산·미제출 환급 같은 돈 처리가 쓴다(결제한 사람의 권한 확인 없음 — 서버 안의 호출 전용).
@@ -206,7 +281,11 @@ export class PaymentsService {
     userId: string,
     paymentId: string,
   ): Promise<Payment> {
-    await this.assertStoreRole(userId);
+    // 사장님(가게 오퍼)과 브랜드(브랜드 계약)가 자기 결제를 읽는다. 크리에이터는 읽지 못한다.
+    const role = await this.users.getRole(userId);
+    if (role !== 'STORE' && role !== 'BRAND') {
+      throw new AppError('FORBIDDEN', '가게나 브랜드 계정만 쓸 수 있어요.');
+    }
     const payment = UUID.test(paymentId)
       ? await this.payments.findById(paymentId)
       : null;
@@ -300,6 +379,9 @@ export class PaymentsService {
       return;
     }
     const now = this.clock.now();
+    if (collaboration.kind === 'BRAND_CONTRACT') {
+      return this.approveBrand(payment, pgTransactionId, now, options);
+    }
     // 잠그는 순서: 오퍼 → 결제 → 협업. 오퍼의 취소·만료가 오퍼 → 협업 순이라 같은 순서를 지켜 교착(40P01)을 피한다.
     // 협업 단계를 장부보다 먼저 옮긴다: 결제할 수 없는 협업이면 장부에 손도 대지 않고 앞 단계까지 되돌린다.
     // 어느 단계든 실패하면 전부 되돌린다(결제만 승인되고 장부가 없는 상태가 남지 않게).
@@ -371,6 +453,49 @@ export class PaymentsService {
     await this.recordLateApproval(payment, pgTransactionId, now);
   }
 
+  // 브랜드 계약의 결제 승인. 결제를 APPROVED로 바꾼 같은 트랜잭션에서 계약 모듈의 처리기가 협업·계약·장부를 옮긴다:
+  // 계약이 AWAITING_BRAND이고 이 결제가 그 계약의 결제이면 체결(CONTRACTED)하고, 아니면(조건이 바뀌어 무효가 됐거나 협업이 끝났다)
+  // 계약 없이 전액 환급 줄과 환급 행을 남긴다. 어느 단계든 실패하면 전부 되돌린다(결제만 승인되고 장부가 없는 상태가 남지 않게).
+  // 잠그는 순서: 결제 → 협업 → 계약 → 장부(브랜드 계약에는 오퍼가 없다).
+  private async approveBrand(
+    payment: Payment,
+    pgTransactionId: string,
+    now: Date,
+    options: ApplyResultOptions,
+  ): Promise<void> {
+    const handler = this.brandPayments.require();
+    const applied = await this.payments.transaction<
+      BrandApproval,
+      'already-handled'
+    >(async (tx, rollback) => {
+      if (
+        !(await this.payments.markApproved(
+          payment.id,
+          pgTransactionId,
+          now,
+          tx,
+        ))
+      ) {
+        // 같은 통지를 동시에 처리한 쪽이 먼저 바꿨거나(APPROVED), 그사이 결제가 실패로 끝났다(FAILED).
+        return rollback('already-handled');
+      }
+      return handler.applyApproval(payment, now, tx);
+    });
+    if (applied === 'already-handled') {
+      const fresh = await this.payments.findById(payment.id);
+      if (fresh?.status === 'APPROVED' || fresh?.status === 'FAILED') {
+        await this.reactToSettledPayment(fresh, options);
+      }
+      return;
+    }
+    this.logResult(
+      payment,
+      applied.outcome === 'concluded' ? 'ALLOWED' : 'DENIED',
+      applied.outcome === 'concluded' ? 'APPROVED' : 'NO_CONTRACT',
+    );
+    await applied.afterCommit(options);
+  }
+
   // 이 승인을 협업에 반영할 수 없다(협업이 이미 끝났거나, 같은 협업의 다른 결제가 이미 보관을 시작했다).
   // 돈은 PG에서 빠져나갔으므로 결제만 승인으로 기록하고, 단계와 장부는 건드리지 않은 채 운영자에게 환불을 부탁한다
   // (운영 명령은 10번 작업). 알림을 먼저 보낸다: 알림이 실패하면 결제가 아직 승인으로 기록되지 않아 PG가 다시 보낼 때
@@ -414,7 +539,9 @@ export class PaymentsService {
       const collaboration = await this.collaborations.findById(
         payment.collaborationId,
       );
-      if (collaboration?.stage === 'FUNDED') {
+      if (collaboration?.kind === 'BRAND_CONTRACT') {
+        await this.brandPayments.require().retryApproved(payment, options);
+      } else if (collaboration?.stage === 'FUNDED') {
         await this.afterFunded(collaboration, options);
       }
       return;
@@ -548,7 +675,7 @@ export class PaymentsService {
     if (escrow <= 0) {
       throw new Error('결제를 기다리는 협업의 조건에 낼 돈이 없어요.');
     }
-    const feeRate = this.feeRate();
+    const feeRate = this.feeRate('FEE_RATE_STORE_OFFER');
     const fee = feeFor(escrow, feeRate);
     const card = collaboration.storeId
       ? await this.stores.getOfferCard(collaboration.storeId)
@@ -572,12 +699,33 @@ export class PaymentsService {
     };
   }
 
-  private feeRate(): number {
-    const rate = Number(this.config.getOrThrow('FEE_RATE_STORE_OFFER'));
+  private feeRate(
+    key: 'FEE_RATE_STORE_OFFER' | 'FEE_RATE_BRAND_CONTRACT',
+  ): number {
+    const rate = Number(this.config.getOrThrow(key));
     if (!Number.isInteger(rate) || rate < 0 || rate > 100) {
       throw new Error(`수수료율이 올바르지 않아요: ${rate}`);
     }
     return rate;
+  }
+
+  // 브랜드 계약에는 이 길로 결제를 만들지 않는다: 결제는 브랜드의 계약 동의(POST /collaborations/:id/contract/brand-consent)로만 만든다.
+  // 이 협업을 맡긴 브랜드는 409, 그 밖의 브랜드는 없는 협업과 같게 404다.
+  private async refuseBrandContract(
+    userId: string,
+    collaborationId: string,
+  ): Promise<void> {
+    if ((await this.users.getRole(userId)) !== 'BRAND') return;
+    const collaboration = UUID.test(collaborationId)
+      ? await this.collaborations.findById(collaborationId)
+      : null;
+    if (
+      collaboration?.kind === 'BRAND_CONTRACT' &&
+      collaboration.commissionerId === userId
+    ) {
+      throw new AppError('CONFLICT', '계약에 동의하면서 결제해 주세요.');
+    }
+    throw new AppError('NOT_FOUND', '협업을 찾을 수 없어요.');
   }
 
   private async assertStoreRole(userId: string): Promise<void> {

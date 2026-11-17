@@ -1,9 +1,15 @@
 import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
+import { PaymentCreatedModel } from '../payments/dto/payment-created.model';
 import { ContractsService } from './contracts.service';
-import { CreatorConsentDto } from './dto/consent.dto';
+import { BrandConsentDto, CreatorConsentDto } from './dto/consent.dto';
 import { ContractModel } from './dto/contract.model';
 
 @ApiBearerAuth()
@@ -39,5 +45,20 @@ export class ContractsController {
     @Body() body: CreatorConsentDto,
   ): Promise<ContractModel> {
     return this.contracts.consentAsCreator(user.userId, id, body);
+  }
+
+  @Post('brand-consent')
+  @ApiOperation({
+    operationId: 'consentContractAsBrand',
+    summary:
+      '브랜드가 계약에 동의하면서 결제를 시작한다. 크리에이터가 동의하기 전에는 409. 결제 금액은 계약 사본(최대 현금 부담 + 수수료)에서만 계산한다. 결제가 승인되는 순간 계약이 체결된다(CONTRACTED).',
+  })
+  @ApiCreatedResponse({ type: PaymentCreatedModel })
+  consentAsBrand(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() body: BrandConsentDto,
+  ): Promise<PaymentCreatedModel> {
+    return this.contracts.consentAsBrand(user.userId, id, body);
   }
 }

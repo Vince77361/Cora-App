@@ -18,6 +18,7 @@ import {
 import { OffersService } from '../offers/offers.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
+import { BrandPayments } from './brand-payments';
 import { PaymentsRepository } from './payments.repository';
 import {
   LATE_APPROVAL_SUBJECT,
@@ -28,6 +29,7 @@ import {
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const CREATOR = '22222222-2222-4222-8222-222222222222';
 const COLLAB = '33333333-3333-4333-8333-333333333333';
+const BRAND = '77777777-7777-4777-8777-777777777777';
 const OFFER = '44444444-4444-4444-8444-444444444444';
 const PAYMENT = '55555555-5555-4555-8555-555555555555';
 const SECOND_PAYMENT = '66666666-6666-4666-8666-666666666666';
@@ -86,6 +88,9 @@ class FakePaymentsRepository extends PaymentsRepository {
       row.approvedAt = approvedAt;
     }
     return Promise.resolve(!!row);
+  }
+  lockOpenPayments() {
+    return Promise.resolve();
   }
   markFailed(id: string) {
     const row = this.rows.find((p) => p.id === id && p.status === 'PENDING');
@@ -228,7 +233,9 @@ function build(feeRate = 10) {
   } as unknown as NotificationsService;
   const users = {
     getRole: (id: string) =>
-      Promise.resolve(id === OWNER ? 'STORE' : 'CREATOR'),
+      Promise.resolve(
+        id === OWNER ? 'STORE' : id === BRAND ? 'BRAND' : 'CREATOR',
+      ),
   } as unknown as UsersService;
   const stores = {
     getOfferCard: () =>
@@ -241,6 +248,7 @@ function build(feeRate = 10) {
     getSummary: () =>
       Promise.resolve({ displayName: '모카', photoUrl: 'https://img/mocha' }),
   } as unknown as CreatorsService;
+  const brandPayments = new BrandPayments();
   const service = new PaymentsService(
     payments,
     collaborations,
@@ -255,6 +263,7 @@ function build(feeRate = 10) {
     alerts,
     new ConfigService({ FEE_RATE_STORE_OFFER: feeRate }),
     clock,
+    brandPayments,
   );
   return {
     service,
@@ -268,6 +277,7 @@ function build(feeRate = 10) {
     notified,
     cancelledDueJobs,
     state,
+    brandPayments,
   };
 }
 
@@ -734,6 +744,128 @@ describe('PaymentsService', () => {
         status: 'APPROVED',
         pgTransactionId: 'tx-from-pg',
       });
+    });
+  });
+
+  describe('brand contract', () => {
+    const brandCollaboration = () =>
+      collaboration({
+        kind: 'BRAND_CONTRACT',
+        stage: 'AGREED',
+        commissionerId: BRAND,
+        offerId: null,
+        storeId: null,
+        campaignId: 'camp-1',
+        terms: {},
+      });
+    const handlerOf = () => {
+      const calls: string[] = [];
+      return {
+        calls,
+        handler: {
+          quote: () => Promise.resolve({ escrow: 410000 } as never),
+          applyApproval: () => {
+            calls.push('apply');
+            return Promise.resolve({
+              outcome: 'concluded' as const,
+              afterCommit: () => {
+                calls.push('after');
+                return Promise.resolve();
+              },
+            });
+          },
+          retryApproved: () => {
+            calls.push('retry');
+            return Promise.resolve();
+          },
+        },
+      };
+    };
+
+    it('answers the brand quote through the registered brand contract handler', async () => {
+      const t = build();
+      t.collaborations.row = brandCollaboration();
+      t.brandPayments.register(handlerOf().handler);
+      await expect(t.service.getQuote(BRAND, COLLAB)).resolves.toMatchObject({
+        escrow: 410000,
+      });
+    });
+
+    it('answers 409 to the commissioning brand and 404 to another brand on the store payment route', async () => {
+      const t = build();
+      t.collaborations.row = brandCollaboration();
+      await expect(
+        t.service.create(BRAND, COLLAB, 'CARD'),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+      t.collaborations.row = collaboration({
+        ...brandCollaboration(),
+        commissionerId: 'another-brand',
+      });
+      await expect(
+        t.service.create(BRAND, COLLAB, 'CARD'),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      expect(t.payments.rows).toHaveLength(0);
+    });
+
+    it('creates a pending contract payment from the given numbers with the request time', async () => {
+      const t = build();
+      const created = await t.service.createForContract(
+        COLLAB,
+        {
+          fixedCash: 350000,
+          performance: { ratePer1000: 2000, cap: 60000 },
+          feeRate: 10,
+          method: 'TRANSFER',
+        },
+        null as never,
+      );
+      expect(created).toMatchObject({
+        amountEscrow: 410000,
+        amountFee: 41000,
+        feeRate: 10,
+        method: 'TRANSFER',
+        status: 'PENDING',
+        requestedAt: T0,
+      });
+      await expect(
+        t.service.createForContract(
+          COLLAB,
+          { fixedCash: 0, performance: null, feeRate: 10, method: 'CARD' },
+          null as never,
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('applies an approved brand payment through the handler once and retries the rest on a repeat', async () => {
+      const t = build();
+      t.collaborations.row = brandCollaboration();
+      t.payments.rows.push(payment());
+      const { calls, handler } = handlerOf();
+      t.brandPayments.register(handler);
+      const notice = {
+        paymentId: PAYMENT,
+        pgTransactionId: 'tx-1',
+        status: 'APPROVED' as const,
+      };
+      await t.service.applyResult(notice);
+      expect(t.payments.rows[0].status).toBe('APPROVED');
+      expect(calls).toEqual(['apply', 'after']);
+      // 같은 통지가 또 오면 승인은 다시 하지 않고 남은 단계만 마친다.
+      await t.service.applyResult(notice);
+      expect(calls).toEqual(['apply', 'after', 'retry']);
+      expect(t.ledgerPosts).toHaveLength(0);
+    });
+
+    it('lets a brand read its own payment status', async () => {
+      const t = build();
+      t.collaborations.row = brandCollaboration();
+      t.payments.rows.push(payment());
+      await expect(t.service.getStatus(BRAND, PAYMENT)).resolves.toEqual({
+        status: 'PENDING',
+      });
+      await expect(t.service.getStatus(CREATOR, PAYMENT)).rejects.toMatchObject(
+        { code: 'FORBIDDEN' },
+      );
     });
   });
 

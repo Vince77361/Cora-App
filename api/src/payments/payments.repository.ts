@@ -83,6 +83,19 @@ export class PaymentsRepository {
     return tx.payment.create({ data: input });
   }
 
+  // 협업의 대기·취소 결제 행을 id 순서로 잠근다(트랜잭션이 끝날 때까지). 승인이 결제 → 협업 순으로 잡으므로,
+  // 결제를 바꾸면서 협업도 잠그는 쪽(브랜드의 계약 동의)이 이것을 먼저 부르면 서로 기다리지 않는다.
+  async lockOpenPayments(
+    collaborationId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    await tx.$queryRaw`
+      SELECT id FROM payments
+      WHERE collaboration_id = ${collaborationId}::uuid AND deleted_at IS NULL
+        AND status IN ('PENDING', 'CANCELLED')
+      ORDER BY id FOR UPDATE`;
+  }
+
   // run 안에서 rollback(값)을 부르면 트랜잭션 전체를 되돌리고 그 값을 돌려준다. 던지면 되돌리고 그대로 던진다.
   async transaction<T, R>(
     run: (
