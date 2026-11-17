@@ -16,4 +16,7 @@ abstract final class CoraChatTokens {
 
   /// D3 대화 관리 시트 뒤를 덮는 `rgba(15,16,18,0.4)`. 라이트·다크가 같다.
   static const menuScrim = Color(0x660F1012);
+
+  /// D3 대화방의 알림(SnackBar)이 화면 아래에서 떨어지는 거리. 입력 줄(보내기 버튼) 위에 뜨게 한다. 캔버스 밖 값이다.
+  static const toastBottomMargin = 96.0;
 }

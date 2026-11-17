@@ -430,9 +430,13 @@ class ChatThreadViewModel extends AsyncNotifier<ChatThreadState> {
     try {
       await _repo.block(_id);
     } on ChatFailure catch (failure) {
-      return failure.isConflict
+      if (!failure.isConflict) return ChatTexts.actionFailed;
+      // 409는 돈이 보관 중이어서만이 아니다(협업 상태가 그사이 바뀐 경우도 있다). 서버 문구가 보관 중 문구가 아니면
+      // 그 문구를 보인다.
+      final server = failure.message;
+      return server == null || server == ChatTexts.blockConflict
           ? ChatTexts.blockConflict
-          : ChatTexts.actionFailed;
+          : server;
     }
     final current = state.value;
     if (!ref.mounted || current == null) return null;
@@ -490,6 +494,7 @@ class ChatThreadViewModel extends AsyncNotifier<ChatThreadState> {
           stage: ConversationStage.dropped,
           canDrop: false,
         ),
+        clearNotice: true,
       ),
     );
     _refreshList();

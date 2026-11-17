@@ -37,6 +37,31 @@ Future<T?> showChatSheet<T>(BuildContext context, WidgetBuilder builder) {
   );
 }
 
+/// 차단·신고·그만두기 시트가 같이 쓰는 확인 흐름. [runAction]은 요청 중 다시 눌러도 한 번만 부르고, 성공(null)이면
+/// 시트를 `true`로 닫고, 실패하면 시트를 연 채 [error]에 문구를 남긴다. 요청 중에는 [busy]가 참이라 버튼과 줄을 끈다.
+mixin ChatSheetAction<T extends StatefulWidget> on State<T> {
+  bool busy = false;
+  String? error;
+
+  Future<void> runAction(Future<String?> Function() action) async {
+    if (busy) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    final failure = await action();
+    if (!mounted) return;
+    if (failure == null) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() {
+        busy = false;
+        error = failure;
+      });
+    }
+  }
+}
+
 /// 시트 안쪽 여백: 위 28·좌우 16·아래 32(홈 막대가 더 크면 그만큼). 글이 길어지면 스크롤된다.
 class ChatSheetBody extends StatelessWidget {
   const ChatSheetBody({super.key, required this.children});

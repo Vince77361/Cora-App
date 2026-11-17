@@ -158,6 +158,24 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('shows the server message for a block conflict that is not '
+        'about held money', (tester) async {
+      final handle = tester.ensureSemantics();
+      final chat = _chat()
+        ..blockFailure = const ChatFailure.conflict(
+          '협업의 상태가 바뀌었어요. 잠시 뒤 다시 시도해 주세요.',
+        );
+      await _open(tester, chat);
+
+      await _pick(tester, '차단하기');
+      await tester.tap(find.text('차단하기').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('협업의 상태가 바뀌었어요. 잠시 뒤 다시 시도해 주세요.'), findsOneWidget);
+      expect(find.text('진행 중인 협업이 있어요. 문의하기로 알려 주세요.'), findsNothing);
+      handle.dispose();
+    });
+
     testWidgets('shows a plain failure line when the network fails', (
       tester,
     ) async {
@@ -365,6 +383,28 @@ void main() {
       // 더는 그만둘 수 없다.
       await _openMenu(tester);
       expect(find.text('협의 그만두기'), findsNothing);
+      handle.dispose();
+    });
+
+    testWidgets('clears an earlier failure notice once the drop goes through', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      final chat = _chat()..muteFailure = const ChatFailure.failed();
+      final negotiation = FakeNegotiationRepository();
+      await _open(tester, chat, negotiation: negotiation);
+
+      await _pick(tester, '알림 끄기');
+      expect(find.text('알림 설정을 바꾸지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
+
+      await _pick(tester, '협의 그만두기');
+      await tester.tap(find.text('일정이 맞지 않아요'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('그만두기'));
+      await tester.pumpAndSettle();
+
+      expect(negotiation.dropped, hasLength(1));
+      expect(find.text('알림 설정을 바꾸지 못했어요. 다시 시도해 주세요.'), findsNothing);
       handle.dispose();
     });
 

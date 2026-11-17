@@ -24,30 +24,8 @@ class DropSheet extends StatefulWidget {
   State<DropSheet> createState() => _DropSheetState();
 }
 
-class _DropSheetState extends State<DropSheet> {
+class _DropSheetState extends State<DropSheet> with ChatSheetAction {
   DropReason? _reason;
-  bool _busy = false;
-  String? _error;
-
-  Future<void> _confirm() async {
-    final reason = _reason;
-    if (reason == null || _busy) return;
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    final error = await widget.onConfirm(reason);
-    if (!mounted) return;
-    if (error == null) {
-      Navigator.of(context).pop(true);
-    } else {
-      setState(() {
-        _busy = false;
-        _error = error;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) => ChatSheetBody(
     children: [
@@ -60,18 +38,20 @@ class _DropSheetState extends State<DropSheet> {
         ChatReasonRow(
           label: dropReasonLabel(reason),
           picked: _reason == reason,
-          onTap: _busy ? null : () => setState(() => _reason = reason),
+          onTap: busy ? null : () => setState(() => _reason = reason),
         ),
       const SizedBox(height: 12),
-      if (_error != null) ChatSheetError(text: _error!),
+      if (error != null) ChatSheetError(text: error!),
       CoraPrimaryButton(
         label: ChatTexts.dropConfirm,
-        onPressed: _reason == null || _busy ? null : _confirm,
+        onPressed: _reason == null || busy
+            ? null
+            : () => runAction(() => widget.onConfirm(_reason!)),
       ),
       const SizedBox(height: 8),
       CoraSecondaryButton(
         label: ChatTexts.dropKeep,
-        onPressed: _busy ? null : () => Navigator.of(context).pop(),
+        onPressed: busy ? null : () => Navigator.of(context).pop(),
       ),
     ],
   );

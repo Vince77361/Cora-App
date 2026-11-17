@@ -276,6 +276,26 @@ void main() {
     );
   });
 
+  test('a conflict carries the server message', () async {
+    final client = _Client(409, {
+      'error': {
+        'code': 'CONFLICT',
+        'message': '협업의 상태가 바뀌었어요. 잠시 뒤 다시 시도해 주세요.',
+        'details': null,
+      },
+    });
+    await expectLater(
+      _repo(client).block('room-1'),
+      throwsA(
+        isA<ChatFailure>().having(
+          (f) => f.message,
+          'message',
+          '협업의 상태가 바뀌었어요. 잠시 뒤 다시 시도해 주세요.',
+        ),
+      ),
+    );
+  });
+
   test('reports a conversation with its reason and detail', () async {
     final client = _Client(201, {'id': 'report-1'});
     await _repo(client).report(

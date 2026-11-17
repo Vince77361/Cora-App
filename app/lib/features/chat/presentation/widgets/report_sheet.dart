@@ -25,35 +25,13 @@ class ReportSheet extends StatefulWidget {
   State<ReportSheet> createState() => _ReportSheetState();
 }
 
-class _ReportSheetState extends State<ReportSheet> {
+class _ReportSheetState extends State<ReportSheet> with ChatSheetAction {
   final _detail = TextEditingController();
   ReportReason? _reason;
-  bool _busy = false;
-  String? _error;
-
   @override
   void dispose() {
     _detail.dispose();
     super.dispose();
-  }
-
-  Future<void> _submit() async {
-    final reason = _reason;
-    if (reason == null || _busy) return;
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    final error = await widget.onSubmit(reason, _detail.text);
-    if (!mounted) return;
-    if (error == null) {
-      Navigator.of(context).pop(true);
-    } else {
-      setState(() {
-        _busy = false;
-        _error = error;
-      });
-    }
   }
 
   @override
@@ -65,13 +43,13 @@ class _ReportSheetState extends State<ReportSheet> {
         ChatReasonRow(
           label: reportReasonLabel(reason),
           picked: _reason == reason,
-          onTap: _busy ? null : () => setState(() => _reason = reason),
+          onTap: busy ? null : () => setState(() => _reason = reason),
         ),
       const SizedBox(height: 12),
       CoraFieldBox(
         label: ChatTexts.reportDetail,
         controller: _detail,
-        enabled: !_busy,
+        enabled: !busy,
         inputFormatters: const [
           Utf16LengthLimitingFormatter(ChatTexts.reportDetailMax),
         ],
@@ -82,10 +60,12 @@ class _ReportSheetState extends State<ReportSheet> {
         onChanged: (_) {},
       ),
       const SizedBox(height: 20),
-      if (_error != null) ChatSheetError(text: _error!),
+      if (error != null) ChatSheetError(text: error!),
       CoraPrimaryButton(
         label: ChatTexts.reportSubmit,
-        onPressed: _reason == null || _busy ? null : _submit,
+        onPressed: _reason == null || busy
+            ? null
+            : () => runAction(() => widget.onSubmit(_reason!, _detail.text)),
       ),
     ],
   );

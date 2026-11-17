@@ -26,28 +26,7 @@ class BlockSheet extends StatefulWidget {
   State<BlockSheet> createState() => _BlockSheetState();
 }
 
-class _BlockSheetState extends State<BlockSheet> {
-  bool _busy = false;
-  String? _error;
-
-  Future<void> _confirm() async {
-    if (_busy) return;
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    final error = await widget.onConfirm();
-    if (!mounted) return;
-    if (error == null) {
-      Navigator.of(context).pop(true);
-    } else {
-      setState(() {
-        _busy = false;
-        _error = error;
-      });
-    }
-  }
-
+class _BlockSheetState extends State<BlockSheet> with ChatSheetAction {
   @override
   Widget build(BuildContext context) => ChatSheetBody(
     children: [
@@ -56,15 +35,15 @@ class _BlockSheetState extends State<BlockSheet> {
         body: ChatTexts.blockBody,
       ),
       const SizedBox(height: 20),
-      if (_error != null) ChatSheetError(text: _error!),
+      if (error != null) ChatSheetError(text: error!),
       CoraPrimaryButton(
         label: ChatTexts.blockConfirm,
-        onPressed: _busy ? null : _confirm,
+        onPressed: busy ? null : () => runAction(widget.onConfirm),
       ),
       const SizedBox(height: 8),
       CoraSecondaryButton(
         label: ChatTexts.blockCancel,
-        onPressed: _busy ? null : () => Navigator.of(context).pop(),
+        onPressed: busy ? null : () => Navigator.of(context).pop(),
       ),
     ],
   );

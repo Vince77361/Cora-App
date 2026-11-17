@@ -59,18 +59,22 @@ abstract class ChatRepository {
 
 /// 서버와 주고받지 못했다. 서버 응답의 문구는 담지 않는다.
 class ChatFailure implements Exception {
-  const ChatFailure(this.kind);
+  const ChatFailure(this.kind) : message = null;
 
   /// 연결 문제이거나 서버가 처리하지 못한 일.
-  const ChatFailure.failed() : kind = ChatFailureKind.failed;
+  const ChatFailure.failed() : kind = ChatFailureKind.failed, message = null;
 
-  /// 이미 답했거나 상태가 맞지 않다(409).
-  const ChatFailure.conflict() : kind = ChatFailureKind.conflict;
+  /// 이미 답했거나 상태가 맞지 않다(409). [message]는 서버가 사용자에게 보이라고 준 문구다(같은 409라도 이유가
+  /// 여럿인 요청이 가려 쓴다). 없으면 null이다.
+  const ChatFailure.conflict([this.message]) : kind = ChatFailureKind.conflict;
 
   /// 방이 없거나 참가자가 아니다(404).
-  const ChatFailure.notFound() : kind = ChatFailureKind.notFound;
+  const ChatFailure.notFound()
+    : kind = ChatFailureKind.notFound,
+      message = null;
 
   final ChatFailureKind kind;
+  final String? message;
 
   bool get isConflict => kind == ChatFailureKind.conflict;
   bool get isNotFound => kind == ChatFailureKind.notFound;

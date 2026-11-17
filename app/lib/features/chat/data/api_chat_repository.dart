@@ -120,7 +120,7 @@ class ApiChatRepository implements ChatRepository {
           '[chat] 실패: 종류=${error.runtimeType} 상태=${parsed.status} 코드=${parsed.code}',
         );
       }
-      if (parsed.isConflict) throw const ChatFailure.conflict();
+      if (parsed.isConflict) throw ChatFailure.conflict(parsed.message);
       if (parsed.isNotFound) throw const ChatFailure.notFound();
       throw const ChatFailure.failed();
     }

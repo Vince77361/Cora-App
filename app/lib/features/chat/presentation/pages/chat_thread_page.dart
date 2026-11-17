@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/navigation/app_routes.dart';
+import '../../../../core/theme/cora_chat_tokens.dart';
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
@@ -125,7 +126,12 @@ class _ChatThreadPageState extends ConsumerState<ChatThreadPage>
         SnackBar(
           behavior: SnackBarBehavior.floating,
           // 입력 줄(보내기 버튼) 위에 뜨게 띄운다.
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+          margin: const EdgeInsets.fromLTRB(
+            16,
+            0,
+            16,
+            CoraChatTokens.toastBottomMargin,
+          ),
           backgroundColor: c.text,
           duration: const Duration(seconds: 3),
           shape: RoundedRectangleBorder(
