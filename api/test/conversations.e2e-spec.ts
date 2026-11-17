@@ -12,9 +12,15 @@ import {
   MessageCreated,
   MessageEvents,
 } from '../src/conversations/message-events';
+import { PushPort } from '../src/integrations/push/push.port';
+import { PresenceService } from '../src/realtime/presence.service';
+import { RealtimePublisher } from '../src/realtime/realtime-publisher';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
+import { FakePresence } from './support/fake-presence';
+import { FakePushPort } from './support/fake-push.port';
+import { FakeRealtimePublisher } from './support/fake-realtime-publisher';
 import { OTHER, USER_A } from './support/fake-token-verifier';
 
 const authBrand = { Authorization: 'Bearer user-a' };
@@ -65,6 +71,9 @@ describe('conversations', () => {
   let prisma: PrismaClient;
   let server: ReturnType<typeof httpOf>;
   let clock: FakeClock;
+  let realtime: FakeRealtimePublisher;
+  let presence: FakePresence;
+  let push: FakePushPort;
 
   const codeOf = (res: request.Response) =>
     (res.body as { error: { code: string } }).error.code;
@@ -203,13 +212,20 @@ describe('conversations', () => {
 
   beforeAll(async () => {
     prisma = new PrismaClient();
-    app = await createTestApp();
+    app = await createTestApp([], { fakeRealtime: true });
     server = httpOf(app);
     clock = app.get<FakeClock>(Clock);
+    realtime = app.get<FakeRealtimePublisher>(RealtimePublisher);
+    presence = app.get<FakePresence>(PresenceService);
+    push = app.get<FakePushPort>(PushPort);
   });
   beforeEach(async () => {
     await truncateTestDb(prisma);
     clock.set(T0);
+    realtime.sent.length = 0;
+    realtime.fail = false;
+    presence.online.clear();
+    push.sent.length = 0;
   });
   afterAll(async () => {
     await app.close();
@@ -219,6 +235,83 @@ describe('conversations', () => {
   it('rejects requests with no token', async () => {
     await request(server).get('/conversations').expect(401);
     await request(server).get(`/conversations/${randomUUID()}`).expect(401);
+  });
+
+  describe('realtime and push', () => {
+    it('delivers a sent message to both members with their own mine flag, once per client id', async () => {
+      const { campaignId } = await seedParties();
+      const { roomId } = await seedRoom(campaignId);
+      const clientId = randomUUID();
+      await send(authCreator, roomId, text('안녕하세요', clientId)).expect(201);
+      await send(authCreator, roomId, text('안녕하세요', clientId)).expect(201);
+      const forBrand = realtime.receivedBy(USER_A, 'message.created');
+      const forCreator = realtime.receivedBy(OTHER, 'message.created');
+      expect(forBrand).toHaveLength(1);
+      expect(forCreator).toHaveLength(1);
+      expect(forBrand[0].payload).toMatchObject({
+        conversationId: roomId,
+        message: { seq: 1, mine: false, clientId: null, text: '안녕하세요' },
+      });
+      expect(forCreator[0].payload).toMatchObject({
+        message: { seq: 1, mine: true, clientId },
+      });
+      // 같은 clientId로 다시 보내도 푸시는 한 번만 간다.
+      expect(push.sent).toHaveLength(1);
+    });
+
+    it('tells only the reader about a read and only the one who muted about a mute', async () => {
+      const { campaignId } = await seedParties();
+      const { roomId } = await seedRoom(campaignId);
+      await send(authCreator, roomId, text()).expect(201);
+      realtime.sent.length = 0;
+      await request(server)
+        .post(`/conversations/${roomId}/read`)
+        .set(authBrand)
+        .send({ seq: 1 })
+        .expect(204);
+      await request(server)
+        .put(`/conversations/${roomId}/mute`)
+        .set(authCreator)
+        .send({ muted: true })
+        .expect(200);
+      expect(realtime.sent).toEqual([
+        {
+          userIds: [USER_A],
+          event: 'conversation.updated',
+          payload: { conversationId: roomId, reason: 'READ' },
+        },
+        {
+          userIds: [OTHER],
+          event: 'conversation.updated',
+          payload: { conversationId: roomId, reason: 'STATUS' },
+        },
+      ]);
+    });
+
+    it('sends nothing for a failed send and does not fail a send when the delivery fails', async () => {
+      const { campaignId } = await seedParties();
+      const { roomId } = await seedRoom(campaignId, { status: 'CLOSED' });
+      await send(authCreator, roomId, text()).expect(409);
+      expect(realtime.sent).toEqual([]);
+      expect(push.sent).toEqual([]);
+      await prisma.conversation.update({
+        where: { id: roomId },
+        data: { status: 'OPEN' },
+      });
+      realtime.fail = true;
+      await send(authCreator, roomId, text()).expect(201);
+      // 실시간 전달이 실패해도 메시지는 저장되고 푸시는 간다.
+      expect(await messages(authBrand, roomId)).toHaveLength(1);
+      expect(push.sent).toHaveLength(1);
+    });
+
+    it('treats a connected receiver as online and does not push', async () => {
+      const { campaignId } = await seedParties();
+      const { roomId } = await seedRoom(campaignId);
+      presence.online.add(USER_A);
+      await send(authCreator, roomId, text()).expect(201);
+      expect(push.sent).toEqual([]);
+    });
   });
 
   describe('sending', () => {

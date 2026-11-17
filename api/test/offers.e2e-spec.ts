@@ -4,6 +4,7 @@ import { CollaborationStage, PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
+import { RealtimePublisher } from '../src/realtime/realtime-publisher';
 import { JobScheduler } from '../src/jobs/job-scheduler';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { OffersRepository } from '../src/offers/offers.repository';
@@ -17,6 +18,7 @@ import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
 import { FakeJobScheduler } from './support/fake-job-scheduler';
 import { FakePushPort } from './support/fake-push.port';
+import { FakeRealtimePublisher } from './support/fake-realtime-publisher';
 import { OTHER, USER_A } from './support/fake-token-verifier';
 
 const auth = { Authorization: 'Bearer user-a' };
@@ -87,6 +89,7 @@ describe('offers', () => {
   let prisma: PrismaClient;
   let server: ReturnType<typeof httpOf>;
   let push: FakePushPort;
+  let realtime: FakeRealtimePublisher;
   let clock: FakeClock;
   let scheduler: FakeJobScheduler;
 
@@ -247,15 +250,17 @@ describe('offers', () => {
 
   beforeAll(async () => {
     prisma = new PrismaClient();
-    app = await createTestApp();
+    app = await createTestApp([], { fakeRealtime: true });
     server = httpOf(app);
     push = app.get<FakePushPort>(PushPort);
+    realtime = app.get<FakeRealtimePublisher>(RealtimePublisher);
     clock = app.get<FakeClock>(Clock);
     scheduler = app.get<FakeJobScheduler>(JobScheduler);
   });
   beforeEach(async () => {
     await truncateTestDb(prisma);
     push.sent.length = 0;
+    realtime.sent.length = 0;
     scheduler.jobs.length = 0;
     clock.set(T0);
   });
@@ -1350,6 +1355,10 @@ describe('offers', () => {
     it('opens a conversation when the store owner accepts a creator counter-proposal', async () => {
       await propose(authB, offerId).expect(201);
       await acceptAs(auth, offerId, 2).expect(200);
+      // 역제안을 수락해 방이 열릴 때도 같은 자리에서 안내 줄이 양쪽 화면으로 간다.
+      for (const user of [USER_A, OTHER]) {
+        expect(realtime.receivedBy(user, 'message.created')).toHaveLength(1);
+      }
       const collaboration = await prisma.collaboration.findUniqueOrThrow({
         where: { offerId },
       });
@@ -1936,6 +1945,32 @@ describe('offers', () => {
       expect(lines[0].text).toBe(
         `${PROFILE.displayName}님이 오퍼를 수락했어요.`,
       );
+    });
+
+    it('delivers the accepted line to both members after the commit without a chat message push', async () => {
+      const offer = await seedOffer(store.id, USER_A);
+      await accept(offer.id).expect(200);
+      const room = await prisma.conversation.findFirstOrThrow();
+      for (const user of [USER_A, store.ownerId]) {
+        const lines = realtime.receivedBy(user, 'message.created');
+        expect(lines).toHaveLength(1);
+        expect(lines[0].payload).toMatchObject({
+          conversationId: room.id,
+          message: {
+            seq: 1,
+            kind: 'SYSTEM',
+            text: `${PROFILE.displayName}님이 오퍼를 수락했어요.`,
+          },
+        });
+        expect(
+          realtime
+            .receivedBy(user, 'conversation.updated')
+            .map((e) => e.payload),
+        ).toEqual([{ conversationId: room.id, reason: 'STATUS' }]);
+      }
+      // 안내 줄은 대화 메시지 푸시를 하지 않는다. 가게 사장님에게는 오퍼 수락 알림 하나만 간다.
+      expect(push.sent.map((p) => p.userId)).toEqual([store.ownerId]);
+      expect(push.sent.every((p) => p.title === '')).toBe(true);
     });
 
     it('opens no conversation when the accept loses', async () => {

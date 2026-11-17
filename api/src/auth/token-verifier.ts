@@ -17,8 +17,14 @@ export class TokenRejectedError extends AppError {
   }
 }
 
+// 검증된 토큰이 말해 주는 것. expiresAt은 Clock의 시간선 위의 만료 시각이다(실시간 게이트웨이가 만료 때 연결을 끊는다).
+export interface VerifiedToken {
+  userId: string;
+  expiresAt: Date;
+}
+
 // DI 토큰으로 쓰려고 인터페이스가 아닌 추상 클래스로 둔다. 테스트는 이것을 가짜로 바꿔 끼운다.
 // 실패하면 AppError('UNAUTHENTICATED')를 던져야 한다(사유를 알면 TokenRejectedError).
 export abstract class TokenVerifier {
-  abstract verify(token: string): Promise<{ userId: string }>;
+  abstract verify(token: string): Promise<VerifiedToken>;
 }

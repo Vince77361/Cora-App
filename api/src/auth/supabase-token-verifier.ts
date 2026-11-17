@@ -2,10 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createRemoteJWKSet, errors, jwtVerify } from 'jose';
 import type { JWTVerifyGetKey } from 'jose';
+import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { securityLog } from '../common/logging/security-log';
 import { Env } from '../config/env';
-import { TokenRejectedError, TokenVerifier } from './token-verifier';
+import {
+  TokenRejectedError,
+  TokenVerifier,
+  VerifiedToken,
+} from './token-verifier';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -38,9 +43,11 @@ export class SupabaseTokenVerifier extends TokenVerifier {
   private readonly logger = new Logger(SupabaseTokenVerifier.name);
 
   // jwks 인자는 테스트가 네트워크 없이 로컬 키를 넣기 위한 틈이다.
+  // clock은 만료 시각을 Clock의 시간선으로 옮기는 데 쓴다. 개발의 시계 앞당기기(FAKE_CLOCK_OFFSET_DAYS)에서도 연결이 바로 끊기지 않게 하려는 것이다.
   constructor(
     supabaseUrl: string,
     private readonly jwks?: JWTVerifyGetKey,
+    private readonly clock?: Clock,
   ) {
     super();
     this.issuer = `${supabaseUrl}/auth/v1`;
@@ -49,7 +56,7 @@ export class SupabaseTokenVerifier extends TokenVerifier {
     );
   }
 
-  async verify(token: string): Promise<{ userId: string }> {
+  async verify(token: string): Promise<VerifiedToken> {
     try {
       const { payload } = await jwtVerify(token, this.jwks!, {
         audience: 'authenticated',
@@ -67,7 +74,11 @@ export class SupabaseTokenVerifier extends TokenVerifier {
       if (payload.is_anonymous === true) {
         throw new TokenRejectedError('ANONYMOUS', UNAUTHENTICATED_MESSAGE);
       }
-      return { userId: sub };
+      // requiredClaims가 exp를 보장하지만 타입은 optional이라 숫자인지 한 번 더 본다.
+      if (typeof payload.exp !== 'number') {
+        throw new TokenRejectedError('INVALID', UNAUTHENTICATED_MESSAGE);
+      }
+      return { userId: sub, expiresAt: this.expiryOf(payload.exp * 1000) };
     } catch (e) {
       if (e instanceof AppError) throw e;
       if (isTokenProblem(e)) {
@@ -84,10 +95,21 @@ export class SupabaseTokenVerifier extends TokenVerifier {
       throw new AppError('INTERNAL', INTERNAL_MESSAGE);
     }
   }
+
+  // JWT의 exp는 실제 시각이다. 앞으로 남은 시간을 Clock의 지금에 더해 Clock의 시간선 위의 시각으로 돌려준다.
+  private expiryOf(expMs: number): Date {
+    if (!this.clock) return new Date(expMs);
+    return new Date(this.clock.now().getTime() + (expMs - Date.now()));
+  }
 }
 
 export function supabaseTokenVerifierFactory(
   config: ConfigService<Env, true>,
+  clock: Clock,
 ): SupabaseTokenVerifier {
-  return new SupabaseTokenVerifier(config.get('SUPABASE_URL', { infer: true }));
+  return new SupabaseTokenVerifier(
+    config.get('SUPABASE_URL', { infer: true }),
+    undefined,
+    clock,
+  );
 }

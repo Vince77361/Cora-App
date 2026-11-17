@@ -334,6 +334,8 @@ export class OffersService {
       party === 'CREATOR'
         ? (await this.actorOf(row.creatorId)).name
         : this.storeActor(card).name;
+    // 수락 트랜잭션에서 남긴 안내 줄. 커밋 뒤에 양쪽 화면으로 밀어 준다.
+    const acceptLine: { roomId?: string; messageId?: string } = {};
     const accepted = await this.offers.accept(
       row.id,
       row.creatorId,
@@ -366,7 +368,7 @@ export class OffersService {
           { status: 'OPEN' },
           tx,
         );
-        await this.conversations.postSystem(
+        const line = await this.conversations.postSystem(
           room.id,
           'OFFER_ACCEPTED',
           {
@@ -375,6 +377,8 @@ export class OffersService {
           },
           tx,
         );
+        acceptLine.roomId = room.id;
+        acceptLine.messageId = line.id;
       },
     );
     if (!accepted) {
@@ -387,6 +391,11 @@ export class OffersService {
       throw this.alreadyHandled();
     }
 
+    // 커밋 뒤에 안내 줄과 새 방을 양쪽 화면으로 밀어 준다. 안내 줄은 대화 메시지 푸시를 하지 않고, 수락 알림은 아래에서 따로 간다.
+    if (acceptLine.messageId && acceptLine.roomId) {
+      await this.conversations.publishCreated(acceptLine.messageId);
+      await this.conversations.publishUpdated(acceptLine.roomId, 'STATUS');
+    }
     // 결제할 것이 있으면 기한에 만료 작업을 올린다. 올리지 못해도 화면은 읽을 때 만료로 맞는다.
     if (initial.paymentDueAt) {
       await this.schedule(

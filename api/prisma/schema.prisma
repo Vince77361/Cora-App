@@ -879,6 +879,7 @@ enum NotificationKind {
   TERMS_PROPOSED
   MESSAGE_REQUEST
   MESSAGE_REQUEST_ACCEPTED
+  MESSAGE
 
   @@map("notification_kind")
 }

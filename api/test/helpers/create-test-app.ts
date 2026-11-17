@@ -1,5 +1,6 @@
 import type { Server } from 'http';
 import { INestApplication, Type } from '@nestjs/common';
+import type { WebSocketAdapter } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { setupApp } from '../../src/app.setup';
@@ -10,9 +11,13 @@ import { JobHandlerRegistry } from '../../src/jobs/job-handler-registry';
 import { JobScheduler } from '../../src/jobs/job-scheduler';
 import { PushPort } from '../../src/integrations/push/push.port';
 import { StoragePort } from '../../src/integrations/storage/storage.port';
+import { PresenceService } from '../../src/realtime/presence.service';
+import { RealtimePublisher } from '../../src/realtime/realtime-publisher';
 import { FakeClock } from '../support/fake-clock';
 import { FakeJobScheduler } from '../support/fake-job-scheduler';
+import { FakePresence } from '../support/fake-presence';
 import { FakePushPort } from '../support/fake-push.port';
+import { FakeRealtimePublisher } from '../support/fake-realtime-publisher';
 import { FakeStoragePort } from '../support/fake-storage.port';
 import { FakeTokenVerifier } from '../support/fake-token-verifier';
 
@@ -22,13 +27,22 @@ import { FakeTokenVerifier } from '../support/fake-token-verifier';
 // Storage는 원격 Supabase에 닿지 않도록 항상 가짜로 바꾼다. 푸시는 app.get<FakePushPort>(PushPort).sent로 확인한다.
 // 작업 큐는 Redis 없이 FakeJobScheduler로 바꾼다: app.get<FakeJobScheduler>(JobScheduler).runDue(시각).
 // 결제·송금·조회수·인스타그램·운영자 알림은 NODE_ENV=test에서 가짜 구현이 그대로 쓰이므로 app.get(PaymentPort) 등으로 꺼내 확인한다.
+// 실시간 전달과 연결 여부는 기본이 실제 소켓 구현이다(연결된 소켓이 없으면 아무 데도 가지 않는다). options.fakeRealtime이면 가짜로 바꿔
+// app.get<FakeRealtimePublisher>(RealtimePublisher).sent와 app.get<FakePresence>(PresenceService).online으로 확인한다.
+// options.webSocketAdapter는 서버 여러 대 시험에서 Redis 어댑터를 끼운다(init 전에 붙여야 한다).
 // options.env는 setupApp에 넘기는 값만 바꾼다(Swagger 등록, trust proxy). 요청 수 제한 값은 모듈이 process.env에서 읽으므로
 // 바꾸려면 createTestApp을 부르기 전에 process.env.RATE_LIMIT_*를 설정한다(기본은 setup-env.ts의 아주 큰 값).
 export async function createTestApp(
   extraControllers: Type<unknown>[] = [],
-  options: { env?: Partial<Env> } = {},
+  options: {
+    env?: Partial<Env>;
+    fakeRealtime?: boolean;
+    webSocketAdapter?: (
+      app: INestApplication,
+    ) => WebSocketAdapter | Promise<WebSocketAdapter>;
+  } = {},
 ): Promise<INestApplication> {
-  const moduleRef = await Test.createTestingModule({
+  const builder = Test.createTestingModule({
     imports: [AppModule],
     controllers: extraControllers,
   })
@@ -44,10 +58,20 @@ export async function createTestApp(
     .useFactory({
       factory: (registry: JobHandlerRegistry) => new FakeJobScheduler(registry),
       inject: [JobHandlerRegistry],
-    })
-    .compile();
+    });
+  if (options.fakeRealtime) {
+    builder
+      .overrideProvider(RealtimePublisher)
+      .useValue(new FakeRealtimePublisher())
+      .overrideProvider(PresenceService)
+      .useValue(new FakePresence());
+  }
+  const moduleRef = await builder.compile();
   // main.ts와 같게 원본 본문을 보관한다(결제 웹훅 서명 검증).
   const app = moduleRef.createNestApplication({ rawBody: true });
+  if (options.webSocketAdapter) {
+    app.useWebSocketAdapter(await options.webSocketAdapter(app));
+  }
   // 예상된 오류 로그가 테스트 출력을 어지럽히지 않게 한다.
   app.useLogger(false);
   setupApp(app, { env: { ...loadEnv(process.env), ...options.env } });

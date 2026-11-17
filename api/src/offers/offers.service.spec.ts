@@ -288,6 +288,7 @@ class FakeConversations extends ConversationsService {
       null as never,
       null as never,
       null as never,
+      null as never,
     );
   }
 

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   Campaign,
   Conversation,
+  ConversationStatus,
   Message,
   Prisma,
   UserRole,
@@ -18,6 +19,11 @@ import { CampaignsService } from '../campaigns/campaigns.service';
 import { CreatorsService } from '../creators/creators.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StoragePort } from '../integrations/storage/storage.port';
+import {
+  ConversationUpdatedPayload,
+  ConversationUpdateReason,
+  RealtimePublisher,
+} from '../realtime/realtime-publisher';
 import { readTerms } from '../stores/reward-terms';
 import { StoresService } from '../stores/stores.service';
 import { toTermsVersionModel } from '../terms/terms-rules';
@@ -38,7 +44,7 @@ import {
   isUniqueViolation,
   RoomWithCollaboration,
 } from './conversations.repository';
-import { MessageEvents } from './message-events';
+import { MessageCreated, MessageEvents } from './message-events';
 import { previewOf } from './message-preview';
 import {
   renderSystemLine,
@@ -66,6 +72,28 @@ interface Header {
   role: Role;
 }
 
+// 한 사람에게 보여 줄 새 메시지. 실시간 전달(message.created)과 푸시에 쓴다.
+export interface MessageDelivery {
+  userId: string;
+  // 알림을 받는 역할(역할이 여럿인 계정에서 앱이 역할을 바꾼 뒤 이동하게 한다).
+  role: UserRole;
+  isSender: boolean;
+  // 이 사람이 방의 알림을 껐는지.
+  muted: boolean;
+  // 이 사람의 눈으로 만든 메시지(mine, 안내 줄의 문구가 사람마다 다르다).
+  message: MessageModel;
+  // 푸시 본문. 글은 60자 + …, 콘텐츠 카드는 고정 문구다.
+  preview: string;
+  // 보낸 사람 이름(푸시 제목). 프로필을 읽어야 해서 푸시를 보낼 때만 부른다.
+  senderName(): Promise<string>;
+}
+
+export interface MessageDeliveries {
+  conversationId: string;
+  status: ConversationStatus;
+  deliveries: MessageDelivery[];
+}
+
 const notFound = (): AppError =>
   new AppError('NOT_FOUND', '대화를 찾을 수 없어요.');
 
@@ -90,6 +118,7 @@ export class ConversationsService {
     private readonly events: MessageEvents,
     private readonly notifications: NotificationsService,
     private readonly clock: Clock,
+    private readonly realtime: RealtimePublisher,
   ) {}
 
   // 협업과 같은 트랜잭션에서 방과 참가자 둘을 만든다. 이미 방이 있으면 그것을 돌려준다.
@@ -185,13 +214,14 @@ export class ConversationsService {
 
   // "조건부터 질문하기"의 첫 메시지. 방이 아직 메시지 요청(REQUESTED)이라 열린 방 조건 없이 번호 1로 남긴다.
   // 요청을 보낸 사람은 수락될 때까지 더 보낼 수 없으므로(sendMessage는 열린 방만) 요청에는 이 한 개만 담긴다.
-  // tx 안에서 부르며 커밋 전이라 이벤트를 내지 않는다(알림은 부르는 쪽이 MESSAGE_REQUEST로 보낸다).
+  // tx 안에서 부르며 커밋 전이라 이벤트를 내지 않는다. 돌려주는 메시지 ID로 부르는 쪽이 커밋 뒤 publishCreated를 부른다.
+  // 알림은 부르는 쪽이 MESSAGE_REQUEST로 보낸다(요청 방의 메시지에는 일반 대화 메시지 푸시를 보내지 않는다).
   async postRequestMessage(
     conversationId: string,
     senderId: string,
     text: string,
     tx: Prisma.TransactionClient,
-  ): Promise<void> {
+  ): Promise<string> {
     const row = await this.repository.appendMessage(
       {
         conversationId,
@@ -209,6 +239,7 @@ export class ConversationsService {
       tx,
     );
     if (!row) throw notFound();
+    return row.id;
   }
 
   // 받은 사람이 메시지 요청을 수락한다: REQUESTED → OPEN 조건부, 안내 줄 REQUEST_ACCEPTED. 협업은 INQUIRY에 남는다.
@@ -220,6 +251,7 @@ export class ConversationsService {
     const room = await this.requireReceiver(userId, id);
     const actor = await this.actorOf(room, userId);
     const now = this.clock.now();
+    let lineId = '';
     await this.repository.transaction(async (tx) => {
       const opened = await this.repository.transitionRoom(
         room.id,
@@ -229,13 +261,17 @@ export class ConversationsService {
         tx,
       );
       if (!opened) throw requestAnswered();
-      await this.postSystem(
+      const line = await this.postSystem(
         room.id,
         'REQUEST_ACCEPTED',
         { name: actor?.name ?? '상대' },
         tx,
       );
+      lineId = line.id;
     });
+    // 커밋 뒤에 양쪽 화면으로 안내 줄과 방의 변경을 밀어 준다.
+    await this.publishCreated(lineId);
+    await this.publishUpdated(room.id, 'STATUS');
     if (room.requestedById) {
       try {
         await this.notifications.notify({
@@ -280,6 +316,8 @@ export class ConversationsService {
       );
       if (!declined) throw requestAnswered();
     });
+    // 요청한 사람에게는 알리지 않는다(실시간도 없다). 거절한 사람의 다른 기기만 목록을 새로 읽는다.
+    await this.publishUpdated(room.id, 'STATUS', [userId]);
   }
 
   // 내 방이고, 내가 보낸 요청이 아니고, 아직 답하지 않은 메시지 요청일 때만 돌려준다.
@@ -321,17 +359,84 @@ export class ConversationsService {
   }
 
   // 저장된 메시지를 구독자(푸시, 실시간)에게 알린다. 이미 커밋된 메시지에만 부른다.
+  // 전달은 부가 일이라 실패해도 던지지 않는다(저장된 메시지와 API 응답은 그대로 유효하다).
   async publishCreated(messageId: string): Promise<void> {
-    const message = await this.repository.findMessage(messageId);
-    if (!message) return;
-    const room = await this.repository.findWithMembers(message.conversationId);
-    if (!room) return;
-    await this.events.publish({
+    try {
+      const message = await this.repository.findMessage(messageId);
+      if (!message) return;
+      const room = await this.repository.findWithMembers(
+        message.conversationId,
+      );
+      if (!room) return;
+      await this.events.publish({
+        conversationId: room.id,
+        collaborationId: room.collaborationId,
+        message,
+        memberIds: room.members.map((m) => m.userId),
+      });
+    } catch (error) {
+      this.logger.warn(
+        `메시지를 밀어 주지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
+  }
+
+  // 방이 바뀌었다고(conversation.updated) 참가자의 화면에 알린다. userIds를 주면 그 사람들에게만 보낸다(읽음, 알림 끄기처럼
+  // 나만 알면 되는 변경). 이미 커밋된 변경에만 부르고, 전달이 실패해도 던지지 않는다.
+  async publishUpdated(
+    conversationId: string,
+    reason: ConversationUpdateReason,
+    userIds?: string[],
+  ): Promise<void> {
+    try {
+      const targets =
+        userIds ??
+        (await this.repository.findWithMembers(conversationId))?.members.map(
+          (m) => m.userId,
+        ) ??
+        [];
+      if (targets.length === 0) return;
+      const payload: ConversationUpdatedPayload = { conversationId, reason };
+      await this.realtime.toUsers(targets, 'conversation.updated', payload);
+    } catch (error) {
+      this.logger.warn(
+        `방의 변경을 밀어 주지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
+  }
+
+  // 새 메시지를 참가자 한 사람씩의 눈으로 만든다(mine과 안내 줄 문구가 사람마다 다르다). 실시간 전달과 푸시가 쓴다.
+  async deliveriesOf(event: MessageCreated): Promise<MessageDeliveries | null> {
+    const room = await this.repository.findWithMembers(event.conversationId);
+    if (!room) return null;
+    // 이름은 푸시를 보낼 때만 필요해서, 처음 부를 때 한 번만 읽는다.
+    let lookups: Promise<Lookups> | null = null;
+    const loadLookups = (): Promise<Lookups> => {
+      lookups ??= (async () => {
+        const loaded = this.newLookups();
+        await this.preload([room], loaded);
+        return loaded;
+      })();
+      return lookups;
+    };
+    return {
       conversationId: room.id,
-      collaborationId: room.collaborationId,
-      message,
-      memberIds: room.members.map((m) => m.userId),
-    });
+      status: room.status,
+      deliveries: room.members.map((member) => {
+        const viewer = this.viewerOf(room, member.userId);
+        return {
+          userId: member.userId,
+          role: this.roleOf(room, member.userId),
+          isSender: event.message.senderId === member.userId,
+          muted: member.mutedAt !== null,
+          message: this.toMessage(event.message, viewer),
+          preview: this.previewOfMessage(event.message, viewer),
+          senderName: async () =>
+            this.headerOf(room, member.userId, await loadLookups()).counterpart
+              .name,
+        };
+      }),
+    };
   }
 
   async list(userId: string): Promise<ConversationSummaryModel[]> {
@@ -590,6 +695,8 @@ export class ConversationsService {
       );
     }
     await this.repository.markRead(room.id, userId, seq, this.clock.now());
+    // 읽은 번호는 내 다른 기기만 알면 된다.
+    await this.publishUpdated(room.id, 'READ', [userId]);
   }
 
   async setMuted(
@@ -599,6 +706,8 @@ export class ConversationsService {
   ): Promise<{ muted: boolean }> {
     const room = await this.requireMember(userId, id);
     await this.repository.setMuted(room.id, userId, muted, this.clock.now());
+    // 알림 끄기는 내 설정이라 내 다른 기기만 알면 된다.
+    await this.publishUpdated(room.id, 'STATUS', [userId]);
     return { muted };
   }
 

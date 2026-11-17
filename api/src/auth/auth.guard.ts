@@ -33,7 +33,9 @@ export class AuthGuard implements CanActivate {
       throw new AppError('UNAUTHENTICATED', '로그인이 필요해요.');
     }
     try {
-      request.user = await this.verifier.verify(match[1]);
+      // 만료 시각은 HTTP 요청에서 쓰지 않으므로 사용자 ID만 요청에 싣는다.
+      const { userId } = await this.verifier.verify(match[1]);
+      request.user = { userId };
     } catch (e) {
       // 키 묶음 장애(INTERNAL)는 검증기가 AUTH_INFRA_FAILED로 따로 남긴다. 여기서는 401만 다룬다.
       if (e instanceof AppError && e.code === 'UNAUTHENTICATED') {

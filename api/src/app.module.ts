@@ -25,6 +25,7 @@ import { PayoutAccountsModule } from './payout-accounts/payout-accounts.module';
 import { PrinciplesModule } from './principles/principles.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { SettlementsModule } from './settlements/settlements.module';
 import { StoreInsightsModule } from './store-insights/store-insights.module';
 import { StoresModule } from './stores/stores.module';
@@ -60,6 +61,7 @@ import { WalletModule } from './wallet/wallet.module';
     PayoutAccountsModule,
     SettlementsModule,
     CollaborationsApiModule,
+    RealtimeModule,
     ConversationsModule,
     StoreInsightsModule,
     WalletModule,

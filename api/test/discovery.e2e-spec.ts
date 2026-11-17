@@ -5,10 +5,12 @@ import request from 'supertest';
 import { BrandsService } from '../src/brands/brands.service';
 import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
+import { RealtimePublisher } from '../src/realtime/realtime-publisher';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
 import { FakePushPort } from './support/fake-push.port';
+import { FakeRealtimePublisher } from './support/fake-realtime-publisher';
 import { OTHER, USER_A } from './support/fake-token-verifier';
 
 // user-a는 브랜드, user-b는 크리에이터다. 나머지 사람은 DB에 바로 만든다.
@@ -65,6 +67,7 @@ describe('discovery decisions', () => {
   let server: ReturnType<typeof httpOf>;
   let clock: FakeClock;
   let push: FakePushPort;
+  let realtime: FakeRealtimePublisher;
 
   const codeOf = (res: request.Response) =>
     (res.body as { error: { code: string } }).error.code;
@@ -159,15 +162,17 @@ describe('discovery decisions', () => {
 
   beforeAll(async () => {
     prisma = new PrismaClient();
-    app = await createTestApp();
+    app = await createTestApp([], { fakeRealtime: true });
     server = httpOf(app);
     clock = app.get<FakeClock>(Clock);
     push = app.get<FakePushPort>(PushPort);
+    realtime = app.get<FakeRealtimePublisher>(RealtimePublisher);
   });
   beforeEach(async () => {
     await truncateTestDb(prisma);
     clock.set(NOON);
     push.sent.length = 0;
+    realtime.sent.length = 0;
   });
   afterAll(async () => {
     await app.close();
@@ -545,6 +550,30 @@ describe('discovery decisions', () => {
           .expect(200)
       ).body as { stage: string; terms: { version: number } };
       expect(head).toMatchObject({ stage: 'MATCHED', terms: { version: 1 } });
+    });
+
+    it('delivers the matched line to both members after the commit and not before a match', async () => {
+      const campaignId = await bothSides();
+      await creatorLike(campaignId).expect(200);
+      expect(realtime.sent).toEqual([]);
+      const matched = resultOf(await brandLike().expect(200));
+      for (const user of [USER_A, OTHER]) {
+        const lines = realtime.receivedBy(user, 'message.created');
+        expect(lines).toHaveLength(1);
+        expect(lines[0].payload).toMatchObject({
+          conversationId: matched.conversationId,
+          message: { seq: 1, kind: 'SYSTEM', mine: false },
+        });
+        expect(
+          realtime
+            .receivedBy(user, 'conversation.updated')
+            .map((e) => e.payload),
+        ).toEqual([
+          { conversationId: matched.conversationId, reason: 'STATUS' },
+        ]);
+      }
+      // 안내 줄의 대화 메시지 푸시는 없다(서로 관심 알림만 간다).
+      expect(push.sent.every((p) => p.title === '')).toBe(true);
     });
 
     it('does not open a conversation when there is no match', async () => {

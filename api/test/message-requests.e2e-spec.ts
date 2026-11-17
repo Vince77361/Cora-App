@@ -4,10 +4,14 @@ import { IndustryCategory, PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
+import { PresenceService } from '../src/realtime/presence.service';
+import { RealtimePublisher } from '../src/realtime/realtime-publisher';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
+import { FakePresence } from './support/fake-presence';
 import { FakePushPort } from './support/fake-push.port';
+import { FakeRealtimePublisher } from './support/fake-realtime-publisher';
 import { OTHER, USER_A } from './support/fake-token-verifier';
 
 // user-a는 브랜드, user-b는 크리에이터다.
@@ -77,6 +81,8 @@ describe('message requests and the inquiry', () => {
   let server: ReturnType<typeof httpOf>;
   let clock: FakeClock;
   let push: FakePushPort;
+  let realtime: FakeRealtimePublisher;
+  let presence: FakePresence;
 
   const codeOf = (res: request.Response) =>
     (res.body as { error: { code: string } }).error.code;
@@ -181,15 +187,19 @@ describe('message requests and the inquiry', () => {
 
   beforeAll(async () => {
     prisma = new PrismaClient();
-    app = await createTestApp();
+    app = await createTestApp([], { fakeRealtime: true });
     server = httpOf(app);
     clock = app.get<FakeClock>(Clock);
     push = app.get<FakePushPort>(PushPort);
+    realtime = app.get<FakeRealtimePublisher>(RealtimePublisher);
+    presence = app.get<FakePresence>(PresenceService);
   });
   beforeEach(async () => {
     await truncateTestDb(prisma);
     clock.set(NOON);
     push.sent.length = 0;
+    realtime.sent.length = 0;
+    presence.online.clear();
   });
   afterAll(async () => {
     await app.close();
@@ -254,6 +264,34 @@ describe('message requests and the inquiry', () => {
       // 서로 관심이 아니라서 매칭 행도 조건 버전도 없다.
       expect(await prisma.match.count()).toBe(0);
       expect(await prisma.termsVersion.count()).toBe(0);
+    });
+
+    it('delivers the first message and the new room to both members without a chat message push', async () => {
+      const campaignId = await seedNotedLike();
+      const { conversationId } = resultOf(
+        await inquire(campaignId).expect(201),
+      );
+      const forBrand = realtime.receivedBy(USER_A, 'message.created');
+      const forCreator = realtime.receivedBy(OTHER, 'message.created');
+      expect(forBrand).toHaveLength(1);
+      expect(forBrand[0].payload).toMatchObject({
+        conversationId,
+        message: { seq: 1, mine: false, text: '조건이 궁금해요.' },
+      });
+      expect(forCreator[0].payload).toMatchObject({
+        message: { seq: 1, mine: true },
+      });
+      for (const user of [USER_A, OTHER]) {
+        expect(
+          realtime
+            .receivedBy(user, 'conversation.updated')
+            .map((e) => e.payload),
+        ).toEqual([{ conversationId, reason: 'STATUS' }]);
+      }
+      // 메시지 요청 알림 하나뿐이다. 일반 대화 메시지 푸시(제목이 보낸 사람 이름)는 가지 않는다.
+      expect(push.sent.map((p) => [p.userId, p.title, p.body])).toEqual([
+        [USER_A, '', '하루 한 컵님이 메시지를 보냈어요.'],
+      ]);
     });
 
     it('lists the request first for the brand and as a plain row for the creator', async () => {
@@ -475,6 +513,33 @@ describe('message requests and the inquiry', () => {
       });
     });
 
+    it('delivers the accepted line to both members after the commit and tells them the room changed', async () => {
+      const campaignId = await seedNotedLike();
+      const { conversationId } = resultOf(
+        await inquire(campaignId).expect(201),
+      );
+      realtime.sent.length = 0;
+      await accept(conversationId).expect(200);
+      for (const user of [USER_A, OTHER]) {
+        const lines = realtime.receivedBy(user, 'message.created');
+        expect(lines).toHaveLength(1);
+        expect(lines[0].payload).toMatchObject({
+          conversationId,
+          message: {
+            seq: 2,
+            kind: 'SYSTEM',
+            mine: false,
+            text: '느린결님이 대화를 수락했어요.',
+          },
+        });
+        expect(
+          realtime
+            .receivedBy(user, 'conversation.updated')
+            .map((e) => e.payload),
+        ).toEqual([{ conversationId, reason: 'STATUS' }]);
+      }
+    });
+
     it('tells the requester that the request was accepted', async () => {
       const campaignId = await seedNotedLike();
       const { conversationId } = resultOf(
@@ -578,6 +643,23 @@ describe('message requests and the inquiry', () => {
       expect(await prisma.notification.count()).toBe(notificationsBefore);
       // 닫힌 방에는 보낼 수 없다.
       await sendText(conversationId, authCreator).expect(409);
+    });
+
+    it('does not tell the requester about a decline over realtime', async () => {
+      const campaignId = await seedNotedLike();
+      const { conversationId } = resultOf(
+        await inquire(campaignId).expect(201),
+      );
+      realtime.sent.length = 0;
+      await decline(conversationId).expect(204);
+      expect(realtime.receivedBy(OTHER)).toEqual([]);
+      // 거절한 사람의 다른 기기만 목록을 새로 읽는다.
+      expect(
+        realtime
+          .receivedBy(USER_A, 'conversation.updated')
+          .map((e) => e.payload),
+      ).toEqual([{ conversationId, reason: 'STATUS' }]);
+      expect(realtime.receivedBy(USER_A, 'message.created')).toEqual([]);
     });
 
     it('drops the inquiry collaboration on decline so it cannot be asked again', async () => {
@@ -690,6 +772,31 @@ describe('message requests and the inquiry', () => {
         brandConfirmedAt: null,
         creatorConfirmedAt: null,
       });
+    });
+
+    it('delivers the matched line to both members after the commit without a chat message push', async () => {
+      const campaignId = await seedNotedLike();
+      const { conversationId } = resultOf(
+        await inquire(campaignId).expect(201),
+      );
+      realtime.sent.length = 0;
+      push.sent.length = 0;
+      await creatorLike(campaignId).expect(200);
+      for (const user of [USER_A, OTHER]) {
+        const lines = realtime.receivedBy(user, 'message.created');
+        expect(lines).toHaveLength(1);
+        expect(lines[0].payload).toMatchObject({
+          conversationId,
+          message: { seq: 2, kind: 'SYSTEM', mine: false },
+        });
+        expect(
+          realtime
+            .receivedBy(user, 'conversation.updated')
+            .map((e) => e.payload),
+        ).toEqual([{ conversationId, reason: 'STATUS' }]);
+      }
+      // 서로 관심 알림만 간다. 안내 줄의 대화 메시지 푸시는 없다.
+      expect(push.sent.every((p) => p.title === '')).toBe(true);
     });
 
     it('opens the conversation the same way when the inquiry was already accepted', async () => {

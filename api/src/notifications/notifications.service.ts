@@ -121,7 +121,7 @@ export class NotificationsService {
       if (isQuietAt(this.clock.now(), settings.quietHours)) return;
       await this.push.send({
         userId: input.userId,
-        title: '',
+        title: entry.pushTitle?.(input.actor?.name ?? null) ?? '',
         body: entry.render({
           actorName: input.actor?.name ?? null,
           params,

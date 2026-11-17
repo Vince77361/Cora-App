@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { Logger } from '@nestjs/common';
 import { Collaboration, ConversationMember, Message } from '@prisma/client';
 import { FakeClock } from '../../test/support/fake-clock';
+import { FakeRealtimePublisher } from '../../test/support/fake-realtime-publisher';
 import { FakeStoragePort } from '../../test/support/fake-storage.port';
 import { CreatorsService } from '../creators/creators.service';
 import {
@@ -73,6 +75,18 @@ class FakeRepository extends ConversationsRepository {
     return Promise.resolve([...this.messages]);
   }
 
+  findWithMembers() {
+    return Promise.resolve(this.room);
+  }
+
+  markRead() {
+    return Promise.resolve();
+  }
+
+  setMuted() {
+    return Promise.resolve();
+  }
+
   appendMessage(input: NewMessage) {
     if (input.requireOpen && this.room.status !== 'OPEN') {
       return Promise.resolve(null);
@@ -119,6 +133,7 @@ describe('ConversationsService', () => {
   let creators: FakeCreators;
   let events: MessageEvents;
   let published: MessageCreated[];
+  let realtime: FakeRealtimePublisher;
   let service: ConversationsService;
 
   beforeEach(() => {
@@ -126,6 +141,7 @@ describe('ConversationsService', () => {
     creators = new FakeCreators();
     events = new MessageEvents();
     published = [];
+    realtime = new FakeRealtimePublisher();
     events.subscribe((event) => {
       published.push(event);
       return Promise.resolve();
@@ -142,6 +158,7 @@ describe('ConversationsService', () => {
       events,
       null as never,
       new FakeClock(T0),
+      realtime,
     );
   });
 
@@ -250,6 +267,67 @@ describe('ConversationsService', () => {
     await service.send(CREATOR, ROOM, text());
     await expect(service.markRead(BRAND, ROOM, 2)).rejects.toMatchObject({
       code: 'VALIDATION_FAILED',
+    });
+  });
+
+  describe('realtime updates', () => {
+    it('tells both members when a room changed and only the reader about a read', async () => {
+      await service.publishUpdated(ROOM, 'STATUS');
+      await service.send(CREATOR, ROOM, text());
+      await service.markRead(BRAND, ROOM, 1);
+      expect(realtime.sent).toEqual([
+        {
+          userIds: [BRAND, CREATOR],
+          event: 'conversation.updated',
+          payload: { conversationId: ROOM, reason: 'STATUS' },
+        },
+        {
+          userIds: [BRAND],
+          event: 'conversation.updated',
+          payload: { conversationId: ROOM, reason: 'READ' },
+        },
+      ]);
+    });
+
+    it('tells only the member who muted the room', async () => {
+      await service.setMuted(CREATOR, ROOM, true);
+      expect(realtime.sent).toEqual([
+        {
+          userIds: [CREATOR],
+          event: 'conversation.updated',
+          payload: { conversationId: ROOM, reason: 'STATUS' },
+        },
+      ]);
+    });
+
+    it('does not fail the request when the realtime delivery fails', async () => {
+      // 실패는 로그로만 남는다. 테스트 출력에 섞이지 않게 막고, 남겼는지 확인한다.
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+      realtime.fail = true;
+      await expect(service.markRead(BRAND, ROOM, 0)).resolves.toBeUndefined();
+      await expect(service.setMuted(BRAND, ROOM, true)).resolves.toEqual({
+        muted: true,
+      });
+      expect(warn).toHaveBeenCalledTimes(2);
+      warn.mockRestore();
+    });
+
+    it('builds the new message from each member point of view', async () => {
+      await service.send(CREATOR, ROOM, text());
+      const delivered = await service.deliveriesOf(published[0]);
+      const byUser = new Map(
+        delivered?.deliveries.map((d) => [d.userId, d]) ?? [],
+      );
+      expect(byUser.get(CREATOR)).toMatchObject({
+        isSender: true,
+        message: { mine: true },
+      });
+      expect(byUser.get(BRAND)).toMatchObject({
+        isSender: false,
+        message: { mine: false, clientId: null },
+        preview: '안녕하세요',
+        muted: false,
+      });
     });
   });
 });

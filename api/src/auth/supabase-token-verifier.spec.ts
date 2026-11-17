@@ -7,6 +7,7 @@ import {
   JWTVerifyGetKey,
   SignJWT,
 } from 'jose';
+import { FakeClock } from '../../test/support/fake-clock';
 import { AppError } from '../common/errors/app-error';
 import { TokenRejectedError } from './token-verifier';
 import { SupabaseTokenVerifier } from './supabase-token-verifier';
@@ -51,8 +52,25 @@ describe('SupabaseTokenVerifier', () => {
     expect((err as AppError).code).toBe('UNAUTHENTICATED');
   }
 
-  it('returns the user id for a valid token', async () => {
-    expect(await verifier.verify(await sign())).toEqual({ userId: USER });
+  it('returns the user id and the expiry for a valid token', async () => {
+    const expSeconds = Math.floor(Date.now() / 1000) + 300;
+    const verified = await verifier.verify(await sign({ exp: expSeconds }));
+    expect(verified.userId).toBe(USER);
+    expect(verified.expiresAt).toEqual(new Date(expSeconds * 1000));
+  });
+
+  it('moves the expiry onto the clock timeline so a shifted dev clock does not expire the session at once', async () => {
+    const expSeconds = Math.floor(Date.now() / 1000) + 300;
+    const shifted = new FakeClock(new Date('2030-01-01T00:00:00.000Z'));
+    const jwk = verifier['jwks'] as JWTVerifyGetKey;
+    const withClock = new SupabaseTokenVerifier(SUPABASE_URL, jwk, shifted);
+    const { expiresAt } = await withClock.verify(
+      await sign({ exp: expSeconds }),
+    );
+    // 5분 남은 토큰은 시계가 2030년이어도 시계 기준으로 약 5분 뒤에 만료된다.
+    const ttl = expiresAt.getTime() - shifted.now().getTime();
+    expect(ttl).toBeGreaterThan(290_000);
+    expect(ttl).toBeLessThanOrEqual(300_000);
   });
 
   it('rejects a token with the wrong audience', async () => {
@@ -142,7 +160,7 @@ describe('SupabaseTokenVerifier', () => {
     expect(err).toBeInstanceOf(TokenRejectedError);
     expect((err as TokenRejectedError).code).toBe('UNAUTHENTICATED');
     expect((err as TokenRejectedError).reason).toBe('ANONYMOUS');
-    expect(await verifier.verify(await withClaim(false))).toEqual({
+    expect(await verifier.verify(await withClaim(false))).toMatchObject({
       userId: USER,
     });
   });

@@ -41,6 +41,8 @@ interface Outcome {
   collaborationId: string | null;
   conversationId: string | null;
   createdNow: boolean;
+  // 서로 관심 때 남긴 안내 줄(MATCHED). 커밋 뒤에 양쪽 화면으로 밀어 준다.
+  systemMessageId?: string;
 }
 
 const NOT_MATCHED: Outcome = {
@@ -344,6 +346,7 @@ export class DiscoveryService {
     const now = this.clock.now();
 
     let created: InquiryResultModel;
+    let firstMessageId = '';
     try {
       created = await this.repository.transaction(async (tx) => {
         await this.repository.lock(pairLockKey(campaign.id, userId), tx);
@@ -402,7 +405,7 @@ export class DiscoveryService {
         );
         // 두 사람 사이에 차단이 있으면 방이 닫힌 채로 만들어진다. 차단 사실을 알리지 않고 없는 것으로 답하며 되돌린다.
         if (room.status !== 'REQUESTED') throw campaignNotFound();
-        await this.conversations.postRequestMessage(
+        firstMessageId = await this.conversations.postRequestMessage(
           room.id,
           userId,
           message,
@@ -420,6 +423,9 @@ export class DiscoveryService {
       }
       throw error;
     }
+    // 커밋 뒤에 양쪽 화면으로 첫 메시지와 새 방을 밀어 준다. 요청 방의 첫 메시지에는 일반 대화 메시지 푸시가 가지 않는다(아래 MESSAGE_REQUEST가 그 알림이다).
+    await this.conversations.publishCreated(firstMessageId);
+    await this.conversations.publishUpdated(created.conversationId, 'STATUS');
     // 커밋 뒤에 브랜드에게 알린다. 알림이 실패해도 이미 보낸 요청은 유효하다(원장 판단 R22).
     try {
       await this.notifications.notify({
@@ -522,6 +528,13 @@ export class DiscoveryService {
         createdNow: false,
       };
     }
+    // 커밋 뒤에 안내 줄과 방의 변경을 양쪽 화면으로 밀어 준다(문의로 먼저 열린 방이 열린 방이 된 경우도 포함).
+    if (outcome.systemMessageId) {
+      await this.conversations.publishCreated(outcome.systemMessageId);
+    }
+    if (outcome.createdNow && outcome.conversationId) {
+      await this.conversations.publishUpdated(outcome.conversationId, 'STATUS');
+    }
     if (outcome.createdNow && outcome.collaborationId) {
       await this.notifyMutual(
         campaign,
@@ -614,7 +627,7 @@ export class DiscoveryService {
       { status: 'OPEN' },
       tx,
     );
-    await this.conversations.postSystem(
+    const line = await this.conversations.postSystem(
       room.id,
       'MATCHED',
       {
@@ -628,6 +641,7 @@ export class DiscoveryService {
       collaborationId: collaboration.id,
       conversationId: room.id,
       createdNow: true,
+      systemMessageId: line.id,
     };
   }
 

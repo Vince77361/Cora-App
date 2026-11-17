@@ -213,6 +213,27 @@ describe('NOTIFICATION_CATALOG', () => {
     }
   });
 
+  it('keeps a chat message out of the inbox and titles the push with the sender', () => {
+    // 메시지는 알림함에 남기지 않는다(탭 없음). 대화 메시지 스위치를 따르고, 본문은 보내는 쪽이 만든 미리 보기다.
+    expect(NOTIFICATION_CATALOG.MESSAGE).toMatchObject({
+      tab: null,
+      switch: 'MESSAGES',
+      glyph: null,
+      needsActor: true,
+      requiredParams: { preview: 'string' },
+    });
+    expect(render('MESSAGE', '하루 한 컵', { preview: '안녕하세요' })).toBe(
+      '안녕하세요',
+    );
+    expect(NOTIFICATION_CATALOG.MESSAGE.pushTitle?.('하루 한 컵')).toBe(
+      '하루 한 컵',
+    );
+    expect(NOTIFICATION_CATALOG.MESSAGE.pushTitle?.(null)).toBe('상대');
+    expect(
+      missingNotifyInputs('MESSAGE', { preview: '' }, { name: '하루 한 컵' }),
+    ).toEqual(['preview']);
+  });
+
   it('never puts a phone number or account in a text', () => {
     // 문구는 이름, 숫자, 형식만 쓴다.
     const text = render('OFFER_RECEIVED', '한그릇 라멘', {

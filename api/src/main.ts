@@ -5,6 +5,7 @@ import { setupApp } from './app.setup';
 import { loadEnv } from './config/env';
 import { assertNoFakesInProduction } from './integrations/assert-no-fakes';
 import { assertWorkerOnInProduction } from './jobs/assert-worker';
+import { RedisIoAdapter } from './realtime/redis-io.adapter';
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
@@ -19,6 +20,10 @@ async function bootstrap() {
   // 결제 통지의 서명은 받은 본문 그대로에 대한 것이라 원본 본문(rawBody)을 함께 보관한다.
   const app = await NestFactory.create(AppModule, { rawBody: true });
   setupApp(app, { env });
+  // 실시간 이벤트가 서버 여러 대에 퍼지도록 Redis 어댑터를 붙인다. 게이트웨이가 만들어지기 전(listen 전)에 해야 한다.
+  const socketAdapter = new RedisIoAdapter(app, env.REDIS_URL);
+  await socketAdapter.connectToRedis();
+  app.useWebSocketAdapter(socketAdapter);
   // 종료 신호를 받으면 새 요청을 멈추고 DB 연결과 작업 큐 작업자를 닫은 뒤 종료 코드 0으로 끝낸다. 배포 때 처리 중인 작업이 끊기지 않게 한다.
   // enableShutdownHooks()는 닫은 뒤 같은 신호를 자기 자신에게 다시 보내 종료 코드가 143이 되므로(배포 도구가 실패로 읽는다) 직접 처리한다.
   // 신호가 연달아 와도(SIGINT 뒤 SIGTERM 등) 닫기는 한 번만 한다.

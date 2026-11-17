@@ -49,6 +49,8 @@ export interface CatalogEntry {
     actorName: string | null;
     params: NotificationParams;
   }): string;
+  // 푸시의 제목. 없으면 빈 제목(알림함 문구가 본문이다). 대화 메시지는 보낸 사람 이름이 제목이다.
+  pushTitle?(actorName: string | null): string;
 }
 
 // 오퍼 문구의 {형식}. 앱의 offer_terms_text.dart formatLabel과 같은 이름이다.
@@ -364,6 +366,17 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     needsActor: true,
     render: ({ actorName }) =>
       `${actorName ?? OTHER_FALLBACK}님이 대화를 수락했어요.`,
+  },
+  // 대화 메시지(5번 계획 Task 4). 알림함에 남기지 않고(탭 없음) 푸시만 한다. E5의 `대화 메시지` 스위치와 방별 알림 끄기가 모두 켜져 있어야 간다.
+  // 제목은 보낸 사람 이름, 본문은 미리 보기(60자 + …, 콘텐츠 카드는 `콘텐츠 카드를 보냈어요.`)라 보내는 쪽이 preview로 넘긴다.
+  MESSAGE: {
+    tab: null,
+    switch: 'MESSAGES',
+    glyph: null,
+    requiredParams: { preview: 'string' },
+    needsActor: true,
+    render: ({ params }) => String(params.preview ?? ''),
+    pushTitle: (actorName) => actorName ?? OTHER_FALLBACK,
   },
 };
 
