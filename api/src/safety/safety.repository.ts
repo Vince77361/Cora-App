@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Report, ReportReason, ReportTargetKind } from '@prisma/client';
+import {
+  CollaborationStage,
+  Prisma,
+  Report,
+  ReportReason,
+  ReportTargetKind,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface NewReport {
@@ -33,6 +39,30 @@ export class SafetyRepository {
       where: { blockerId_blockedId: { blockerId, blockedId } },
       create: { blockerId, blockedId, createdAt: now, updatedAt: now },
       update: { deletedAt: null, updatedAt: now },
+    });
+  }
+
+  // 신고로 협업을 멈춘 기록. 운영 명령 halt처럼 ops_audit_logs에 남기되 사람이 아니라 시스템이 한 일이다(operator = system).
+  // 이 표는 운영 모듈 것이지만 기록은 멈춤과 같은 트랜잭션이어야 해서 여기서 직접 쓴다(운영 저장소가 다른 표를 읽는 것과 같다).
+  async writeHaltAudit(
+    input: {
+      collaborationId: string;
+      reportId: string;
+      from: CollaborationStage;
+      now: Date;
+    },
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    await tx.opsAuditLog.create({
+      data: {
+        command: 'report-halt',
+        collaborationId: input.collaborationId,
+        operator: 'system',
+        reason: 'REPORTED',
+        detail: { reportId: input.reportId, from: input.from },
+        createdAt: input.now,
+        updatedAt: input.now,
+      },
     });
   }
 

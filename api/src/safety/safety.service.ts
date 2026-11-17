@@ -19,7 +19,7 @@ import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert
 import { JobScheduler } from '../jobs/job-scheduler';
 import { NotificationsService } from '../notifications/notifications.service';
 import { OffersService } from '../offers/offers.service';
-import { haltJobKeys } from '../settlements/job-keys';
+import { haltedNoticeKey, haltJobKeys } from '../settlements/job-keys';
 import { SettlementsRepository } from '../settlements/settlements.repository';
 import { CreateReportDto, REPORT_DETAIL_MAX } from './dto/create-report.dto';
 import { ReportCreatedModel } from './dto/report-created.model';
@@ -179,8 +179,23 @@ export class SafetyService {
             { stageBeforeHalt: c.stage, haltedReason: REPORTED_HALT_REASON },
             tx,
           );
-          if (moved) halted.push(c);
-          else unhalted.push(c);
+          if (!moved) {
+            unhalted.push(c);
+            continue;
+          }
+          // 멈춘 뒤의 행(멈춘 시각 updatedAt이 알림 키에 쓰인다). 돈과 관련된 상태 변경이라 감사 기록도 같은 트랜잭션에서 남긴다.
+          const fresh = await this.collaborations.findById(c.id, tx);
+          if (!fresh) throw new AppError('CONFLICT', '협업을 찾을 수 없어요.');
+          await this.repository.writeHaltAudit(
+            {
+              collaborationId: c.id,
+              reportId: report.id,
+              from: c.stage,
+              now,
+            },
+            tx,
+          );
+          halted.push(fresh);
         }
         return { report, halted, unhalted };
       },
@@ -195,7 +210,7 @@ export class SafetyService {
   }
 
   // 신고가 커밋된 뒤의 일: 멈춘 협업의 작업 취소, 양쪽 알림과 화면 갱신, 운영자 메일.
-  // 모두 이미 저장된 신고와 멈춤을 되돌리지 않으므로 실패해도 던지지 않고(신고자가 다시 눌러도 409가 된다) 메일에 적어 알린다.
+  // 모두 이미 저장된 신고와 멈춤을 되돌리지 않으므로 실패해도 던지지 않고(신고자가 다시 눌러도 409가 된다) 작업 취소 실패는 메일에 적는다.
   private async afterReport(
     reporterId: string,
     input: CreateReportDto,
@@ -215,23 +230,29 @@ export class SafetyService {
       `대상: ${input.targetKind} ${input.targetId}`,
       `신고자 ID: ${reporterId}`,
       `설명: ${outcome.report.detail ?? '(없음)'}`,
-      ...outcome.halted.map((c) => `멈춘 협업: ${c.id} (${c.stage} → HALTED)`),
+      ...outcome.halted.map(
+        (c) => `멈춘 협업: ${c.id} (${c.stageBeforeHalt ?? '?'} → HALTED)`,
+      ),
       ...outcome.unhalted.map(
         (c) =>
           `멈추지 못한 협업: ${c.id} (${c.stage}, 조회 자료 확인 전 정산이 있어요. 돈은 확인 전에는 나가지 않아요)`,
       ),
       ...failures,
     ].join('\n');
-    try {
-      await this.operatorAlert.alert({
-        subject: `[Cora] 신고 접수 · ${REASON_LABEL[input.reason]}${halted ? ' · 협업 멈춤' : ''}`,
-        body,
-      });
-    } catch (error) {
-      this.logger.error(
-        `운영자 알림을 보내지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
-      );
-    }
+    // 운영자 메일은 기다리지 않는다: 메일 서버가 느려도 신고 응답이 늦어지지 않게, 부르기만 하고 실패는 로그로 남긴다
+    // (신고와 멈춤은 이미 저장됐다). 메일을 보내는 호출 자체는 이 요청 안에서 시작된다.
+    void (async () => {
+      try {
+        await this.operatorAlert.alert({
+          subject: `[Cora] 신고 접수 · ${REASON_LABEL[input.reason]}${halted ? ' · 협업 멈춤' : ''}`,
+          body,
+        });
+      } catch (error) {
+        this.logger.error(
+          `운영자 알림을 보내지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        );
+      }
+    })();
   }
 
   // 멈춘 협업에 남은 작업을 지운다. 지우지 못해도 처리기가 단계를 다시 보고 건너뛰므로 협업은 멈춘 채다.
@@ -252,7 +273,8 @@ export class SafetyService {
   // 양쪽에 같은 알림을 보낸다. 누가 신고했는지는 담지 않는다(행위자 없음).
   private async notifyHalted(c: Collaboration): Promise<void> {
     const target = { kind: 'COLLABORATION', id: c.id } as const;
-    const dedupeKey = `halted:${c.id}`;
+    // 멈춤 한 번마다 다른 키: 풀었다가 다시 멈춰도(조회수 실패 멈춤 포함) 알림이 이전 멈춤에 가려 사라지지 않는다.
+    const dedupeKey = haltedNoticeKey(c.id, c.updatedAt);
     const sides: { userId: string; role: UserRole }[] = [
       {
         userId: c.commissionerId,

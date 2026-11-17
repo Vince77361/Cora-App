@@ -721,6 +721,125 @@ describe('safety (block and report)', () => {
       });
     });
 
+    it('sends the halted notice again when a resumed collaboration is halted a second time', async () => {
+      await seedParties();
+      const room = await seedBrandCollab('CONTRACTED');
+      const resume = () =>
+        app
+          .get(OpsRunner)
+          .run([
+            'resume',
+            '--collaboration',
+            room.collaborationId,
+            '--operator',
+            '김운영',
+            '--reason',
+            '신고 확인 끝',
+          ]);
+      const halted = () =>
+        prisma.notification.findMany({
+          where: { kind: 'COLLABORATION_HALTED' },
+        });
+      await report({
+        targetKind: 'CONVERSATION',
+        targetId: room.roomId,
+      }).expect(201);
+      expect(await halted()).toHaveLength(2);
+      expect((await resume()).exitCode).toBe(0);
+      // 풀었다가 다른 신고(상대의 신고)로 다시 멈추면 양쪽에 새 알림이 간다.
+      await report(
+        { targetKind: 'CONVERSATION', targetId: room.roomId },
+        authB,
+      ).expect(201);
+      expect((await collaborationOf(room.collaborationId)).stage).toBe(
+        'HALTED',
+      );
+      const rows = await halted();
+      expect(rows).toHaveLength(4);
+      expect(new Set(rows.map((n) => n.dedupeKey)).size).toBe(2);
+      for (const userId of [USER_A, OTHER]) {
+        expect(rows.filter((n) => n.userId === userId)).toHaveLength(2);
+      }
+      expect(push.sent).toHaveLength(4);
+    });
+
+    it('sends the halted notice for a report even after an earlier view-count halt was resumed', async () => {
+      await seedParties('STORE');
+      const counting = await seedStoreCollab('COUNTING');
+      await prisma.collaboration.update({
+        where: { id: counting.collaborationId },
+        data: {
+          submittedUrl: 'https://www.instagram.com/reel/C8abc123/',
+          submittedAt: T0,
+          countingEndsAt: new Date(T0.getTime() + 7 * DAY),
+        },
+      });
+      // 조회수 실패 멈춤이 남긴 알림(옛 키 모양과 새 키 모양 모두 이 신고의 키와 다르다).
+      for (const [userId, role] of [
+        [USER_A, 'STORE'],
+        [OTHER, 'CREATOR'],
+      ] as const) {
+        await prisma.notification.create({
+          data: {
+            userId,
+            role,
+            kind: 'COLLABORATION_HALTED',
+            tab: 'COLLABORATION',
+            params: {},
+            targetKind: 'COLLABORATION',
+            targetId: counting.collaborationId,
+            dedupeKey: `halted:${counting.collaborationId}`,
+          },
+        });
+      }
+      await report({
+        targetKind: 'CONVERSATION',
+        targetId: counting.roomId,
+      }).expect(201);
+      expect(
+        await prisma.notification.count({
+          where: { kind: 'COLLABORATION_HALTED' },
+        }),
+      ).toBe(4);
+    });
+
+    it('leaves an audit row when a report halts a collaboration', async () => {
+      await seedParties();
+      const room = await seedBrandCollab('CONTRACTED');
+      const negotiating = await seedBrandCollab('NEGOTIATING');
+      const { id } = (
+        await report({ targetKind: 'USER', targetId: OTHER }).expect(201)
+      ).body as { id: string };
+      const rows = await prisma.opsAuditLog.findMany();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        command: 'report-halt',
+        collaborationId: room.collaborationId,
+        operator: 'system',
+        reason: 'REPORTED',
+        detail: { reportId: id, from: 'CONTRACTED' },
+      });
+      expect(rows[0].createdAt).toEqual(T0);
+      // 멈추지 않은 신고에는 기록이 없다.
+      await report(
+        { targetKind: 'CONVERSATION', targetId: negotiating.roomId },
+        authB,
+      ).expect(201);
+      expect(await prisma.opsAuditLog.count()).toBe(1);
+    });
+
+    it('does not wait for the operator mail before answering the report', async () => {
+      await seedParties();
+      const room = await seedBrandCollab('NEGOTIATING');
+      alert.mockReturnValueOnce(new Promise<void>(() => undefined));
+      await report({
+        targetKind: 'CONVERSATION',
+        targetId: room.roomId,
+      }).expect(201);
+      expect(alert).toHaveBeenCalledTimes(1);
+      expect(await prisma.report.count()).toBe(1);
+    });
+
     it('does not halt when no money is held', async () => {
       await seedParties();
       const negotiating = await seedBrandCollab('NEGOTIATING');

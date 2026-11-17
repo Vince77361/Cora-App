@@ -32,6 +32,7 @@ import {
   evidenceHaltJobKey,
   forcePayoutKey,
   forcePayoutRefundKey,
+  haltedNoticeKey,
   settleJobKey,
   settlePayoutKey,
   settleRefundKey,
@@ -459,14 +460,17 @@ export class SettlementsService {
   // 알림이 먼저다: 운영자 알림이나 알림함이 이 작업의 재시도 기간 내내 죽어 있어도 작업이 남아 있어야 다시 돌아 알릴 수 있다
   // (취소가 먼저면 다시 돌 작업이 없어 알림 없이 멈춘 협업만 남는다). 취소는 오류를 삼킨다.
   // 멈추는 도중에 죽어 다시 돌 때도 여기로 오므로, 운영자 알림은 이미 나갔어도 다시 나갈 수 있다(한 번도 안 가는 것보다 낫다).
-  // 사용자 알림은 같은 키라 한 건이다.
+  // 사용자 알림은 멈춤 한 번마다 키가 하나라(haltedNoticeKey) 다시 돌아도 한 건이고, 풀었다가 다시 멈추면 새로 간다.
   private async finishHalt(collaboration: Collaboration): Promise<void> {
     await this.operatorAlert.alert({
       subject: '조회수를 읽지 못해 협업이 멈췄어요. 확인해 주세요.',
       body: `협업 ID: ${collaboration.id}`,
     });
     const target = { kind: 'COLLABORATION', id: collaboration.id } as const;
-    const dedupeKey = `halted:${collaboration.id}`;
+    const dedupeKey = haltedNoticeKey(
+      collaboration.id,
+      collaboration.updatedAt,
+    );
     await this.notifications.notify({
       userId: collaboration.commissionerId,
       role: 'STORE',

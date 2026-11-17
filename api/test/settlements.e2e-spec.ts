@@ -684,7 +684,9 @@ describe('settlements', () => {
           where: { userId, kind: 'COLLABORATION_HALTED' },
         });
         expect(rows).toHaveLength(1);
-        expect(rows[0].dedupeKey).toBe(`halted:${s.collaborationId}`);
+        expect(rows[0].dedupeKey).toBe(
+          `halted:${s.collaborationId}:${row.updatedAt.getTime()}`,
+        );
       }
       // 남은 날의 작업은 지워져 더 돌지 않는다.
       expect(jobKeys().filter((k) => k.startsWith('view-snapshot'))).toEqual(

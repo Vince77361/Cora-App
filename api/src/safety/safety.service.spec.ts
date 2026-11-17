@@ -79,7 +79,7 @@ describe('SafetyService input checks', () => {
   });
 
   it('refuses a detail longer than 500 characters counted as code points before reading anything', async () => {
-    // DTO는 UTF-16 단위로 거르고, 서비스가 코드 포인트로 다시 센다: 이모지 501자는 DTO를 지나도 여기서 막힌다.
+    // 서비스는 DTO와 별개로 코드 포인트로 다시 센다(DB 제약과 같은 단위): DTO를 거치지 않고 들어와도 501자는 여기서 막힌다.
     const service = serviceWith({});
     expect(
       await code(
