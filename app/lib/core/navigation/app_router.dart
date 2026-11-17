@@ -23,6 +23,7 @@ import '../../features/discovery/presentation/pages/brand_discovery_page.dart';
 import '../../features/discovery/presentation/pages/campaign_detail_page.dart';
 import '../../features/discovery/presentation/pages/creator_discovery_page.dart';
 import '../../features/interests/presentation/pages/compare_page.dart';
+import '../../features/negotiation/presentation/pages/agreement_page.dart';
 import '../../features/negotiation/presentation/pages/brand_progress_page.dart';
 import '../../features/negotiation/presentation/pages/brand_proposals_placeholder_page.dart';
 import '../../features/negotiation/presentation/pages/collaboration_hub_page.dart';
@@ -276,19 +277,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      // 조건 합의(12)와 조건 수정 제안은 Task 12가 만든다. 대화방 머리와 더하기 메뉴가 열 자리라 그때까지
-      // 자리 화면이다.
+      // 조건 합의(12). 대화방 머리의 조건 요약과 06의 옛 판본 화면이 연다.
       GoRoute(
         path: AppRoutes.collaborationAgreementPattern,
         pageBuilder: (context, state) => CoraTransitions.push(
-          const CoraComingSoonPage(title: '조건 합의'),
+          AgreementPage(collaborationId: state.pathParameters['id']!),
           key: state.pageKey,
         ),
       ),
+      // 조건 수정 제안은 다음 커밋이 만든다. 12의 `수정 제안`, 06의 `조건 수정 제안`, 대화방의 더하기 메뉴가 열 자리라 그때까지 자리 화면이다.
       GoRoute(
         path: AppRoutes.collaborationTermsProposePattern,
         pageBuilder: (context, state) => CoraTransitions.push(
           const CoraComingSoonPage(title: '조건 수정 제안'),
+          key: state.pageKey,
+        ),
+      ),
+      // 협업 계약(D4)은 Task 13이 만든다. 12가 열 자리라 그때까지 자리 화면이다.
+      GoRoute(
+        path: AppRoutes.collaborationContractPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const CoraComingSoonPage(title: '협업 계약'),
           key: state.pageKey,
         ),
       ),
@@ -544,9 +553,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.creatorReceivedProposalPattern,
         pageBuilder: (context, state) => CoraTransitions.push(
-          ReceivedProposalPage(
-            campaignId: state.pathParameters['campaignId']!,
-          ),
+          ReceivedProposalPage(campaignId: state.pathParameters['campaignId']!),
           key: state.pageKey,
         ),
       ),

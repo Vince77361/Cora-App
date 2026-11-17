@@ -25,6 +25,9 @@ TermsVersion termsVersion({
   bool brandConfirmed = false,
   bool creatorConfirmed = false,
   TermsProposer proposedBy = TermsProposer.system,
+  DateTime? startDate,
+  List<TermsField> changedFields = const [],
+  int? previousMaxCash,
 }) => TermsVersion(
   version: version,
   title: title,
@@ -33,7 +36,7 @@ TermsVersion termsVersion({
   performance: performance,
   format: format,
   pieces: pieces,
-  startDate: DateTime(2026, 11, 16),
+  startDate: startDate ?? DateTime(2026, 11, 16),
   revisionScope: revisionScope,
   usageRights: usageRights,
   payoutDays: payoutDays,
@@ -41,7 +44,48 @@ TermsVersion termsVersion({
   brandConfirmed: brandConfirmed,
   creatorConfirmed: creatorConfirmed,
   proposedBy: proposedBy,
+  changedFields: changedFields,
+  previousMaxCash: previousMaxCash,
 );
+
+/// 판본 [v]에서 확인 표시만 바꾼 사본.
+TermsVersion withConfirmed(TermsVersion v, {bool? brand, bool? creator}) =>
+    TermsVersion(
+      version: v.version,
+      title: v.title,
+      fee: v.fee,
+      productProvided: v.productProvided,
+      performance: v.performance,
+      format: v.format,
+      pieces: v.pieces,
+      startDate: v.startDate,
+      revisionScope: v.revisionScope,
+      usageRights: v.usageRights,
+      payoutDays: v.payoutDays,
+      maxCash: v.maxCash,
+      brandConfirmed: brand ?? v.brandConfirmed,
+      creatorConfirmed: creator ?? v.creatorConfirmed,
+      proposedBy: v.proposedBy,
+      changedFields: v.changedFields,
+      createdAt: v.createdAt,
+      previousMaxCash: v.previousMaxCash,
+    );
+
+/// 판본 목록(최신이 먼저)과 합의 상태. 합의 상태는 최신 판본의 확인 표시에서 정한다.
+TermsHistory termsHistory(List<TermsVersion> versions, {bool editable = true}) {
+  final latest = versions.first;
+  return TermsHistory(
+    versions: versions,
+    agreement: latest.brandConfirmed && latest.creatorConfirmed
+        ? TermsAgreement.agreed
+        : latest.brandConfirmed
+        ? TermsAgreement.waitingCreator
+        : latest.creatorConfirmed
+        ? TermsAgreement.waitingBrand
+        : TermsAgreement.none,
+    editable: editable,
+  );
+}
 
 /// 캔버스 06의 견본: 내가 응답할 차례, 안내 한 줄, 이유 하나, 팔로워 8,200명.
 TermsLatest termsLatest({
@@ -66,11 +110,27 @@ TermsLatest termsLatest({
 
 /// 손으로 쓴 가짜 조건 저장소. 수락하면 내 확인을 기록해 다시 읽을 때 `상대 대기`가 되게 한다.
 class FakeNegotiationRepository implements NegotiationRepository {
-  FakeNegotiationRepository({TermsLatest? latest})
-    : latest = latest ?? termsLatest();
+  FakeNegotiationRepository({TermsLatest? latest, TermsHistory? history})
+    : latest = latest ?? termsLatest(),
+      history = history ?? termsHistory([(latest ?? termsLatest()).terms]);
 
   TermsLatest latest;
+
+  /// 12가 읽는 판본 목록. 주지 않으면 [latest]의 판본 하나다.
+  TermsHistory history;
   bool failFetch = false;
+
+  /// 내가 브랜드다(확인과 새 판본이 브랜드 쪽 표시를 바꾼다). false면 크리에이터다.
+  bool iAmBrand = true;
+
+  /// 설정하면 [propose]가 이 예외를 던진다. 옛 판본 예외면 [newerHistory]로 바꿔 둔다.
+  Exception? proposeFailure;
+
+  /// 옛 판본 예외 뒤 다시 읽을 때 돌려줄 목록(상대가 먼저 낸 새 판본).
+  TermsHistory? newerHistory;
+
+  final proposed = <({String id, int baseVersion, TermsChanges changes})>[];
+  int historyCalls = 0;
 
   /// 설정하면 [confirm]이 이 예외를 던진다(옛 판본, 서버의 거절 문구, 그 밖의 실패).
   Exception? confirmFailure;
@@ -99,6 +159,55 @@ class FakeNegotiationRepository implements NegotiationRepository {
   }
 
   @override
+  Future<TermsHistory> fetchHistory(String collaborationId) async {
+    historyCalls++;
+    if (failFetch) throw const NegotiationFailure();
+    return history;
+  }
+
+  @override
+  Future<TermsVersion> propose(
+    String collaborationId,
+    int baseVersion,
+    TermsChanges changes,
+  ) async {
+    proposed.add((
+      id: collaborationId,
+      baseVersion: baseVersion,
+      changes: changes,
+    ));
+    final failure = proposeFailure;
+    if (failure != null) {
+      final newer = newerHistory;
+      if (newer != null) history = newer;
+      throw failure;
+    }
+    final previous = history.latest;
+    final maxCash = changes.fee + (changes.performance?.cap ?? 0);
+    final made = TermsVersion(
+      version: previous.version + 1,
+      title: changes.title,
+      fee: changes.fee,
+      productProvided: changes.productProvided,
+      performance: changes.performance,
+      format: changes.format,
+      pieces: changes.pieces,
+      startDate: changes.startDate,
+      revisionScope: changes.revisionScope,
+      usageRights: changes.usageRights,
+      payoutDays: changes.payoutDays,
+      maxCash: maxCash,
+      brandConfirmed: iAmBrand,
+      creatorConfirmed: !iAmBrand,
+      proposedBy: iAmBrand ? TermsProposer.brand : TermsProposer.creator,
+      previousMaxCash: previous.maxCash,
+    );
+    history = termsHistory([made, ...history.versions]);
+    latest = termsLatest(terms: made, mine: true, myTurn: false);
+    return made;
+  }
+
+  @override
   Future<void> drop(String collaborationId, DropReason reason) async {
     dropped.add((id: collaborationId, reason: reason));
     await holdDrop?.future;
@@ -116,6 +225,12 @@ class FakeNegotiationRepository implements NegotiationRepository {
       if (newer != null) latest = newer;
       throw failure;
     }
+    final marked = withConfirmed(
+      history.latest,
+      brand: iAmBrand ? true : null,
+      creator: iAmBrand ? null : true,
+    );
+    history = termsHistory([marked, ...history.versions.skip(1)]);
     latest = TermsLatest(
       terms: latest.terms,
       mine: latest.mine,

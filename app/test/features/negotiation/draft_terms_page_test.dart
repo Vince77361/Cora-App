@@ -82,6 +82,14 @@ Future<List<String>> _pump(
         builder: (context, state) => stub(state),
       ),
       GoRoute(
+        path: AppRoutes.collaborationAgreementPattern,
+        builder: (context, state) => stub(state),
+      ),
+      GoRoute(
+        path: AppRoutes.collaborationTermsProposePattern,
+        builder: (context, state) => stub(state),
+      ),
+      GoRoute(
         path: '/brand/coming-soon/:title',
         builder: (context, state) => stub(state),
       ),
@@ -426,14 +434,14 @@ void main() {
     expect(find.text('조건 수정 제안'), findsOneWidget);
   });
 
-  testWidgets('a stale version shows the shared older-version state and '
-      'reloads the latest', (tester) async {
+  testWidgets('a stale version shows the shared older-version state whose '
+      'button opens the agreement screen', (tester) async {
     final repo = FakeNegotiationRepository()
       ..confirmFailure = const NegotiationStale(2)
       ..newerLatest = termsLatest(
         terms: termsVersion(version: 2, fee: 350000, maxCash: 350000),
       );
-    await _pump(tester, repo);
+    final opened = await _pump(tester, repo);
 
     await tester.tap(find.text('이 판본 수락'));
     await tester.pumpAndSettle();
@@ -445,10 +453,7 @@ void main() {
     await tester.tap(find.text('판본 2 보기'));
     await tester.pumpAndSettle();
 
-    expect(find.text('이전 판본이라 수락할 수 없어요'), findsNothing);
-    expect(find.text('받은 제안 · 판본 2'), findsOneWidget);
-    expect(find.text('35만 원'), findsOneWidget);
-    expect(find.text('이 판본 수락'), findsOneWidget);
+    expect(opened.last, AppRoutes.collaborationAgreement(_id));
   });
 
   testWidgets('a stale answer without a latest number reads it again', (
@@ -528,26 +533,27 @@ void main() {
     expect(find.text('처리하지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
   });
 
-  testWidgets('the modify button opens the placeholder of the viewer role', (
-    tester,
-  ) async {
-    final opened = await _pump(tester, FakeNegotiationRepository());
+  testWidgets(
+    'the modify button opens the edit proposal screen for both roles',
+    (tester) async {
+      final opened = await _pump(tester, FakeNegotiationRepository());
 
-    await tester.tap(find.text('조건 수정 제안'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('조건 수정 제안'));
+      await tester.pumpAndSettle();
 
-    expect(opened.last, AppRoutes.brandComingSoon('조건 수정 제안'));
+      expect(opened.last, AppRoutes.collaborationTermsPropose(_id));
 
-    final creatorOpened = await _pump(
-      tester,
-      FakeNegotiationRepository(),
-      role: CollaborationRole.creator,
-    );
-    await tester.tap(find.text('조건 수정 제안'));
-    await tester.pumpAndSettle();
+      final creatorOpened = await _pump(
+        tester,
+        FakeNegotiationRepository(),
+        role: CollaborationRole.creator,
+      );
+      await tester.tap(find.text('조건 수정 제안'));
+      await tester.pumpAndSettle();
 
-    expect(creatorOpened.last, AppRoutes.creatorComingSoon('조건 수정 제안'));
-  });
+      expect(creatorOpened.last, AppRoutes.collaborationTermsPropose(_id));
+    },
+  );
 
   testWidgets('a load failure shows the shared failure state and retries', (
     tester,
@@ -588,31 +594,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(opened.last, AppRoutes.creatorOffers);
-  });
-
-  testWidgets('a failed reload from the older-version card shows the load '
-      'failure and can retry', (tester) async {
-    final repo = FakeNegotiationRepository()
-      ..confirmFailure = const NegotiationStale(2)
-      ..newerLatest = termsLatest(terms: termsVersion(version: 2));
-    await _pump(tester, repo);
-    await tester.tap(find.text('이 판본 수락'));
-    await tester.pumpAndSettle();
-    expect(find.text('판본 2 보기'), findsOneWidget);
-
-    repo.failFetch = true;
-    await tester.tap(find.text('판본 2 보기'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('조건을 불러오지 못했어요'), findsOneWidget);
-    expect(find.text('이전 판본이라 수락할 수 없어요'), findsNothing);
-
-    repo.failFetch = false;
-    await tester.tap(find.text('다시 시도'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('받은 제안 · 판본 2'), findsOneWidget);
-    expect(find.text('이 판본 수락'), findsOneWidget);
   });
 
   testWidgets('accepting makes the brand collaboration list read again', (

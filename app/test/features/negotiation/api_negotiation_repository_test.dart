@@ -284,4 +284,180 @@ void main() {
       throwsA(isA<NegotiationFailure>()),
     );
   });
+
+  group('history and proposing', () {
+    Map<String, Object?> history({String agreement = 'WAITING_BRAND'}) => {
+      'agreement': agreement,
+      'editable': true,
+      'versions': [
+        {
+          ..._version(performance: {'cap': 60000, 'ratePer1000': 2000}),
+          'version': 2,
+          'changedFields': ['FEE', 'START_DATE', 'PERFORMANCE'],
+          'previousMaxCash': 300000,
+        },
+        {..._version(), 'version': 1, 'proposedBy': 'SYSTEM'},
+      ],
+    };
+
+    test('fetchHistory maps the versions, the changed fields and the '
+        'agreement', () async {
+      final fake = FakeHttpClient()..body = jsonEncode(history());
+
+      final h = await _repo(fake).fetchHistory('col-1');
+
+      expect(fake.requests.single.url.path, '/collaborations/col-1/terms');
+      expect(fake.requests.single.method, 'GET');
+      expect(h.versions.map((v) => v.version), [2, 1]);
+      expect(h.latest.changedFields, [
+        TermsField.fee,
+        TermsField.startDate,
+        TermsField.performance,
+      ]);
+      expect(h.latest.previousMaxCash, 300000);
+      expect(h.latest.createdAt, DateTime.utc(2026, 11, 11, 3));
+      expect(h.previous!.version, 1);
+      expect(h.previous!.proposedBy, TermsProposer.system);
+      expect(h.agreement, TermsAgreement.waitingBrand);
+      expect(h.editable, isTrue);
+    });
+
+    test('every agreement state maps', () async {
+      for (final (wire, expected) in [
+        ('NONE', TermsAgreement.none),
+        ('WAITING_BRAND', TermsAgreement.waitingBrand),
+        ('WAITING_CREATOR', TermsAgreement.waitingCreator),
+        ('AGREED', TermsAgreement.agreed),
+      ]) {
+        final fake = FakeHttpClient()
+          ..body = jsonEncode(history(agreement: wire));
+        expect((await _repo(fake).fetchHistory('c')).agreement, expected);
+      }
+    });
+
+    test('fetchHistory fails on a server error', () async {
+      final fake = FakeHttpClient()
+        ..statusCode = 500
+        ..body = '{}';
+
+      await expectLater(
+        _repo(fake).fetchHistory('col-1'),
+        throwsA(isA<NegotiationFailure>()),
+      );
+    });
+
+    TermsChanges changes({ViewPay? performance}) => TermsChanges(
+      title: '새 제목',
+      fee: 350000,
+      productProvided: false,
+      performance: performance,
+      startDate: DateTime(2026, 11, 23),
+      format: ContentFormat.cardNews,
+      pieces: 2,
+      revisionScope: RevisionScope.draftOnce,
+      usageRights: BrandUsageRights.adsToo,
+      payoutDays: 14,
+    );
+
+    test('propose sends all nine fields with the base version', () async {
+      final fake = FakeHttpClient()
+        ..statusCode = 201
+        ..body = jsonEncode(_version());
+
+      final made = await _repo(fake).propose(
+        'col-1',
+        2,
+        changes(performance: const ViewPay(ratePerThousand: 2000, cap: 60000)),
+      );
+
+      final request = fake.requests.single as http.Request;
+      expect(request.method, 'POST');
+      expect(request.url.path, '/collaborations/col-1/terms');
+      expect(jsonDecode(request.body), {
+        'baseVersion': 2,
+        'title': '새 제목',
+        'fee': 350000,
+        'productProvided': false,
+        'performance': {'cap': 60000, 'ratePer1000': 2000},
+        'startDate': '2026-11-23',
+        'format': 'CARD_NEWS',
+        'pieces': 2,
+        'revisionScope': 'DRAFT_1',
+        'usageRights': 'ADS_TOO',
+        'payoutDays': 14,
+      });
+      expect(made.version, 3);
+    });
+
+    test(
+      'propose sends performance null only when it is switched off',
+      () async {
+        final fake = FakeHttpClient()
+          ..statusCode = 201
+          ..body = jsonEncode(_version());
+
+        await _repo(fake).propose('col-1', 2, changes());
+
+        final body = jsonDecode((fake.requests.single as http.Request).body);
+        expect(body, containsPair('performance', null));
+        expect(body['title'], '새 제목');
+      },
+    );
+
+    test('propose maps a stale version with the latest number', () async {
+      final fake = FakeHttpClient()
+        ..statusCode = 409
+        ..body = jsonEncode({
+          'error': {
+            'code': 'STALE_VERSION',
+            'message': '상대가 먼저 새 조건을 제안했어요.',
+            'details': {'latestVersion': 4},
+          },
+        });
+
+      await expectLater(
+        _repo(fake).propose('col-1', 2, changes()),
+        throwsA(
+          isA<NegotiationStale>().having((e) => e.latestVersion, 'latest', 4),
+        ),
+      );
+    });
+
+    test('propose keeps the server message of other conflicts and bad '
+        'requests', () async {
+      for (final (status, code, message) in [
+        (409, 'CONFLICT', '결제가 진행 중이라 조건을 바꿀 수 없어요.'),
+        (400, 'VALIDATION_FAILED', '바꾼 조건이 없어요.'),
+      ]) {
+        final fake = FakeHttpClient()
+          ..statusCode = status
+          ..body = jsonEncode({
+            'error': {'code': code, 'message': message, 'details': null},
+          });
+
+        await expectLater(
+          _repo(fake).propose('col-1', 2, changes()),
+          throwsA(
+            isA<NegotiationRejected>().having(
+              (e) => e.message,
+              'message',
+              message,
+            ),
+          ),
+        );
+      }
+    });
+
+    test('propose hides a server error body', () async {
+      final fake = FakeHttpClient()
+        ..statusCode = 500
+        ..body =
+            '{"error":{"code":"INTERNAL","message":"db 비밀","details":null}}';
+
+      await expectLater(
+        _repo(fake).propose('col-1', 2, changes()),
+        throwsA(isA<NegotiationFailure>()),
+      );
+    });
+  });
 }

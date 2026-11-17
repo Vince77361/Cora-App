@@ -168,6 +168,16 @@ abstract final class AppRoutes {
   static const collaborationTermsProposePattern =
       '/collaborations/:id/terms/propose';
 
+  /// 12에서 수정 제안을 열 때 `extra`로 넘긴다. 보낸 뒤 12를 새로 쌓지 않고 12로 돌아간다.
+  static const fromAgreement = 'fromAgreement';
+
+  /// 협업 계약(D4). 12의 `계약서 미리 보기`·`계약하러 가기`·`계약서 보기`가 연다(5번 계획 Task 13이 채운다).
+  static String collaborationContract(String collaborationId) =>
+      '/collaborations/${Uri.encodeComponent(collaborationId)}/contract';
+
+  /// [collaborationContract]의 라우트 패턴.
+  static const collaborationContractPattern = '/collaborations/:id/contract';
+
   /// 07에서 06을 열 때 `extra`로 넘긴다. 06에서 수락하면 07을 새로 쌓지 않고 07로 돌아간다.
   static const fromProgress = 'fromProgress';
 

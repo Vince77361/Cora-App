@@ -18,7 +18,6 @@ class TermsState {
     this.busy = false,
     this.notice,
     this.staleVersion,
-    this.reloadFailed = false,
   });
 
   final Collaboration collaboration;
@@ -30,11 +29,8 @@ class TermsState {
   /// 화면에 보일 안내(서버 문구 또는 일반 실패 문구).
   final String? notice;
 
-  /// 수락하려는 사이 상대가 더 새 판본을 냈다. 값은 최신 판본 번호이고, 있으면 06은 F8 옛 판본 상태를 보인다.
+  /// 수락하려는 사이 상대가 더 새 판본을 냈다. 값은 최신 판본 번호이고, 있으면 06은 F8 옛 판본 상태를 보인다(버튼은 12를 연다).
   final int? staleVersion;
-
-  /// 옛 판본에서 `판본 N 보기`로 다시 읽으려다 실패했다. 있으면 06은 옛 판본 카드 대신 불러오기 실패 상태를 보인다.
-  final bool reloadFailed;
 
   /// 내가 브랜드 쪽이다.
   bool get isBrand => collaboration.role == CollaborationRole.commissioner;
@@ -47,14 +43,12 @@ class TermsState {
     bool clearNotice = false,
     int? staleVersion,
     bool clearStale = false,
-    bool? reloadFailed,
   }) => TermsState(
     collaboration: collaboration ?? this.collaboration,
     latest: latest ?? this.latest,
     busy: busy ?? this.busy,
     notice: clearNotice ? null : (notice ?? this.notice),
     staleVersion: clearStale ? null : (staleVersion ?? this.staleVersion),
-    reloadFailed: reloadFailed ?? this.reloadFailed,
   );
 }
 
@@ -90,7 +84,7 @@ class TermsViewModel extends AsyncNotifier<TermsState> {
     );
   }
 
-  /// 판본을 다시 읽는다(옛 판본에서 `판본 N 보기`, 인스타그램을 연동하고 돌아온 뒤). 읽는 동안 화면은 그대로 두고,
+  /// 판본을 다시 읽는다(인스타그램을 연동하고 돌아온 뒤). 읽는 동안 화면은 그대로 두고,
   /// 못 읽으면 안내만 띄운다.
   Future<void> reload() async {
     final current = state.value;
@@ -100,13 +94,8 @@ class TermsViewModel extends AsyncNotifier<TermsState> {
       state = AsyncData(fresh);
     } catch (_) {
       if (!ref.mounted || current == null) return;
-      // 옛 판본 카드는 안내를 그리지 않으므로, 그 상태에서 못 읽으면 불러오기 실패 상태로 바꿔 다시 시도하게 한다.
       state = AsyncData(
-        current.copyWith(
-          busy: false,
-          notice: TermsTexts.actionFailed,
-          reloadFailed: current.staleVersion != null,
-        ),
+        current.copyWith(busy: false, notice: TermsTexts.actionFailed),
       );
     }
   }

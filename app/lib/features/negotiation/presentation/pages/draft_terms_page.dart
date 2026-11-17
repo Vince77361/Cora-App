@@ -59,9 +59,7 @@ class _DraftTermsPageState extends ConsumerState<DraftTermsPage> {
       context.pop();
       return;
     }
-    final isBrand = state != null
-        ? state.isBrand
-        : _myRole != UserRole.creator;
+    final isBrand = state != null ? state.isBrand : _myRole != UserRole.creator;
     context.go(
       isBrand ? AppRoutes.brandCollaborations : AppRoutes.creatorOffers,
     );
@@ -85,12 +83,15 @@ class _DraftTermsPageState extends ConsumerState<DraftTermsPage> {
     if (mounted) await _vm.reload();
   }
 
-  void _modify(TermsState state) {
-    context.push(
-      state.isBrand
-          ? AppRoutes.brandComingSoon(TermsTexts.modify)
-          : AppRoutes.creatorComingSoon(TermsTexts.modify),
-      extra: AppRoutes.stacked,
+  /// `조건 수정 제안`: 아홉 항목을 고치는 수정 제안 화면을 연다. 보내면 12를 그 자리에서 새로 연다.
+  void _modify() {
+    context.push(AppRoutes.collaborationTermsPropose(widget.collaborationId));
+  }
+
+  /// 옛 판본 화면의 `판본 N 보기`: 12를 최신 판본으로 새로 읽어 연다(5번 계획 판단 Q17).
+  void _openAgreement() {
+    context.pushReplacement(
+      AppRoutes.collaborationAgreement(widget.collaborationId),
     );
   }
 
@@ -100,15 +101,6 @@ class _DraftTermsPageState extends ConsumerState<DraftTermsPage> {
     final provider = termsViewModelProvider(widget.collaborationId);
     final async = ref.watch(provider);
     final value = async.value;
-    if (value != null && value.staleVersion != null && value.reloadFailed) {
-      return _Shell(
-        onBack: () => _leave(value),
-        child: CoraStateView.loadFailed(
-          title: TermsTexts.loadFailed,
-          onRetry: _vm.reload,
-        ),
-      );
-    }
     if (value != null && value.staleVersion != null) {
       return _Shell(
         onBack: () => _leave(value),
@@ -116,7 +108,7 @@ class _DraftTermsPageState extends ConsumerState<DraftTermsPage> {
           padding: const EdgeInsets.only(top: 12),
           child: CoraStateView.staleVersion(
             version: value.staleVersion!,
-            onOpen: _vm.reload,
+            onOpen: _openAgreement,
           ),
         ),
       );
@@ -170,7 +162,7 @@ class _DraftTermsPageState extends ConsumerState<DraftTermsPage> {
           _ActionBar(
             state: value,
             bottom: bottom,
-            onModify: () => _modify(value),
+            onModify: _modify,
             onAccept: _accept,
             onConnect: _connectInstagram,
           ),

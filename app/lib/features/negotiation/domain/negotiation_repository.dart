@@ -5,11 +5,23 @@ import 'terms_version.dart';
 /// 협의를 그만두는 이유. 서버의 `SCHEDULE | BUDGET | DIRECTION | OTHER`와 같다. 서버에만 남고 상대에게는 알리지 않는다.
 enum DropReason { schedule, budget, direction, other }
 
-/// 협업의 조건 판본을 읽고 확인(수락)하고 계약 전 협의를 그만두는 포트(06, 대화방 메뉴). 협업 자체는
+/// 협업의 조건 판본을 읽고 확인(수락)하고 새 판본을 내고 계약 전 협의를 그만두는 포트(06, 12, 대화방 메뉴). 협업 자체는
 /// `CollaborationRepository`가 읽는다.
 abstract class NegotiationRepository {
   /// 협업 [collaborationId]의 최신 판본. 실패하면 [NegotiationFailure].
   Future<TermsLatest> fetchLatest(String collaborationId);
+
+  /// 협업 [collaborationId]의 조건 판본 목록(최신이 먼저)과 합의 상태(12). 실패하면 [NegotiationFailure].
+  Future<TermsHistory> fetchHistory(String collaborationId);
+
+  /// 판본 [baseVersion]을 바탕으로 새 판본을 낸다. 아홉 항목을 모두 담아 보낸다([TermsChanges]). 그사이 상대가 새
+  /// 판본을 냈으면 [NegotiationStale], 서버가 사용자 문구와 함께 거절하면(바꾼 것이 없음, 인스타그램 연동 필요,
+  /// 결제 진행 중 등) [NegotiationRejected], 그 밖의 실패는 [NegotiationFailure]다.
+  Future<TermsVersion> propose(
+    String collaborationId,
+    int baseVersion,
+    TermsChanges changes,
+  );
 
   /// 판본 [version]을 확인한다. 그사이 새 판본이 나왔으면 [NegotiationStale], 서버가 사용자 문구와 함께
   /// 거절하면(인스타그램 연동 필요 등) [NegotiationRejected], 그 밖의 실패는 [NegotiationFailure]다.

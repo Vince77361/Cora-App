@@ -40,7 +40,22 @@ TermsVersion termsVersionFromWire(api.TermsVersionModel t) => TermsVersion(
     api.TermsProposer.CREATOR => TermsProposer.creator,
     _ => TermsProposer.system,
   },
+  changedFields: [for (final f in t.changedFields) _field(f)],
+  createdAt: t.createdAt,
+  previousMaxCash: t.previousMaxCash,
 );
+
+TermsField _field(api.TermsField f) => switch (f) {
+  api.TermsField.TITLE => TermsField.title,
+  api.TermsField.FEE => TermsField.fee,
+  api.TermsField.PERFORMANCE => TermsField.performance,
+  api.TermsField.START_DATE => TermsField.startDate,
+  api.TermsField.DELIVERABLE => TermsField.deliverable,
+  api.TermsField.PRODUCT => TermsField.product,
+  api.TermsField.REVISION => TermsField.revision,
+  api.TermsField.USAGE => TermsField.usage,
+  _ => TermsField.payout,
+};
 
 /// 서버가 날짜를 UTC 시각으로 보내도 앱 시계의 그날 0시로 둔다(날짜만 뜻이 있다).
 DateTime dateOnly(DateTime at) => DateTime(at.year, at.month, at.day);
