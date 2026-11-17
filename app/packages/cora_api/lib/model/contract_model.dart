@@ -44,7 +44,7 @@ class ContractModel {
   PaymentQuoteModel? quote;
 
   /// NOT_READY = 양쪽이 같은 판본을 확인하기 전(미리 보기), AWAITING_CREATOR = 합의됨·크리에이터 동의 전, AWAITING_BRAND = 크리에이터 동의 뒤·브랜드 동의(결제) 전, PAYING = 브랜드가 결제 중(결제창을 연 지 60분 안), CONCLUDED = 결제가 승인돼 체결됨.
-  ContractProgress status;
+  ContractStatus status;
 
   /// 조건. 계약 행이 있으면 동의할 때 만든 사본이고, 없으면 최신 판본(미리 보기)이다.
   TermsVersionModel? terms;
@@ -190,7 +190,7 @@ class ContractModel {
                 .toList(growable: false)
             : const [],
         quote: PaymentQuoteModel.fromJson(json[r'quote']),
-        status: ContractProgress.fromJson(json[r'status'])!,
+        status: ContractStatus.fromJson(json[r'status'])!,
         terms: TermsVersionModel.fromJson(json[r'terms']),
         termsVersion: mapValueOfType<int>(json, r'termsVersion'),
         voidedNotice: mapValueOfType<bool>(json, r'voidedNotice')!,

@@ -111,6 +111,7 @@ part 'model/content_draft_model.dart';
 part 'model/content_format.dart';
 part 'model/contract_model.dart';
 part 'model/contract_progress.dart';
+part 'model/contract_status.dart';
 part 'model/conversation_counterpart_model.dart';
 part 'model/conversation_detail_model.dart';
 part 'model/conversation_last_message_model.dart';

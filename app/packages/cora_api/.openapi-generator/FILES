@@ -58,6 +58,7 @@ doc/ContentDraftsApi.md
 doc/ContentFormat.md
 doc/ContractModel.md
 doc/ContractProgress.md
+doc/ContractStatus.md
 doc/ContractsApi.md
 doc/ConversationCounterpartModel.md
 doc/ConversationDetailModel.md
@@ -346,6 +347,7 @@ lib/model/content_draft_model.dart
 lib/model/content_format.dart
 lib/model/contract_model.dart
 lib/model/contract_progress.dart
+lib/model/contract_status.dart
 lib/model/conversation_counterpart_model.dart
 lib/model/conversation_detail_model.dart
 lib/model/conversation_last_message_model.dart
@@ -576,6 +578,7 @@ test/content_drafts_api_test.dart
 test/content_format_test.dart
 test/contract_model_test.dart
 test/contract_progress_test.dart
+test/contract_status_test.dart
 test/contracts_api_test.dart
 test/conversation_counterpart_model_test.dart
 test/conversation_detail_model_test.dart

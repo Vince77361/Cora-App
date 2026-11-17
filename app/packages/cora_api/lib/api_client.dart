@@ -302,6 +302,8 @@ class ApiClient {
           return ContractModel.fromJson(value);
         case 'ContractProgress':
           return ContractProgressTypeTransformer().decode(value);
+        case 'ContractStatus':
+          return ContractStatusTypeTransformer().decode(value);
         case 'ConversationCounterpartModel':
           return ConversationCounterpartModel.fromJson(value);
         case 'ConversationDetailModel':

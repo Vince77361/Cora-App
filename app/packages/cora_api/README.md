@@ -223,6 +223,7 @@ Class | Method | HTTP request | Description
  - [ContentFormat](doc//ContentFormat.md)
  - [ContractModel](doc//ContractModel.md)
  - [ContractProgress](doc//ContractProgress.md)
+ - [ContractStatus](doc//ContractStatus.md)
  - [ConversationCounterpartModel](doc//ConversationCounterpartModel.md)
  - [ConversationDetailModel](doc//ConversationDetailModel.md)
  - [ConversationLastMessageModel](doc//ConversationLastMessageModel.md)

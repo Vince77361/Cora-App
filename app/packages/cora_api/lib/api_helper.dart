@@ -121,6 +121,9 @@ String parameterToString(dynamic value) {
   if (value is ContractProgress) {
     return ContractProgressTypeTransformer().encode(value).toString();
   }
+  if (value is ContractStatus) {
+    return ContractStatusTypeTransformer().encode(value).toString();
+  }
   if (value is ConversationSection) {
     return ConversationSectionTypeTransformer().encode(value).toString();
   }

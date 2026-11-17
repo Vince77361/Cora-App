@@ -55,7 +55,7 @@ void main() {
     });
 
     // NOT_READY = 양쪽이 같은 판본을 확인하기 전(미리 보기), AWAITING_CREATOR = 합의됨·크리에이터 동의 전, AWAITING_BRAND = 크리에이터 동의 뒤·브랜드 동의(결제) 전, PAYING = 브랜드가 결제 중(결제창을 연 지 60분 안), CONCLUDED = 결제가 승인돼 체결됨.
-    // ContractProgress status
+    // ContractStatus status
     test('to test the property `status`', () async {
       // TODO
     });
