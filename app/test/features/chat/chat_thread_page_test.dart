@@ -221,6 +221,41 @@ void main() {
     expect(find.text('11월 11일'), findsOneWidget);
   });
 
+  testWidgets('starts a short thread right under the summary box', (
+    tester,
+  ) async {
+    await _open(tester, _chat());
+
+    final bar = tester.getBottomLeft(find.textContaining('릴스 1편, 35만 원'));
+    final divider = tester.getTopLeft(find.text('11월 11일'));
+    final bubble = tester.getTopLeft(find.textContaining('주얼리를 먼저 7일'));
+    // 요약 상자 아래 간격 12와 목록 안쪽 14 뒤에 날짜 구분선이 온다(캔버스). 아래에 붙지 않는다.
+    expect(divider.dy - bar.dy, lessThan(80));
+    expect(bubble.dy, lessThan(divider.dy + 80));
+    final screen =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(bubble.dy, lessThan(screen / 2));
+  });
+
+  testWidgets('opens a long thread at the newest message', (tester) async {
+    final chat = _chat(
+      messages: [
+        for (var i = 1; i <= 40; i++)
+          message(seq: i, mine: i.isEven, text: '메시지 번호 $i'),
+      ],
+    );
+    await _open(tester, chat);
+
+    expect(find.text('메시지 번호 40'), findsOneWidget);
+    final screen =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(
+      tester.getTopLeft(find.text('메시지 번호 40')).dy,
+      greaterThan(screen / 2),
+    );
+    expect(find.text('메시지 번호 1'), findsNothing);
+  });
+
   testWidgets('shows the empty room line', (tester) async {
     await _open(tester, _chat(messages: []));
 
@@ -248,7 +283,7 @@ void main() {
     handle.dispose();
   });
 
-  testWidgets('the attach menu hides the content card for a brand', (
+  testWidgets('the attach sheet hides the content card for a brand', (
     tester,
   ) async {
     final handle = tester.ensureSemantics();

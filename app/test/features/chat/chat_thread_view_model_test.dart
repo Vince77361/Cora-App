@@ -129,6 +129,49 @@ void main() {
     expect(h.seqs, [1, 2, 3, 4, 5, 6]);
   });
 
+  test(
+    'stops after a bounded number of fetches when a gap is never filled',
+    () async {
+      final h = _Harness();
+      addTearDown(h.dispose);
+      await h.open();
+      // 서버에는 4가 영영 없다(번호 5만 있다).
+      h.chat.messages[_room]!.add(message(seq: 5));
+      h.chat.fetches.clear();
+
+      h.deliver(message(seq: 5));
+      await h.settle();
+      await h.settle();
+      final first = h.chat.fetches.length;
+
+      // 이어진 번호(3)가 늘지 않으면 거기서 멈춘다. 두드리기를 계속하지 않는다.
+      expect(first, inInclusiveRange(1, 2));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(h.chat.fetches.length, first);
+      expect(h.seqs, [1, 2, 3, 5]);
+
+      // 다음 재연결은 다시 시도한다.
+      h.realtime.emitReconnected();
+      await h.settle();
+      await h.settle();
+      expect(h.chat.fetches.length, greaterThan(first));
+      expect(h.chat.fetches.length, lessThanOrEqualTo(first + 2));
+    },
+  );
+
+  test('does not mark messages beyond a gap as read', () async {
+    final h = _Harness();
+    addTearDown(h.dispose);
+    final vm = await h.open();
+    h.chat.messages[_room]!.add(message(seq: 6));
+    vm.setVisible(true);
+
+    h.deliver(message(seq: 6));
+    await h.settle();
+
+    expect(h.chat.reads, isEmpty);
+  });
+
   test('fetches missed messages after a reconnect', () async {
     final h = _Harness();
     addTearDown(h.dispose);

@@ -36,6 +36,10 @@ class _ChatThreadPageState extends ConsumerState<ChatThreadPage>
   final _scroll = ScrollController();
   bool _attachOpen = false;
 
+  /// 더하기 메뉴를 입력 줄 바로 위에 붙이고, 입력 줄 안을 누른 것은 밖 누르기로 세지 않기 위한 표지.
+  final _composerLink = LayerLink();
+  final _composerKey = GlobalKey();
+
   ChatThreadViewModel get _vm =>
       ref.read(chatThreadViewModelProvider(widget.conversationId).notifier);
 
@@ -163,38 +167,45 @@ class _ChatThreadPageState extends ConsumerState<ChatThreadPage>
               Expanded(child: _messages(state)),
               // 캔버스는 목록이 입력 줄 위 10에서 끝난다.
               const SizedBox(height: 10),
-              ChatComposer(
-                closedText: closedText,
-                attachOpen: _attachOpen,
-                onAttach: canAttach
-                    ? () => setState(() => _attachOpen = !_attachOpen)
-                    : null,
-                notice: state.notice,
-                onChanged: _vm.clearNotice,
-                onSend: (text) {
-                  _vm.send(text);
-                  _toBottom();
-                },
+              CompositedTransformTarget(
+                link: _composerLink,
+                child: ChatComposer(
+                  key: _composerKey,
+                  closedText: closedText,
+                  attachOpen: _attachOpen,
+                  onAttach: canAttach
+                      ? () => setState(() => _attachOpen = !_attachOpen)
+                      : null,
+                  notice: state.notice,
+                  onChanged: _vm.clearNotice,
+                  onSend: (text) {
+                    _vm.send(text);
+                    _toBottom();
+                  },
+                ),
               ),
             ],
           ),
         ),
         if (_attachOpen) ...[
           // 메뉴 밖을 누르면 닫힌다. 누른 곳의 버튼(머리의 `대화 관리` 등)은 그대로 눌리도록 누름을 막지 않고 듣기만
-          // 한다. 더하기 버튼이 있는 입력 줄(아래 92)은 덮지 않아서 그 버튼이 열고 닫는다.
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 92,
+          // 한다. 입력 줄 안(더하기 버튼)은 닫기로 세지 않아서 그 버튼이 열고 닫는다.
+          Positioned.fill(
             child: Listener(
               behavior: HitTestBehavior.translucent,
-              onPointerDown: (_) => setState(() => _attachOpen = false),
+              onPointerDown: (event) {
+                if (!_insideComposer(event.position)) {
+                  setState(() => _attachOpen = false);
+                }
+              },
             ),
           ),
-          Positioned(
-            left: 12,
-            bottom: 92,
+          // 캔버스는 메뉴 아래가 입력 줄 위 6이다. 입력란이 늘어나도 입력 줄 위에 붙어 있게 입력 줄을 따라간다.
+          CompositedTransformFollower(
+            link: _composerLink,
+            targetAnchor: Alignment.topLeft,
+            followerAnchor: Alignment.bottomLeft,
+            offset: const Offset(12, -6),
             child: AttachMenu(
               onContentCard: detail.canSendContentCard
                   ? _sendContentCard
@@ -207,6 +218,12 @@ class _ChatThreadPageState extends ConsumerState<ChatThreadPage>
         ],
       ],
     );
+  }
+
+  bool _insideComposer(Offset global) {
+    final box = _composerKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.attached) return false;
+    return (box.localToGlobal(Offset.zero) & box.size).contains(global);
   }
 
   /// 머리 아래 조건 요약 상자. 조건이 없는 방(아직 판본이 없는 협업)은 상자가 없다.
@@ -250,30 +267,36 @@ class _ChatThreadPageState extends ConsumerState<ChatThreadPage>
         ),
       );
     }
-    // 목록을 뒤집어 맨 아래(최신)에 붙여 둔다. 그래서 가장 새 줄이 0번이다.
+    // 목록을 뒤집어 열면 맨 아래(최신)에 붙는다. 그래서 가장 새 줄이 0번이다. 메시지가 영역을 다 채우지 못하는
+    // 짧은 대화는 캔버스처럼 요약 상자 바로 아래(위)에서 시작하도록, 내용 높이만큼만 차지하는 목록(`shrinkWrap`)을
+    // 위쪽 정렬로 둔다. 긴 대화는 영역을 가득 채우고 최신 메시지에서 열린다.
     final items = threadRows(state.messages, state.pending).reversed.toList();
-    return ListView.builder(
-      controller: _scroll,
-      reverse: true,
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final row = items[index];
-        // 줄 사이 간격 10. 가장 오래된 줄(맨 위) 위에는 두지 않는다.
-        final top = index == items.length - 1 ? 0.0 : 10.0;
-        return Padding(
-          key: ValueKey(switch (row) {
-            DayRow(:final at) => 'day-${at.millisecondsSinceEpoch}',
-            MessageRow(:final message) => message.clientId,
-          }),
-          padding: EdgeInsets.only(top: top),
-          child: switch (row) {
-            DayRow(:final at) => DayDivider(text: dayDivider(at)),
-            MessageRow(:final message) => _message(message),
-          },
-        );
-      },
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ListView.builder(
+        controller: _scroll,
+        reverse: true,
+        shrinkWrap: true,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final row = items[index];
+          // 줄 사이 간격 10. 가장 오래된 줄(맨 위) 위에는 두지 않는다.
+          final top = index == items.length - 1 ? 0.0 : 10.0;
+          return Padding(
+            key: ValueKey(switch (row) {
+              DayRow(:final at) => 'day-${at.millisecondsSinceEpoch}',
+              MessageRow(:final message) => message.clientId,
+            }),
+            padding: EdgeInsets.only(top: top),
+            child: switch (row) {
+              DayRow(:final at) => DayDivider(text: dayDivider(at)),
+              MessageRow(:final message) => _message(message),
+            },
+          );
+        },
+      ),
     );
   }
 

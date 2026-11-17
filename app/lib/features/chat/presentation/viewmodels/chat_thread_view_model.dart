@@ -183,8 +183,9 @@ class ChatThreadViewModel extends AsyncNotifier<ChatThreadState> {
     }
   }
 
-  /// 소켓이나 서버 응답으로 온 확정 메시지를 합친다. 번호가 빠져 있으면 서버에서 메운다.
-  void _receive(List<ChatMessage> incoming) {
+  /// 소켓이나 서버 응답으로 온 확정 메시지를 합친다. 번호가 빠져 있으면 서버에서 메운다. [fillGap]이 false이면
+  /// 메우는 중에 받은 쪽(`_catchUp`)이 부른 것이라 구멍이 남아도 다시 메우기를 시작하지 않는다.
+  void _receive(List<ChatMessage> incoming, {bool fillGap = true}) {
     final current = state.value;
     if (current == null) {
       _early.addAll(incoming);
@@ -202,7 +203,7 @@ class ChatThreadViewModel extends AsyncNotifier<ChatThreadState> {
         ],
       ),
     );
-    if (_hasGap(messages)) unawaited(_catchUp());
+    if (fillGap && _hasGap(messages)) unawaited(_catchUp());
     _maybeMarkRead();
   }
 
@@ -213,30 +214,37 @@ class ChatThreadViewModel extends AsyncNotifier<ChatThreadState> {
     unawaited(_refreshDetail());
   }
 
+  /// 한 번의 메우기가 서버를 부를 수 있는 최대 횟수(겹쳐 들어온 요청으로 다시 도는 것까지 합친다).
+  static const _catchUpBudget = 20;
+
   /// 마지막으로 이어진 번호 뒤를 서버에서 받아 메운다. 50개가 꽉 차 오면 더 있는 것이니 이어서 받는다.
   /// 이미 받는 중에 또 부르면 끝난 뒤 한 번 더 한다.
+  ///
+  /// 서버가 끝내 주지 않는 번호가 있으면(행을 지웠다거나 숨겼다) 이어진 번호가 늘지 않으므로 거기서 멈추고, 전체
+  /// 횟수도 [_catchUpBudget]으로 막는다. 멈춘 뒤에는 다음 `message.created`나 `reconnected`가 다시 시도한다.
   Future<void> _catchUp() async {
     if (_catchingUp) {
       _catchUpAgain = true;
       return;
     }
     _catchingUp = true;
+    var budget = _catchUpBudget;
     try {
       do {
         _catchUpAgain = false;
-        // 서버가 같은 번호를 계속 50개 채워 줄 일은 없지만, 끝없이 돌지 않게 막는다.
-        for (var round = 0; round < 20; round++) {
+        while (budget > 0) {
           final current = state.value;
           if (current == null) return;
-          final page = await _repo.fetchMessages(
-            _id,
-            afterSeq: contiguousLastSeq(current.messages),
-          );
+          budget--;
+          final before = contiguousLastSeq(current.messages);
+          final page = await _repo.fetchMessages(_id, afterSeq: before);
           if (!ref.mounted) return;
-          _receive(page);
-          if (page.length < chatPageSize) break;
+          _receive(page, fillGap: false);
+          final after = contiguousLastSeq(state.value?.messages ?? const []);
+          // 이어진 번호가 늘지 않았거나 더 받을 것이 없으면 이번 메우기는 끝이다.
+          if (after <= before || page.length < chatPageSize) break;
         }
-      } while (_catchUpAgain && ref.mounted);
+      } while (_catchUpAgain && budget > 0 && ref.mounted);
     } on ChatFailure {
       // 못 읽으면 다음 메시지나 다음 재연결이 다시 메운다.
     } finally {
@@ -437,6 +445,9 @@ class ChatThreadViewModel extends AsyncNotifier<ChatThreadState> {
       _likeFailed();
     } on DiscoveryFailure {
       _likeFailed();
+    } on Exception {
+      // 예상 밖의 오류여도 알약이 계속 흐린 채 남지 않게 한다.
+      _likeFailed();
     }
   }
 
@@ -457,7 +468,8 @@ class ChatThreadViewModel extends AsyncNotifier<ChatThreadState> {
   void _maybeMarkRead() {
     final current = state.value;
     if (!_visible || current == null || current.messages.isEmpty) return;
-    final last = current.messages.last.seq!;
+    // 아직 받지 못한 번호(구멍 뒤)까지 읽음으로 알리지 않도록 이어진 마지막 번호까지만 알린다.
+    final last = contiguousLastSeq(current.messages);
     if (last <= _markedSeq) return;
     final previous = _markedSeq;
     // 알리는 동안 같은 번호를 또 보내지 않게 먼저 올려 둔다.

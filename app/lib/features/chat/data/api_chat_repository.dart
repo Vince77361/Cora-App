@@ -119,6 +119,8 @@ class ApiChatRepository implements ChatRepository {
 
 /// 보내는 본문. 생성된 `SendMessageDto`는 글이 없으면 `"text": null`을 싣는데 서버는 콘텐츠 카드에 `text`가
 /// 있으면(null 포함) 400으로 거절한다. 그래서 글이 없을 때는 키를 아예 싣지 않는다.
+/// 서버가 null을 없는 것으로 보게 고쳐지면 이 클래스를 지우고 `SendMessageDto`를 그대로 쓴다(DTO에 칸이 더해져도
+/// 여기서는 조용히 빠지기 때문이다).
 class _SendBody extends api.SendMessageDto {
   _SendBody({required super.clientId, required super.kind, super.text});
 
