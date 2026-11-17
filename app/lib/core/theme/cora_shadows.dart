@@ -97,4 +97,13 @@ abstract final class CoraShadows {
       blurRadius: blurRadiusFor(40),
     ),
   ];
+
+  /// D3 대화방 더하기 메뉴: 0 12px 32px, 알파 0.16. 라이트·다크가 같다.
+  static final attachMenu = [
+    BoxShadow(
+      color: const Color.fromRGBO(23, 24, 28, 0.16),
+      offset: const Offset(0, 12),
+      blurRadius: blurRadiusFor(32),
+    ),
+  ];
 }

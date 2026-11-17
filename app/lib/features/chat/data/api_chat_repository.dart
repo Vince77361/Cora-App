@@ -55,11 +55,7 @@ class ApiChatRepository implements ChatRepository {
   }) => _guard(() async {
     final m = await _conversations.sendMessage(
       id,
-      api.SendMessageDto(
-        clientId: clientId,
-        kind: sendableKindToWire(kind),
-        text: text,
-      ),
+      _SendBody(clientId: clientId, kind: sendableKindToWire(kind), text: text),
     );
     if (m == null) throw const ChatFailure.failed();
     return chatMessageFromWire(m);
@@ -119,4 +115,17 @@ class ApiChatRepository implements ChatRepository {
       throw const ChatFailure.failed();
     }
   }
+}
+
+/// 보내는 본문. 생성된 `SendMessageDto`는 글이 없으면 `"text": null`을 싣는데 서버는 콘텐츠 카드에 `text`가
+/// 있으면(null 포함) 400으로 거절한다. 그래서 글이 없을 때는 키를 아예 싣지 않는다.
+class _SendBody extends api.SendMessageDto {
+  _SendBody({required super.clientId, required super.kind, super.text});
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'clientId': clientId,
+    'kind': kind,
+    if (text != null) 'text': text,
+  };
 }

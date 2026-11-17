@@ -10,4 +10,10 @@ abstract final class CoraChatTokens {
 
   /// 사진 위 `메시지 요청`·캠페인 한 줄의 글자색 `rgba(255,255,255,0.85)`.
   static const heroLabel = Color(0xD9FFFFFF);
+
+  /// D3 대화방의 콘텐츠 카드 사진이 뜨기 전·없을 때의 바탕 `#E8DDCB`. 라이트·다크가 같다.
+  static const cardPhotoPlaceholder = Color(0xFFE8DDCB);
+
+  /// D3 대화 관리 시트 뒤를 덮는 `rgba(15,16,18,0.4)`. 라이트·다크가 같다.
+  static const menuScrim = Color(0x660F1012);
 }

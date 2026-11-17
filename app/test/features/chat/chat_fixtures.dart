@@ -9,7 +9,7 @@ import 'package:cora/features/collaboration/domain/collaboration.dart'
 import 'package:cora/features/negotiation/domain/brand_usage_rights.dart';
 import 'package:cora/features/negotiation/domain/terms_version.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart'
-    show ContentFormat, ViewPay;
+    show ContentFormat, OfferTerms, ViewPay;
 
 /// 목록 줄. 기본은 열린 방, 마지막 메시지가 있고 읽지 않은 것이 없다.
 ConversationSummary summary(
@@ -92,35 +92,50 @@ ConversationDetail requestDetail(
       ),
 );
 
-/// 방 머리. 협업 단계와 조건 판본을 바꿔 가며 쓴다.
+/// 방 머리. 협업 단계와 조건 판본을 바꿔 가며 쓴다. 기본은 크리에이터가 본 열린 브랜드 협업이다.
 ConversationDetail roomDetail({
   String id = 'room-1',
   ConversationStage stage = ConversationStage.negotiating,
   ContractProgress contractStatus = ContractProgress.none,
   TermsVersion? terms,
+  ChatRole myRole = ChatRole.creator,
+  CollaborationKind kind = CollaborationKind.brandContract,
+  ConversationStatus status = ConversationStatus.open,
+  bool requestedByMe = false,
+  bool blockedByMe = false,
+  bool muted = false,
+  bool canSendContentCard = true,
+  bool canProposeTerms = true,
+  bool canLikeCampaign = false,
+  int lastSeq = 3,
+  int lastReadSeq = 3,
+  CampaignTerms? campaignTerms,
+  OfferTerms? storeTerms,
 }) => ConversationDetail(
   id: id,
   collaborationId: 'collab-$id',
-  kind: CollaborationKind.brandContract,
+  kind: kind,
   counterpartName: '모아 스튜디오',
   contextLabel: '느린 결, 일상의 주얼리 캠페인',
-  status: ConversationStatus.open,
+  status: status,
   section: ConversationSection.normal,
-  requestedByMe: false,
-  myRole: ChatRole.creator,
+  requestedByMe: requestedByMe,
+  myRole: myRole,
   stage: stage,
   contractStatus: contractStatus,
-  lastSeq: 3,
-  lastReadSeq: 3,
+  lastSeq: lastSeq,
+  lastReadSeq: lastReadSeq,
   unreadCount: 0,
-  muted: false,
-  blockedByMe: false,
-  canSend: true,
-  canSendContentCard: true,
-  canProposeTerms: true,
+  muted: muted,
+  blockedByMe: blockedByMe,
+  canSend: status == ConversationStatus.open,
+  canSendContentCard: canSendContentCard,
+  canProposeTerms: canProposeTerms,
   canDrop: true,
-  canLikeCampaign: false,
+  canLikeCampaign: canLikeCampaign,
   terms: terms,
+  storeTerms: storeTerms,
+  campaignTerms: campaignTerms,
 );
 
 TermsVersion termsVersion({
@@ -163,6 +178,37 @@ ChatMessage message({
   at: at ?? DateTime.utc(2026, 11, 11, 5, 14),
 );
 
+/// 안내 줄(서버가 읽는 사람에 맞춰 만든 문구).
+ChatMessage systemLine({
+  int seq = 2,
+  String text = '조건 버전 2를 크리에이터가 확인했어요.',
+  DateTime? at,
+}) => ChatMessage(
+  id: 'm$seq',
+  seq: seq,
+  clientId: 'm$seq',
+  kind: MessageKind.system,
+  mine: false,
+  text: text,
+  at: at ?? DateTime.utc(2026, 11, 11, 5, 30),
+);
+
+/// 콘텐츠 카드 메시지.
+ChatMessage cardMessage({
+  int seq = 3,
+  bool mine = true,
+  String title = '이런 분위기로 찍을게요',
+  DateTime? at,
+}) => ChatMessage(
+  id: 'm$seq',
+  seq: seq,
+  clientId: 'm$seq',
+  kind: MessageKind.contentCard,
+  mine: mine,
+  card: ContentCard(title: title),
+  at: at ?? DateTime.utc(2026, 11, 11, 5, 40),
+);
+
 /// 손으로 쓴 가짜 대화 저장소.
 class FakeChatRepository implements ChatRepository {
   FakeChatRepository({
@@ -186,9 +232,51 @@ class FakeChatRepository implements ChatRepository {
   /// 설정하면 [acceptRequest]가 이 Completer가 끝날 때까지 기다린다.
   Completer<void>? holdAccept;
 
+  /// 설정하면 [send]가 이 예외를 던진다(네트워크가 꺼진 것처럼).
+  ChatFailure? sendFailure;
+
+  /// 설정하면 [send]가 이 Completer가 끝날 때까지 기다린 뒤 서버가 받은 것으로 처리한다.
+  Completer<void>? holdSend;
+
+  /// 설정하면 [send]가 서버에 저장은 하지만 응답 대신 이 예외를 던진다(응답을 잃은 경우).
+  ChatFailure? lostResponse;
+
+  /// 설정하면 [setMuted]가 이 예외를 던진다.
+  ChatFailure? muteFailure;
+
+  /// 설정하면 [fetchMessages]가 이 Completer가 끝날 때까지 기다린다.
+  Completer<void>? holdFetch;
+
   int listCalls = 0;
   final accepted = <String>[];
   final declined = <String>[];
+  final fetches = <({int? afterSeq, int? beforeSeq})>[];
+  final sends = <({String id, String clientId, MessageKind kind})>[];
+  final reads = <({String id, int seq})>[];
+  final mutes = <({String id, bool muted})>[];
+
+  /// 서버가 방에 메시지를 더한다(소켓 이벤트 없이). 가진 번호 다음 번호를 붙인다.
+  ChatMessage serverAdds(
+    String id, {
+    String text = '서버에서 온 메시지',
+    bool mine = false,
+    String? clientId,
+    DateTime? at,
+  }) {
+    final list = messages.putIfAbsent(id, () => []);
+    final seq = list.isEmpty ? 1 : list.last.seq! + 1;
+    final m = ChatMessage(
+      id: 'm$seq',
+      seq: seq,
+      clientId: clientId ?? 'm$seq',
+      kind: MessageKind.text,
+      mine: mine,
+      text: text,
+      at: at ?? DateTime.utc(2026, 11, 11, 7, seq),
+    );
+    list.add(m);
+    return m;
+  }
 
   @override
   Future<List<ConversationSummary>> fetchList() async {
@@ -208,7 +296,21 @@ class FakeChatRepository implements ChatRepository {
     String id, {
     int? afterSeq,
     int? beforeSeq,
-  }) async => List.of(messages[id] ?? const []);
+  }) async {
+    fetches.add((afterSeq: afterSeq, beforeSeq: beforeSeq));
+    await holdFetch?.future;
+    final all = messages[id] ?? const <ChatMessage>[];
+    // 서버처럼: 앞 번호 뒤는 오름차순 앞에서 50개, 그 밖은 뒤에서 50개.
+    if (afterSeq != null) {
+      return all.where((m) => m.seq! > afterSeq).take(50).toList();
+    }
+    final older = beforeSeq == null
+        ? all
+        : all.where((m) => m.seq! < beforeSeq).toList();
+    return older.length <= 50
+        ? List.of(older)
+        : older.sublist(older.length - 50);
+  }
 
   @override
   Future<ChatMessage> send(
@@ -216,13 +318,49 @@ class FakeChatRepository implements ChatRepository {
     required String clientId,
     required MessageKind kind,
     String? text,
-  }) => throw UnimplementedError('이 작업의 화면은 보내지 않는다.');
+  }) async {
+    sends.add((id: id, clientId: clientId, kind: kind));
+    final failure = sendFailure;
+    if (failure != null) throw failure;
+    await holdSend?.future;
+    final list = messages.putIfAbsent(id, () => []);
+    // 같은 clientId면 새로 만들지 않고 처음 것을 준다.
+    final first = list.where((m) => m.mine && m.clientId == clientId);
+    final ChatMessage saved;
+    if (first.isNotEmpty) {
+      saved = first.first;
+    } else {
+      final seq = list.isEmpty ? 1 : list.last.seq! + 1;
+      saved = ChatMessage(
+        id: 'm$seq',
+        seq: seq,
+        clientId: clientId,
+        kind: kind,
+        mine: true,
+        text: text,
+        card: kind == MessageKind.contentCard
+            ? const ContentCard(title: '이런 분위기로 찍을게요')
+            : null,
+        at: DateTime.utc(2026, 11, 11, 8, seq),
+      );
+      list.add(saved);
+    }
+    final lost = lostResponse;
+    if (lost != null) throw lost;
+    return saved;
+  }
 
   @override
-  Future<void> markRead(String id, int seq) async {}
+  Future<void> markRead(String id, int seq) async {
+    reads.add((id: id, seq: seq));
+  }
 
   @override
-  Future<void> setMuted(String id, bool muted) async {}
+  Future<void> setMuted(String id, bool muted) async {
+    mutes.add((id: id, muted: muted));
+    final failure = muteFailure;
+    if (failure != null) throw failure;
+  }
 
   @override
   Future<void> block(String id) async {}
@@ -240,7 +378,15 @@ class FakeChatRepository implements ChatRepository {
     final failure = answerFailure;
     if (failure != null) throw failure;
     accepted.add(id);
-    final opened = (details[id] ?? requestDetail(id));
+    final before = details[id] ?? requestDetail(id);
+    // 서버처럼 수락하면 방이 열린다.
+    final opened = requestDetail(
+      id,
+      name: before.counterpartName,
+      status: ConversationStatus.open,
+      campaignTerms: before.campaignTerms,
+    );
+    details[id] = opened;
     return opened;
   }
 

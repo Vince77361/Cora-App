@@ -28,9 +28,10 @@ void main() {
     });
   });
 
-  test('labels the day divider with the weekday', () {
-    expect(dayDivider(DateTime.utc(2026, 11, 23, 3)), '11월 23일 (월)');
-    expect(dayDivider(DateTime.utc(2026, 11, 29, 3)), '11월 29일 (일)');
+  test('labels the day divider with the Korean month and day', () {
+    expect(dayDivider(DateTime.utc(2026, 11, 23, 3)), '11월 23일');
+    // 한국 시간으로 넘어간 날은 다음 날이다.
+    expect(dayDivider(DateTime.utc(2026, 11, 29, 16)), '11월 30일');
   });
 
   test('prefixes the request time with today or yesterday', () {

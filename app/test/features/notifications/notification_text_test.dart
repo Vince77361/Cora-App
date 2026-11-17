@@ -140,6 +140,13 @@ void main() {
       expect(locationFor('COLLABORATION', null, UserRole.store), isNull);
     });
 
+    test('opens the conversation for every role', () {
+      for (final role in UserRole.values) {
+        expect(locationFor('CONVERSATION', 'room-1', role), '/chats/room-1');
+      }
+      expect(locationFor('CONVERSATION', null, UserRole.brand), isNull);
+    });
+
     test('sends settlements to the wallet', () {
       expect(
         locationFor('WALLET', null, UserRole.creator),

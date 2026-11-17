@@ -153,6 +153,21 @@ abstract final class AppRoutes {
   /// [collaborationTerms]의 라우트 패턴.
   static const collaborationTermsPattern = '/collaborations/:id/terms';
 
+  /// 조건 합의(12). 대화방 머리의 조건 요약이 연다(5번 계획 Task 12가 채운다).
+  static String collaborationAgreement(String collaborationId) =>
+      '/collaborations/${Uri.encodeComponent(collaborationId)}/agreement';
+
+  /// [collaborationAgreement]의 라우트 패턴.
+  static const collaborationAgreementPattern = '/collaborations/:id/agreement';
+
+  /// 조건 수정 제안(Task 12). 대화방의 더하기 메뉴 `조건 수정 제안`이 연다.
+  static String collaborationTermsPropose(String collaborationId) =>
+      '${collaborationTerms(collaborationId)}/propose';
+
+  /// [collaborationTermsPropose]의 라우트 패턴.
+  static const collaborationTermsProposePattern =
+      '/collaborations/:id/terms/propose';
+
   /// 07에서 06을 열 때 `extra`로 넘긴다. 06에서 수락하면 07을 새로 쌓지 않고 07로 돌아간다.
   static const fromProgress = 'fromProgress';
 

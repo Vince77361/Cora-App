@@ -82,6 +82,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     this.matchRing = const Color(0xFFFFFFFF),
     this.termsBarShadow = const Color(0x0F17181C),
     this.progressRing = const Color(0xFF5C7A00),
+    this.myBubble = const Color(0xFFC6FF3D),
+    this.onMyBubble = const Color(0xFF1F2A00),
   });
 
   final Color background;
@@ -252,6 +254,11 @@ class CoraColors extends ThemeExtension<CoraColors> {
   /// 07 진행 단계의 상대 사진을 두른 2px 테두리(Progress #5C7A00, DarkProgress 라임 #C6FF3D).
   final Color progressRing;
 
+  /// D3 대화방의 내 말풍선(NChatThread 라임 #C6FF3D/#1F2A00, DarkNChatThread #0F1012/#FFFFFF). 다크의 바탕은
+  /// 화면 바탕과 같아서 말풍선 모양이 보이지 않지만 캔버스 그대로다. 상대 말풍선은 `surface`다.
+  final Color myBubble;
+  final Color onMyBubble;
+
   /// 프로필 원형 사진 자리의 바탕, 그 위 `사진 바꾸기` 둥근 버튼의 채움과 그림자 색
   /// (NEditProfile). 사진 자리 바탕은 라이트·다크가 같다.
   final Color avatarPlaceholder;
@@ -402,6 +409,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     toastShadow: Color(0x0017181C),
     termsBarShadow: Color(0x73000000),
     progressRing: Color(0xFFC6FF3D),
+    myBubble: Color(0xFF0F1012),
+    onMyBubble: Color(0xFFFFFFFF),
   );
 
   @override
@@ -484,6 +493,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
     Color? matchRing,
     Color? termsBarShadow,
     Color? progressRing,
+    Color? myBubble,
+    Color? onMyBubble,
   }) {
     return CoraColors(
       background: background ?? this.background,
@@ -565,6 +576,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
       matchRing: matchRing ?? this.matchRing,
       termsBarShadow: termsBarShadow ?? this.termsBarShadow,
       progressRing: progressRing ?? this.progressRing,
+      myBubble: myBubble ?? this.myBubble,
+      onMyBubble: onMyBubble ?? this.onMyBubble,
     );
   }
 
@@ -654,6 +667,8 @@ class CoraColors extends ThemeExtension<CoraColors> {
       matchRing: mix(matchRing, other.matchRing),
       termsBarShadow: mix(termsBarShadow, other.termsBarShadow),
       progressRing: mix(progressRing, other.progressRing),
+      myBubble: mix(myBubble, other.myBubble),
+      onMyBubble: mix(onMyBubble, other.onMyBubble),
     );
   }
 }

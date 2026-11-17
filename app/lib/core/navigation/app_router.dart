@@ -9,6 +9,7 @@ import '../../features/auth/presentation/pages/phone_verify_page.dart';
 import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import '../../features/brand_onboarding/presentation/pages/brand_profile_setup_page.dart';
 import '../../features/brand_onboarding/presentation/pages/campaign_form_page.dart';
+import '../../features/chat/presentation/pages/chat_thread_page.dart';
 import '../../features/chat/presentation/pages/conversation_list_page.dart';
 import '../../features/chat/presentation/pages/message_request_page.dart';
 import '../../features/collaboration/presentation/pages/collaboration_page.dart';
@@ -266,11 +267,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      // 대화방(D3)은 5번 계획 Task 10이 만든다. 그때까지 자리 화면이다.
+      // 대화방(D3).
       GoRoute(
         path: AppRoutes.chatPattern,
         pageBuilder: (context, state) => CoraTransitions.push(
-          const CoraComingSoonPage(title: '대화'),
+          ChatThreadPage(conversationId: state.pathParameters['id']!),
+          key: state.pageKey,
+        ),
+      ),
+      // 조건 합의(12)와 조건 수정 제안은 Task 12가 만든다. 대화방 머리와 더하기 메뉴가 열 자리라 그때까지
+      // 자리 화면이다.
+      GoRoute(
+        path: AppRoutes.collaborationAgreementPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const CoraComingSoonPage(title: '조건 합의'),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.collaborationTermsProposePattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const CoraComingSoonPage(title: '조건 수정 제안'),
           key: state.pageKey,
         ),
       ),

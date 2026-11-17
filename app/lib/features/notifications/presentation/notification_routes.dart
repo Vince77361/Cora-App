@@ -76,6 +76,9 @@ String? locationFor(String targetKind, String? targetId, UserRole role) {
       // 협업의 조건 판본이 새로 왔거나 상대가 확인했다. 서버는 협업 id를 주고, 브랜드와 크리에이터가 06을 연다.
       if (id == null) return null;
       return role == UserRole.store ? null : AppRoutes.collaborationTerms(id);
+    case 'CONVERSATION':
+      // 새 메시지·메시지 요청 푸시. 서버는 방 id를 주고, 세 역할 모두 같은 대화방을 연다(요청이면 대화방이 11로 바꿔 연다).
+      return id == null ? null : AppRoutes.chat(id);
     case 'WALLET':
       return role == UserRole.creator ? NotificationRoutes.wallet : null;
   }

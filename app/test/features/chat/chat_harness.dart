@@ -2,12 +2,16 @@ import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/time/clock.dart';
 import 'package:cora/features/chat/domain/chat_repository.dart';
 import 'package:cora/features/chat/domain/realtime_connection.dart';
+import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
+import 'package:cora/features/discovery/domain/discovery_repository.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_clock.dart';
 import '../../support/pump_cora_app.dart';
+import '../collaboration/fake_collaboration_repository.dart';
+import '../discovery/fake_discovery_repository.dart';
 import '../auth/fake_auth_repository.dart';
 import '../onboarding/fake_me_repository.dart';
 import '../store_browse/creator_app_harness.dart' show pumpCreatorApp;
@@ -21,6 +25,8 @@ Future<void> pumpChatApp(
   FakeChatRepository? chat,
   FakeRealtimeConnection? realtime,
   FakeClock? clock,
+  FakeDiscoveryRepository? discovery,
+  FakeCollaborationRepository? collaborations,
   bool smallPhoneLargeText = false,
   List<Override> overrides = const [],
 }) async {
@@ -29,6 +35,12 @@ Future<void> pumpChatApp(
     realtimeConnectionProvider.overrideWithValue(
       realtime ?? FakeRealtimeConnection(),
     ),
+    if (role != UserRole.creator) ...[
+      if (discovery != null)
+        discoveryRepositoryProvider.overrideWithValue(discovery),
+      if (collaborations != null)
+        collaborationRepositoryProvider.overrideWithValue(collaborations),
+    ],
     ...overrides,
   ];
   final fakeClock = clock ?? FakeClock();
@@ -43,6 +55,8 @@ Future<void> pumpChatApp(
     case UserRole.creator:
       await pumpCreatorApp(
         tester,
+        discovery: discovery,
+        collaborations: collaborations,
         clock: fakeClock,
         smallPhoneLargeText: smallPhoneLargeText,
         overrides: all,

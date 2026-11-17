@@ -35,13 +35,43 @@ abstract final class ChatTexts {
   static const declineAction = '거절하기';
   static const declineCancel = '취소';
 
+  // D3 대화방(NChatThread / DarkNChatThread)
+  static const back = '뒤로';
+  static const manage = '대화 관리';
+  static const composerHint = '메시지를 입력하세요';
+  static const composerLabel = '메시지';
+  static const sendLabel = '보내기';
+  static const attachLabel = '콘텐츠 카드 보내기';
+  static const attachMenuLabel = '보낼 카드';
+  static const attachMyCard = '내 콘텐츠 카드';
+  static const attachTerms = '조건 수정 제안';
+  static const contentCard = '콘텐츠 카드';
+  static const mute = '알림 끄기';
+  static const unmute = '알림 켜기';
+  static const menuClose = '닫기';
+  static const likeCampaign = '관심 보내기';
+  static const emptyRoom = '첫 메시지를 보내 보세요.';
+  static const tooLong = '1,000자까지 보낼 수 있어요.';
+  static const sendFailed = '보내지 못했어요';
+  static const resend = '다시 보내기';
+  static const composerWaiting = '상대가 수락하면 대화를 이어갈 수 있어요.';
+  static const composerBlocked = '차단한 대화예요.';
+
+  /// 한 번에 보낼 수 있는 글자 수(코드 포인트). 서버도 같은 값으로 거른다.
+  static const messageMax = 1000;
+
+  /// 캔버스 밖: 대화방을 읽지 못했을 때, 관심 보내기·알림 끄기·콘텐츠 카드 보내기에 실패했을 때, 관심을 보낸 뒤.
+  static const threadLoadFailed = '대화방을 불러오지 못했어요';
+  static const likeFailed = '관심을 보내지 못했어요. 다시 시도해 주세요.';
+  static const likeSent = '관심 보냄';
+  static const muteFailed = '알림 설정을 바꾸지 못했어요. 다시 시도해 주세요.';
+  static const cardFailed = '콘텐츠 카드를 보내지 못했어요. 다시 시도해 주세요.';
+
   /// 캔버스 밖: 요청을 읽지 못했을 때와 수락·거절에 실패했을 때.
   static const requestLoadFailed = '메시지 요청을 불러오지 못했어요';
   static const requestActionFailed = '처리하지 못했어요. 다시 시도해 주세요.';
   static const requestAlreadyAnswered = '이미 답한 메시지 요청이에요.';
 }
-
-const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
 /// `오전 9:05` / `오후 3:20`(한국 시간).
 String _clock(DateTime kst) {
@@ -61,11 +91,8 @@ String listTime(DateTime at, DateTime now) {
   return '${kst.month}월 ${kst.day}일';
 }
 
-/// 대화방의 날짜 구분선. `11월 23일 (월)`(한국 시간 기준).
-String dayDivider(DateTime at) {
-  final kst = toKst(at);
-  return '${kst.month}월 ${kst.day}일 (${_weekdays[kst.weekday - 1]})';
-}
+/// 대화방의 날짜 구분선. 캔버스 D3 그대로 `11월 10일`(한국 시간 기준, 요일 없음).
+String dayDivider(DateTime at) => kstMonthDay(at);
 
 /// 메시지 요청(11)의 첫 메시지 시각. `오늘 오후 2:14`, `어제 오후 2:14`, `11월 10일 오후 2:14`.
 String requestTime(DateTime at, DateTime now) {
@@ -89,6 +116,12 @@ String termsSummary(TermsVersion terms) {
   ].join(' + ');
   final start = '${terms.startDate.month}월 ${terms.startDate.day}일 시작';
   return '${formatLabel(terms.format)} ${terms.pieces}편, $cash, $start';
+}
+
+/// 서로 관심 전 대화방 머리의 조건 요약 한 줄. 캠페인의 조건이다. `릴스 1편, 30만 원 + 제품, 11월 16일 시작`.
+String campaignSummary(CampaignTerms terms) {
+  final cash = [won(terms.fee), if (terms.productProvided) '제품'].join(' + ');
+  return '${requestDeliverable(terms)}, $cash, ${terms.startFrom.month}월 ${terms.startFrom.day}일 시작';
 }
 
 /// 가게 오퍼 대화방 머리의 보상 줄. 수락된 판본의 보상 요약이다.

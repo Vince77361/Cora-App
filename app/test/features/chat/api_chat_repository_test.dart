@@ -167,6 +167,24 @@ void main() {
     expect(sent.state, SendState.sent);
   });
 
+  test('sends a content card without a text key', () async {
+    final client = _Client(201, {
+      ..._messageJson,
+      'kind': 'CONTENT_CARD',
+      'text': null,
+      'card': {'title': '이런 분위기로 찍을게요', 'photoUrl': null},
+    });
+    final sent = await _repo(
+      client,
+    ).send('room-1', clientId: 'c-2', kind: MessageKind.contentCard);
+
+    // 서버가 카드에 `text: null`도 거절해서 키가 없어야 한다.
+    final body = jsonDecode(client.requests.single.body) as Map;
+    expect(body, {'clientId': 'c-2', 'kind': 'CONTENT_CARD'});
+    expect(sent.kind, MessageKind.contentCard);
+    expect(sent.card?.title, '이런 분위기로 찍을게요');
+  });
+
   test('accepts a request and returns the opened room', () async {
     final client = _Client(200, _detailJson());
     final detail = await _repo(client).acceptRequest('room-1');
