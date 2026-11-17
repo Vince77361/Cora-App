@@ -656,7 +656,8 @@ export class ConversationsService {
         throw new AppError('VALIDATION_FAILED', '1,000자까지 보낼 수 있어요.');
       }
     } else {
-      if (input.text !== undefined) {
+      // 생성된 클라이언트는 보내지 않은 칸을 null로 보낸다: null은 보내지 않은 것과 같다.
+      if (input.text !== undefined && input.text !== null) {
         throw new AppError(
           'VALIDATION_FAILED',
           '콘텐츠 카드에는 글을 붙일 수 없어요.',

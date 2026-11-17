@@ -441,6 +441,33 @@ describe('conversations', () => {
       });
     });
 
+    it('treats a null text on a content card as not sent, but still refuses a null or empty text on a text message', async () => {
+      const { campaignId } = await seedParties();
+      const { roomId } = await seedRoom(campaignId);
+      // 생성된 클라이언트는 보내지 않은 칸을 null로 보낸다.
+      const res = await send(authCreator, roomId, {
+        clientId: randomUUID(),
+        kind: 'CONTENT_CARD',
+        text: null,
+      }).expect(201);
+      expect(res.body).toMatchObject({ kind: 'CONTENT_CARD', text: null });
+      // 카드에 글을 실제로 붙이면 여전히 거절이다.
+      await send(authCreator, roomId, {
+        clientId: randomUUID(),
+        kind: 'CONTENT_CARD',
+        text: '글',
+      }).expect(400);
+      for (const bad of [null, '']) {
+        const refused = await send(authCreator, roomId, {
+          clientId: randomUUID(),
+          kind: 'TEXT',
+          text: bad,
+        }).expect(400);
+        expect(codeOf(refused)).toBe('VALIDATION_FAILED');
+      }
+      expect(await prisma.message.count()).toBe(1);
+    });
+
     it('refuses a content card from the brand and one without a card', async () => {
       const { campaignId } = await seedParties();
       const { roomId } = await seedRoom(campaignId);
