@@ -9,6 +9,7 @@ import 'package:cora_api/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **collaborationId** | **String** | 서로 관심으로 생긴 협업의 id. 닿지 않았으면 null. | 
+**conversationId** | **String** | 서로 관심으로 열린 대화방의 id. 닿지 않았으면 null. | 
 **decision** | [**SwipeDecisionKind**](SwipeDecisionKind.md) |  | 
 **matched** | **bool** | 이 결정으로 서로 관심이 닿았는가. | 
 

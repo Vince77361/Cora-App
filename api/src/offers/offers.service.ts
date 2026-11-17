@@ -9,6 +9,7 @@ import {
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { PROPOSAL_POLICY } from '../common/collaboration-policy';
+import { ConversationsService } from '../conversations/conversations.service';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
 import { InstagramService } from '../instagram/instagram.service';
@@ -85,6 +86,7 @@ export class OffersService {
     private readonly applications: ApplicationsService,
     private readonly creators: CreatorsService,
     private readonly collaborations: CollaborationsRepository,
+    private readonly conversations: ConversationsService,
     private readonly instagram: InstagramService,
     private readonly notifications: NotificationsService,
     private readonly jobs: JobScheduler,
@@ -327,6 +329,11 @@ export class OffersService {
     }
     // 수락과 협업 만들기는 한 트랜잭션이다. 식사권만 있는 오퍼는 낼 돈이 없어 결제 기한 없이 바로 FUNDED로 시작한다.
     const initial = initialStoreOfferState(terms, now);
+    // 안내 줄에 넣을 수락한 쪽의 이름(크리에이터면 활동 이름, 사장님이면 가게 이름). 트랜잭션 밖에서 읽어 둔다.
+    const acceptedByName =
+      party === 'CREATOR'
+        ? (await this.actorOf(row.creatorId)).name
+        : this.storeActor(card).name;
     const accepted = await this.offers.accept(
       row.id,
       row.creatorId,
@@ -334,7 +341,7 @@ export class OffersService {
       now,
       initial.paymentDueAt,
       async (tx) => {
-        await this.collaborations.create(
+        const created = await this.collaborations.create(
           {
             kind: 'STORE_OFFER',
             stage: initial.stage,
@@ -349,6 +356,22 @@ export class OffersService {
             submitDueAt: initial.submitDueAt,
             // 수락한 시각을 DB 기본값이 아니라 Clock으로 남긴다(R42).
             createdAt: now,
+          },
+          tx,
+        );
+        // 최신 판본이 수락되어 협업이 생기는 이 한 곳에서 방도 같은 트랜잭션으로 연다
+        // (크리에이터가 수락하든 사장님이 역제안을 수락하든 같다).
+        const room = await this.conversations.openForCollaboration(
+          created.id,
+          { status: 'OPEN' },
+          tx,
+        );
+        await this.conversations.postSystem(
+          room.id,
+          'OFFER_ACCEPTED',
+          {
+            by: party === 'CREATOR' ? 'CREATOR' : 'COMMISSIONER',
+            name: acceptedByName,
           },
           tx,
         );

@@ -22,6 +22,12 @@ void main() {
       // TODO
     });
 
+    // 서로 관심으로 열린 대화방의 id. 닿지 않았으면 null.
+    // String conversationId
+    test('to test the property `conversationId`', () async {
+      // TODO
+    });
+
     // SwipeDecisionKind decision
     test('to test the property `decision`', () async {
       // TODO

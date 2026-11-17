@@ -84,6 +84,7 @@ class ConversationDetailModel {
   /// 이 방의 알림을 꺼 두었으면 true.
   bool muted;
 
+  /// 내 쪽. COMMISSIONER는 맡긴 쪽(사장님·브랜드), CREATOR는 크리에이터.
   CollaborationRole myRole;
 
   /// 내가 먼저 보낸 메시지 요청이면 true.

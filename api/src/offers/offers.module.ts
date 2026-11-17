@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { ApplicationsModule } from '../applications/applications.module';
 import { CollaborationsModule } from '../collaborations/collaborations.module';
+import { ConversationsModule } from '../conversations/conversations.module';
 import { CreatorsModule } from '../creators/creators.module';
 import { InstagramModule } from '../instagram/instagram.module';
 import { JobHandlerRegistry } from '../jobs/job-handler-registry';
@@ -28,6 +29,7 @@ import { ProposalsService } from './proposals.service';
     CreatorsModule,
     ApplicationsModule,
     CollaborationsModule,
+    ConversationsModule,
     InstagramModule,
     VisibilityModule,
   ],

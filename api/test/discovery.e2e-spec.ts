@@ -47,6 +47,7 @@ interface DecisionResult {
   decision: string;
   matched: boolean;
   collaborationId: string | null;
+  conversationId: string | null;
 }
 interface CollaborationBody {
   id: string;
@@ -247,6 +248,7 @@ describe('discovery decisions', () => {
         decision: 'LIKE',
         matched: false,
         collaborationId: null,
+        conversationId: null,
       });
       const rows = await decisionRows();
       expect(rows).toHaveLength(1);
@@ -493,6 +495,64 @@ describe('discovery decisions', () => {
       expect(version.title).toBe(CAMPAIGN.headline);
     });
 
+    it('opens a conversation with both members on a mutual like', async () => {
+      const campaignId = await bothSides();
+      await creatorLike(campaignId).expect(200);
+      const notYet = resultOf(await brandLike().expect(200));
+      const rooms = await prisma.conversation.findMany({
+        include: { members: true, messages: true },
+      });
+      expect(rooms).toHaveLength(1);
+      const [room] = rooms;
+      expect(notYet.conversationId).toBe(room.id);
+      expect(room).toMatchObject({
+        collaborationId: notYet.collaborationId,
+        status: 'OPEN',
+        requestedById: null,
+        lastSeq: 1,
+      });
+      expect(room.members.map((m) => m.userId).sort()).toEqual(
+        [USER_A, OTHER].sort(),
+      );
+      expect(room.messages).toHaveLength(1);
+      expect(room.messages[0]).toMatchObject({
+        seq: 1,
+        kind: 'SYSTEM',
+        senderId: null,
+        systemCode: 'MATCHED',
+      });
+      // 같은 안내 줄이 읽는 사람마다 상대의 이름으로 보인다.
+      const line = async (auth: Record<string, string>) =>
+        (
+          (
+            await request(server)
+              .get(`/conversations/${room.id}/messages`)
+              .set(auth)
+              .expect(200)
+          ).body as { text: string }[]
+        )[0].text;
+      expect(await line(authBrand)).toBe(
+        '하루 한 컵님과 서로 관심이 닿았어요. 조건 버전 1이 만들어졌어요.',
+      );
+      expect(await line(authCreator)).toBe(
+        '느린결님과 서로 관심이 닿았어요. 조건 버전 1이 만들어졌어요.',
+      );
+      const head = (
+        await request(server)
+          .get(`/conversations/${room.id}`)
+          .set(authCreator)
+          .expect(200)
+      ).body as { stage: string; terms: { version: number } };
+      expect(head).toMatchObject({ stage: 'MATCHED', terms: { version: 1 } });
+    });
+
+    it('does not open a conversation when there is no match', async () => {
+      const campaignId = await bothSides();
+      const result = resultOf(await creatorLike(campaignId).expect(200));
+      expect(result.conversationId).toBeNull();
+      expect(await prisma.conversation.count()).toBe(0);
+    });
+
     it('drafts version 1 from the brand proposal when the like carried one', async () => {
       const campaignId = await bothSides();
       await brandLike({ proposal: PROPOSAL }).expect(200);
@@ -649,6 +709,17 @@ describe('discovery decisions', () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].stage).toBe('MATCHED');
       expect(await prisma.termsVersion.count()).toBe(1);
+      // 문의로 먼저 생긴 협업도 방이 하나뿐이고 안내 줄이 남는다.
+      const room = await prisma.conversation.findFirstOrThrow({
+        where: { collaborationId: inquiry.id },
+      });
+      expect(result.conversationId).toBe(room.id);
+      expect(await prisma.conversation.count()).toBe(1);
+      expect(
+        (
+          await prisma.message.findMany({ where: { conversationId: room.id } })
+        ).map((m) => m.systemCode),
+      ).toEqual(['MATCHED']);
     });
 
     it('refuses a match when the pair already has a collaboration past the inquiry and keeps the like out', async () => {

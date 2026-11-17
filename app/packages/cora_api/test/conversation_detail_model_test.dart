@@ -111,6 +111,7 @@ void main() {
       // TODO
     });
 
+    // 내 쪽. COMMISSIONER는 맡긴 쪽(사장님·브랜드), CREATOR는 크리에이터.
     // CollaborationRole myRole
     test('to test the property `myRole`', () async {
       // TODO

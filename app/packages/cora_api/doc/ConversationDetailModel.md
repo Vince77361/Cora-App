@@ -25,7 +25,7 @@ Name | Type | Description | Notes
 **lastReadSeq** | **int** |  | 
 **lastSeq** | **int** |  | 
 **muted** | **bool** | 이 방의 알림을 꺼 두었으면 true. | 
-**myRole** | [**CollaborationRole**](CollaborationRole.md) |  | 
+**myRole** | [**CollaborationRole**](CollaborationRole.md) | 내 쪽. COMMISSIONER는 맡긴 쪽(사장님·브랜드), CREATOR는 크리에이터. | 
 **requestedByMe** | **bool** | 내가 먼저 보낸 메시지 요청이면 true. | 
 **section** | [**ConversationSection**](ConversationSection.md) | REQUEST: 내가 답해야 하는 메시지 요청(목록 맨 위에 모인다). 그 밖은 NORMAL. | 
 **stage** | [**CollaborationStage**](CollaborationStage.md) |  | 

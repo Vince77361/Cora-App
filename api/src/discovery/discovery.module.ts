@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { BrandsModule } from '../brands/brands.module';
 import { CampaignsModule } from '../campaigns/campaigns.module';
 import { CollaborationsModule } from '../collaborations/collaborations.module';
+import { ConversationsModule } from '../conversations/conversations.module';
 import { CreatorsModule } from '../creators/creators.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -27,6 +28,7 @@ import { InterestsService } from './interests.service';
     NotificationsModule,
     TermsModule,
     CollaborationsModule,
+    ConversationsModule,
     IntegrationsModule,
     PrinciplesModule,
   ],

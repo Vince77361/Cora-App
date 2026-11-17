@@ -101,7 +101,13 @@ export class ConversationDetailModel extends ConversationSummaryModel {
   @ApiProperty({ enum: CollaborationStage, enumName: 'CollaborationStage' })
   stage!: CollaborationStage;
 
-  @ApiProperty({ enum: COLLABORATION_ROLES, enumName: 'CollaborationRole' })
+  @ApiProperty({
+    enum: COLLABORATION_ROLES,
+    enumName: 'CollaborationRole',
+    // CollaborationModel.role과 같은 글: 열거형의 설명이 어느 쪽을 먼저 읽느냐에 따라 오가지 않게 한다.
+    description:
+      '내 쪽. COMMISSIONER는 맡긴 쪽(사장님·브랜드), CREATOR는 크리에이터.',
+  })
   myRole!: (typeof COLLABORATION_ROLES)[number];
 
   @ApiProperty({ description: '내가 먼저 보낸 메시지 요청이면 true.' })

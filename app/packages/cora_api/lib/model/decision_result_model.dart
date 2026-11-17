@@ -14,12 +14,16 @@ class DecisionResultModel {
   /// Returns a new [DecisionResultModel] instance.
   DecisionResultModel({
     required this.collaborationId,
+    required this.conversationId,
     required this.decision,
     required this.matched,
   });
 
   /// 서로 관심으로 생긴 협업의 id. 닿지 않았으면 null.
   String? collaborationId;
+
+  /// 서로 관심으로 열린 대화방의 id. 닿지 않았으면 null.
+  String? conversationId;
 
   SwipeDecisionKind decision;
 
@@ -31,6 +35,7 @@ class DecisionResultModel {
       identical(this, other) ||
       other is DecisionResultModel &&
           other.collaborationId == collaborationId &&
+          other.conversationId == conversationId &&
           other.decision == decision &&
           other.matched == matched;
 
@@ -38,12 +43,13 @@ class DecisionResultModel {
   int get hashCode =>
       // ignore: unnecessary_parenthesis
       (collaborationId == null ? 0 : collaborationId!.hashCode) +
+      (conversationId == null ? 0 : conversationId!.hashCode) +
       (decision.hashCode) +
       (matched.hashCode);
 
   @override
   String toString() =>
-      'DecisionResultModel[collaborationId=$collaborationId, decision=$decision, matched=$matched]';
+      'DecisionResultModel[collaborationId=$collaborationId, conversationId=$conversationId, decision=$decision, matched=$matched]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -51,6 +57,11 @@ class DecisionResultModel {
       json[r'collaborationId'] = this.collaborationId;
     } else {
       json[r'collaborationId'] = null;
+    }
+    if (this.conversationId != null) {
+      json[r'conversationId'] = this.conversationId;
+    } else {
+      json[r'conversationId'] = null;
     }
     json[r'decision'] = this.decision;
     json[r'matched'] = this.matched;
@@ -70,6 +81,8 @@ class DecisionResultModel {
       assert(() {
         assert(json.containsKey(r'collaborationId'),
             'Required key "DecisionResultModel[collaborationId]" is missing from JSON.');
+        assert(json.containsKey(r'conversationId'),
+            'Required key "DecisionResultModel[conversationId]" is missing from JSON.');
         assert(json.containsKey(r'decision'),
             'Required key "DecisionResultModel[decision]" is missing from JSON.');
         assert(json[r'decision'] != null,
@@ -83,6 +96,7 @@ class DecisionResultModel {
 
       return DecisionResultModel(
         collaborationId: mapValueOfType<String>(json, r'collaborationId'),
+        conversationId: mapValueOfType<String>(json, r'conversationId'),
         decision: SwipeDecisionKind.fromJson(json[r'decision'])!,
         matched: mapValueOfType<bool>(json, r'matched')!,
       );
@@ -142,6 +156,7 @@ class DecisionResultModel {
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
     'collaborationId',
+    'conversationId',
     'decision',
     'matched',
   };

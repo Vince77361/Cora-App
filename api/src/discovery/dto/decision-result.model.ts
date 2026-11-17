@@ -15,6 +15,14 @@ export class DecisionResultModel {
     description: '서로 관심으로 생긴 협업의 id. 닿지 않았으면 null.',
   })
   collaborationId!: string | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description: '서로 관심으로 열린 대화방의 id. 닿지 않았으면 null.',
+  })
+  conversationId!: string | null;
 }
 
 // 되돌린 결정이 가리키던 대상. 앱이 그 카드를 다시 맨 위에 올린다.

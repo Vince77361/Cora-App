@@ -1429,7 +1429,8 @@
               {
                 "$ref": "#/components/schemas/CollaborationRole"
               }
-            ]
+            ],
+            "description": "내 쪽. COMMISSIONER는 맡긴 쪽(사장님·브랜드), CREATOR는 크리에이터."
           },
           "requestedByMe": {
             "description": "내가 먼저 보낸 메시지 요청이면 true.",
@@ -2099,6 +2100,12 @@
             "nullable": true,
             "type": "string"
           },
+          "conversationId": {
+            "description": "서로 관심으로 열린 대화방의 id. 닿지 않았으면 null.",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
           "decision": {
             "allOf": [
               {
@@ -2114,7 +2121,8 @@
         "required": [
           "decision",
           "matched",
-          "collaborationId"
+          "collaborationId",
+          "conversationId"
         ],
         "type": "object"
       },

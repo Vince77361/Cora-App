@@ -4,6 +4,7 @@ import { BrandsService } from '../brands/brands.service';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
+import { ConversationsService } from '../conversations/conversations.service';
 import { AppError } from '../common/errors/app-error';
 import { startOfKstDay } from '../common/kst';
 import { CreatorsService } from '../creators/creators.service';
@@ -31,12 +32,14 @@ import { DecisionInput, NOTE_MAX, planDecisionWrite } from './discovery-rules';
 interface Outcome {
   matched: boolean;
   collaborationId: string | null;
+  conversationId: string | null;
   createdNow: boolean;
 }
 
 const NOT_MATCHED: Outcome = {
   matched: false,
   collaborationId: null,
+  conversationId: null,
   createdNow: false,
 };
 
@@ -65,6 +68,7 @@ export class DiscoveryService {
     private readonly notifications: NotificationsService,
     private readonly terms: TermsService,
     private readonly collaborations: CollaborationsRepository,
+    private readonly conversations: ConversationsService,
     private readonly repository: DiscoveryRepository,
     private readonly clock: Clock,
   ) {}
@@ -345,6 +349,9 @@ export class DiscoveryService {
       outcome = {
         matched: true,
         collaborationId: match.collaborationId,
+        conversationId: await this.conversations.idForCollaboration(
+          match.collaborationId,
+        ),
         createdNow: false,
       };
     }
@@ -355,6 +362,7 @@ export class DiscoveryService {
       decision: input.decision,
       matched: outcome.matched,
       collaborationId: outcome.collaborationId,
+      conversationId: outcome.conversationId,
     };
   }
 
@@ -426,9 +434,29 @@ export class DiscoveryService {
       );
       await this.terms.createVersion(collaboration.id, null, values, tx);
     }
+    // 협업과 같은 트랜잭션에서 방을 연다(방 없는 협업이 생기지 않게). 문의로 먼저 생긴 협업은 방이 이미 있다.
+    const room = await this.conversations.openForCollaboration(
+      collaboration.id,
+      { status: 'OPEN' },
+      tx,
+    );
+    const [brandActor, creatorActor] = await Promise.all([
+      this.brands.getActor(campaign.brandId),
+      this.creators.getActor(creatorId),
+    ]);
+    await this.conversations.postSystem(
+      room.id,
+      'MATCHED',
+      {
+        commissionerName: brandActor?.name ?? '브랜드',
+        creatorName: creatorActor?.name ?? '크리에이터',
+      },
+      tx,
+    );
     return {
       matched: true,
       collaborationId: collaboration.id,
+      conversationId: room.id,
       createdNow: true,
     };
   }

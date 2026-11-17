@@ -4,6 +4,8 @@ import { Collaboration, Store, UserRole } from '@prisma/client';
 import { ApplicationsService } from '../applications/applications.service';
 import { AppError } from '../common/errors/app-error';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
+import { ConversationsService } from '../conversations/conversations.service';
+import type { SystemCode, SystemParams } from '../conversations/system-lines';
 import { CreatorsService } from '../creators/creators.service';
 import { InstagramService } from '../instagram/instagram.service';
 import type { CreatorSummaryModel } from '../creators/dto/creator-profile.model';
@@ -268,6 +270,40 @@ class FakeCollaborations extends CollaborationsRepository {
   }
 }
 
+// 방 열기와 안내 줄만 기록하는 손 구현. 실제 저장은 e2e가 확인한다.
+class FakeConversations extends ConversationsService {
+  readonly opened: { collaborationId: string; status: string }[] = [];
+  readonly lines: { code: SystemCode; params: SystemParams }[] = [];
+
+  constructor() {
+    super(
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+    );
+  }
+
+  openForCollaboration(
+    collaborationId: string,
+    opts: Parameters<ConversationsService['openForCollaboration']>[1],
+  ) {
+    this.opened.push({ collaborationId, status: opts.status });
+    return Promise.resolve({ id: 'room-1' } as never);
+  }
+
+  postSystem(_conversationId: string, code: SystemCode, params: SystemParams) {
+    this.lines.push({ code, params });
+    return Promise.resolve({} as never);
+  }
+}
+
 class FakeUsers extends UsersService {
   role: UserRole | null = 'STORE';
   constructor() {
@@ -446,6 +482,7 @@ function makeStore(): Store {
 describe('OffersService', () => {
   let repo: FakeOffersRepository;
   let collaborations: FakeCollaborations;
+  let conversations: FakeConversations;
   let users: FakeUsers;
   let stores: FakeStores;
   let applications: FakeApplications;
@@ -465,6 +502,7 @@ describe('OffersService', () => {
   beforeEach(() => {
     repo = new FakeOffersRepository();
     collaborations = new FakeCollaborations();
+    conversations = new FakeConversations();
     users = new FakeUsers();
     stores = new FakeStores(makeStore());
     applications = new FakeApplications();
@@ -481,6 +519,7 @@ describe('OffersService', () => {
       applications,
       creators,
       collaborations,
+      conversations,
       instagram,
       push,
       jobs,
@@ -785,9 +824,14 @@ describe('OffersService', () => {
         .mockImplementation(() => undefined);
       jest
         .spyOn(creators, 'getActor')
-        .mockRejectedValueOnce(new Error('actor read down'));
+        .mockRejectedValue(new Error('actor read down'));
       const accepted = await service.accept(CREATOR, id, 1);
       expect(accepted.view).toBe('ACCEPTED');
+      // 안내 줄도 같은 기본 이름으로 남는다(방 열기가 이름을 못 읽어 실패하지 않는다).
+      expect(conversations.lines[0].params).toEqual({
+        by: 'CREATOR',
+        name: '크리에이터',
+      });
       expect(push.sent).toHaveLength(1);
       expect(push.sent[0].actor).toEqual({
         userId: CREATOR,
@@ -796,6 +840,19 @@ describe('OffersService', () => {
       });
       expect(JSON.stringify(warn.mock.calls)).not.toContain('actor read down');
       warn.mockRestore();
+    });
+
+    it('opens the conversation with the accepted line in the accept transaction', async () => {
+      await service.accept(CREATOR, id, 1);
+      expect(conversations.opened).toEqual([
+        { collaborationId: collaborations.rows[0].id, status: 'OPEN' },
+      ]);
+      expect(conversations.lines).toEqual([
+        {
+          code: 'OFFER_ACCEPTED',
+          params: { by: 'CREATOR', name: '하루 한 컵' },
+        },
+      ]);
     });
 
     it('creates the collaboration in the accept transaction with a copy of the terms', async () => {

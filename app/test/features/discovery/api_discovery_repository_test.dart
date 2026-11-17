@@ -226,6 +226,7 @@ void main() {
           'decision': 'LIKE',
           'matched': true,
           'collaborationId': 'collab-1',
+          'conversationId': 'room-1',
         });
 
       final result = await _repo(fake).decide(
@@ -268,6 +269,7 @@ void main() {
           'decision': wire,
           'matched': false,
           'collaborationId': null,
+          'conversationId': null,
         });
       await _repo(
         fake,

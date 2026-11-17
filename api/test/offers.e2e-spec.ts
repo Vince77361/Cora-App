@@ -1347,6 +1347,46 @@ describe('offers', () => {
       ]);
     });
 
+    it('opens a conversation when the store owner accepts a creator counter-proposal', async () => {
+      await propose(authB, offerId).expect(201);
+      await acceptAs(auth, offerId, 2).expect(200);
+      const collaboration = await prisma.collaboration.findUniqueOrThrow({
+        where: { offerId },
+      });
+      const room = await prisma.conversation.findUniqueOrThrow({
+        where: { collaborationId: collaboration.id },
+        include: { members: true, messages: true },
+      });
+      expect(room.status).toBe('OPEN');
+      expect(room.members.map((m) => m.userId).sort()).toEqual(
+        [USER_A, OTHER].sort(),
+      );
+      expect(room.messages).toHaveLength(1);
+      expect(room.messages[0]).toMatchObject({
+        kind: 'SYSTEM',
+        systemCode: 'OFFER_ACCEPTED',
+        systemParams: { by: 'COMMISSIONER' },
+      });
+      // 크리에이터에게는 수락한 가게 이름으로 보이고, 방 머리의 보상은 수락된 판본의 값이다.
+      const lines = (
+        await request(server)
+          .get(`/conversations/${room.id}/messages`)
+          .set(authB)
+          .expect(200)
+      ).body as { text: string }[];
+      expect(lines[0].text).toMatch(/ 제안을 수락했어요\.$/);
+      const head = (
+        await request(server)
+          .get(`/conversations/${room.id}`)
+          .set(authB)
+          .expect(200)
+      ).body as { kind: string; storeTerms: { fixedCash: number } };
+      expect(head).toMatchObject({
+        kind: 'STORE_OFFER',
+        storeTerms: { fixedCash: 30000 },
+      });
+    });
+
     it('notifies the creator with the revised and accepted wordings', async () => {
       await addVersion(prisma, offerId, 'CREATOR');
       await propose(auth, offerId).expect(201);
@@ -1864,6 +1904,48 @@ describe('offers', () => {
         view: 'ACCEPTED',
         needsInstagram: false,
       });
+    });
+
+    it('opens a conversation with the accepted line when the creator accepts', async () => {
+      const offer = await seedOffer(store.id, USER_A);
+      await accept(offer.id).expect(200);
+      const collaboration = await prisma.collaboration.findUniqueOrThrow({
+        where: { offerId: offer.id },
+      });
+      const room = await prisma.conversation.findUniqueOrThrow({
+        where: { collaborationId: collaboration.id },
+        include: { members: true, messages: true },
+      });
+      expect(room.status).toBe('OPEN');
+      expect(room.members.map((m) => m.userId).sort()).toEqual(
+        [USER_A, store.ownerId].sort(),
+      );
+      expect(room.messages).toHaveLength(1);
+      expect(room.messages[0]).toMatchObject({
+        seq: 1,
+        kind: 'SYSTEM',
+        systemCode: 'OFFER_ACCEPTED',
+        systemParams: { by: 'CREATOR', name: PROFILE.displayName },
+      });
+      const lines = (
+        await request(server)
+          .get(`/conversations/${room.id}/messages`)
+          .set(auth)
+          .expect(200)
+      ).body as { text: string }[];
+      expect(lines[0].text).toBe(
+        `${PROFILE.displayName}님이 오퍼를 수락했어요.`,
+      );
+    });
+
+    it('opens no conversation when the accept loses', async () => {
+      const offer = await seedOffer(store.id, USER_A);
+      await prisma.offer.update({
+        where: { id: offer.id },
+        data: { status: 'DECLINED' },
+      });
+      await accept(offer.id).expect(409);
+      expect(await prisma.conversation.count()).toBe(0);
     });
 
     it('does not require instagram for a voucher-only offer or a shorts offer', async () => {
