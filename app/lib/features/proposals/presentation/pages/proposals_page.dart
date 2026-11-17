@@ -22,6 +22,9 @@ import '../viewmodels/proposals_view_model.dart';
 /// F3 제안함(NProposals / DarkNProposals). 사장님은 내 가게의 오퍼, 크리에이터는 내가 받은·낸 제안을 `진행 중`과
 /// `종료` 탭으로 본다. 진행 중은 `내가 응답할 차례`가 먼저이고 `상대 대기`가 뒤다. 줄을 누르면 제안 상세가 열리고,
 /// 합의한 줄은 계약(사장님은 결제나 진행 화면, 크리에이터는 협업 화면)으로 간다.
+///
+/// 브랜드의 제안함은 브랜드 계약의 줄만 있고, 크리에이터의 제안함에는 가게 오퍼의 줄과 브랜드 계약의 줄이 한 목록으로
+/// 섞인다. 브랜드 계약의 줄은 조건 합의(12)를, 합의한 줄은 계약(D4)을 연다.
 class ProposalsPage extends ConsumerStatefulWidget {
   const ProposalsPage({super.key, required this.party});
 
@@ -52,6 +55,9 @@ class _ProposalsPageState extends ConsumerState<ProposalsPage> {
 
   bool get _store => widget.party == ProposalParty.store;
 
+  ProposalsViewModel get _vm =>
+      ref.read(proposalsViewModelProvider(widget.party).notifier);
+
   @override
   void initState() {
     super.initState();
@@ -77,11 +83,36 @@ class _ProposalsPageState extends ConsumerState<ProposalsPage> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go(_store ? AppRoutes.store : AppRoutes.creatorOffers);
+      context.go(switch (widget.party) {
+        ProposalParty.store => AppRoutes.store,
+        ProposalParty.brand => AppRoutes.brandCollaborations,
+        ProposalParty.creator => AppRoutes.creatorOffers,
+      });
     }
   }
 
-  Future<void> _open(ProposalRow row) async {
+  Future<void> _open(InboxRow row) async {
+    switch (row) {
+      case ProposalRow():
+        await _openOffer(row);
+      case BrandContractRow():
+        await _openContractRow(row);
+    }
+    // 상세에서 수락하거나 끝냈을 수 있어 돌아오면 목록을 새로 읽는다.
+    if (!mounted) return;
+    unawaited(_vm.refresh());
+  }
+
+  /// 브랜드 계약의 줄: 합의한 줄은 계약(D4)을, 그 밖에는 조건 합의(12)를 연다(끝난 줄도 읽기만으로 12가 열린다).
+  Future<void> _openContractRow(BrandContractRow row) async {
+    await context.push(
+      row.group == ProposalGroup.ended && row.endKind == ProposalEndKind.agreed
+          ? AppRoutes.collaborationContract(row.collaborationId)
+          : AppRoutes.collaborationAgreement(row.collaborationId),
+    );
+  }
+
+  Future<void> _openOffer(ProposalRow row) async {
     final collaborationId = row.collaborationId;
     if (row.endKind == ProposalEndKind.agreed && collaborationId != null) {
       await _openContract(collaborationId);
@@ -92,9 +123,6 @@ class _ProposalsPageState extends ConsumerState<ProposalsPage> {
           ? AppRoutes.storeProposal(row.offerId)
           : AppRoutes.creatorProposal(row.offerId),
     );
-    // 상세에서 수락하거나 끝냈을 수 있어 돌아오면 목록을 새로 읽는다.
-    if (!mounted) return;
-    unawaited(ref.read(proposalsViewModelProvider.notifier).refresh());
   }
 
   /// 합의한 줄: 크리에이터는 협업 화면(A7). 사장님은 결제 전이면 결제(A8), 결제했으면 진행 화면이다.
@@ -104,16 +132,15 @@ class _ProposalsPageState extends ConsumerState<ProposalsPage> {
       return;
     }
     await openStoreContract(context, ref, collaborationId);
-    if (!mounted) return;
-    unawaited(ref.read(proposalsViewModelProvider.notifier).refresh());
   }
 
   @override
   Widget build(BuildContext context) {
     ref.listen(proposalsNoticeProvider, (_, next) => _onNotice(next));
-    final async = ref.watch(proposalsViewModelProvider);
+    final provider = proposalsViewModelProvider(widget.party);
+    final async = ref.watch(provider);
     final notice = ref.watch(proposalsNoticeProvider);
-    final vm = ref.read(proposalsViewModelProvider.notifier);
+    final vm = _vm;
     final Widget body = switch (async) {
       AsyncData(:final value) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -136,7 +163,7 @@ class _ProposalsPageState extends ConsumerState<ProposalsPage> {
       ),
       AsyncError() => CoraStateView.loadFailed(
         title: ProposalsPage.loadFailed,
-        onRetry: () => ref.invalidate(proposalsViewModelProvider),
+        onRetry: () => ref.invalidate(provider),
       ),
       _ => const CoraStateView.loading(),
     };
@@ -283,7 +310,7 @@ class _Groups extends StatelessWidget {
 
   final ProposalsState state;
   final bool store;
-  final ValueChanged<ProposalRow> onOpen;
+  final ValueChanged<InboxRow> onOpen;
   final Future<void> Function() onRefresh;
 
   @override
@@ -351,8 +378,8 @@ class _Group extends StatelessWidget {
 
   final ProposalGroup group;
   final String title;
-  final List<ProposalRow> rows;
-  final ValueChanged<ProposalRow> onOpen;
+  final List<InboxRow> rows;
+  final ValueChanged<InboxRow> onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -411,7 +438,7 @@ class _Group extends StatelessWidget {
 class _RowTile extends StatelessWidget {
   const _RowTile({required this.row, required this.onTap});
 
-  final ProposalRow row;
+  final InboxRow row;
   final VoidCallback onTap;
 
   @override

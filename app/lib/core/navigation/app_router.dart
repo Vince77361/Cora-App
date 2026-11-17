@@ -25,7 +25,6 @@ import '../../features/discovery/presentation/pages/creator_discovery_page.dart'
 import '../../features/interests/presentation/pages/compare_page.dart';
 import '../../features/negotiation/presentation/pages/agreement_page.dart';
 import '../../features/negotiation/presentation/pages/brand_progress_page.dart';
-import '../../features/negotiation/presentation/pages/brand_proposals_placeholder_page.dart';
 import '../../features/negotiation/presentation/pages/collaboration_hub_page.dart';
 import '../../features/negotiation/presentation/pages/draft_terms_page.dart';
 import '../../features/negotiation/presentation/pages/terms_proposal_page.dart';
@@ -240,11 +239,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             _entryPage(state, const CollaborationHubPage()),
       ),
-      // 07의 `남은 캠페인 예산`. 브랜드의 제안함(F3)은 5번 계획이 채우므로 지금은 빈 상태만 있다.
+      // 07의 `남은 캠페인 예산`이 여는 브랜드의 제안함(F3). 브랜드 계약의 줄만 있다.
       GoRoute(
         path: AppRoutes.brandProposals,
         pageBuilder: (context, state) => CoraTransitions.push(
-          const BrandProposalsPlaceholderPage(),
+          const ProposalsPage(party: ProposalParty.brand),
           key: state.pageKey,
         ),
       ),

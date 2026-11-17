@@ -1,7 +1,8 @@
 import '../../offer_terms/domain/offer_terms.dart';
 
-/// 제안의 두 당사자. 서버의 `OfferParty`와 같다.
-enum ProposalParty { store, creator }
+/// 제안함(F3)을 쓰는 쪽. 오퍼의 당사자는 서버의 `OfferParty`처럼 [store]와 [creator]이고, [brand]는 오퍼가 없는
+/// 브랜드의 제안함(계약 줄만 있다)에만 쓴다.
+enum ProposalParty { store, creator, brand }
 
 /// 판본에 사본으로 남은 시리즈. 이름·형식·설명만 있고 고른 시리즈의 id는 없다.
 class OfferVersionSeries {

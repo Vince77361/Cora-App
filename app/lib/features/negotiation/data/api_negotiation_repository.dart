@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_error.dart';
 import '../../discovery/domain/discovery_card.dart' show MatchReason;
-import '../../offer_terms/data/offer_terms_from_wire.dart' show formatToWire;
+import '../../offer_terms/data/offer_terms_from_wire.dart'
+    show formatFromWire, formatToWire;
+import '../../proposals/domain/proposal.dart'
+    show BrandContractRow, ProposalEndKind, ProposalGroup;
 import '../domain/brand_usage_rights.dart';
 import '../domain/negotiation_repository.dart';
 import '../domain/terms_version.dart';
@@ -13,9 +16,11 @@ import 'terms_version_from_wire.dart';
 class ApiNegotiationRepository implements NegotiationRepository {
   ApiNegotiationRepository(api.ApiClient client)
     : _terms = api.TermsApi(client),
+      _inbox = api.ProposalInboxApi(client),
       _collaborations = api.CollaborationsApi(client);
 
   final api.TermsApi _terms;
+  final api.ProposalInboxApi _inbox;
   final api.CollaborationsApi _collaborations;
 
   @override
@@ -52,6 +57,20 @@ class ApiNegotiationRepository implements NegotiationRepository {
       rethrow;
     } catch (error) {
       _log('목록 읽기', error);
+      throw const NegotiationFailure();
+    }
+  }
+
+  @override
+  Future<List<BrandContractRow>> fetchProposalInbox() async {
+    try {
+      final rows = await _inbox.listTermsProposalInbox();
+      if (rows == null) throw const NegotiationFailure();
+      return [for (final m in rows) _inboxRow(m)];
+    } on NegotiationFailure {
+      rethrow;
+    } catch (error) {
+      _log('제안함 읽기', error);
       throw const NegotiationFailure();
     }
   }
@@ -146,6 +165,34 @@ class ApiNegotiationRepository implements NegotiationRepository {
       throw const NegotiationFailure();
     }
   }
+
+  static BrandContractRow _inboxRow(api.ProposalInboxRowModel m) =>
+      BrandContractRow(
+        collaborationId: m.collaborationId,
+        name: m.counterpart.name,
+        photoUrl: m.counterpart.photoUrl,
+        group: switch (m.group) {
+          api.ProposalGroup.MY_TURN => ProposalGroup.myTurn,
+          api.ProposalGroup.WAITING => ProposalGroup.waiting,
+          _ => ProposalGroup.ended,
+        },
+        format: formatFromWire(m.format),
+        pieces: m.pieces,
+        version: m.version,
+        counter: m.counter,
+        endKind: switch (m.endKind) {
+          api.ProposalEndKind.AGREED => ProposalEndKind.agreed,
+          api.ProposalEndKind.ENDED => ProposalEndKind.ended,
+          _ => null,
+        },
+        myDropReason: switch (m.myDropReason) {
+          api.DropReasonChoice.SCHEDULE => DropReason.schedule,
+          api.DropReasonChoice.BUDGET => DropReason.budget,
+          api.DropReasonChoice.DIRECTION => DropReason.direction,
+          api.DropReasonChoice.OTHER => DropReason.other,
+          _ => null,
+        },
+      );
 
   static api.DropReasonChoice _dropReason(DropReason reason) =>
       switch (reason) {

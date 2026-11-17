@@ -1,3 +1,4 @@
+import '../../negotiation/domain/negotiation_repository.dart' show DropReason;
 import '../../offer_terms/domain/offer_terms.dart';
 import '../../offers/domain/offer_view.dart';
 import 'offer_version.dart';
@@ -26,8 +27,23 @@ enum ProposalField {
   series,
 }
 
-/// 제안함의 줄 하나. 서버가 내 차례인지 묶음까지 정해서 준다.
-class ProposalRow {
+/// 제안함(F3)의 줄 하나. 가게 오퍼의 줄([OfferInboxRow])과 브랜드 계약의 줄([BrandContractRow])이 한 목록에 섞인다.
+/// 화면은 이 둘의 공통 칸(이름, 사진, 묶음, 끝난 갈래)만 쓰고, 줄을 누르면 갈래마다 다른 곳을 연다.
+sealed class InboxRow {
+  /// 상대의 이름. 사장님에게는 크리에이터, 크리에이터에게는 가게나 브랜드, 브랜드에게는 크리에이터다.
+  String get name;
+  String? get photoUrl;
+
+  /// 서버가 내 차례인지 묶음까지 정해서 준다.
+  ProposalGroup get group;
+  ProposalEndKind? get endKind;
+}
+
+/// 가게 오퍼의 줄.
+typedef OfferInboxRow = ProposalRow;
+
+/// 제안함의 줄 하나(가게 오퍼). 서버가 내 차례인지 묶음까지 정해서 준다.
+final class ProposalRow implements InboxRow {
   const ProposalRow({
     required this.offerId,
     required this.name,
@@ -46,8 +62,11 @@ class ProposalRow {
   final String offerId;
 
   /// 상대의 이름. 사장님에게는 크리에이터, 크리에이터에게는 가게다.
+  @override
   final String name;
+  @override
   final String? photoUrl;
+  @override
   final ProposalGroup group;
   final ContentFormat format;
   final int pieces;
@@ -60,11 +79,53 @@ class ProposalRow {
 
   /// 상대 대기일 때 남은 응답 기한(올림). 하루가 안 남았으면 0.
   final int? daysLeft;
+  @override
   final ProposalEndKind? endKind;
   final EndReason? endReason;
 
   /// 합의해 만들어진 협업. 합의 전이면 null.
   final String? collaborationId;
+}
+
+/// 브랜드 계약(캠페인 협업)의 줄. 가게 오퍼와 달리 응답 기한 꼬리가 없고, 끝난 갈래는 `합의 완료`와 `끝남` 둘이다.
+final class BrandContractRow implements InboxRow {
+  const BrandContractRow({
+    required this.collaborationId,
+    required this.name,
+    required this.group,
+    required this.format,
+    required this.pieces,
+    required this.version,
+    this.photoUrl,
+    this.counter = false,
+    this.endKind,
+    this.myDropReason,
+  });
+
+  final String collaborationId;
+
+  /// 상대의 이름. 브랜드에게는 크리에이터, 크리에이터에게는 브랜드다.
+  @override
+  final String name;
+  @override
+  final String? photoUrl;
+  @override
+  final ProposalGroup group;
+  final ContentFormat format;
+  final int pieces;
+
+  /// 최신 판본의 번호.
+  final int version;
+
+  /// 상대가 쓴 최신 판본이 2번 이상이다(역제안).
+  final bool counter;
+
+  /// 끝난 줄의 갈래: 합의 완료나 끝남. 진행 중이면 null.
+  @override
+  final ProposalEndKind? endKind;
+
+  /// 내가 협의를 그만뒀을 때 고른 이유. 상대가 그만뒀으면 null이다(상대의 이유는 알리지 않는다).
+  final DropReason? myDropReason;
 }
 
 /// 제안 상세에 보이는 상대.

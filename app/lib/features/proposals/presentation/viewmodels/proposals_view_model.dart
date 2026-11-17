@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/domain/current_user_provider.dart';
+import '../../../negotiation/domain/negotiation_repository.dart';
+import '../../domain/offer_version.dart';
 import '../../domain/proposal.dart';
 import '../../domain/proposal_repository.dart';
 
@@ -11,11 +13,11 @@ class ProposalsState {
     this.tab = ProposalTab.active,
   });
 
-  final List<ProposalRow> active;
-  final List<ProposalRow> ended;
+  final List<InboxRow> active;
+  final List<InboxRow> ended;
   final ProposalTab tab;
 
-  List<ProposalRow> get shown => tab == ProposalTab.active ? active : ended;
+  List<InboxRow> get shown => tab == ProposalTab.active ? active : ended;
 
   /// 내가 응답할 차례인 제안 수. 크리에이터의 받은 오퍼 화면이 `제안함` 줄 오른쪽에 보인다.
   int get myTurnCount =>
@@ -27,14 +29,23 @@ class ProposalsState {
 
 /// 제안함(F3)의 두 탭 목록과 고른 탭. 로그인한 사용자가 바뀌면 다시 불러온다. 화면을 모두 떠나면 버려서
 /// 다시 열 때 서버에서 새로 읽는다. Riverpod의 자동 재시도는 끈다.
-final proposalsViewModelProvider =
-    AsyncNotifierProvider.autoDispose<ProposalsViewModel, ProposalsState>(
+///
+/// 쓰는 쪽([ProposalParty])마다 하나다. 사장님은 가게 오퍼만, 브랜드는 브랜드 계약의 줄만, 크리에이터는 둘을 한
+/// 목록으로 합쳐 본다. 패밀리째 `invalidate`하면 모두 다시 읽는다.
+final proposalsViewModelProvider = AsyncNotifierProvider.autoDispose
+    .family<ProposalsViewModel, ProposalsState, ProposalParty>(
       ProposalsViewModel.new,
       retry: (_, _) => null,
     );
 
 class ProposalsViewModel extends AsyncNotifier<ProposalsState> {
+  ProposalsViewModel(this.party);
+
+  final ProposalParty party;
+
   ProposalRepository get _repo => ref.read(proposalRepositoryProvider);
+  NegotiationRepository get _negotiation =>
+      ref.read(negotiationRepositoryProvider);
 
   @override
   Future<ProposalsState> build() async {
@@ -43,12 +54,32 @@ class ProposalsViewModel extends AsyncNotifier<ProposalsState> {
   }
 
   Future<ProposalsState> _load(ProposalTab tab) async {
+    // 브랜드는 가게 오퍼 목록을 부르지 않는다(서버가 브랜드에게는 403이다). 사장님은 브랜드 계약이 없다.
+    final withOffers = party != ProposalParty.brand;
+    final withContracts = party != ProposalParty.store;
     // 레코드의 `.wait`는 실패를 ParallelWaitError로 감싸서 화면이 원래 예외를 알 수 없다.
-    final lists = await Future.wait([
-      _repo.fetch(ProposalTab.active),
-      _repo.fetch(ProposalTab.ended),
+    final lists = await Future.wait<List<InboxRow>>([
+      if (withOffers) _repo.fetch(ProposalTab.active),
+      if (withOffers) _repo.fetch(ProposalTab.ended),
+      if (withContracts) _negotiation.fetchProposalInbox(),
     ]);
-    return ProposalsState(active: lists[0], ended: lists[1], tab: tab);
+    final offersActive = withOffers ? lists[0] : const <InboxRow>[];
+    final offersEnded = withOffers ? lists[1] : const <InboxRow>[];
+    final contracts = withContracts ? lists.last : const <InboxRow>[];
+    // 브랜드 계약의 줄은 진행 중과 종료가 한 목록으로 온다. 오퍼의 줄은 받은 시각이 없어 오퍼 뒤에 이어 붙인다.
+    return ProposalsState(
+      active: [
+        ...offersActive,
+        for (final r in contracts)
+          if (r.group != ProposalGroup.ended) r,
+      ],
+      ended: [
+        ...offersEnded,
+        for (final r in contracts)
+          if (r.group == ProposalGroup.ended) r,
+      ],
+      tab: tab,
+    );
   }
 
   void selectTab(ProposalTab tab) {
@@ -65,6 +96,8 @@ class ProposalsViewModel extends AsyncNotifier<ProposalsState> {
       if (!ref.mounted) return;
       state = AsyncData(fresh.copyWith(tab: state.value?.tab ?? tab));
     } on ProposalFailure {
+      // 보던 값 유지.
+    } on NegotiationFailure {
       // 보던 값 유지.
     }
   }

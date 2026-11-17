@@ -20,6 +20,7 @@ import '../../../collaboration/presentation/viewmodels/collaboration_list_view_m
 import '../../../negotiation/presentation/terms_text.dart'
     show brandRowSubtitle;
 import '../../../offer_terms/presentation/offer_terms_text.dart';
+import '../../../proposals/domain/offer_version.dart' show ProposalParty;
 import '../../../proposals/presentation/viewmodels/proposals_view_model.dart';
 import '../../../store_browse/presentation/widgets/creator_bottom_nav.dart';
 import '../../../store_browse/presentation/widgets/photo_overlays.dart';
@@ -651,7 +652,9 @@ class _ProposalBoxRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final count = ref.watch(
-      proposalsViewModelProvider.select((a) => a.value?.myTurnCount),
+      proposalsViewModelProvider(
+        ProposalParty.creator,
+      ).select((a) => a.value?.myTurnCount),
     );
     void open() async {
       await context.push(AppRoutes.creatorProposals);

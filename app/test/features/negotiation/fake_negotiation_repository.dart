@@ -7,6 +7,31 @@ import 'package:cora/features/negotiation/domain/negotiation_repository.dart';
 import 'package:cora/features/negotiation/domain/terms_version.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart'
     show ContentFormat, ViewPay;
+import 'package:cora/features/proposals/domain/proposal.dart'
+    show BrandContractRow, ProposalEndKind, ProposalGroup;
+
+/// 제안함(F3)의 브랜드 계약 줄 하나. 기본은 내가 응답할 차례인 판본 1이다.
+BrandContractRow brandContractRow({
+  String collaborationId = 'col-1',
+  String name = '모아 스튜디오',
+  ProposalGroup group = ProposalGroup.myTurn,
+  ContentFormat format = ContentFormat.reels,
+  int pieces = 1,
+  int version = 1,
+  bool counter = false,
+  ProposalEndKind? endKind,
+  DropReason? myDropReason,
+}) => BrandContractRow(
+  collaborationId: collaborationId,
+  name: name,
+  group: group,
+  format: format,
+  pieces: pieces,
+  version: version,
+  counter: counter,
+  endKind: endKind,
+  myDropReason: myDropReason,
+);
 
 /// 캔버스 06의 견본 판본: 현금 30만 원, 제품 제공, 성과 추가 없음, 릴스 1편, 11월 16일 이후. 서로 관심이 닿을 때
 /// 서버가 만든 판본 1이라 아무도 확인하지 않았다.
@@ -120,6 +145,11 @@ class FakeNegotiationRepository implements NegotiationRepository {
   TermsHistory history;
   bool failFetch = false;
 
+  /// [fetchProposalInbox]가 돌려줄 줄과 실패 여부.
+  List<BrandContractRow> inbox = [];
+  bool failInbox = false;
+  int inboxCalls = 0;
+
   /// 내가 브랜드다(확인과 새 판본이 브랜드 쪽 표시를 바꾼다). false면 크리에이터다.
   bool iAmBrand = true;
 
@@ -163,6 +193,13 @@ class FakeNegotiationRepository implements NegotiationRepository {
     historyCalls++;
     if (failFetch) throw const NegotiationFailure();
     return history;
+  }
+
+  @override
+  Future<List<BrandContractRow>> fetchProposalInbox() async {
+    inboxCalls++;
+    if (failInbox) throw const NegotiationFailure();
+    return List.of(inbox);
   }
 
   @override

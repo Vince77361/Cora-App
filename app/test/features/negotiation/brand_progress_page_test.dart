@@ -7,8 +7,10 @@ import 'package:cora/features/collaboration/domain/collaboration.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile_repository.dart';
+import 'package:cora/features/negotiation/domain/negotiation_repository.dart';
 import 'package:cora/features/negotiation/presentation/pages/brand_progress_page.dart';
-import 'package:cora/features/negotiation/presentation/pages/brand_proposals_placeholder_page.dart';
+import 'package:cora/features/proposals/domain/offer_version.dart';
+import 'package:cora/features/proposals/presentation/pages/proposals_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,9 +21,10 @@ import '../../support/pump_cora_app.dart';
 import '../collaboration/fake_collaboration_repository.dart';
 import '../creator_profile/fake_creator_profile_repository.dart';
 import 'brand_collaboration_harness.dart';
+import 'fake_negotiation_repository.dart';
 
 /// 07을 `/collaborations/:id/progress`에 올린다. 07이 여는 경로는 위치 글자만 보이는 빈 화면이고 위치를 기록한다
-/// (`extra`도 함께 적는다). 제안함 자리 화면은 실제 화면이다.
+/// (`extra`도 함께 적는다). 제안함은 실제 화면이다.
 Future<List<String>> _pump(
   WidgetTester tester,
   Collaboration collaboration, {
@@ -63,7 +66,8 @@ Future<List<String>> _pump(
       ),
       GoRoute(
         path: AppRoutes.brandProposals,
-        builder: (context, state) => const BrandProposalsPlaceholderPage(),
+        builder: (context, state) =>
+            const ProposalsPage(party: ProposalParty.brand),
       ),
       GoRoute(
         path: AppRoutes.brandCollaborations,
@@ -85,6 +89,10 @@ Future<List<String>> _pump(
       key: UniqueKey(),
       overrides: [
         currentUserIdProvider.overrideWithValue('user-1'),
+        // 제안함(F3)은 실제 화면이고 브랜드 계약의 줄이 없는 계정이다.
+        negotiationRepositoryProvider.overrideWithValue(
+          FakeNegotiationRepository(),
+        ),
         collaborationRepositoryProvider.overrideWithValue(
           repo ?? FakeCollaborationRepository(active: [collaboration]),
         ),
@@ -303,14 +311,14 @@ void main() {
     );
   });
 
-  testWidgets('tapping the budget left opens the proposals inbox as the empty '
-      'state', (tester) async {
+  testWidgets('tapping the budget left opens the brand proposals inbox (empty '
+      'here)', (tester) async {
     await _pump(tester, brandCollab());
 
     await tester.tap(find.text('남은 캠페인 예산'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(BrandProposalsPlaceholderPage), findsOneWidget);
+    expect(find.byType(ProposalsPage), findsOneWidget);
     expect(find.byType(CoraStateView), findsOneWidget);
     expect(find.text('제안함'), findsOneWidget);
     expect(find.text('아직 받은 제안이 없어요'), findsOneWidget);
