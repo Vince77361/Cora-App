@@ -48,6 +48,7 @@ import '../../features/proposals/presentation/pages/counter_proposal_page.dart';
 import '../../features/proposals/presentation/pages/proposal_detail_page.dart';
 import '../../features/proposals/presentation/pages/proposals_page.dart';
 import '../../features/instagram_connect/presentation/pages/instagram_connect_page.dart';
+import '../../features/received_proposals/presentation/pages/received_proposal_page.dart';
 import '../../features/offers/presentation/pages/received_offers_page.dart';
 import '../../features/payout_account/presentation/pages/payout_account_page.dart';
 import '../../features/wallet/presentation/pages/wallet_page.dart';
@@ -537,6 +538,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
             matchId: state.uri.queryParameters[AppRoutes.matchParam],
           ),
+        ),
+      ),
+      // 받은 제안(10). 03 맨 위 `받은 제안` 묶음이 연다. 닫을 때 03이 보일 안내 문구를 `pop`의 값으로 돌려준다.
+      GoRoute(
+        path: AppRoutes.creatorReceivedProposalPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          ReceivedProposalPage(
+            campaignId: state.pathParameters['campaignId']!,
+          ),
+          key: state.pageKey,
         ),
       ),
       // 하단 메뉴의 `협업` 탭이라 제자리에서 바뀐다. 가게 상세에서 `오퍼 보기`로 열 때만 밀려 들어온다.

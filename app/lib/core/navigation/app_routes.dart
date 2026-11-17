@@ -225,6 +225,14 @@ abstract final class AppRoutes {
   /// [creatorProposal]의 라우트 패턴.
   static const creatorProposalPattern = '/creator/proposals/:offerId';
 
+  /// 받은 제안(10). 03 맨 위 `받은 제안` 묶음의 카드가 연다. 캠페인 [campaignId]의 브랜드가 내게 한 제안이다.
+  static String creatorReceivedProposal(String campaignId) =>
+      '/creator/received-proposals/${Uri.encodeComponent(campaignId)}';
+
+  /// [creatorReceivedProposal]의 라우트 패턴.
+  static const creatorReceivedProposalPattern =
+      '/creator/received-proposals/:campaignId';
+
   /// 크리에이터의 협업 진행(A7)과 거기서 여는 링크 제출·식사권 화면.
   static String creatorCollaboration(String id) =>
       '/creator/collaborations/${Uri.encodeComponent(id)}';

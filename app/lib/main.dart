@@ -57,6 +57,8 @@ import 'features/offers/data/api_received_offers_repository.dart';
 import 'features/offers/domain/received_offers_repository.dart';
 import 'features/payment/data/api_payment_repository.dart';
 import 'features/payment/domain/payment_repository.dart';
+import 'features/received_proposals/data/api_received_proposals_repository.dart';
+import 'features/received_proposals/domain/received_proposals_repository.dart';
 import 'features/server_config/data/api_server_config_repository.dart';
 import 'features/trial_compare/data/api_trial_compare_repository.dart';
 import 'features/trial_compare/domain/trial_compare_repository.dart';
@@ -216,6 +218,9 @@ Future<void> main() async {
         ),
         chatRepositoryProvider.overrideWith(
           (ref) => ApiChatRepository(ref.watch(apiClientProvider)),
+        ),
+        receivedProposalsRepositoryProvider.overrideWith(
+          (ref) => ApiReceivedProposalsRepository(ref.watch(apiClientProvider)),
         ),
         // 소켓은 연결할 때마다 그 순간 유효한 토큰을 받아 붙는다(만료되면 새 토큰으로 다시 붙는다).
         realtimeConnectionProvider.overrideWith((ref) {

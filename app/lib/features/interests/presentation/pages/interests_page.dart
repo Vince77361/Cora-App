@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +16,9 @@ import '../../../discovery/domain/discovery_card.dart' show CreatorCard;
 import '../../../discovery/presentation/discovery_text.dart';
 import '../../../discovery/presentation/widgets/brand_bottom_nav.dart';
 import '../../../discovery/presentation/widgets/discovery_toast.dart';
+import '../../../received_proposals/domain/received_proposal.dart';
+import '../../../received_proposals/presentation/viewmodels/received_proposals_view_model.dart';
+import '../../../received_proposals/presentation/widgets/received_proposals_group.dart';
 import '../../../store_browse/presentation/widgets/creator_bottom_nav.dart';
 import '../../domain/interest_card.dart';
 import '../interests_text.dart';
@@ -60,7 +65,11 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
     final id = widget.matchId;
     if (id != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _openMatch(id, closeOnDismiss: true);
+        if (!mounted) return;
+        // 서로 관심은 방금 닿은 변화라(10에서 관심을 보낸 직후 등) 같은 목록을 쓰는 앞 화면이 옛 값을 쥐고
+        // 있을 수 있다. 시트 뒤의 목록을 새로 읽는다.
+        unawaited(_refreshAfterReturn());
+        _openMatch(id, closeOnDismiss: true);
       });
     }
   }
@@ -114,9 +123,24 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
     await _refreshAfterReturn();
   }
 
-  /// 04·상세·06에서 돌아오면 그 사이 바뀐 결정(서로 관심 등)이 03에 보이도록 목록을 다시 읽는다.
+  /// 04·상세·06에서 돌아오면 그 사이 바뀐 결정(서로 관심 등)이 03에 보이도록 목록을 다시 읽는다. 크리에이터는
+  /// 받은 제안도 다시 읽는다(관심을 보내거나 질문한 캠페인은 목록에서 빠진다).
   Future<void> _refreshAfterReturn() async {
-    if (mounted) await _vm.refresh();
+    if (!mounted) return;
+    if (!widget.isBrand) {
+      ref.read(receivedProposalsViewModelProvider.notifier).refresh();
+    }
+    await _vm.refresh();
+  }
+
+  /// 받은 제안(10)을 연다. 10이 질문을 보내거나 관심만 보내고 닫히면 알려 줄 문구를 돌려준다.
+  Future<void> _openProposal(ReceivedProposal proposal) async {
+    final notice = await context.push<String>(
+      AppRoutes.creatorReceivedProposal(proposal.campaignId),
+    );
+    if (!mounted) return;
+    if (notice != null) _vm.showNotice(notice);
+    await _refreshAfterReturn();
   }
 
   Future<void> _decideHeld(InterestCard card, SwipeOutcome outcome) async {
@@ -152,6 +176,11 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
     final async = ref.watch(interestsViewModelProvider(_scope));
     final state = async.value;
     final c = context.colors;
+    // 크리에이터의 받은 제안(맨 위 묶음). 읽지 못하면 묶음만 없고 03은 그대로다.
+    final proposals = widget.isBrand
+        ? const <ReceivedProposal>[]
+        : (ref.watch(receivedProposalsViewModelProvider).value ??
+              const <ReceivedProposal>[]);
 
     final Widget body;
     if (state == null) {
@@ -226,6 +255,11 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
                       ],
                     ),
                   ),
+                  if (proposals.isNotEmpty)
+                    ReceivedProposalsGroup(
+                      proposals: proposals,
+                      onOpen: _openProposal,
+                    ),
                   if (state != null)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),

@@ -16,6 +16,7 @@ import 'package:cora/features/notifications/domain/notification_repository.dart'
 import 'package:cora/features/principles/domain/principles_repository.dart';
 import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
 import 'package:cora/features/proposals/domain/proposal_repository.dart';
+import 'package:cora/features/received_proposals/domain/received_proposals_repository.dart';
 import 'package:cora/features/server_config/domain/server_config_repository.dart';
 import 'package:cora/features/store_home/domain/store_home_repository.dart';
 import 'package:cora/features/wallet/domain/wallet_repository.dart';
@@ -41,6 +42,7 @@ import '../features/notifications/fake_notification_repository.dart';
 import '../features/onboarding/fake_me_repository.dart';
 import '../features/principles/fake_principles_repository.dart';
 import '../features/proposals/fake_proposal_repository.dart';
+import '../features/received_proposals/fake_received_proposals_repository.dart';
 import '../features/server_config/fake_server_config_repository.dart';
 import '../features/store_home/fake_store_home_repository.dart';
 import '../features/store_onboarding/fake_content_draft_repository.dart';
@@ -144,6 +146,11 @@ Widget coraAppWith(
         chatRepositoryProvider.overrideWithValue(FakeChatRepository()),
       if (!_overrides(overrides, realtimeConnectionProvider))
         realtimeConnectionProvider.overrideWithValue(FakeRealtimeConnection()),
+      // 03 맨 위 `받은 제안` 묶음과 10이 읽는다. 기본은 받은 제안이 없는 계정이다.
+      if (!_overrides(overrides, receivedProposalsRepositoryProvider))
+        receivedProposalsRepositoryProvider.overrideWithValue(
+          FakeReceivedProposalsRepository(),
+        ),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(
           FakeContentDraftRepository(),

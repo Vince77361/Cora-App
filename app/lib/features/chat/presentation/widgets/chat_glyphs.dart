@@ -17,6 +17,9 @@ enum ChatGlyph {
   /// `M5 12h14M13 6l6 6-6 6`, 두께 2.6.
   arrow(2.6),
 
+  /// `arrow`와 같은 경로, 두께 2.4(받은 제안 10·서로 관심 05의 보내기 원).
+  arrowSend(2.4),
+
   /// 세로 점 셋(`r=2`, 채움).
   dots(0);
 
@@ -97,7 +100,7 @@ class _GlyphPainter extends CustomPainter {
           ..lineTo(12 * s, 19 * s)
           ..moveTo(5 * s, 12 * s)
           ..lineTo(19 * s, 12 * s);
-      case ChatGlyph.arrow:
+      case ChatGlyph.arrow || ChatGlyph.arrowSend:
         path
           ..moveTo(5 * s, 12 * s)
           ..lineTo(19 * s, 12 * s)
