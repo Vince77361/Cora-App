@@ -38,10 +38,8 @@ export class WalletService {
     }
     const now = this.clock.now();
     const [collaborations, payouts, account] = await Promise.all([
-      // 지갑은 가게 오퍼의 돈만 보인다. 브랜드 계약의 조건은 terms_versions에 있고 돈 흐름은 5번 계획이 이어서 켠다.
-      this.collaborations
-        .listByCreator(userId)
-        .then((rows) => rows.filter((c) => c.kind === 'STORE_OFFER')),
+      // 가게 오퍼와 브랜드 계약의 돈이 함께 보인다. 체결되지 않은 브랜드 협업(조건 사본이 없다)은 줄을 만들지 않는다.
+      this.collaborations.listByCreator(userId),
       this.settlements.payoutsOfCreator(userId),
       this.accounts.findMine(userId),
     ]);
@@ -49,11 +47,19 @@ export class WalletService {
     const heldIds = collaborations
       .filter((c) => isMoneyHeld(c.kind, c.stage))
       .map((c) => c.id);
-    const [settlements, escrow, names] = await Promise.all([
+    const brandIds = collaborations
+      .filter((c) => c.kind === 'BRAND_CONTRACT')
+      .map((c) => c.id);
+    const [settlements, escrow, names, brandTerms] = await Promise.all([
       this.settlements.settlementsOf(ids),
       this.ledger.escrowBalances(heldIds),
       this.counterpartNames(collaborations),
+      this.brandTermsOf(brandIds),
     ]);
+    // 브랜드 계약의 상대 이름은 브랜드 이름이다.
+    for (const [id, terms] of brandTerms) {
+      if (terms.brandName) names.set(id, terms.brandName);
+    }
 
     // 다음 지급일: 대기 중(PENDING) 지급 가운데 가장 이른 지급일, 금액은 그날(한국 시간) 나갈 지급의 합.
     const pending = payouts.filter((p) => p.status === 'PENDING');
@@ -104,8 +110,17 @@ export class WalletService {
         payouts,
         escrow,
         names,
+        brandTerms,
       }),
     };
+  }
+
+  // 브랜드 계약이 없으면 표를 읽지 않는다.
+  private async brandTermsOf(
+    brandIds: string[],
+  ): Promise<Awaited<ReturnType<SettlementsService['brandWalletTermsOf']>>> {
+    if (brandIds.length === 0) return new Map();
+    return this.settlements.brandWalletTermsOf(brandIds);
   }
 
   // 가게 오퍼의 상대 이름(가게 이름). 가게를 읽을 수 없으면(비공개 등) 이름 없이 둬서 "가게"로 보인다 —

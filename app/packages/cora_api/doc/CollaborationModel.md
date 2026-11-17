@@ -17,7 +17,7 @@ Name | Type | Description | Notes
 **contractStatus** | [**ContractProgress**](ContractProgress.md) | NONE: 계약 동의 전, AWAITING_BRAND: 크리에이터가 동의해 브랜드 결제 대기, CONCLUDED: 체결. | 
 **conversationId** | **String** | 이 협업의 대화방. 방이 없으면 null. | 
 **counterpart** | [**CollaborationCounterpartModel**](CollaborationCounterpartModel.md) |  | 
-**countingEndsAt** | [**DateTime**](DateTime.md) | 조회수 집계가 끝나는 시각(제출 뒤 7일). | 
+**countingEndsAt** | [**DateTime**](DateTime.md) | 조회수 집계가 끝나는 시각(제출 뒤 7일). 브랜드 계약은 지급 조건(7·14일)이고, 성과 추가가 없으면 지급 시각이다. | 
 **currentViews** | **int** | 가장 최근에 읽은 조회수. 아직 읽은 값이 없으면 null. | 
 **earnedSoFar** | **int** | 지금까지 받을 금액(원). 집계 중일 때 크리에이터에게만 숫자다. | 
 **escrowAmount** | **int** | 결제할 때 에스크로에 맡긴 금액(원). 협업이 끝날 때까지 그대로이고, 결제 전이거나 식사권만 있으면 0. | 
@@ -30,7 +30,7 @@ Name | Type | Description | Notes
 **payoutStatus** | [**PayoutStatus**](PayoutStatus.md) | NONE: 줄 돈이 없음(정산 전이거나 0원), NEEDS_ACCOUNT: 지급 계좌 등록이 필요함(크리에이터에게만), PENDING: 지급일을 기다림, DONE: 지급됨, FAILED: 송금 실패(운영팀이 확인). | 
 **role** | [**CollaborationRole**](CollaborationRole.md) | 내 쪽. COMMISSIONER는 맡긴 쪽(사장님·브랜드), CREATOR는 크리에이터. | 
 **securedAmount** | **int** | 이번 협업의 확보액(원) = 최신 조건 판본의 최대 현금 부담. 가게 오퍼이거나 판본이 없으면 null. | 
-**settlement** | [**CollaborationSettlementModel**](CollaborationSettlementModel.md) | 정산이 확정된 뒤의 결과. 정산 전이거나(조회 자료 확인 전 포함) 식사권만 있으면 null. | 
+**settlement** | [**CollaborationSettlementModel**](CollaborationSettlementModel.md) | 정산이 확정된 뒤의 결과. 정산 전이거나(조회 자료 확인 전 포함) 식사권만 있으면 null. 브랜드 계약도 같다(성과 추가가 없으면 finalViews가 null). | 
 **stage** | [**CollaborationStage**](CollaborationStage.md) |  | 
 **steps** | [**List<CollaborationStepModel>**](CollaborationStepModel.md) | 가게 오퍼의 다섯 단계. 브랜드 계약은 빈 배열이고 brandProgress가 대신한다. | [default to const []]
 **store** | [**StoreSummaryModel**](StoreSummaryModel.md) | 가게 오퍼의 가게. 브랜드 계약이거나 가게를 읽을 수 없으면 null. | 

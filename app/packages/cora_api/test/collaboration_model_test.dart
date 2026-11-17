@@ -69,7 +69,7 @@ void main() {
       // TODO
     });
 
-    // 조회수 집계가 끝나는 시각(제출 뒤 7일).
+    // 조회수 집계가 끝나는 시각(제출 뒤 7일). 브랜드 계약은 지급 조건(7·14일)이고, 성과 추가가 없으면 지급 시각이다.
     // DateTime countingEndsAt
     test('to test the property `countingEndsAt`', () async {
       // TODO
@@ -145,7 +145,7 @@ void main() {
       // TODO
     });
 
-    // 정산이 확정된 뒤의 결과. 정산 전이거나(조회 자료 확인 전 포함) 식사권만 있으면 null.
+    // 정산이 확정된 뒤의 결과. 정산 전이거나(조회 자료 확인 전 포함) 식사권만 있으면 null. 브랜드 계약도 같다(성과 추가가 없으면 finalViews가 null).
     // CollaborationSettlementModel settlement
     test('to test the property `settlement`', () async {
       // TODO

@@ -163,6 +163,45 @@ export class SettlementsService {
     }
   }
 
+  // 크리에이터의 정산 내역(지갑)이 브랜드 계약의 줄을 만드는 데 쓰는 값: 형식, 편 수, 브랜드 이름. 체결되지 않았거나 사본을 읽을 수 없는
+  // 계약은 맵에 없다(그 협업만 내역에서 빠지고 내역 전체가 실패하지 않는다).
+  async brandWalletTermsOf(collaborationIds: string[]): Promise<
+    Map<
+      string,
+      {
+        format: ReturnType<typeof readSnapshot>['format'];
+        pieces: number;
+        brandName: string | null;
+      }
+    >
+  > {
+    const terms = new Map<
+      string,
+      {
+        format: ReturnType<typeof readSnapshot>['format'];
+        pieces: number;
+        brandName: string | null;
+      }
+    >();
+    for (const row of await this.repository.listConcludedContractRows(
+      collaborationIds,
+    )) {
+      try {
+        const snapshot = readSnapshot(row.termsSnapshot);
+        terms.set(row.collaborationId, {
+          format: snapshot.format,
+          pieces: snapshot.pieces,
+          brandName: row.brandName,
+        });
+      } catch (error) {
+        this.logger.warn(
+          `정산 내역의 계약 조건 사본을 읽지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        );
+      }
+    }
+    return terms;
+  }
+
   // 체결된 브랜드 계약의 조건 사본. 운영 명령이 재개할 때 지급 작업을 올릴지 가리는 데 쓴다.
   async brandTermsOf(collaborationId: string) {
     return readSnapshot(
@@ -216,7 +255,7 @@ export class SettlementsService {
     }
     const settlement = await this.repository.findSettlement(collaborationId);
     if (settlement?.status === 'CONFIRMED') {
-      await this.finisher.finishBrandFixed(collaboration, settlement);
+      await this.finisher.finishBrand(collaboration, settlement);
     }
   }
 

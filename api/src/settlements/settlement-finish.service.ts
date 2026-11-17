@@ -50,7 +50,36 @@ export class SettlementFinishService {
 
   // 커밋 뒤의 단계. 확인 완료(CONFIRMED)된 정산에서만 부른다.
   // 크리에이터의 알림을 사장님 환급보다 앞에 둔다: PG 환급이 계속 실패해도 크리에이터의 정산 알림은 막히지 않는다.
+  // 브랜드 계약은 사장님용 7일 결과(평소 조회수 비교, 결과 알림)가 없어 finishBrand의 길로 간다.
   async finish(
+    collaboration: Collaboration,
+    settlement: Settlement,
+    context?: JobRunContext,
+    keys: { payout: string; refund: string } = {
+      payout: settlePayoutKey(collaboration.id),
+      refund: settleRefundKey(collaboration.id),
+    },
+  ): Promise<void> {
+    if (collaboration.kind === 'BRAND_CONTRACT') {
+      await this.finishBrand(collaboration, settlement, context, keys);
+      return;
+    }
+    await this.schedulePayoutAndNotifyCreator(
+      collaboration,
+      settlement,
+      keys.payout,
+    );
+    const refund = await this.refunds.findByKey(keys.refund);
+    if (refund) await this.refunds.execute(refund.id, context);
+    // 평소 조회수는 사장님이 알림으로 7일 결과(G1)를 열기 전에 채운다.
+    await this.recordUsualViews(collaboration, settlement);
+    await this.notifyStoreOfResult(collaboration, settlement);
+  }
+
+  // 브랜드 계약의 정산이 커밋된 뒤의 단계: 지급 작업 등록, 크리에이터 알림, 남은 상한의 PG 환급(성과 추가가 있을 때만 환급 행이 있다).
+  // 사장님용 7일 결과(G1)는 브랜드 계약에 없어서 가게 쪽 단계(평소 조회수, 결과 알림)는 거치지 않는다.
+  // 브랜드의 알림은 송금이 끝난 뒤 지급 작업이 보낸다(성과 추가가 있었으면 돌려받는 금액도 함께 알린다).
+  async finishBrand(
     collaboration: Collaboration,
     settlement: Settlement,
     context?: JobRunContext,
@@ -66,23 +95,6 @@ export class SettlementFinishService {
     );
     const refund = await this.refunds.findByKey(keys.refund);
     if (refund) await this.refunds.execute(refund.id, context);
-    // 평소 조회수는 사장님이 알림으로 7일 결과(G1)를 열기 전에 채운다.
-    await this.recordUsualViews(collaboration, settlement);
-    await this.notifyStoreOfResult(collaboration, settlement);
-  }
-
-  // 성과 추가가 없는 브랜드 계약의 정산이 커밋된 뒤의 단계: 지급 작업 등록과 크리에이터 알림.
-  // 환급이 없고(전액 지급) 사장님용 7일 결과(G1)도 없어서 가게 쪽 단계(환급 전송, 평소 조회수, 사장님 알림)는 거치지 않는다.
-  // 브랜드의 알림은 송금이 끝난 뒤 지급 작업이 보낸다.
-  async finishBrandFixed(
-    collaboration: Collaboration,
-    settlement: Settlement,
-  ): Promise<void> {
-    await this.schedulePayoutAndNotifyCreator(
-      collaboration,
-      settlement,
-      settlePayoutKey(collaboration.id),
-    );
   }
 
   private async schedulePayoutAndNotifyCreator(

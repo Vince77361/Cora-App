@@ -430,6 +430,42 @@ export class SettlementsRepository {
     return row?.termsSnapshot ?? null;
   }
 
+  // 체결된 계약마다 조건 사본(JSON)과 맡긴 브랜드의 이름(프로필이 없으면 null). 크리에이터의 정산 내역(지갑)이 브랜드 계약의 줄을 만들 때 읽는다.
+  async listConcludedContractRows(collaborationIds: string[]): Promise<
+    {
+      collaborationId: string;
+      termsSnapshot: unknown;
+      brandName: string | null;
+    }[]
+  > {
+    if (collaborationIds.length === 0) return [];
+    const contracts = await this.prisma.contract.findMany({
+      where: {
+        collaborationId: { in: collaborationIds },
+        status: 'CONCLUDED',
+        deletedAt: null,
+      },
+      select: {
+        collaborationId: true,
+        termsSnapshot: true,
+        collaboration: { select: { commissionerId: true } },
+      },
+    });
+    const brands = await this.prisma.brandProfile.findMany({
+      where: {
+        userId: { in: contracts.map((c) => c.collaboration.commissionerId) },
+        deletedAt: null,
+      },
+      select: { userId: true, name: true },
+    });
+    const names = new Map(brands.map((b) => [b.userId, b.name]));
+    return contracts.map((c) => ({
+      collaborationId: c.collaborationId,
+      termsSnapshot: c.termsSnapshot,
+      brandName: names.get(c.collaboration.commissionerId) ?? null,
+    }));
+  }
+
   async findPayoutWithCreator(id: string): Promise<PayoutWithCreator | null> {
     const row = await this.prisma.payout.findFirst({
       where: { id, deletedAt: null },

@@ -25,6 +25,11 @@ export interface WalletInput {
   // 돈이 보관 중인 협업의 ESCROW 잔액(없으면 0).
   escrow: Map<string, number>;
   names: Map<string, string>;
+  // 브랜드 계약의 형식·편 수(체결된 계약의 조건 사본). 체결되지 않았거나 읽을 수 없는 브랜드 협업은 맵에 없어 내역에서 빠진다.
+  brandTerms?: Map<
+    string,
+    { format: WalletEntryModel['format']; pieces: number }
+  >;
 }
 
 // 수락 때 사본으로 남긴 조건에서 형식과 식사권만 읽는다. 읽을 수 없으면 null(그 협업은 내역에서 뺀다).
@@ -61,7 +66,14 @@ export function buildWalletEntries(input: WalletInput): WalletEntryModel[] {
     if (LEFT_OUT_STAGES.includes(collaboration.stage)) continue;
     // 결제 전(오퍼를 수락만 한 상태)에는 보여 줄 돈도 식사권도 없다.
     if (collaboration.stage === 'AWAITING_PAYMENT') continue;
-    const terms = readWalletTerms(collaboration.terms);
+    // 브랜드 계약의 조건은 협업 행이 아니라 계약의 조건 사본에 있다(식사권이 없다).
+    const brand = collaboration.kind === 'BRAND_CONTRACT';
+    const brandTerms = brand ? input.brandTerms?.get(collaboration.id) : null;
+    const terms: ReadTerms | null = brand
+      ? brandTerms
+        ? { format: brandTerms.format, voucherName: null }
+        : null
+      : readWalletTerms(collaboration.terms);
     if (!terms) continue;
 
     // 확인 전의 계산(UNCONFIRMED·DISPUTED)은 아직 정산이 아니다: 돈은 협업이 끝날 때까지 "보관 중"으로만 보인다.
@@ -74,7 +86,7 @@ export function buildWalletEntries(input: WalletInput): WalletEntryModel[] {
         input.names.get(collaboration.id) ??
         (collaboration.kind === 'BRAND_CONTRACT' ? '브랜드' : '가게'),
       format: terms.format,
-      pieces: 1,
+      pieces: brandTerms?.pieces ?? 1,
       stage: collaboration.stage,
     };
     const money: WalletEntryModel[] = [];
@@ -111,7 +123,11 @@ export function buildWalletEntries(input: WalletInput): WalletEntryModel[] {
           views: null,
           voucherName: null,
           voucherUsed: null,
-          at: (collaboration.fundedAt ?? collaboration.createdAt).toISOString(),
+          at: (
+            collaboration.fundedAt ??
+            collaboration.contractedAt ??
+            collaboration.createdAt
+          ).toISOString(),
         });
       }
     }

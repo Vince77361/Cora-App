@@ -138,6 +138,23 @@ export class CollaborationsRepository {
     return map;
   }
 
+  // 협업마다 체결된 계약의 조건 사본(JSON). 체결되지 않은 협업은 맵에 없다. 정산 값(지급 조건, 성과 추가)을 보여 줄 때 읽는다.
+  async mapConcludedSnapshots(
+    collaborationIds: string[],
+    tx?: Prisma.TransactionClient,
+  ): Promise<Map<string, unknown>> {
+    if (collaborationIds.length === 0) return new Map();
+    const rows = await this.client(tx).contract.findMany({
+      where: {
+        collaborationId: { in: collaborationIds },
+        status: 'CONCLUDED',
+        deletedAt: null,
+      },
+      select: { collaborationId: true, termsSnapshot: true },
+    });
+    return new Map(rows.map((r) => [r.collaborationId, r.termsSnapshot]));
+  }
+
   // 두 사람 사이(어느 쪽이 맡기는 쪽이든)의 협업을 잠그고 읽는다. 차단과 신고가 쓴다.
   // 잠금 순서는 정산 행 → 오퍼 → 협업이다(운영 명령·결제 승인과 같은 순서): 이 순서로 잡으면 그 길과 서로 기다리지 않는다.
   // 오퍼는 아직 협업이 없는 열린(SENT) 오퍼까지 모두 잠근다. 다른 모듈의 표(정산·오퍼)는 이 저장소가 직접 읽는다(R10).

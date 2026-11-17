@@ -4,6 +4,7 @@ import {
   SettlementMethod,
   TransferStatus,
 } from '@prisma/client';
+import { measurementStageOf } from '../settlements/measurement';
 import { settleReward } from '../settlements/settlement-math';
 import { RewardTerms } from '../stores/reward-terms';
 import { COLLABORATION_DONE_STAGES } from './collaboration-stage';
@@ -100,7 +101,9 @@ export type ViewReportStatusOfCollaboration =
 
 // 협업 조회 모델의 조회 자료 확인 단계. 정산 행이 있으면 그 상태고, 없으면 링크를 낸 뒤 집계 중인 협업만 COUNTING이다
 // (조회수를 읽지 못해 멈춘 협업도 정산 행이 없어 집계 중이다). 조회수 수당이 없거나 제출 전이거나 끝난 협업은 NONE이다.
+// 집계 중인 단계는 협업 종류가 정한다(가게 오퍼 COUNTING, 브랜드 계약 PUBLISHED). 종류를 주지 않으면 가게 오퍼다.
 export function viewReportStatusOf(p: {
+  kind?: CollaborationKind;
   stage: CollaborationStage;
   submitted: boolean;
   hasViewPay: boolean;
@@ -108,7 +111,10 @@ export function viewReportStatusOf(p: {
 }): ViewReportStatusOfCollaboration {
   if (!p.hasViewPay || !p.submitted) return 'NONE';
   if (p.settlementStatus) return p.settlementStatus;
-  return p.stage === 'COUNTING' || p.stage === 'HALTED' ? 'COUNTING' : 'NONE';
+  return p.stage === measurementStageOf(p.kind ?? 'STORE_OFFER') ||
+    p.stage === 'HALTED'
+    ? 'COUNTING'
+    : 'NONE';
 }
 
 export type PayoutStatus =
@@ -131,13 +137,14 @@ export function payoutStatusOf(
 }
 
 // 집계 중에 "지금 받을 금액"과 "예상 환급액". 정산과 같은 계산(settleReward)에 최신 조회수를 넣는다.
-// 집계 중(COUNTING)이 아니거나 아직 읽은 조회수가 없거나 조회수 수당이 없으면 null이다.
+// 집계 중이 아니거나(가게 오퍼 COUNTING, 브랜드 계약 PUBLISHED) 아직 읽은 조회수가 없거나 조회수 수당이 없으면 null이다.
 export function liveAmounts(p: {
+  kind?: CollaborationKind;
   stage: CollaborationStage;
   views: number | null;
   terms: Pick<RewardTerms, 'viewRatePerThousand' | 'perViewCap' | 'fixedCash'>;
 }): { earned: number; refund: number } | null {
-  if (p.stage !== 'COUNTING') return null;
+  if (p.stage !== measurementStageOf(p.kind ?? 'STORE_OFFER')) return null;
   const { viewRatePerThousand, perViewCap, fixedCash } = p.terms;
   if (p.views === null || viewRatePerThousand === null || perViewCap === null) {
     return null;

@@ -312,3 +312,44 @@ describe('viewReportStatusOf', () => {
     expect(viewReportStatusOf({ ...base, stage: 'REFUNDED' })).toBe('NONE');
   });
 });
+
+describe('brand contract measurement', () => {
+  const terms = { viewRatePerThousand: 2000, perViewCap: 60000, fixedCash: 0 };
+
+  it('measures a brand contract while it is published, not while it is counting', () => {
+    expect(
+      liveAmounts({
+        kind: 'BRAND_CONTRACT',
+        stage: 'PUBLISHED',
+        views: 12500,
+        terms,
+      }),
+    ).toEqual({ earned: 25000, refund: 35000 });
+    expect(
+      liveAmounts({
+        kind: 'BRAND_CONTRACT',
+        stage: 'COUNTING',
+        views: 12500,
+        terms,
+      }),
+    ).toBeNull();
+    // 종류를 주지 않으면 가게 오퍼라 PUBLISHED는 집계 중이 아니다.
+    expect(liveAmounts({ stage: 'PUBLISHED', views: 12500, terms })).toBeNull();
+  });
+
+  it('reports a published brand contract as counting until its calculation exists', () => {
+    const base = {
+      kind: 'BRAND_CONTRACT' as const,
+      stage: 'PUBLISHED' as CollaborationStage,
+      submitted: true,
+      hasViewPay: true,
+      settlementStatus: null,
+    };
+    expect(viewReportStatusOf(base)).toBe('COUNTING');
+    expect(
+      viewReportStatusOf({ ...base, settlementStatus: 'UNCONFIRMED' }),
+    ).toBe('UNCONFIRMED');
+    expect(viewReportStatusOf({ ...base, stage: 'APPROVED' })).toBe('NONE');
+    expect(viewReportStatusOf({ ...base, hasViewPay: false })).toBe('NONE');
+  });
+});

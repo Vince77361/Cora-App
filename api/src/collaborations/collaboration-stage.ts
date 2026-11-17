@@ -64,6 +64,14 @@ export const preContractStages: CollaborationStage[] = [
   'AGREED',
 ];
 
+// 계약이 체결된 뒤 링크를 내기 전의 단계. 60일 점검(brand-halt-check)이 이 단계에서만 협업을 멈추고, 운영 재개가 이 단계로 돌아가면 점검을 다시 올린다.
+export const BRAND_BEFORE_LINK_STAGES: CollaborationStage[] = [
+  'CONTRACTED',
+  'GUIDED',
+  'REVIEWING',
+  'APPROVED',
+];
+
 // 조건을 확인하거나 새 판본을 낼 수 있는 단계. INQUIRY는 아직 서로 관심이 아니라 협의할 조건이 없다.
 export const negotiableStages: CollaborationStage[] = [
   'MATCHED',

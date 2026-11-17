@@ -96,6 +96,18 @@ describe('NOTIFICATION_CATALOG', () => {
     );
   });
 
+  it('tells the brand the paid amount and the returned rest of the cap for a performance bonus contract', () => {
+    expect(
+      render('BRAND_FIXED_PAID', null, { amount: 375000, refund: 35000 }),
+    ).toBe(
+      '375,000원을 크리에이터에게 지급했어요. 남은 35,000원은 돌려드려요.',
+    );
+    // 상한을 다 썼으면 돌려줄 금액이 없어 지급 문장만이다.
+    expect(
+      render('BRAND_FIXED_PAID', null, { amount: 410000, refund: 0 }),
+    ).toBe('410,000원을 크리에이터에게 지급했어요.');
+  });
+
   it('leaves the amount sentence out of the settlement notice when nothing is refunded', () => {
     expect(render('SETTLEMENT_REFUNDED', null, { amount: 0 })).toBe(
       '조회수 집계가 끝났어요.',

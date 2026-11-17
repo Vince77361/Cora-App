@@ -10,8 +10,10 @@ import {
   submissionDeadlineJobKeys,
 } from '../collaborations/collaboration-jobs';
 import {
+  BRAND_BEFORE_LINK_STAGES,
   BRAND_HALT_CHECK_DAYS,
   canTransition,
+  isMoneyHeld,
 } from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
@@ -157,7 +159,10 @@ export class OpsService {
         if (!canTransition(c.kind, 'HALTED', to, to)) {
           throw new OpsError(`${to} 단계로는 되돌릴 수 없어요.`);
         }
-        if (to === 'COUNTING' && (!c.submittedAt || !c.countingEndsAt)) {
+        if (
+          to === measurementStageOf(c.kind) &&
+          (!c.submittedAt || !c.countingEndsAt)
+        ) {
           throw new OpsError(
             '집계 시작·종료 시각이 없어서 집계 작업을 다시 올릴 수 없어요.',
           );
@@ -165,15 +170,6 @@ export class OpsService {
         if (to === 'FUNDED' && !c.submitDueAt) {
           throw new OpsError(
             '제출 기한이 없어서 제출 기한 작업을 올릴 수 없어요.',
-          );
-        }
-        if (
-          to === 'PUBLISHED' &&
-          c.kind === 'BRAND_CONTRACT' &&
-          !c.countingEndsAt
-        ) {
-          throw new OpsError(
-            '지급 시각이 없어서 지급 작업을 다시 올릴 수 없어요.',
           );
         }
         await this.advanceOrConflict(c, 'HALTED', to, tx, {
@@ -218,13 +214,15 @@ export class OpsService {
   // 브랜드 계약을 재개하면 멈추기 전 단계에 맞는 작업을 다시 올린다. 멈추면서 모두 취소했으므로 같은 키로 올릴 수 있다.
   // - 링크를 내기 전(CONTRACTED~APPROVED): 60일 점검을 지금부터 60일 뒤로 다시 올린다(운영자가 확인하고 푼 협업에 새 60일을 준다).
   // - 링크를 낸 뒤(PUBLISHED): 성과 추가가 없으면 지급 작업을 max(지금, 원래 지급 시각)에 올린다. 지급 조건이 끝나기 전에 풀어도
-  //   일찍 지급하지 않는다. 성과 추가가 있는 계약은 이 길이 작업을 올리지 않는다(PUBLISHED로 남는다).
+  //   일찍 지급하지 않는다. 성과 추가가 있으면 가게 오퍼와 같은 길로 측정을 이어 간다(기록되지 않은 날의 조회수 작업과 정산을 다시 올린다).
+  // - 그 밖의 단계로는 되돌아갈 일이 없다: 정산이 끝난 협업(SETTLED)은 멈춘 적이 없고, 이의 제기로 멈춘 협업은 resolve-dispute로만
+  //   움직인다(resume이 확인 전·이의 중인 정산을 거절한다).
   private async rescheduleBrand(
     c: Collaboration,
     to: CollaborationStage,
     now: Date,
   ): Promise<void> {
-    if (to !== 'PUBLISHED') {
+    if (BRAND_BEFORE_LINK_STAGES.includes(to)) {
       const key = brandHaltJobKey(c.id);
       await this.jobs.cancel(key);
       await this.jobs.schedule(
@@ -235,10 +233,13 @@ export class OpsService {
       );
       return;
     }
-    const endsAt = c.countingEndsAt;
-    if (!endsAt || (await this.settlements.brandTermsOf(c.id)).performance) {
+    if (to !== 'PUBLISHED') return;
+    if ((await this.settlements.brandTermsOf(c.id)).performance) {
+      await this.rescheduleCounting(c, now);
       return;
     }
+    const endsAt = c.countingEndsAt;
+    if (!endsAt) return;
     const key = settleFixedJobKey(c.id);
     await this.jobs.cancel(key);
     await this.jobs.schedule(
@@ -340,7 +341,7 @@ export class OpsService {
     const { refundId, escrow, fee } = await this.inCollaboration(
       collaborationId,
       async (tx, c) => {
-        this.assertForceable(c);
+        this.assertForceable(c, 'REFUNDED');
         await this.assertNoOpenSettlement(c, tx);
         const balances = await this.ledger.accountBalances(c.id, tx);
         const escrow = balances.ESCROW;
@@ -402,7 +403,7 @@ export class OpsService {
     const result = await this.inCollaboration(
       collaborationId,
       async (tx, c) => {
-        this.assertForceable(c);
+        this.assertForceable(c, 'SETTLED');
         await this.assertNoOpenSettlement(c, tx);
         const escrow = await this.ledger.escrowBalance(c.id, tx);
         if (amount > escrow) {
@@ -946,11 +947,22 @@ export class OpsService {
     }
   }
 
-  private assertForceable(c: Collaboration): void {
-    if (c.kind !== 'STORE_OFFER') {
-      throw new OpsError(
-        '브랜드 계약의 강제 환급·지급은 아직 지원하지 않아요.',
-      );
+  // 강제 환급·지급이 가능한 단계. 가게 오퍼는 돈이 보관 중인 FUNDED·COUNTING·HALTED다.
+  // 브랜드 계약은 단계 규칙(canTransition)이 허락하는 끝으로만 끝낸다: 환급(REFUNDED)은 멈춘(HALTED) 협업만, 지급(SETTLED)은
+  // 링크를 낸(PUBLISHED) 협업이나 멈춘 협업만이다. 계약 뒤 링크 전에 끝낼 일은 60일 점검이 멈춘 뒤 운영자가 이어서 한다.
+  private assertForceable(c: Collaboration, end: 'REFUNDED' | 'SETTLED'): void {
+    if (c.kind === 'BRAND_CONTRACT') {
+      if (
+        !isMoneyHeld(c.kind, c.stage) ||
+        !canTransition(c.kind, c.stage, end)
+      ) {
+        throw new OpsError(
+          end === 'REFUNDED'
+            ? `브랜드 계약은 멈춘(HALTED) 뒤에 강제 환급할 수 있어요. 먼저 halt로 멈춰 주세요. (지금 단계: ${c.stage})`
+            : `브랜드 계약은 링크를 낸(PUBLISHED) 협업이나 멈춘(HALTED) 협업만 강제 지급할 수 있어요. (지금 단계: ${c.stage})`,
+        );
+      }
+      return;
     }
     if (!FORCEABLE_STAGES.includes(c.stage)) {
       throw new OpsError(

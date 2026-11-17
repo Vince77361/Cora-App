@@ -1,4 +1,5 @@
 import type { JobPayload } from '../../jobs/job-scheduler';
+import { MAX_SNAPSHOT_DAYS } from '../job-keys';
 
 // 협업에 붙은 작업의 payload에서 협업 id를 꺼낸다. 없으면 던져서, 잘못 등록된 작업이 조용히 사라지지 않고 큐에 실패로 남게 한다.
 export function collaborationIdOf(payload: JobPayload): string {
@@ -17,11 +18,11 @@ export function dayIndexOf(payload: JobPayload): number {
     typeof payload.dayIndex === 'number' &&
     Number.isInteger(payload.dayIndex) &&
     payload.dayIndex >= 0 &&
-    payload.dayIndex <= 7
+    payload.dayIndex <= MAX_SNAPSHOT_DAYS
   ) {
     return payload.dayIndex;
   }
-  throw new Error('작업에 dayIndex(0~7)가 없어요.');
+  throw new Error('작업에 dayIndex(0~14)가 없어요.');
 }
 
 export function daysLeftOf(payload: JobPayload): number {

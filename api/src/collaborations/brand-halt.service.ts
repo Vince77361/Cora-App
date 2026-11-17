@@ -4,15 +4,8 @@ import { ConversationsService } from '../conversations/conversations.service';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
 import { NotificationsService } from '../notifications/notifications.service';
 import { haltedNoticeKey, NO_LINK_HALT_REASON } from '../settlements/job-keys';
+import { BRAND_BEFORE_LINK_STAGES } from './collaboration-stage';
 import { CollaborationsRepository } from './collaborations.repository';
-
-// 링크를 내기 전의 단계. 계약이 체결된 뒤 이 단계에 60일 동안 머물면 멈춘다.
-const BEFORE_LINK_STAGES: CollaborationStage[] = [
-  'CONTRACTED',
-  'GUIDED',
-  'REVIEWING',
-  'APPROVED',
-];
 
 export const NO_LINK_ALERT_SUBJECT = '[Cora] 협업 멈춤 · 60일 동안 링크 없음';
 
@@ -37,7 +30,7 @@ export class BrandHaltService {
       await this.finish(found.id);
       return;
     }
-    if (!BEFORE_LINK_STAGES.includes(found.stage)) return;
+    if (!BRAND_BEFORE_LINK_STAGES.includes(found.stage)) return;
     // 조건부 전이: 같은 시각에 링크 제출이나 다른 멈춤이 먼저 단계를 옮겼다면 졌다(그 경우 멈추지 않는다).
     const halted = await this.collaborations.advance(
       found.id,

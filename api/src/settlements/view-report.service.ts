@@ -855,8 +855,6 @@ export class ViewReportService {
     if (!row || (row.commissionerId !== userId && row.creatorId !== userId)) {
       throw this.notFound();
     }
-    // 브랜드 계약의 조건은 협업 행이 아니라 terms_versions에 있어 아래 계산이 읽을 수 없다. 브랜드의 조회 자료는 이어서 켠다.
-    if (row.kind === 'BRAND_CONTRACT') throw this.notFound();
     return row;
   }
 

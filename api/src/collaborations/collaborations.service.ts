@@ -10,6 +10,7 @@ import { BrandsService } from '../brands/brands.service';
 import { budgetLeft } from '../campaigns/campaign-budget';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import { Clock } from '../common/clock';
+import { readSnapshot } from '../contracts/contract-snapshot';
 import { AppError } from '../common/errors/app-error';
 import { ConversationsService } from '../conversations/conversations.service';
 import { CreatorsService } from '../creators/creators.service';
@@ -74,6 +75,8 @@ interface Context {
   latestTerms: Map<string, TermsVersion>;
   conversationIds: Map<string, string>;
   contractProgress: Map<string, 'AWAITING_BRAND' | 'CONCLUDED'>;
+  // 브랜드 계약마다 체결된 계약의 조건 사본(성과 추가·고정 제작비). 정산 값은 이 사본에서 읽는다.
+  concludedTerms: Map<string, ReturnType<typeof readSnapshot>>;
   // 캠페인마다, 확보액을 세는 브랜드 협업들의 확보액. 그 캠페인의 브랜드가 보는 행에서만 채운다.
   securedByCampaign: Map<string, number[]>;
 }
@@ -609,14 +612,17 @@ export class CollaborationsService {
       this.cancelRequests.mapPendingFor(ids, now),
     ]);
     const brandContext = await this.brandContext(userId, rows);
-    const [conversationIds, contractProgress] = await Promise.all([
-      this.collaborations.mapConversationIds(ids),
-      this.collaborations.mapContractProgress(ids),
-    ]);
+    const [conversationIds, contractProgress, concludedTerms] =
+      await Promise.all([
+        this.collaborations.mapConversationIds(ids),
+        this.collaborations.mapContractProgress(ids),
+        this.concludedTermsOf(rows),
+      ]);
     const context: Context = {
       ...brandContext,
       conversationIds,
       contractProgress,
+      concludedTerms,
       now,
       funded,
       views,
@@ -655,15 +661,7 @@ export class CollaborationsService {
       terms,
     });
 
-    // 지급 계좌 사정(NEEDS_ACCOUNT, 지급일)은 크리에이터에게만 보인다. 사장님에게는 그냥 지급 대기다.
-    let payoutView = payoutStatusOf(payout, true);
-    if (role === 'CREATOR') {
-      if (payout?.status === 'PENDING') {
-        payoutView = payoutStatusOf(payout, await this.hasAccount(row, c));
-      }
-    } else {
-      payoutView = { ...payoutView, scheduledFor: null };
-    }
+    const payoutView = await this.payoutViewOf(row, role, payout, c);
 
     const card = row.storeId
       ? await this.storeCardCached(row.storeId, c)
@@ -744,8 +742,26 @@ export class CollaborationsService {
     };
   }
 
-  // 브랜드 계약. 돈·정산·취소 칸은 이 계획 범위 밖이라 비어 있다(결제와 계약 이후는 5번 계획이 켠다).
-  // 단계 막대는 가게 오퍼의 다섯 칸이 아니라 brandProgress 여섯 단계가 맡아서 steps는 비어 있다.
+  // 지급 계좌 사정(NEEDS_ACCOUNT, 지급일)은 크리에이터에게만 보인다. 사장님(브랜드)에게는 그냥 지급 대기다.
+  private async payoutViewOf(
+    row: Collaboration,
+    role: CollaborationModel['role'],
+    payout: Parameters<typeof payoutStatusOf>[0],
+    c: Context,
+  ): Promise<ReturnType<typeof payoutStatusOf>> {
+    let payoutView = payoutStatusOf(payout, true);
+    if (role === 'CREATOR') {
+      if (payout?.status === 'PENDING') {
+        payoutView = payoutStatusOf(payout, await this.hasAccount(row, c));
+      }
+    } else {
+      payoutView = { ...payoutView, scheduledFor: null };
+    }
+    return payoutView;
+  }
+
+  // 브랜드 계약. 정산 칸(지급·정산 결과·조회 자료 확인 단계·집계 중 금액)은 체결된 계약의 조건 사본과 정산 행에서 채운다.
+  // 취소 칸은 브랜드 계약에 없어 비어 있다. 단계 막대는 가게 오퍼의 다섯 칸이 아니라 brandProgress 여섯 단계가 맡아서 steps는 비어 있다.
   private async toBrandModel(
     row: Collaboration,
     role: CollaborationModel['role'],
@@ -760,6 +776,29 @@ export class CollaborationsService {
     // 멈춘 협업은 멈추기 전 단계로 읽는다(멈춘 이유는 별개의 이야기다).
     const readStage = row.stage === 'HALTED' ? row.stageBeforeHalt : row.stage;
     const progress = readStage ? brandProgress(readStage) : null;
+    // 정산 값: 가게 오퍼와 같은 규칙이다(확인 전의 계산은 정산으로 보이지 않고, 지급 계좌 사정은 크리에이터에게만 보인다).
+    const concluded = c.concludedTerms.get(row.id) ?? null;
+    const settlement = c.settlements.get(row.id) ?? null;
+    const confirmed = settlement?.status === 'CONFIRMED' ? settlement : null;
+    const payoutView = await this.payoutViewOf(
+      row,
+      role,
+      c.payouts.get(row.id) ?? null,
+      c,
+    );
+    const currentViews = c.views.get(row.id) ?? null;
+    const live = concluded
+      ? liveAmounts({
+          kind: row.kind,
+          stage: row.stage,
+          views: currentViews,
+          terms: {
+            fixedCash: concluded.fee,
+            viewRatePerThousand: concluded.performance?.ratePer1000 ?? null,
+            perViewCap: concluded.performance?.cap ?? null,
+          },
+        })
+      : null;
     return {
       id: row.id,
       kind: row.kind,
@@ -795,13 +834,25 @@ export class CollaborationsService {
       submitDueAt: row.submitDueAt?.toISOString() ?? null,
       submittedUrl: row.submittedUrl,
       countingEndsAt: row.countingEndsAt?.toISOString() ?? null,
-      currentViews: null,
-      earnedSoFar: null,
-      expectedRefund: null,
-      settlement: null,
-      viewReportStatus: 'NONE',
-      payoutStatus: 'NONE',
-      payoutScheduledFor: null,
+      currentViews: concluded?.performance ? currentViews : null,
+      earnedSoFar: isCreator ? (live?.earned ?? null) : null,
+      expectedRefund: !isCreator ? (live?.refund ?? null) : null,
+      settlement: confirmed
+        ? {
+            finalViews: confirmed.finalViews,
+            payoutAmount: confirmed.payoutAmount,
+            refundAmount: confirmed.refundAmount,
+          }
+        : null,
+      viewReportStatus: viewReportStatusOf({
+        kind: row.kind,
+        stage: row.stage,
+        submitted: row.submittedUrl !== null,
+        hasViewPay: !!concluded?.performance,
+        settlementStatus: settlement?.status ?? null,
+      }),
+      payoutStatus: payoutView.status,
+      payoutScheduledFor: payoutView.scheduledFor?.toISOString() ?? null,
       cancelRequest: null,
       canCancel: false,
       canRequestCancel: false,
@@ -809,6 +860,27 @@ export class CollaborationsService {
       contractStatus: c.contractProgress.get(row.id) ?? 'NONE',
       extraRevisionsAllowed: row.extraRevisionsAllowed,
     };
+  }
+
+  // 체결된 브랜드 계약의 조건 사본을 한 번에 읽는다. 읽을 수 없는 사본(옛 모양, 값이 맞지 않음)은 그 협업의 정산 칸만 비우고 목록 전체는 막지 않는다.
+  private async concludedTermsOf(
+    rows: Collaboration[],
+  ): Promise<Map<string, ReturnType<typeof readSnapshot>>> {
+    const ids = rows
+      .filter((r) => r.kind === 'BRAND_CONTRACT')
+      .map((r) => r.id);
+    const raw = await this.collaborations.mapConcludedSnapshots(ids);
+    const parsed = new Map<string, ReturnType<typeof readSnapshot>>();
+    for (const [id, json] of raw) {
+      try {
+        parsed.set(id, readSnapshot(json));
+      } catch (error) {
+        this.logger.warn(
+          `협업의 계약 조건 사본을 읽지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        );
+      }
+    }
+    return parsed;
   }
 
   // 브랜드 계약 칸의 재료를 목록 전체에 대해 한 번에 읽는다: 캠페인, 최신 판본, 그리고 보는 사람이 브랜드인 캠페인의 확보액들.

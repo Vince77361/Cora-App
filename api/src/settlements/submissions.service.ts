@@ -120,9 +120,11 @@ export class SubmissionsService {
   }
 
   // 브랜드 계약의 링크 제출: APPROVED → PUBLISHED. 형식은 협업의 terms 칸(브랜드는 비어 있다)이 아니라 계약의 조건 사본에서 읽는다.
-  // 성과 추가가 없으면 게시한 날 + 지급 조건(7·14일)에 settle-fixed 작업을 올린다. 성과 추가가 있는 계약의 측정·정산은 이 길이
-  // 아직 올리지 않는다: PUBLISHED로 두고 작업을 올리지 않으므로 돈이 움직이지 않는다. 연결 계정의 게시물인지는 조회수를 읽을 때만 중요해서 이때만 본다.
+  // 성과 추가가 없으면 게시한 날 + 지급 조건(7·14일)에 settle-fixed 작업을 올린다. 성과 추가가 있으면 그 기간(7·14일) 동안 조회수를 읽는
+  // 작업(0일째는 지금, 이후 하루 간격)과 기간이 끝나는 날의 settle 작업을 올린다: 가게 오퍼의 측정과 같은 길이고 기간만 다르다.
+  // 연결 계정의 게시물인지는 조회수를 읽을 때만 중요해서 성과 추가가 있을 때만 본다.
   // 측정이 끝나는 시각(= 지급 시각)은 collaborations.countingEndsAt에 적어 협업 모델이 그대로 내려 준다.
+  // 작업을 올리지 못하면 제출을 되돌린다: 작업 없는 PUBLISHED로 두면 돈이 보관된 채 아무도 정산하지 않는다.
   private async submitBrand(
     collaboration: Collaboration,
     rawUrl: string,
@@ -160,24 +162,33 @@ export class SubmissionsService {
     );
     if (!moved) throw this.notSubmittable();
 
-    if (!snapshot.performance) {
-      try {
+    const keys: string[] = [];
+    try {
+      if (snapshot.performance) {
+        await this.scheduleMeasurement(
+          collaboration.id,
+          now,
+          countingEndsAt,
+          snapshot.payoutDays,
+          keys,
+        );
+      } else {
+        keys.push(settleFixedJobKey(collaboration.id));
         await this.jobs.schedule(
           'settle-fixed',
           { collaborationId: collaboration.id },
           countingEndsAt,
-          settleFixedJobKey(collaboration.id),
+          keys[0],
         );
-      } catch (error) {
-        // 작업 없이 PUBLISHED로 두면 아무도 지급하지 않는다: 제출을 되돌려 크리에이터가 다시 낼 수 있게 한다.
-        await this.collaborations.advance(
-          collaboration.id,
-          'PUBLISHED',
-          'APPROVED',
-          { submittedUrl: null, submittedAt: null, countingEndsAt: null },
-        );
-        throw error;
       }
+    } catch (error) {
+      await this.undoSubmission(
+        collaboration.id,
+        keys,
+        'PUBLISHED',
+        'APPROVED',
+      );
+      throw error;
     }
     await this.cancelBrandHaltCheck(collaboration.id);
     await this.notifySubmitted(collaboration);
@@ -206,33 +217,57 @@ export class SubmissionsService {
   ): Promise<void> {
     const keys: string[] = [];
     try {
-      for (let day = 0; viewPay && day <= SNAPSHOT_DAYS; day += 1) {
-        const key = snapshotJobKey(collaboration.id, day);
-        keys.push(key);
-        await this.jobs.schedule(
-          'view-snapshot',
-          { collaborationId: collaboration.id, dayIndex: day },
-          new Date(now.getTime() + day * DAY_MS),
-          key,
-        );
-      }
-      const settleKey = settleJobKey(collaboration.id);
-      keys.push(settleKey);
-      await this.jobs.schedule(
-        'settle',
-        { collaborationId: collaboration.id },
+      await this.scheduleMeasurement(
+        collaboration.id,
+        now,
         countingEndsAt,
-        settleKey,
+        SNAPSHOT_DAYS,
+        keys,
+        viewPay,
       );
     } catch (error) {
-      await this.undoSubmission(collaboration.id, keys);
+      await this.undoSubmission(collaboration.id, keys, 'COUNTING', 'FUNDED');
       throw error;
     }
   }
 
+  // 측정 기간 동안의 작업: 조회수 읽기(0일째부터 마지막 날까지 하루 간격)와 기간이 끝나는 시각의 정산 한 번.
+  // 올린 작업의 키는 keys에 쌓는다(중간에 실패하면 호출한 쪽이 이 키들을 지운다).
+  private async scheduleMeasurement(
+    collaborationId: string,
+    now: Date,
+    countingEndsAt: Date,
+    days: number,
+    keys: string[],
+    viewPay = true,
+  ): Promise<void> {
+    for (let day = 0; viewPay && day <= days; day += 1) {
+      const key = snapshotJobKey(collaborationId, day);
+      keys.push(key);
+      await this.jobs.schedule(
+        'view-snapshot',
+        { collaborationId, dayIndex: day },
+        new Date(now.getTime() + day * DAY_MS),
+        key,
+      );
+    }
+    const settleKey = settleJobKey(collaborationId);
+    keys.push(settleKey);
+    await this.jobs.schedule(
+      'settle',
+      { collaborationId },
+      countingEndsAt,
+      settleKey,
+    );
+  }
+
+  // 제출을 되돌린다: 올린 작업을 지우고 단계를 제출 전으로 돌린다. 되돌리는 일이 실패해도 처음의 오류를 가리지 않는다
+  // (호출한 쪽이 처음의 오류를 던진다): 되돌림의 실패는 로그로만 남기고, 크리에이터에게는 처음의 원인이 보인다.
   private async undoSubmission(
     collaborationId: string,
     keys: string[],
+    from: CollaborationStage,
+    to: CollaborationStage,
   ): Promise<void> {
     for (const key of keys) {
       try {
@@ -243,11 +278,17 @@ export class SubmissionsService {
         );
       }
     }
-    await this.collaborations.advance(collaborationId, 'COUNTING', 'FUNDED', {
-      submittedUrl: null,
-      submittedAt: null,
-      countingEndsAt: null,
-    });
+    try {
+      await this.collaborations.advance(collaborationId, from, to, {
+        submittedUrl: null,
+        submittedAt: null,
+        countingEndsAt: null,
+      });
+    } catch (error) {
+      this.logger.error(
+        `제출을 되돌리지 못했어요(${from} → ${to}): ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
   }
 
   // 제출했으니 미제출 환급과 기한 알림은 필요 없다. 지우지 못해도 처리기가 단계를 보고 아무 일도 하지 않는다.

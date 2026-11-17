@@ -194,6 +194,7 @@ export class PayoutsService implements OnModuleInit {
   }
 
   // 크리에이터에게 지급 완료를 알리고, 브랜드 계약이면 브랜드에게도 제작비가 지급됐다고 알린다(탭 정산).
+  // 성과 추가가 있었던 정산이면(조회수 수당을 줬거나 상한이 남았으면) 지급액과 함께 돌려받는 남은 상한도 알린다.
   // 알림은 모두 지급마다 한 건씩이라 송금 직후 죽어 다시 돌아도 중복되지 않는다.
   private async notifyDone(payout: PayoutWithCreator): Promise<void> {
     await this.notifications.notify({
@@ -205,11 +206,19 @@ export class PayoutsService implements OnModuleInit {
       dedupeKey: `payout-done:${payout.id}`,
     });
     if (payout.collaborationKind !== 'BRAND_CONTRACT') return;
+    const settlement = await this.repository.findSettlement(
+      payout.collaborationId,
+    );
+    const withBonus =
+      !!settlement &&
+      (settlement.viewPayAmount > 0 || settlement.refundAmount > 0);
     await this.notifications.notify({
       userId: payout.commissionerId,
       role: 'BRAND',
       kind: 'BRAND_FIXED_PAID',
-      params: { amount: payout.amount },
+      params: withBonus
+        ? { amount: payout.amount, refund: settlement.refundAmount }
+        : { amount: payout.amount },
       target: { kind: 'COLLABORATION', id: payout.collaborationId },
       dedupeKey: `brand-fixed-paid:${payout.id}`,
     });

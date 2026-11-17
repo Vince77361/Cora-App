@@ -385,8 +385,16 @@ export const NOTIFICATION_CATALOG: Record<NotificationKind, CatalogEntry> = {
     glyph: 'WON',
     requiredParams: { amount: 'number' },
     needsActor: false,
-    render: ({ params }) =>
-      `제작비 ${josa(won(params.amount), '을/를')} 크리에이터에게 지급했어요.`,
+    render: ({ params }) => {
+      // 성과 추가가 있는 계약은 지급액(제작비 + 성과 추가)과 돌려받는 남은 상한을 함께 알린다. 남은 상한이 없으면 지급 문장만이다.
+      if (params.refund === undefined) {
+        return `제작비 ${josa(won(params.amount), '을/를')} 크리에이터에게 지급했어요.`;
+      }
+      const paid = `${josa(won(params.amount), '을/를')} 크리에이터에게 지급했어요.`;
+      return Number(params.refund) > 0
+        ? `${paid} 남은 ${josa(won(params.refund), '은/는')} 돌려드려요.`
+        : paid;
+    },
   },
   // 표 "메시지 요청": 브랜드 / 매칭 / 대화 메시지 / 사진. 누르면 11 메시지 요청(대화방)이 열린다.
   MESSAGE_REQUEST: {

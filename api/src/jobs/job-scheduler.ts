@@ -3,7 +3,7 @@ import type { JobName } from './job-names';
 // 작업은 협업에 붙거나(결제 이후의 작업), 오퍼에 붙거나(오퍼가 협업을 만들기 전·없이 도는 작업: 거절 알림, 결제 기한 만료),
 // 결제에 붙는다(결제 대기 재확인).
 // daysLeft는 제출 기한 알림 작업만 싣는다: 기한까지 남은 날(3 또는 1).
-// dayIndex는 조회수 스냅샷 작업만 싣는다: 제출한 날부터 지난 날(0~7).
+// dayIndex는 조회수 스냅샷 작업만 싣는다: 제출한 날부터 지난 날(0~14. 가게 오퍼는 7일, 브랜드 계약은 7 또는 14일까지).
 export type CollaborationJobPayload = {
   collaborationId: string;
   daysLeft?: number;
