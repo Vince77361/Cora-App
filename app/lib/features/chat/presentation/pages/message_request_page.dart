@@ -117,7 +117,7 @@ class _LoadedState extends ConsumerState<_Loaded> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Hero(detail: detail, onBack: () => context.pop()),
+              _Hero(detail: detail),
               Transform.translate(
                 offset: const Offset(0, -24),
                 child: DecoratedBox(
@@ -163,6 +163,12 @@ class _LoadedState extends ConsumerState<_Loaded> {
               ),
             ],
           ),
+        ),
+        // 뒤로 가기는 스크롤 밖에 고정한다(캔버스는 화면에 붙어 있다).
+        Positioned(
+          left: 8,
+          top: MediaQuery.paddingOf(context).top + 12,
+          child: _HeroBack(onPressed: () => context.pop()),
         ),
         Align(
           alignment: Alignment.bottomCenter,
@@ -224,16 +230,14 @@ class _LoadedState extends ConsumerState<_Loaded> {
 
 /// 사진(높이 330, 상태 표시줄 아래까지 이어진다): 아래 200에 어두운 덮개, 왼쪽 위 뒤로 가기, 아래에 `메시지 요청`·보낸 사람 이름·캠페인 한 줄.
 class _Hero extends StatelessWidget {
-  const _Hero({required this.detail, required this.onBack});
+  const _Hero({required this.detail});
 
   final ConversationDetail detail;
-  final VoidCallback onBack;
 
   static const double height = 330;
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.paddingOf(context).top;
     return SizedBox(
       height: height,
       child: Stack(
@@ -264,11 +268,6 @@ class _Hero extends StatelessWidget {
                 ),
               ),
             ),
-          ),
-          Positioned(
-            left: 8,
-            top: top + 12,
-            child: _HeroBack(onPressed: onBack),
           ),
           Positioned(
             left: 24,

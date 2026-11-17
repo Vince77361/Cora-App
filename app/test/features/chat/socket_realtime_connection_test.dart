@@ -197,6 +197,71 @@ void main() {
     expect(h.sockets.first.disposed, isTrue);
   });
 
+  test(
+    'does not signal a reconnect when the server drops it right after accepting',
+    () async {
+      final h = _Harness(stableAfter: const Duration(hours: 1));
+      await h.connection.start();
+      h.last.fireConnect();
+      h.last.fireDisconnect();
+      await h.settle();
+      // 두 번째 시도도 받은 뒤 곧바로 끊긴다. 자리 잡기 전이라 다시 읽으라는 신호는 없다.
+      h.last.fireConnect();
+      h.last.fireDisconnect();
+      await h.settle();
+
+      expect(h.sockets, hasLength(3));
+      expect(h.reconnects, 0);
+      await h.connection.stop();
+    },
+  );
+
+  test('signals a reconnect only once the connection has stayed up', () async {
+    final h = _Harness(stableAfter: const Duration(milliseconds: 30));
+    await h.connection.start();
+    h.last.fireConnect();
+    h.last.fireDisconnect();
+    await h.settle();
+    h.last.fireConnect();
+    await h.settle();
+    expect(h.reconnects, 0);
+
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(h.reconnects, 1);
+    await h.connection.stop();
+  });
+
+  test('puts the realtime namespace at the server root', () {
+    expect(
+      SocketRealtimeConnection.realtimeUrl('http://127.0.0.1:3000'),
+      'http://127.0.0.1:3000/realtime',
+    );
+    expect(
+      SocketRealtimeConnection.realtimeUrl('http://127.0.0.1:3000/'),
+      'http://127.0.0.1:3000/realtime',
+    );
+    expect(
+      SocketRealtimeConnection.realtimeUrl('https://api.cora.example/v1'),
+      'https://api.cora.example/realtime',
+    );
+  });
+
+  test('closes its streams and the socket when disposed', () async {
+    final h = _Harness();
+    var eventsDone = false;
+    var reconnectedDone = false;
+    h.connection.events.listen(null, onDone: () => eventsDone = true);
+    h.connection.reconnected.listen(null, onDone: () => reconnectedDone = true);
+    await h.connection.start();
+    final socket = h.last;
+    await h.connection.dispose();
+    await h.settle();
+
+    expect(socket.disposed, isTrue);
+    expect(eventsDone, isTrue);
+    expect(reconnectedDone, isTrue);
+  });
+
   test('signals a reconnect after failing to connect at first', () async {
     final h = _Harness();
     await h.connection.start();

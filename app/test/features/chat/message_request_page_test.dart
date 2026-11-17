@@ -197,6 +197,30 @@ void main() {
     expect(find.text('대화 열기'), findsOneWidget);
   });
 
+  testWidgets('keeps the back button fixed while the content scrolls', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    final chat = FakeChatRepository(
+      details: {'r1': requestDetail('r1')},
+      messages: {
+        'r1': [message(text: '아주 긴 첫 메시지 ' * 40)],
+      },
+    );
+    await pumpChatApp(tester, chat: chat, smallPhoneLargeText: true);
+    await openRequest(tester, 'r1');
+    final before = tester.getTopLeft(find.bySemanticsLabel('뒤로'));
+
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -400),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(find.bySemanticsLabel('뒤로')), before);
+    handle.dispose();
+  });
+
   testWidgets('renders in the dark theme', (tester) async {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);

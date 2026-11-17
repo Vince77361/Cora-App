@@ -48,9 +48,9 @@ class SocketRealtimeConnection implements RealtimeConnection {
     RealtimeSocketFactory? socketFactory,
     this.backoff = defaultBackoff,
     this.wait = _systemWait,
-    this.stableAfter = const Duration(seconds: 10),
+    this.stableAfter = const Duration(seconds: 2),
   }) : assert(backoff.isNotEmpty),
-       _url = '$baseUrl/realtime',
+       _url = realtimeUrl(baseUrl),
        _socketFactory = socketFactory ?? ioSocketFactory;
 
   static const defaultBackoff = [
@@ -61,6 +61,11 @@ class SocketRealtimeConnection implements RealtimeConnection {
     Duration(seconds: 16),
     Duration(seconds: 30),
   ];
+
+  /// [baseUrl]의 서버 주소에 `/realtime` 네임스페이스를 붙인다. 끝의 `/`나 경로 접두어가 있어도 네임스페이스는
+  /// 서버 루트의 `/realtime`이다.
+  static String realtimeUrl(String baseUrl) =>
+      Uri.parse(baseUrl).replace(path: '/realtime').toString();
 
   static Future<void> _systemWait(Duration delay) =>
       Future<void>.delayed(delay);
@@ -74,9 +79,10 @@ class SocketRealtimeConnection implements RealtimeConnection {
   /// 간격만큼 기다리는 함수. 테스트가 기다리지 않고 간격만 기록하게 바꾼다.
   final Future<void> Function(Duration) wait;
 
-  /// 붙은 뒤 이만큼 끊기지 않아야 연결이 자리 잡은 것으로 보고 간격을 처음으로 돌린다. 서버가 토큰을 검증하지
-  /// 못하면 연결을 받은 뒤 곧바로 끊어서(`io server disconnect`) `connect`가 오고 바로 `disconnect`가 온다.
-  /// 붙자마자 간격을 돌리면 그 경우에 1초마다 끝없이 두드리게 된다.
+  /// 붙은 뒤 이만큼 끊기지 않아야 연결이 자리 잡은 것으로 본다. 그제야 간격을 처음으로 돌리고, 끊겼다 붙었다면
+  /// `reconnected`를 알린다. 서버가 토큰을 검증하지 못하면 연결을 받은 뒤 곧바로 끊어서(`io server disconnect`)
+  /// `connect`가 오고 바로 `disconnect`가 온다. 붙자마자 알리면 그 경우에 시도마다 목록을 헛되이 다시 읽고,
+  /// 간격을 돌리면 1초마다 끝없이 두드리게 된다.
   final Duration stableAfter;
 
   final String _url;
@@ -116,6 +122,13 @@ class SocketRealtimeConnection implements RealtimeConnection {
     _discardSocket();
   }
 
+  /// 연결을 끊고 스트림을 닫는다. 이 연결을 만든 provider가 버려질 때 부른다. 닫은 뒤에는 다시 쓰지 않는다.
+  Future<void> dispose() async {
+    await stop();
+    await _events.close();
+    await _reconnected.close();
+  }
+
   bool _alive(int generation) => _running && generation == _generation;
 
   Future<void> _open(int generation) async {
@@ -138,12 +151,13 @@ class SocketRealtimeConnection implements RealtimeConnection {
         if (!_alive(generation)) return;
         _stableTimer?.cancel();
         _stableTimer = Timer(stableAfter, () {
-          if (_alive(generation)) _attempt = 0;
+          if (!_alive(generation)) return;
+          _attempt = 0;
+          if (_needsCatchUp) {
+            _needsCatchUp = false;
+            _reconnected.add(null);
+          }
         });
-        if (_needsCatchUp) {
-          _needsCatchUp = false;
-          _reconnected.add(null);
-        }
       })
       ..onDisconnect(() => _lost(generation))
       ..onConnectError(() => _lost(generation))

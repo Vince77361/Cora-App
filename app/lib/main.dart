@@ -218,12 +218,14 @@ Future<void> main() async {
           (ref) => ApiChatRepository(ref.watch(apiClientProvider)),
         ),
         // 소켓은 연결할 때마다 그 순간 유효한 토큰을 받아 붙는다(만료되면 새 토큰으로 다시 붙는다).
-        realtimeConnectionProvider.overrideWith(
-          (ref) => SocketRealtimeConnection(
+        realtimeConnectionProvider.overrideWith((ref) {
+          final connection = SocketRealtimeConnection(
             baseUrl: config.apiBaseUrl,
             tokenProvider: ref.watch(authRepositoryProvider).validAccessToken,
-          ),
-        ),
+          );
+          ref.onDispose(connection.dispose);
+          return connection;
+        }),
         photoUploaderProvider.overrideWith(
           (ref) => ApiPhotoUploader(
             uploads: api.UploadsApi(ref.watch(apiClientProvider)),

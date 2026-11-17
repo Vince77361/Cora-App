@@ -77,6 +77,4 @@ class ApiNegotiationRepository implements NegotiationRepository {
     api.MatchReason.FEE => MatchReason.fee,
     _ => MatchReason.trial,
   };
-
-  /// 서버의 날짜(`2026-11-16`)는 시각이 없다. 어느 시간대로 읽었든 연·월·일 칸만 취해 그날의 0시로 둔다.
 }
