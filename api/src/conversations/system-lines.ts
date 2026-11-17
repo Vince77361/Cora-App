@@ -38,6 +38,10 @@ export interface SystemViewer {
 const text = (params: SystemParams, key: string): string =>
   String(params[key] ?? '');
 
+// 버전 번호 뒤의 을/를: "1을", "2를"처럼 숫자를 한글로 읽은 마지막 소리에 맞춘다.
+const versionWithJosa = (params: SystemParams): string =>
+  josa(text(params, 'version'), '을/를');
+
 // 저장하는 값(params)의 키:
 // MATCHED { commissionerName, creatorName } · OFFER_ACCEPTED { by, name } · REQUEST_ACCEPTED { name }
 // TERMS_PROPOSED { name, version, proposerId } · TERMS_CONFIRMED { name, version } · TERMS_AGREED { version }
@@ -64,12 +68,12 @@ export function renderSystemLine(
       return `${text(params, 'name')}님이 대화를 수락했어요.`;
     case 'TERMS_PROPOSED':
       return params.proposerId === viewer.userId
-        ? `조건 버전 ${text(params, 'version')}을 제안했어요.`
-        : `${text(params, 'name')}님이 조건 버전 ${text(params, 'version')}을 제안했어요.`;
+        ? `조건 버전 ${versionWithJosa(params)} 제안했어요.`
+        : `${text(params, 'name')}님이 조건 버전 ${versionWithJosa(params)} 제안했어요.`;
     case 'TERMS_CONFIRMED':
-      return `${text(params, 'name')}님이 조건 버전 ${text(params, 'version')}을 확인했어요.`;
+      return `${text(params, 'name')}님이 조건 버전 ${versionWithJosa(params)} 확인했어요.`;
     case 'TERMS_AGREED':
-      return `양쪽이 조건 버전 ${text(params, 'version')}을 확인했어요.`;
+      return `양쪽이 조건 버전 ${versionWithJosa(params)} 확인했어요.`;
     case 'CREATOR_CONSENTED':
       return `${text(params, 'name')}님이 계약에 동의했어요.`;
     case 'CONSENT_VOIDED':

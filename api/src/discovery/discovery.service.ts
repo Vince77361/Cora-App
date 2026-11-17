@@ -46,6 +46,17 @@ const NOT_MATCHED: Outcome = {
 const pairLockKey = (campaignId: string, creatorId: string): string =>
   `discovery:${campaignId}:${creatorId}`;
 
+// 알림과 안내 줄에 쓰는 상대 이름 사본. 프로필을 못 읽으면 null이고 쓰는 쪽이 기본 이름으로 대신한다.
+interface ActorCopy {
+  userId: string;
+  name: string;
+  photoPath: string | null;
+}
+interface Actors {
+  brand: ActorCopy | null;
+  creator: ActorCopy | null;
+}
+
 function alreadyMatched(): AppError {
   return new AppError(
     'CONFLICT',
@@ -291,6 +302,9 @@ export class DiscoveryService {
   }): Promise<DecisionResultModel> {
     const { side, campaign, creatorId, key, input } = args;
     const now = this.clock.now();
+    // 안내 줄과 알림에 쓸 이름은 트랜잭션 밖에서 미리 읽는다: 트랜잭션이 연결을 쥔 채 다른 연결을 기다리지 않고,
+    // 이름을 못 읽어도 서로 관심이 되돌아가지 않게 기본 이름으로 대신한다.
+    const actors = await this.readActors(campaign.brandId, creatorId);
     let outcome: Outcome;
     try {
       outcome = await this.repository.transaction(async (tx) => {
@@ -337,6 +351,7 @@ export class DiscoveryService {
           creatorId,
           brandRow,
           creatorRow,
+          actors,
           now,
           tx,
         );
@@ -356,7 +371,12 @@ export class DiscoveryService {
       };
     }
     if (outcome.createdNow && outcome.collaborationId) {
-      await this.notifyMutual(campaign, creatorId, outcome.collaborationId);
+      await this.notifyMutual(
+        campaign,
+        creatorId,
+        outcome.collaborationId,
+        actors,
+      );
     }
     return {
       decision: input.decision,
@@ -373,6 +393,7 @@ export class DiscoveryService {
     creatorId: string,
     brandRow: SwipeDecision,
     creatorRow: SwipeDecision,
+    actors: Actors,
     now: Date,
     tx: Parameters<DiscoveryRepository['createMatch']>[1],
   ): Promise<Outcome> {
@@ -440,16 +461,12 @@ export class DiscoveryService {
       { status: 'OPEN' },
       tx,
     );
-    const [brandActor, creatorActor] = await Promise.all([
-      this.brands.getActor(campaign.brandId),
-      this.creators.getActor(creatorId),
-    ]);
     await this.conversations.postSystem(
       room.id,
       'MATCHED',
       {
-        commissionerName: brandActor?.name ?? '브랜드',
-        creatorName: creatorActor?.name ?? '크리에이터',
+        commissionerName: actors.brand?.name ?? '브랜드',
+        creatorName: actors.creator?.name ?? '크리에이터',
       },
       tx,
     );
@@ -461,11 +478,23 @@ export class DiscoveryService {
     };
   }
 
+  private async readActors(
+    brandId: string,
+    creatorId: string,
+  ): Promise<Actors> {
+    const [brand, creator] = await Promise.all([
+      this.brands.getActor(brandId).catch(() => null),
+      this.creators.getActor(creatorId).catch(() => null),
+    ]);
+    return { brand, creator };
+  }
+
   // 커밋 뒤에 양쪽에 알린다. 알림이 실패해도 이미 저장된 서로 관심은 유효하다(원장 판단 R22).
   private async notifyMutual(
     campaign: Campaign,
     creatorId: string,
     collaborationId: string,
+    actors: Actors,
   ): Promise<void> {
     const target = { kind: 'MATCH' as const, id: collaborationId };
     const dedupeKey = `mutual-interest:${collaborationId}`;
@@ -489,14 +518,10 @@ export class DiscoveryService {
         );
       }
     };
-    const [brandActor, creatorActor] = await Promise.all([
-      this.brands.getActor(campaign.brandId).catch(() => null),
-      this.creators.getActor(creatorId).catch(() => null),
-    ]);
     await send(
       creatorId,
       'CREATOR',
-      brandActor ?? {
+      actors.brand ?? {
         userId: campaign.brandId,
         name: '브랜드',
         photoPath: null,
@@ -505,7 +530,7 @@ export class DiscoveryService {
     await send(
       campaign.brandId,
       'BRAND',
-      creatorActor ?? {
+      actors.creator ?? {
         userId: creatorId,
         name: '크리에이터',
         photoPath: null,

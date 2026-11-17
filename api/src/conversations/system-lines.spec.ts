@@ -7,10 +7,10 @@ describe('renderSystemLine', () => {
   it('renders the proposal line differently for the proposer and the other side', () => {
     const params = { name: '하루 한 컵', version: 2, proposerId: 'creator-1' };
     expect(renderSystemLine('TERMS_PROPOSED', params, CREATOR)).toBe(
-      '조건 버전 2을 제안했어요.',
+      '조건 버전 2를 제안했어요.',
     );
     expect(renderSystemLine('TERMS_PROPOSED', params, COMMISSIONER)).toBe(
-      '하루 한 컵님이 조건 버전 2을 제안했어요.',
+      '하루 한 컵님이 조건 버전 2를 제안했어요.',
     );
   });
 
@@ -67,6 +67,22 @@ describe('renderSystemLine', () => {
     );
     expect(renderSystemLine('CONTRACT_CONCLUDED', {}, CREATOR)).toBe(
       '계약이 체결됐어요.',
+    );
+  });
+
+  it('picks the particle after a version number by how the digit is read', () => {
+    const at = (version: number) => ({ name: '느린결', version });
+    expect(renderSystemLine('TERMS_CONFIRMED', at(1), CREATOR)).toBe(
+      '느린결님이 조건 버전 1을 확인했어요.',
+    );
+    expect(renderSystemLine('TERMS_CONFIRMED', at(2), CREATOR)).toBe(
+      '느린결님이 조건 버전 2를 확인했어요.',
+    );
+    expect(renderSystemLine('TERMS_AGREED', at(2), CREATOR)).toBe(
+      '양쪽이 조건 버전 2를 확인했어요.',
+    );
+    expect(renderSystemLine('TERMS_AGREED', at(10), CREATOR)).toBe(
+      '양쪽이 조건 버전 10을 확인했어요.',
     );
   });
 

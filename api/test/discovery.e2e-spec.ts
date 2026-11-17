@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { IndustryCategory, PrismaClient } from '@prisma/client';
 import request from 'supertest';
+import { BrandsService } from '../src/brands/brands.service';
 import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
 import { createTestApp, httpOf } from './helpers/create-test-app';
@@ -671,6 +672,32 @@ describe('discovery decisions', () => {
         push.fail = false;
       }
       expect(await prisma.match.count()).toBe(1);
+    });
+
+    it('keeps the match and falls back to default names when a name cannot be read', async () => {
+      const campaignId = await bothSides();
+      await brandLike().expect(200);
+      const spy = jest
+        .spyOn(app.get(BrandsService), 'getActor')
+        .mockRejectedValue(new Error('read failed'));
+      let conversationId: string | null;
+      try {
+        const result = resultOf(await creatorLike(campaignId).expect(200));
+        expect(result.matched).toBe(true);
+        conversationId = result.conversationId;
+      } finally {
+        spy.mockRestore();
+      }
+      expect(await prisma.match.count()).toBe(1);
+      const lines = (
+        await request(server)
+          .get(`/conversations/${conversationId}/messages`)
+          .set(authCreator)
+          .expect(200)
+      ).body as { text: string }[];
+      expect(lines[0].text).toBe(
+        '브랜드님과 서로 관심이 닿았어요. 조건 버전 1이 만들어졌어요.',
+      );
     });
 
     it('refuses to change a decision after a match', async () => {
