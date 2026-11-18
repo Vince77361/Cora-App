@@ -38,10 +38,8 @@ List<RouteBase> _swipeBack(List<RouteBase> routes) => [
     if (r is GoRoute && r.builder != null)
       GoRoute(
         path: r.path,
-        pageBuilder: (context, state) => _InstantPage(
-          key: state.pageKey,
-          child: r.builder!(context, state),
-        ),
+        pageBuilder: (context, state) =>
+            _InstantPage(key: state.pageKey, child: r.builder!(context, state)),
       )
     else
       r,
