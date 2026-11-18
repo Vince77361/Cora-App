@@ -26,6 +26,7 @@ ViewReport _brandReport({
   bool canConfirm = true,
   ViewReportStatus status = ViewReportStatus.unconfirmed,
 }) => ViewReport(
+  brandContract: true,
   status: status,
   views: 12500,
   postUrl: 'https://www.instagram.com/reel/abc/',
@@ -45,6 +46,17 @@ ViewReport _brandReport({
   canConfirm: canConfirm,
   canDispute: true,
 );
+
+/// 협업을 읽으면 기록한다. F4는 응답의 종류로 문구를 고르므로 읽지 않아야 한다.
+class _CountingCollaborations extends FakeCollaborationRepository {
+  final fetched = <String>[];
+
+  @override
+  Future<Collaboration> fetch(String id) {
+    fetched.add(id);
+    return super.fetch(id);
+  }
+}
 
 Future<void> _pumpBrand(
   WidgetTester tester, {
@@ -96,6 +108,7 @@ void main() {
     tester,
   ) async {
     final seven = ViewReport(
+      brandContract: true,
       status: ViewReportStatus.unconfirmed,
       views: 12500,
       postUrl: 'https://www.instagram.com/reel/abc/',
@@ -129,14 +142,15 @@ void main() {
   });
 
   testWidgets(
-    'the creator of a brand contract sees the brand wording and can only dispute',
+    'the creator of a brand contract sees the brand wording from the response '
+    'and can only dispute',
     (tester) async {
-      // 서버는 크리에이터에게 canConfirm을 주지 않지만, 참으로 와도 버튼을 두지 않는다.
+      // 서버는 크리에이터에게 canConfirm을 주지 않지만, 참으로 와도 버튼을 두지 않는다. 문구는 응답의 kind에서
+      // 오므로 협업 저장소에는 이 협업이 없어도(읽지 않으므로) 된다.
+      final collaborations = _CountingCollaborations();
       await pumpCreatorApp(
         tester,
-        collaborations: FakeCollaborationRepository(
-          active: [brandCollab(role: CollaborationRole.creator)],
-        ),
+        collaborations: collaborations,
         overrides: [
           viewReportRepositoryProvider.overrideWithValue(
             FakeViewReportRepository(report: _brandReport()),
@@ -151,8 +165,75 @@ void main() {
       expect(find.text('제작비'), findsOneWidget);
       expect(find.text('자료 확인했어요'), findsNothing);
       expect(find.text('이의 제기'), findsOneWidget);
+      expect(collaborations.fetched, isEmpty);
     },
   );
+
+  testWidgets('the creator of a brand contract can still upload a capture', (
+    tester,
+  ) async {
+    final counting = ViewReport(
+      brandContract: true,
+      status: ViewReportStatus.counting,
+      views: null,
+      postUrl: 'https://www.instagram.com/reel/abc/',
+      periodStart: DateTime.utc(2026, 11, 4, 3),
+      periodEnd: DateTime.utc(2026, 11, 18, 3),
+      source: ViewReportSource.connectedAccount,
+      canDispute: true,
+      canUploadEvidence: true,
+    );
+    await pumpCreatorApp(
+      tester,
+      collaborations: _CountingCollaborations(),
+      overrides: [
+        viewReportRepositoryProvider.overrideWithValue(
+          FakeViewReportRepository(report: counting),
+        ),
+      ],
+    );
+    routerOf(tester).push(AppRoutes.creatorViewReport(brandCollabId));
+    await tester.pumpAndSettle();
+
+    expect(find.text('캡처 올리기'), findsOneWidget);
+    expect(find.text('이의 제기'), findsOneWidget);
+    expect(find.text('자료 확인했어요'), findsNothing);
+  });
+
+  testWidgets('the creator of a store offer keeps the store wording and makes '
+      'no collaboration read', (tester) async {
+    final collaborations = _CountingCollaborations();
+    await pumpCreatorApp(
+      tester,
+      collaborations: collaborations,
+      overrides: [
+        viewReportRepositoryProvider.overrideWithValue(
+          FakeViewReportRepository(
+            report: sampleReport(
+              calc: const ViewReportCalc(
+                ratePerThousand: 2000,
+                cap: 60000,
+                capApplied: false,
+                fixedCash: 30000,
+                viewPay: 25000,
+                refund: 35000,
+                payout: 55000,
+              ),
+              canConfirm: false,
+            ),
+          ),
+        ),
+      ],
+    );
+    routerOf(tester).push(AppRoutes.creatorViewReport(brandCollabId));
+    await tester.pumpAndSettle();
+
+    expect(find.text('사장님께 환불'), findsOneWidget);
+    expect(find.text('고정 현금'), findsOneWidget);
+    expect(find.text('브랜드에 환불'), findsNothing);
+    expect(find.text('제작비'), findsNothing);
+    expect(collaborations.fetched, isEmpty);
+  });
 
   testWidgets('the settlement notification opens the metrics screen of that '
       'collaboration', (tester) async {
@@ -183,9 +264,7 @@ void main() {
 
     expect(find.byType(ViewReportPage), findsOneWidget);
     expect(
-      routerOf(
-        tester,
-      ).routerDelegate.currentConfiguration.last.matchedLocation,
+      routerOf(tester).routerDelegate.currentConfiguration.last.matchedLocation,
       AppRoutes.brandViewReport(brandCollabId),
     );
     expect(find.text('브랜드에 환불'), findsOneWidget);

@@ -16,7 +16,9 @@ Map<String, Object?> _json({
   String status = 'UNCONFIRMED',
   Object? evidence,
   String source = 'CONNECTED_ACCOUNT',
+  String kind = 'STORE_OFFER',
 }) => {
+  'kind': kind,
   'status': status,
   'views': 12500,
   'postUrl': 'https://www.instagram.com/p/DAbC123/',
@@ -59,6 +61,15 @@ void main() {
       (true, true, false),
     );
     expect(r.evidence, isNull);
+  });
+
+  test('fetch maps the collaboration kind to brandContract', () async {
+    final store = FakeHttpClient()..body = jsonEncode(_json());
+    expect((await _repo(store).fetch('col-1')).brandContract, isFalse);
+
+    final brand = FakeHttpClient()
+      ..body = jsonEncode(_json(kind: 'BRAND_CONTRACT'));
+    expect((await _repo(brand).fetch('col-1')).brandContract, isTrue);
   });
 
   test('reads a capture whose signed address could not be made', () async {

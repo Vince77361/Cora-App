@@ -105,5 +105,9 @@ class ApiViewReportRepository implements ViewReportRepository {
     canConfirm: m.canConfirm,
     canDispute: m.canDispute,
     canUploadEvidence: m.canUploadEvidence,
+    brandContract: switch (m.kind) {
+      api.CollaborationKind.BRAND_CONTRACT => true,
+      api.CollaborationKind.STORE_OFFER => false,
+    },
   );
 }

@@ -68,9 +68,13 @@ class ViewReport {
     this.canConfirm = false,
     this.canDispute = false,
     this.canUploadEvidence = false,
+    this.brandContract = false,
   });
 
   final ViewReportStatus status;
+
+  /// 브랜드 계약의 조회 자료인가(서버 응답의 `kind`). 브랜드 계약이면 화면이 `제작비`·`브랜드에 환불`로 보인다.
+  final bool brandContract;
 
   /// 집계 중에는 그날까지 읽은 값(없으면 null), 계산이 나온 뒤에는 정산에 쓰는 값.
   final int? views;
