@@ -78,6 +78,28 @@ describe('FakePaymentAdapter', () => {
     });
   });
 
+  // fetchStatus 계약(payment.port.ts): FAILED는 PG가 확정한 실패뿐이고, 결과가 없는 결제는 몇 번을 물어도 PENDING이다.
+  // 서버는 FAILED를 "새 결제창을 열어도 된다"로 읽으므로, 가짜가 기록 없이 FAILED를 돌려주면 이중 결제 시험이 거짓으로 통과한다.
+  it('keeps answering PENDING for a checkout that has no recorded result and never turns it into FAILED by itself', async () => {
+    const adapter = new FakePaymentAdapter(SECRET);
+    await adapter.createCheckout({
+      paymentId: 'pay_1',
+      amount: 1000,
+      method: 'CARD',
+      orderName: '주문',
+    });
+    for (let i = 0; i < 3; i++) {
+      await expect(adapter.fetchStatus('pay_1')).resolves.toEqual({
+        status: 'PENDING',
+        pgTransactionId: null,
+      });
+    }
+    adapter.recordResult({ paymentId: 'pay_2', status: 'FAILED' });
+    await expect(adapter.fetchStatus('pay_1')).resolves.toMatchObject({
+      status: 'PENDING',
+    });
+  });
+
   it('records a result without a webhook secret so the dev flow works without one', async () => {
     const adapter = new FakePaymentAdapter(undefined);
     expect(

@@ -108,6 +108,9 @@ describe('payments', () => {
   };
   const codeOf = (res: request.Response) =>
     (res.body as { error: { code: string } }).error.code;
+  const reasonOf = (res: request.Response) =>
+    (res.body as { error: { details: { reason: string } } }).error.details
+      .reason;
 
   // 사장님(USER_A)의 공개된 가게, 크리에이터, 수락된 조회수 오퍼와 결제를 기다리는 협업을 DB에 바로 만든다.
   async function seed(
@@ -406,6 +409,10 @@ describe('payments', () => {
         pay(s.collaborationId),
       ]);
       expect(results.map((r) => r.status).sort()).toEqual([201, 409, 409]);
+      // 409 둘은 모두 "결제 진행 중"이어야 한다(다른 이유의 409로 통과하지 않게).
+      for (const res of results.filter((r) => r.status === 409)) {
+        expect(reasonOf(res)).toBe('PAYMENT_IN_PROGRESS');
+      }
       const rows = await prisma.payment.findMany({
         where: { collaborationId: s.collaborationId },
       });
@@ -482,9 +489,6 @@ describe('payments', () => {
   // 새 결제를 만들려 할 때 진행 중(PAYING)인 대기 결제가 있으면 409를 내기 전에 PG에 한 번 다시 묻는다.
   // PG가 확인한 결과만 믿는다: 앱이 "창을 닫았다"고 하는 말로는 아무것도 취소하지 않는다.
   describe('asking the PG before refusing a new payment', () => {
-    const reasonOf = (res: request.Response) =>
-      (res.body as { error: { details: { reason: string } } }).error.details
-        .reason;
     const payments = (collaborationId: string) =>
       prisma.payment.findMany({
         where: { collaborationId },

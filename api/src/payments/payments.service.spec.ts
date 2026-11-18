@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Collaboration, Payment } from '@prisma/client';
 import { FakeClock } from '../../test/support/fake-clock';
 import { FakeJobScheduler } from '../../test/support/fake-job-scheduler';
-import { BRAND_PAYMENT_LOCK_MINUTES } from '../collaborations/collaboration-stage';
+import { PAYMENT_LOCK_MINUTES } from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
@@ -113,7 +113,7 @@ class FakeCollaborationsRepository extends CollaborationsRepository {
     super(null as never, null as never);
   }
   hasOpenPayment(collaborationId: string, now: Date) {
-    const since = now.getTime() - BRAND_PAYMENT_LOCK_MINUTES * MINUTE;
+    const since = now.getTime() - PAYMENT_LOCK_MINUTES * MINUTE;
     return Promise.resolve(
       this.paymentRows().some(
         (p) =>
@@ -124,7 +124,7 @@ class FakeCollaborationsRepository extends CollaborationsRepository {
     );
   }
   findOpenPayment(collaborationId: string, now: Date) {
-    const since = now.getTime() - BRAND_PAYMENT_LOCK_MINUTES * MINUTE;
+    const since = now.getTime() - PAYMENT_LOCK_MINUTES * MINUTE;
     return Promise.resolve(
       this.paymentRows()
         .filter(
@@ -645,6 +645,27 @@ describe('PaymentsService', () => {
       } finally {
         jest.useRealTimers();
       }
+    });
+
+    it('treats a status it does not know as still pending and applies nothing', async () => {
+      const t = build();
+      const first = await inProgress(t);
+      // 어댑터가 PG의 문자열을 그대로 넘겨 모르는 값이 와도 승인으로 적용하지도, 실패로 풀지도 않는다(거래 번호가 있어도).
+      jest.spyOn(t.pg, 'fetchStatus').mockResolvedValue({
+        status: 'EXPIRED' as never,
+        pgTransactionId: 'tx-1',
+      });
+      await expect(
+        t.service.create(OWNER, COLLAB, 'CARD'),
+      ).rejects.toMatchObject({ message: PAYMENT_IN_PROGRESS_MESSAGE });
+      expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+        [first, 'PENDING'],
+      ]);
+      expect(t.collaborations.row.stage).toBe('AWAITING_PAYMENT');
+      expect(t.ledgerPosts).toHaveLength(0);
+      await expect(
+        t.service.reconcilePendingBeforeNewPayment(COLLAB),
+      ).resolves.toBe('pending');
     });
 
     it('treats an approval it cannot apply as still in progress', async () => {

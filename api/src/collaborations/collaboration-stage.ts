@@ -79,9 +79,9 @@ export const negotiableStages: CollaborationStage[] = [
   'AGREED',
 ];
 
-// 브랜드가 결제창을 연 채 두는 동안 조건 변경과 그만두기를 막는 시간(분). PENDING 결제의 요청 시각부터 센다.
-// 이 시간이 지나면 열려 있던 결제는 없는 것으로 본다(결제창을 닫고 가 버린 경우를 풀어 준다).
-export const BRAND_PAYMENT_LOCK_MINUTES = 60;
+// 결제창이 열려 있다고 보는 시간(분) = PAYING. PENDING 결제의 요청 시각부터 센다. 브랜드 계약과 가게 결제 모두의 기준이고,
+// 이 동안 조건 변경·그만두기·새 결제·차단이 막힌다. 이 시간이 지나면 열려 있던 결제는 없는 것으로 본다(결제창을 닫고 가 버린 경우를 풀어 준다).
+export const PAYMENT_LOCK_MINUTES = 60;
 
 // 브랜드 계약이 체결된 뒤 이 날수 안에 게시 링크가 없으면 협업을 멈추고 운영자에게 알리는 점검(brand-halt-check)을 건다.
 export const BRAND_HALT_CHECK_DAYS = 60;

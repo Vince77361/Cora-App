@@ -98,6 +98,9 @@ describe('brand contract consent and payment', () => {
     (res.body as { error: { code: string } }).error.code;
   const messageOf = (res: request.Response) =>
     (res.body as { error: { message: string } }).error.message;
+  const reasonOf = (res: request.Response) =>
+    (res.body as { error: { details: { reason: string } } }).error.details
+      .reason;
   const setRole = (auth: Record<string, string>, role: string) =>
     request(server).patch('/me/role').set(auth).send({ role }).expect(200);
   const decide = (auth: Record<string, string>, body: object) =>
@@ -801,9 +804,6 @@ describe('brand contract consent and payment', () => {
           accepted: await textsOf(authBrand, id),
           method,
         });
-      const reasonOf = (res: request.Response) =>
-        (res.body as { error: { details: { reason: string } } }).error.details
-          .reason;
       it('marks the payment failed and creates the new one in the same request when the PG says it failed', async () => {
         const id = await agreed();
         await creatorConsented(id);
@@ -998,6 +998,10 @@ describe('brand contract consent and payment', () => {
         ),
       );
       expect(results.map((r) => r.status).sort()).toEqual([201, 409, 409]);
+      // 409 둘은 모두 "결제 진행 중"이어야 한다(다른 이유의 409로 통과하지 않게).
+      for (const res of results.filter((r) => r.status === 409)) {
+        expect(reasonOf(res)).toBe('PAYMENT_IN_PROGRESS');
+      }
       expect(await prisma.payment.count()).toBe(1);
       expect(await prisma.payment.count({ where: { status: 'PENDING' } })).toBe(
         1,

@@ -271,7 +271,7 @@ test('treats an unknown server role as a failure instead of asking for a role', 
   - `RequiredWhenReal(adapterKey: string): PropertyDecorator` — `ValidateIf(env => env[adapterKey] === 'real')` + `IsString` + `IsNotEmpty`. 실제 어댑터의 비밀값 키마다 붙인다.
   - `class FakeHttpFetch { readonly requests: { method: string; url: string; body: unknown; headers: Record<string, string> }[]; on(method: string, urlPrefix: string, reply: (req) => Response | Promise<Response>): this; hang(method: string, urlPrefix: string): this; readonly fetch: HttpFetch }` — 맞는 규칙이 없으면 던진다(테스트가 실제 밖으로 나가지 않게).
   - 포트 계약: 포트마다 `export function <port>Contract(make: () => Promise<<Port>Harness>): void`가 `it(...)`들을 정의한다. 가짜 spec과 실제 spec이 같은 함수를 부른다. Harness는 그 포트의 상황을 만드는 메서드만 가진다:
-    - `PaymentHarness { port; approveAtPg(paymentId, amount): Promise<void>; signedWebhook(paymentId): { rawBody; signature }; tamper(rawBody): string }` — 계약: 서명된 통지 해석, 변조 통지 `null`, `fetchStatus` 승인 반영, 같은 `idempotencyKey`의 환불은 한 번
+    - `PaymentHarness { port; approveAtPg(paymentId, amount): Promise<void>; signedWebhook(paymentId): { rawBody; signature }; tamper(rawBody): string }` — 계약: 서명된 통지 해석, 변조 통지 `null`, `fetchStatus` 승인 반영, `fetchStatus` 취소·만료 확정은 `FAILED`·아직 결제될 수 있는 창(창만 닫음 등)은 `PENDING`(`payment.port.ts` 주석의 돈 안전 계약), 같은 `idempotencyKey`의 환불은 한 번
     - `PayoutHarness`(같은 키 두 번 → 한 번 송금, 실패 응답 → 던짐), `ViewCountHarness`(소유 아님 → false, 읽기 실패 → `ViewCountUnavailableError`), `InstagramHarness`(연결 완료 → 핸들·팔로워·토큰), `PushHarness`(사용자의 모든 기기에 감), `OperatorAlertHarness`(제목·본문 전달), `ContentDraftHarness`(종류마다 장면 3개와 본문), `StoreLinkHarness`(실패 → `StoreLinkAnalysisError`)
   - `docs/integrations/README.md` — 서비스 문서의 틀: 계정·키 이름, 테스트 환경, 쓰는 API(주소·필드·서명), 오류와 재시도, 한도와 요금, 개인정보 국외 이전 여부, 확인한 날짜와 문서 주소.
 
@@ -673,7 +673,7 @@ it('returns no cover photo until photo use is confirmed', ...);
 
 **Interfaces:**
 - Produces:
-  - `<Pg>PaymentAdapter implements PaymentPort`: `createCheckout`(PG의 결제 요청 값으로 `checkoutUrl` — 웹 결제창 주소 또는 앱 SDK에 넘길 값을 담은 내부 주소 `cora-pay://<pg>?paymentId=…`, 어느 쪽인지는 PG 문서로), `verifyWebhook`(서명이 있으면 검증, 없거나 틀리면 `null` — 컨트롤러는 `null`이면 `fetchStatus`로 다시 묻는다), `fetchStatus`(3번의 10분 재확인 작업이 쓴다), `refund`(부분 취소 + `idempotencyKey`).
+  - `<Pg>PaymentAdapter implements PaymentPort`: `createCheckout`(PG의 결제 요청 값으로 `checkoutUrl` — 웹 결제창 주소 또는 앱 SDK에 넘길 값을 담은 내부 주소 `cora-pay://<pg>?paymentId=…`, 어느 쪽인지는 PG 문서로), `verifyWebhook`(서명이 있으면 검증, 없거나 틀리면 `null` — 컨트롤러는 `null`이면 `fetchStatus`로 다시 묻는다), `fetchStatus`(3번의 10분 재확인 작업이 쓴다. **돈 안전 계약**: 서버가 새 결제를 만들려 할 때 진행 중인 결제를 이 값으로 다시 묻고 `FAILED`면 새 결제창을 연다. 그러므로 `FAILED`는 PG가 "이 결제창으로는 더 이상 승인될 수 없다"고 확정한 경우(사용자 취소 확인·만료·PG가 요청을 모름)만이고, 창만 닫았거나 인증 중이거나 PG가 아직 기록하지 않았거나 조회가 일시 실패했으면 반드시 `PENDING`이다. 틀리면 이중 결제. 자세한 말은 `payment.port.ts`의 `fetchStatus` 주석), `refund`(부분 취소 + `idempotencyKey`).
   - PG가 결제창 복귀 뒤 서버의 승인 요청을 요구하면: `PaymentPort.handleReturn(params: Record<string, string>): Promise<{ paymentId: string; pgTransactionId: string; status: 'APPROVED' | 'FAILED' } | null>`를 더하고(가짜는 `null`), `GET /payments/return`(`@Public`)이 부른 뒤 통지와 같은 `PaymentsService.applyResult`로 넘기고 `cora://payments/<id>/done`으로 보낸다. 승인 요청에는 쿼리의 금액이 아니라 DB의 `amountEscrow + amountFee`를 쓴다.
   - 승인 결과의 금액이 DB와 다르면 `FAILED`로 두고 PG 취소를 요청하고 `OperatorAlertPort`. 시간 초과는 `PENDING`으로 두어 재확인 작업이 맞춘다.
   - 앱 `<Pg>CheckoutLauncher implements CheckoutLauncher` — `cora-dev://`가 아닌 주소를 PG 결제창(SDK 또는 앱 안 웹뷰)으로 연다. 결제창을 닫거나 실패해도 결과는 서버가 정한다(3번 흐름 그대로: 돌아오면 서버에 묻는다).

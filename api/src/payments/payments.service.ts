@@ -67,8 +67,10 @@ export const PAYMENT_IN_PROGRESS_REASON = 'PAYMENT_IN_PROGRESS';
 export const PG_STATUS_TIMEOUT_MS = 5000;
 
 // 새 결제를 만들려 할 때 진행 중이던 대기 결제를 PG에 다시 물은 결과.
-// none: 진행 중인 결제가 없다(PG에 묻지 않았다). pending: PG가 아직 모르거나 답을 못 받았다(409로 간다).
-// failed: PG가 실패로 확인해 그 결제를 FAILED로 바꿨다(새 결제로 간다). approved: PG가 승인으로 확인해 승인을 적용했다(새 결제를 만들지 않는다).
+// none: 진행 중인 결제가 없다(PG에 묻지 않았다). pending: PG가 아직 대기라 했거나 모르는 값·오류·시간 초과다(409로 간다).
+// failed: PG가 실패라고 확정해 줬다. 이것은 "새 결제를 시도해 봐도 된다"는 신호일 뿐 허가가 아니다: 결제 행이 실제로 FAILED가 됐는지는
+//   동시 승인이 이기면 달라질 수 있고, 호출한 쪽은 트랜잭션 안에서 잠금을 잡고 단계와 진행 중 여부를 다시 확인한 뒤에만 새 결제를 만든다.
+// approved: PG가 승인이라 했고 승인 적용까지 마쳤다(새 결제를 만들지 않는다).
 export type PendingReconcile = 'none' | 'pending' | 'failed' | 'approved';
 
 type ApprovalOutcome = 'funded' | 'not-awaiting-payment' | 'already-handled';
@@ -228,7 +230,11 @@ export class PaymentsService {
     );
     if (!open) return 'none';
     const found = await this.askPgWithin(open.id);
-    if (!found || found.status === 'PENDING') return 'pending';
+    // 허용 목록: PG가 확정해 준 APPROVED와 FAILED만 따른다. PENDING이든 모르는 값이든(어댑터가 PG 문자열을 그대로 넘긴 경우 포함)
+    // 아무것도 바꾸지 않는다. 모르는 값이 applyResult의 승인 길로 새어 들어가 보관을 시작하는 일도 막는다.
+    if (!found || (found.status !== 'APPROVED' && found.status !== 'FAILED')) {
+      return 'pending';
+    }
     try {
       await this.applyResult(
         {
