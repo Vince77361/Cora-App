@@ -277,7 +277,10 @@ void main() {
       '/creator/collaborations/c-3/report',
     );
     expect(locationFor('VIEW_REPORT', null, UserRole.store), isNull);
-    expect(locationFor('VIEW_REPORT', 'c-3', UserRole.brand), isNull);
+    expect(
+      locationFor('VIEW_REPORT', 'c-3', UserRole.brand),
+      '/brand/collaborations/c-3/report',
+    );
   });
 
   testWidgets('a settlement notification opens the seven day result', (

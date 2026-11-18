@@ -198,6 +198,14 @@ abstract final class AppRoutes {
   /// 브랜드의 협업 탭. 진행 중인 브랜드 협업이 하나면 곧바로 07이고, 여럿이면 목록이다.
   static const brandCollaborations = '/brand/collaborations';
 
+  /// 브랜드 계약 [id]의 성과 확인(F4), 브랜드 쪽. 성과 추가가 있는 계약의 `조회수 집계가 끝났어요.` 알림이
+  /// 연다. 크리에이터는 같은 계약을 [creatorViewReport]로 열고, 화면이 협업을 읽어 브랜드 문구로 보인다.
+  static String brandViewReport(String id) =>
+      '$brandCollaborations/${Uri.encodeComponent(id)}/report';
+
+  /// [brandViewReport]의 라우트 패턴.
+  static const brandViewReportPattern = '/brand/collaborations/:id/report';
+
   /// 07의 `남은 캠페인 예산`이 여는 제안함 자리 화면. 브랜드의 제안함(F3)은 5번 계획이 채우므로 그때까지
   /// F8의 빈 상태만 보인다.
   static const brandProposals = '/brand/proposals';

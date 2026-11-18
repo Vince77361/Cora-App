@@ -240,6 +240,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             _entryPage(state, const CollaborationHubPage()),
       ),
+      // 브랜드 계약의 성과 확인(F4). 성과 추가가 있는 계약의 조회수 집계 알림이 연다.
+      GoRoute(
+        path: AppRoutes.brandViewReportPattern,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          ViewReportPage(
+            collaborationId: state.pathParameters['id']!,
+            viewer: ViewReportViewer.brand,
+          ),
+          key: state.pageKey,
+        ),
+      ),
       // 07의 `남은 캠페인 예산`이 여는 브랜드의 제안함(F3). 브랜드 계약의 줄만 있다.
       GoRoute(
         path: AppRoutes.brandProposals,

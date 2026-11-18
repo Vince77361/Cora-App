@@ -13,7 +13,9 @@ import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_pill_button.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_state_view.dart';
+import '../../../collaboration/domain/collaboration.dart';
 import '../../../collaboration/presentation/link_launcher.dart';
+import '../../../collaboration/presentation/viewmodels/collaboration_view_model.dart';
 import '../../../offer_terms/presentation/offer_terms_text.dart';
 import '../../domain/view_report.dart';
 import '../../domain/view_report_repository.dart';
@@ -21,8 +23,9 @@ import '../view_report_text.dart';
 import '../viewmodels/view_report_view_model.dart';
 import '../widgets/dispute_sheet.dart';
 
-/// 이 화면을 여는 쪽. 뒤로 갈 곳이 다르다.
-enum ViewReportViewer { creator, owner }
+/// 이 화면을 여는 쪽. 뒤로 갈 곳이 다르다. [owner]는 가게 사장님, [brand]는 브랜드 계약의 브랜드다.
+/// 크리에이터는 가게 오퍼와 브랜드 계약 둘 다 이 길로 열므로 어느 쪽인지는 협업을 읽어 안다.
+enum ViewReportViewer { creator, owner, brand }
 
 /// F4 성과 확인(NMetrics / DarkNMetrics). 조회수 집계 결과와 보상 계산을 보이고, 맡기는 쪽은 `자료
 /// 확인했어요`, 양쪽은 `이의 제기`를 누른다. 자료가 확인되기 전에는 돈이 그대로 보관된다. 머리의 "안"
@@ -47,6 +50,11 @@ class ViewReportPage extends ConsumerStatefulWidget {
   static const cap = '1인 상한';
   static const fixedCash = '고정 현금';
   static const refund = '사장님께 환불';
+
+  /// 브랜드 계약으로 열 때의 문구(2026-11-12 소유자 결정): 환불을 받는 쪽은 브랜드, 고정 현금 줄의 이름은
+  /// `제작비`다. 나머지는 캔버스 그대로다.
+  static const brandRefund = '브랜드에 환불';
+  static const brandFixedCash = '제작비';
   static const payout = '크리에이터 지급 예정';
   static const countingPlaceholder = '집계가 끝나면 계산해요.';
   static const guide =
@@ -69,17 +77,36 @@ class _ViewReportPageState extends ConsumerState<ViewReportPage> {
   ViewReportViewModel get _vm =>
       ref.read(viewReportViewModelProvider(widget.collaborationId).notifier);
 
-  void _leave() {
+  /// 브랜드 계약의 F4인가. 길로 알 수 없는 크리에이터는 협업을 읽어 정한다(읽는 중이면 null, 못 읽으면
+  /// 가게 오퍼로 본다).
+  bool? _isBrandContract() => switch (widget.viewer) {
+    ViewReportViewer.brand => true,
+    ViewReportViewer.owner => false,
+    ViewReportViewer.creator => ref.watch(
+      collaborationViewModelProvider(widget.collaborationId).select(
+        (a) => a.isLoading && !a.hasValue
+            ? null
+            : a.value?.collaboration.kind == CollaborationKind.brandContract,
+      ),
+    ),
+  };
+
+  void _leave(bool brandContract) {
     if (context.canPop()) {
       context.pop();
     } else {
       context.go(switch (widget.viewer) {
-        ViewReportViewer.creator => AppRoutes.creatorCollaboration(
+        // 브랜드 계약은 브랜드와 크리에이터가 진행 화면(07)을 함께 쓴다.
+        ViewReportViewer.brand => AppRoutes.collaborationProgress(
           widget.collaborationId,
         ),
         ViewReportViewer.owner => AppRoutes.storeCollaboration(
           widget.collaborationId,
         ),
+        ViewReportViewer.creator =>
+          brandContract
+              ? AppRoutes.collaborationProgress(widget.collaborationId)
+              : AppRoutes.creatorCollaboration(widget.collaborationId),
       });
     }
   }
@@ -114,6 +141,7 @@ class _ViewReportPageState extends ConsumerState<ViewReportPage> {
       viewReportViewModelProvider(widget.collaborationId),
     );
     final value = async.value;
+    final brandContract = _isBrandContract();
     final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
     return Scaffold(
       body: SafeArea(
@@ -124,14 +152,18 @@ class _ViewReportPageState extends ConsumerState<ViewReportPage> {
             CoraPageHeader(
               title: ViewReportPage.title,
               extent: 64,
-              onBack: _leave,
+              onBack: () => _leave(brandContract ?? false),
             ),
             Expanded(
               child: switch (async) {
+                // 크리에이터는 협업을 읽어 어느 문구로 보일지 알 때까지 기다린다(문구가 바뀌어 깜빡이지 않게).
+                AsyncData() when brandContract == null =>
+                  const CoraStateView.loading(),
                 AsyncData(:final value) => SingleChildScrollView(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: _Content(
                     report: value.report,
+                    brandContract: brandContract!,
                     onOpenPost: () => _openPost(value.report),
                   ),
                 ),
@@ -149,7 +181,7 @@ class _ViewReportPageState extends ConsumerState<ViewReportPage> {
                 _ => const CoraStateView.loading(),
               },
             ),
-            if (value != null)
+            if (value != null && brandContract != null)
               _BottomBar(
                 state: value,
                 notice: value.notice ?? _linkNotice,
@@ -169,9 +201,14 @@ class _ViewReportPageState extends ConsumerState<ViewReportPage> {
 }
 
 class _Content extends StatelessWidget {
-  const _Content({required this.report, required this.onOpenPost});
+  const _Content({
+    required this.report,
+    required this.brandContract,
+    required this.onOpenPost,
+  });
 
   final ViewReport report;
+  final bool brandContract;
   final VoidCallback onOpenPost;
 
   @override
@@ -189,7 +226,11 @@ class _Content extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
           child: calc == null
               ? const _CountingBox()
-              : _CalcBox(calc: calc, views: report.views),
+              : _CalcBox(
+                  calc: calc,
+                  views: report.views,
+                  brandContract: brandContract,
+                ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
@@ -336,10 +377,17 @@ class _StatusBadge extends StatelessWidget {
 
 /// 보상 계산 상자(캔버스 둘째 `section`): 모서리 26, 안쪽 14/18/6, `surface`.
 class _CalcBox extends StatelessWidget {
-  const _CalcBox({required this.calc, required this.views});
+  const _CalcBox({
+    required this.calc,
+    required this.views,
+    required this.brandContract,
+  });
 
   final ViewReportCalc calc;
   final int? views;
+
+  /// 브랜드 계약이면 `제작비`·`브랜드에 환불`로 보인다.
+  final bool brandContract;
 
   @override
   Widget build(BuildContext context) {
@@ -372,11 +420,15 @@ class _CalcBox extends StatelessWidget {
             _KeyValueRow(term: ViewReportPage.cap, value: capLine(calc)),
             if (calc.fixedCash > 0)
               _KeyValueRow(
-                term: ViewReportPage.fixedCash,
+                term: brandContract
+                    ? ViewReportPage.brandFixedCash
+                    : ViewReportPage.fixedCash,
                 value: wonExact(calc.fixedCash),
               ),
             _KeyValueRow(
-              term: ViewReportPage.refund,
+              term: brandContract
+                  ? ViewReportPage.brandRefund
+                  : ViewReportPage.refund,
               value: wonExact(calc.refund),
             ),
             _KeyValueRow(
@@ -518,7 +570,8 @@ class _BottomBar extends StatelessWidget {
     final c = context.colors;
     final r = state.report;
     final busy = state.busy;
-    final primary = r.canConfirm
+    // 확인은 맡기는 쪽(사장님·브랜드)만 한다. 서버도 크리에이터의 확인을 거절하지만 버튼도 두지 않는다.
+    final primary = r.canConfirm && viewer != ViewReportViewer.creator
         ? (label: ViewReportPage.confirm, onTap: onConfirm)
         : (viewer == ViewReportViewer.creator && r.canUploadEvidence)
         ? (label: ViewReportPage.uploadEvidence, onTap: onUploadEvidence)

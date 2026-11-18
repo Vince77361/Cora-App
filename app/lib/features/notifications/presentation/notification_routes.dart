@@ -55,7 +55,8 @@ String? locationFor(String targetKind, String? targetId, UserRole role) {
       return switch (role) {
         UserRole.store => AppRoutes.storeViewReport(id),
         UserRole.creator => AppRoutes.creatorViewReport(id),
-        UserRole.brand => null,
+        // 성과 추가가 있는 브랜드 계약의 F4. 없는 계약에는 이 알림이 가지 않는다.
+        UserRole.brand => AppRoutes.brandViewReport(id),
       };
     case 'PROPOSAL':
       if (id == null) return null;
