@@ -10,9 +10,12 @@ import { PrinciplesService } from '../principles/principles.service';
 import { TermsService } from '../terms/terms.service';
 import { UsersService } from '../users/users.service';
 import { VisibilityService } from '../visibility/visibility.service';
-import { DiscoveryRepository } from './discovery.repository';
+import { DiscoveryRepository, MatchWithStage } from './discovery.repository';
 import { InterestCardModel, ProposalModel } from './dto/interest-card.model';
 import { InterestTab, inTab, interestState, shortName } from './interest-rules';
+
+const isDropped = (match: MatchWithStage): boolean =>
+  match.collaboration.stage === 'DROPPED';
 
 const dateOnly = (value: Date): string => value.toISOString().slice(0, 10);
 
@@ -69,6 +72,9 @@ export class InterestsService {
     const collaborationOf = new Map(
       matches.map((m) => [m.creatorId, m.collaborationId]),
     );
+    const droppedOf = new Set(
+      matches.filter(isDropped).map((m) => m.creatorId),
+    );
     const latest = await this.terms.latestMany([...collaborationOf.values()]);
 
     return rows.flatMap((row): InterestCardModel[] => {
@@ -76,7 +82,11 @@ export class InterestsService {
       const p = principles.get(row.targetId);
       if (!source || !p || !visible.has(row.targetId)) return [];
       const collaborationId = collaborationOf.get(row.targetId) ?? null;
-      const state = interestState(row.decision, collaborationId !== null);
+      const state = interestState(
+        row.decision,
+        collaborationId !== null,
+        droppedOf.has(row.targetId),
+      );
       if (!state || !inTab(state, tab)) return [];
       const terms = collaborationId ? latest.get(collaborationId) : undefined;
       return [
@@ -123,13 +133,20 @@ export class InterestsService {
     const collaborationOf = new Map(
       matches.map((m) => [m.campaignId, m.collaborationId]),
     );
+    const droppedOf = new Set(
+      matches.filter(isDropped).map((m) => m.campaignId),
+    );
     const latest = await this.terms.latestMany([...collaborationOf.values()]);
 
     return rows.flatMap((row): InterestCardModel[] => {
       const entry = entryById.get(row.targetId);
       if (!entry) return [];
       const collaborationId = collaborationOf.get(row.targetId) ?? null;
-      const state = interestState(row.decision, collaborationId !== null);
+      const state = interestState(
+        row.decision,
+        collaborationId !== null,
+        droppedOf.has(row.targetId),
+      );
       if (!state || !inTab(state, tab)) return [];
       if (state !== 'MUTUAL' && entry.campaign.status !== 'ACTIVE') return [];
       const terms = collaborationId ? latest.get(collaborationId) : undefined;

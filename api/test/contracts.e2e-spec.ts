@@ -802,12 +802,31 @@ describe('brand contract consent and payment', () => {
           feeRate: 10,
           total: 385000,
         });
+        // 견적 엔드포인트도 같은 값이다(결제 행의 보관액·수수료·합계).
+        const quote = await request(server)
+          .get(`/collaborations/${id}/payment-quote`)
+          .set(authBrand)
+          .expect(200);
+        expect(quote.body).toMatchObject({
+          escrow: 350000,
+          fee: 35000,
+          feeRate: 10,
+          total: 385000,
+        });
         // 결제창이 닫히면(60분) 결제 전으로 돌아가 지금 설정으로 계산한다.
         clock.advance(61 * MINUTE);
         expect((await contractOf(authBrand, id)).quote).toMatchObject({
           fee: 52500,
           feeRate: 15,
         });
+        expect(
+          (
+            await request(server)
+              .get(`/collaborations/${id}/payment-quote`)
+              .set(authBrand)
+              .expect(200)
+          ).body,
+        ).toMatchObject({ fee: 52500, feeRate: 15 });
       } finally {
         rate.mockRestore();
       }

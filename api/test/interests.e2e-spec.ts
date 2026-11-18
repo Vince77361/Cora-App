@@ -329,6 +329,39 @@ describe('interests, received proposals and card details', () => {
       expect(card).toMatchObject({ feeLabel: 380000, startFrom: '2026-12-01' });
     });
 
+    it('removes a mutual card from every tab on both sides once its collaboration is dropped', async () => {
+      const campaignId = await bothSides();
+      const waiting = await seedCreator('모아 스튜디오');
+      await creatorDecide(campaignId, 'LIKE');
+      const collaborationId = (
+        (await brandDecide(OTHER, 'LIKE')).body as { collaborationId: string }
+      ).collaborationId;
+      await brandDecide(waiting, 'LIKE');
+      expect(await interests(authBrand, 'mutual')).toHaveLength(1);
+      expect(await interests(authCreator, 'mutual')).toHaveLength(1);
+
+      await request(server)
+        .post(`/collaborations/${collaborationId}/drop`)
+        .set(authCreator)
+        .send({ reason: 'BUDGET' })
+        .expect(200);
+
+      // 그만둔 상대는 어느 탭에도 남지 않는다. 응답 대기나 보류로 되돌아와 보이지도 않는다.
+      for (const auth of [authBrand, authCreator]) {
+        expect(await interests(auth, 'mutual')).toEqual([]);
+        expect(await interests(auth, 'sent')).toEqual(
+          auth === authBrand
+            ? [expect.objectContaining({ targetId: waiting })]
+            : [],
+        );
+        expect(await interests(auth, 'held')).toEqual([]);
+      }
+      expect(await interests(authCreator, 'saved')).toEqual([]);
+      expect(
+        (await interests(authBrand, 'saved')).map((c) => c.targetId),
+      ).toEqual([waiting]);
+    });
+
     it('drops a creator who has come to avoid my industry', async () => {
       await bothSides();
       await brandDecide(OTHER, 'LIKE');

@@ -13,12 +13,15 @@ export function shortName(name: string): string {
 
 // 내 결정 한 줄이 관심 목록에서 어떤 상태인가. 서로 관심(match)이 있으면 결정과 상관없이 MUTUAL이다.
 // 넘김(PASS)은 목록에 오르지 않으므로 상태가 없다(null).
+// 서로 관심이 닿았다가 협업이 그만둠·차단으로 끝났으면(dropped) 카드를 내지 않는다(null, 판단 C13):
+// 무산된 상대는 보관함의 몫이고, '응답 대기'로 되돌리면 진행 중인 것처럼 읽혀 더 틀리다.
 export function interestState(
   decision: SwipeDecisionKind,
   matched: boolean,
+  dropped = false,
 ): InterestState | null {
   if (decision === 'PASS') return null;
-  if (matched) return 'MUTUAL';
+  if (matched) return dropped ? null : 'MUTUAL';
   return decision === 'LIKE' ? 'WAITING' : 'HELD';
 }
 

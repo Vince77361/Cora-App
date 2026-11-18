@@ -310,7 +310,16 @@ export class ContractsService {
     }
     const live = await this.contracts.findLive(collaboration.id);
     if (live?.status === 'AWAITING_BRAND') {
-      return this.quoteFor(collaboration, readSnapshot(live.termsSnapshot));
+      // 결제 중이면 계약 화면(get)처럼 결제 행에 저장된 금액을 보여 준다: 그 뒤 수수료율 설정이 바뀌어도 결제창 금액과 같다.
+      const openPayment = await this.collaborations.findOpenBrandPayment(
+        collaboration.id,
+        this.clock.now(),
+      );
+      return this.quoteFor(
+        collaboration,
+        readSnapshot(live.termsSnapshot),
+        openPayment ?? undefined,
+      );
     }
     const latest = await this.terms.latest(collaboration.id);
     if (

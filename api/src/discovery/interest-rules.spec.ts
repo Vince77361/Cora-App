@@ -24,6 +24,12 @@ describe('interest state and tabs', () => {
     expect(interestState('HOLD', true)).toBe('MUTUAL');
   });
 
+  it('lists no card for a match whose collaboration was dropped', () => {
+    expect(interestState('LIKE', true, true)).toBeNull();
+    expect(interestState('HOLD', true, true)).toBeNull();
+    expect(interestState('LIKE', true, false)).toBe('MUTUAL');
+  });
+
   it('maps a like to waiting and a hold to held', () => {
     expect(interestState('LIKE', false)).toBe('WAITING');
     expect(interestState('HOLD', false)).toBe('HELD');

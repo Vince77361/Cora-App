@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  CollaborationStage,
   Match,
   PassReason,
   Prisma,
@@ -23,6 +24,11 @@ export interface DecisionKey {
   targetId: string;
   campaignId: string | null;
 }
+
+// 서로 관심 한 줄과 그 협업의 단계. 그만둔(DROPPED) 협업을 관심 목록에서 빼려고 단계를 한 번에 함께 읽는다(N+1 없음).
+export type MatchWithStage = Match & {
+  collaboration: { stage: CollaborationStage };
+};
 
 // 결정(swipe_decisions)과 서로 관심(matches)의 저장소. 모든 읽기와 쓰기가 tx를 받을 수 있다.
 // 쓰는 모든 곳이 updatedAt을 직접 받는다: @updatedAt은 벽시계라서 Clock과 어긋난다.
@@ -185,16 +191,18 @@ export class DiscoveryRepository {
   }
 
   // 그 캠페인에서 서로 관심이 닿은 크리에이터들.
-  listMatchesOfCampaign(campaignId: string): Promise<Match[]> {
+  listMatchesOfCampaign(campaignId: string): Promise<MatchWithStage[]> {
     return this.prisma.match.findMany({
       where: { campaignId, deletedAt: null },
+      include: { collaboration: { select: { stage: true } } },
     });
   }
 
   // 그 크리에이터가 서로 관심이 닿은 캠페인들.
-  listMatchesOfCreator(creatorId: string): Promise<Match[]> {
+  listMatchesOfCreator(creatorId: string): Promise<MatchWithStage[]> {
     return this.prisma.match.findMany({
       where: { creatorId, deletedAt: null },
+      include: { collaboration: { select: { stage: true } } },
     });
   }
 
