@@ -167,30 +167,24 @@ class _StorePagePreviewPageState extends ConsumerState<StorePagePreviewPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _warning(store, c),
-                        Row(
+                        // 세로로 쌓는다(M19G5): 위 `크리에이터 모집`, 아래 `AI로 직접 제작`.
+                        Column(
                           spacing: 8,
                           children: [
-                            Expanded(
-                              flex: 10,
-                              child: CoraSecondaryButton(
-                                label: StorePagePreviewPage.makeWithAi,
-                                tone: CoraSecondaryTone.subtle,
-                                fitLabel: true,
-                                horizontalPadding: 0,
-                                onPressed: _advancing
-                                    ? null
-                                    : () => _go(store, _Next.ai),
-                              ),
+                            CoraPrimaryButton(
+                              label: StorePagePreviewPage.recruit,
+                              look: CoraPrimaryButtonLook.accent,
+                              onPressed: _advancing
+                                  ? null
+                                  : () => _go(store, _Next.recruit),
                             ),
-                            Expanded(
-                              flex: 16,
-                              child: CoraPrimaryButton(
-                                label: StorePagePreviewPage.recruit,
-                                look: CoraPrimaryButtonLook.accent,
-                                onPressed: _advancing
-                                    ? null
-                                    : () => _go(store, _Next.recruit),
-                              ),
+                            CoraSecondaryButton(
+                              label: StorePagePreviewPage.makeWithAi,
+                              tone: CoraSecondaryTone.subtle,
+                              buttonHeight: 52,
+                              onPressed: _advancing
+                                  ? null
+                                  : () => _go(store, _Next.ai),
                             ),
                           ],
                         ),
@@ -403,8 +397,9 @@ class _AddressRow extends StatelessWidget {
   }
 }
 
-/// 사진 위에 얹는 표지(NStorePage): 높이 300, 모서리 28, 아래 160은 어둡게 눕히고, 왼쪽 위에
-/// `링크에서 자동으로 만들었어요` 알약, 왼쪽 아래에 `업종, 동네`와 가게 이름.
+/// 사진 위에 얹는 표지(NStorePage): 높이 256, 모서리 28, 아래 160은 어둡게 눕히고, 왼쪽 위에
+/// `링크에서 자동으로 만들었어요` 알약, 왼쪽 아래에 `업종, 동네`와 가게 이름. 높이는 아래 두 버튼이
+/// 세로로 쌓이면서 겹치지 않게 300에서 줄였다(M19G5).
 class _Cover extends StatelessWidget {
   const _Cover({required this.store});
 
@@ -421,7 +416,7 @@ class _Cover extends StatelessWidget {
       label: '가게 대표 사진',
       child: ExcludeSemantics(
         child: SizedBox(
-          height: 300,
+          height: 256,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(CoraRadius.xxl),
             child: Stack(

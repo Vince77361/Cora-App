@@ -28,6 +28,7 @@ class CoraSecondaryButton extends StatelessWidget {
     this.tone = CoraSecondaryTone.surface,
     this.fitLabel = false,
     this.horizontalPadding,
+    this.buttonHeight = height,
   });
 
   final String label;
@@ -40,6 +41,9 @@ class CoraSecondaryButton extends StatelessWidget {
   /// 글자 좌우 여백. 비우면 [fitLabel]이면 12, 아니면 24다. 캔버스가 여백 없이 칸 안에 글자를 맞춘 좁은
   /// 버튼(A3·A4의 왼쪽 버튼)이 0을 준다.
   final double? horizontalPadding;
+
+  /// 정적 [height]와 이름이 겹치지 않게 `buttonHeight`라 부른다. 캔버스 A3의 `AI로 직접 제작`은 52다.
+  final double buttonHeight;
 
   static const double height = 58;
 
@@ -68,7 +72,7 @@ class CoraSecondaryButton extends StatelessWidget {
         child: CoraPressable(
           onTap: onPressed,
           child: SizedBox(
-            height: height,
+            height: buttonHeight,
             width: double.infinity,
             child: DecoratedBox(
               decoration: BoxDecoration(

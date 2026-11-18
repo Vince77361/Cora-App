@@ -371,6 +371,41 @@ void main() {
     expect(find.byType(CoraPrimaryButton), findsOneWidget);
   });
 
+  testWidgets('puts 크리에이터 모집 above AI로 직접 제작 in a column', (tester) async {
+    await _pumpPage(tester);
+
+    final recruit = find.byType(CoraPrimaryButton);
+    final ai = find.byType(CoraSecondaryButton);
+    final recruitTop = tester.getTopLeft(recruit);
+    final aiTop = tester.getTopLeft(ai);
+    expect(recruitTop.dy, lessThan(aiTop.dy));
+    final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+    // 가로 폭이 같고(좌우 16), 두 버튼 사이는 8, 아래 여백은 32다.
+    expect(tester.getSize(recruit).width, tester.getSize(ai).width);
+    expect(tester.getSize(recruit).width, screen.width - 32);
+    expect(recruitTop.dx, 16);
+    expect(aiTop.dx, 16);
+    expect(aiTop.dy - tester.getBottomLeft(recruit).dy, 8);
+    expect(
+      screen.height - tester.getBottomLeft(ai).dy,
+      greaterThanOrEqualTo(32),
+    );
+  });
+
+  testWidgets('keeps the cover photo at 256 high', (tester) async {
+    await _pumpPage(tester);
+
+    final cover = find.bySemanticsLabel('가게 대표 사진');
+    expect(tester.getSize(cover).height, 256);
+  });
+
+  testWidgets('keeps both buttons at 58 and 52 high', (tester) async {
+    await _pumpPage(tester);
+
+    expect(tester.getSize(find.byType(CoraPrimaryButton)).height, 58);
+    expect(tester.getSize(find.byType(CoraSecondaryButton)).height, 52);
+  });
+
   testWidgets('"AI로 직접 제작" moves the saved step to drafts and opens A4', (
     tester,
   ) async {
@@ -498,6 +533,19 @@ void main() {
     await tester.tap(find.text('고치기'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps the stacked buttons and the cover size at 1.3x text', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await _pumpPage(tester);
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byType(CoraPrimaryButton)).height, 58);
+    expect(tester.getSize(find.byType(CoraSecondaryButton)).height, 52);
+    expect(tester.getSize(find.bySemanticsLabel('가게 대표 사진')).height, 256);
   });
 
   testWidgets('uses the canvas colors in light and dark', (tester) async {
