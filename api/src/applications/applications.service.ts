@@ -3,6 +3,7 @@ import { Prisma, Store } from '@prisma/client';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
+import { regionTier } from '../common/regions';
 import { CreatorsService } from '../creators/creators.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StoresService } from '../stores/stores.service';
@@ -17,18 +18,6 @@ import { pickRecommended, reasonsFor } from './recommendation';
 import type { Candidate } from './recommendation';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-// 지역 정렬 묶음: 가게와 구·군이 같으면 0, 시·도만 같으면 1, 그 밖은 2.
-function regionTier(
-  store: Store,
-  creator: { regionSido: string; regionSigungu: string | null },
-): number {
-  if (!store.regionSido || creator.regionSido !== store.regionSido) return 2;
-  return store.regionSigungu !== null &&
-    creator.regionSigungu === store.regionSigungu
-    ? 0
-    : 1;
-}
 
 @Injectable()
 export class ApplicationsService {

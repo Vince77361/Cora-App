@@ -305,7 +305,7 @@ export class DiscoveryService {
     if (this.cleanNote(input.note, NOTE_MAX.CREATOR)) {
       throw new AppError(
         'VALIDATION_FAILED',
-        '사장님은 글 없이 하트를 보내요.',
+        '사장님은 글을 붙일 수 없어요.',
       );
     }
     const store = await this.stores.requireMyStore(userId);

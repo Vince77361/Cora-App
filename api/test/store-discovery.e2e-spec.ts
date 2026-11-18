@@ -209,7 +209,7 @@ describe('store discovery (전체 둘러보기)', () => {
     expect(list.cards[0].photoUrl).toEqual(expect.any(String));
   });
 
-  it('skips creators who avoid the store industry, have no featured post, or are the store owner', async () => {
+  it('skips creators who avoid the store industry, or have no featured post', async () => {
     await makeStore('ALCOHOL');
     await seedCreator('피하는 사람', { blocked: ['ALCOHOL'] });
     await seedCreator('게시물 없는 사람', { post: false });

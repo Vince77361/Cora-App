@@ -86,7 +86,7 @@ export class PutDecisionDto {
     nullable: true,
     maxLength: NOTE_MAX.BRAND,
     description:
-      'LIKE에 붙이는 글. 크리에이터는 40자(조건 버전의 제목), 브랜드는 100자(좋아한 점).',
+      'LIKE에 붙이는 글. 크리에이터는 40자(조건 버전의 제목), 브랜드는 100자(좋아한 점). 사장님은 글을 받지 않아요(보내면 400).',
   })
   @IsOptional()
   @Transform(trim)

@@ -17,7 +17,7 @@ export function isUniqueViolation(error: unknown): boolean {
   );
 }
 
-// 결정 한 줄을 가리키는 키. campaignId는 가게 넘김에서만 null이다.
+// 결정 한 줄을 가리키는 키. campaignId는 가게 넘김과 사장님의 크리에이터 결정에서만 null이다.
 export interface DecisionKey {
   actorId: string;
   targetKind: SwipeTargetKind;

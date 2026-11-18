@@ -3,7 +3,6 @@ import { FakeClock } from '../../test/support/fake-clock';
 import { FakeVisibility } from '../../test/support/fake-visibility';
 import { ApplicationsService } from '../applications/applications.service';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
-import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
@@ -383,7 +382,7 @@ describe('DiscoveryService for a store owner', () => {
     // 크리에이터는 캠페인에만 결정할 수 있다.
     await expect(
       creatorWorld.service.decide(OWNER, heart),
-    ).rejects.toBeInstanceOf(AppError);
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
 
     const noRole = build({ role: null });
     await expect(noRole.service.decide(OWNER, heart)).rejects.toMatchObject({
