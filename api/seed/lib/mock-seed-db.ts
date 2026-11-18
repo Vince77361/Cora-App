@@ -338,6 +338,16 @@ export class PrismaMockSeedDb implements MockSeedDb {
       // 협업을 가리키는 자식 표(캡처, 이의)도 시드가 만든 협업 것만 지운다. 협업보다 먼저 지워야 한다.
       this.prisma.viewEvidence.deleteMany({ where: ofSeed }),
       this.prisma.settlementDispute.deleteMany({ where: ofSeed }),
+      // 5번 계획의 표도 협업을 가리킨다(FK는 onDelete가 없어 RESTRICT). 앱에서 대화를 열거나 계약을 맺은 시드 협업이 있으면
+      // 협업을 못 지워 시드가 P2003으로 실패하므로 먼저 지운다. 멤버와 메시지는 대화방보다, 계약은 결제보다 먼저다.
+      this.prisma.conversationMember.deleteMany({
+        where: { conversation: ofSeed },
+      }),
+      this.prisma.message.deleteMany({ where: { conversation: ofSeed } }),
+      this.prisma.conversation.deleteMany({ where: ofSeed }),
+      this.prisma.contract.deleteMany({ where: ofSeed }),
+      this.prisma.termsVersion.deleteMany({ where: ofSeed }),
+      this.prisma.match.deleteMany({ where: ofSeed }),
       this.prisma.payment.deleteMany({ where: ofSeed }),
       this.prisma.cancelRequest.deleteMany({ where: ofSeed }),
       this.prisma.opsAuditLog.deleteMany({ where: ofSeed }),

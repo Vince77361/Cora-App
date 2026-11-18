@@ -17,6 +17,7 @@ import {
   MockStoreData,
   MockStoreFlowInput,
   MockCollaborationData,
+  PrismaMockSeedDb,
 } from './mock-seed-db';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -33,6 +34,8 @@ class FakeMockSeedDb implements MockSeedDb {
   collaborations: (MockCollaborationData & { storeId: string })[] = [];
   series: MockSeriesData[] = [];
   readonly featuredPosts = new Map<string, MockFeaturedPostData[]>();
+  // 실제 Prisma 구현의 지우는 순서를 따로 시험하려고 시드가 넘긴 입력을 기억해 둔다.
+  lastFlowInput: MockStoreFlowInput | null = null;
 
   replaceFeaturedPosts(
     userId: string,
@@ -61,6 +64,7 @@ class FakeMockSeedDb implements MockSeedDb {
   }
 
   resetStoreFlow(input: MockStoreFlowInput): Promise<void> {
+    this.lastFlowInput = input;
     const inScope = (r: { storeId: string; creatorId: string }) =>
       r.storeId === input.storeId || input.mockCreatorIds.includes(r.creatorId);
     this.applications = this.applications.filter((r) => !inScope(r));
@@ -514,5 +518,101 @@ describe('runMockSeed', () => {
     for (const line of lines) {
       expect(line).not.toMatch(/010|@|cora-dev-only|[0-9a-f]{8}-|supabase/);
     }
+  });
+});
+
+type RecordedOp = { model: string; method: string; args: unknown };
+
+// 호출을 기록만 하는 가짜 Prisma. 조회(findMany)는 시드가 전에 만든 협업 하나가 있다고 답한다.
+function recordingPrisma(seedCollaborationId: string) {
+  const ops: RecordedOp[] = [];
+  const prisma = new Proxy(
+    {},
+    {
+      get: (_t, model: string) => {
+        if (model === '$transaction') {
+          return (batch: RecordedOp[]) => {
+            ops.push(...batch);
+            return Promise.resolve([]);
+          };
+        }
+        return new Proxy(
+          {},
+          {
+            get: (_m, method: string) => (args: unknown) => {
+              if (method === 'findMany') {
+                return Promise.resolve(
+                  model === 'payment'
+                    ? [{ collaborationId: seedCollaborationId }]
+                    : [],
+                );
+              }
+              return { model, method, args };
+            },
+          },
+        );
+      },
+    },
+  );
+  return { prisma, ops };
+}
+
+describe('PrismaMockSeedDb.resetStoreFlow', () => {
+  const SEED_COLLAB = 'seed-collaboration-1';
+
+  async function recordedDeletes() {
+    const { db, run } = setup();
+    await run();
+    const { prisma, ops } = recordingPrisma(SEED_COLLAB);
+    await new PrismaMockSeedDb(prisma as never).resetStoreFlow(
+      db.lastFlowInput as MockStoreFlowInput,
+    );
+    const deletes = ops.filter((o) => o.method === 'deleteMany');
+    const at = (model: string) => deletes.findIndex((o) => o.model === model);
+    return { deletes, at };
+  }
+
+  it('deletes chat, contract, terms and match rows before the collaboration they point at', async () => {
+    const { at } = await recordedDeletes();
+
+    const collaboration = at('collaboration');
+    expect(collaboration).toBeGreaterThan(-1);
+    // 협업을 가리키는 표(대화방, 계약, 조건 판본, 매칭)와 대화방을 가리키는 표(멤버, 메시지)는 모두 먼저 지워야 한다.
+    for (const child of [
+      'conversationMember',
+      'message',
+      'conversation',
+      'contract',
+      'termsVersion',
+      'match',
+    ]) {
+      expect(at(child)).toBeGreaterThan(-1);
+      expect(at(child)).toBeLessThan(collaboration);
+    }
+  });
+
+  it('deletes members and messages before their conversation and contracts before payments', async () => {
+    const { at } = await recordedDeletes();
+
+    expect(at('conversationMember')).toBeLessThan(at('conversation'));
+    expect(at('message')).toBeLessThan(at('conversation'));
+    // 계약이 결제를 가리키므로 결제보다 먼저 지운다.
+    expect(at('contract')).toBeLessThan(at('payment'));
+  });
+
+  it('limits the new deletes to the seed collaborations', async () => {
+    const { deletes } = await recordedDeletes();
+    const ofSeed = { collaborationId: { in: [SEED_COLLAB] } };
+    const byModel = (model: string) =>
+      deletes.find((o) => o.model === model)?.args;
+
+    expect(byModel('conversation')).toEqual({ where: ofSeed });
+    expect(byModel('contract')).toEqual({ where: ofSeed });
+    expect(byModel('termsVersion')).toEqual({ where: ofSeed });
+    expect(byModel('match')).toEqual({ where: ofSeed });
+    expect(byModel('conversationMember')).toEqual({
+      where: { conversation: ofSeed },
+    });
+    expect(byModel('message')).toEqual({ where: { conversation: ofSeed } });
   });
 });
