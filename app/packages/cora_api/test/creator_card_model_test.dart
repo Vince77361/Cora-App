@@ -63,7 +63,7 @@ void main() {
       // TODO
     });
 
-    // 항상 false. 상대가 먼저 관심을 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다.
+    // 항상 false. 상대가 먼저 하트를 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다.
     // bool theyLikedMe
     test('to test the property `theyLikedMe`', () async {
       // TODO

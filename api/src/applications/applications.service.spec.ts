@@ -87,6 +87,21 @@ class FakeApplicationsRepository extends ApplicationsRepository {
     );
   }
 
+  listLiveCreatorIds(storeId: string): Promise<Set<string>> {
+    return Promise.resolve(
+      new Set(
+        this.rows
+          .filter(
+            (r) =>
+              r.storeId === storeId &&
+              !r.deletedAt &&
+              (r.status === 'APPLIED' || r.status === 'OFFERED'),
+          )
+          .map((r) => r.creatorId),
+      ),
+    );
+  }
+
   markOffered(storeId: string, creatorId: string): Promise<string | null> {
     const row = this.live(storeId, creatorId);
     if (row?.status !== 'APPLIED') return Promise.resolve(null);
@@ -358,6 +373,22 @@ describe('ApplicationsService', () => {
     store = makeStore();
     stores.store = store;
     creators.add(CREATOR, '서울특별시', '성동구');
+  });
+
+  describe('live applicants', () => {
+    it('lists applied and offered creators of a store but not cancelled ones', async () => {
+      creators.add(CREATOR_B, '서울특별시', '성동구');
+      creators.add(CREATOR_C, '서울특별시', '성동구');
+      await service.apply(CREATOR, store.id);
+      await service.apply(CREATOR_B, store.id);
+      await service.apply(CREATOR_C, store.id);
+      await repo.markOffered(store.id, CREATOR_B);
+      await repo.cancelApplied(store.id, CREATOR_C);
+
+      expect([...(await service.listLiveCreatorIds(store.id))].sort()).toEqual(
+        [CREATOR, CREATOR_B].sort(),
+      );
+    });
   });
 
   describe('apply', () => {

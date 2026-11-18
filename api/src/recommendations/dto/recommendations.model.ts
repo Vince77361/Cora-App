@@ -3,6 +3,7 @@ import {
   CampaignListCardModel,
   CreatorCardModel,
   PreviewCardModel,
+  StoreCreatorCardModel,
 } from './recommendation-cards.model';
 
 export class CreatorRecommendationsModel {
@@ -17,6 +18,20 @@ export class CreatorRecommendationsModel {
 
   @ApiProperty({ type: [CreatorCardModel] })
   cards!: CreatorCardModel[];
+}
+
+export class StoreCreatorRecommendationsModel {
+  @ApiProperty({ type: String, format: 'date', example: '2026-11-19' })
+  day!: string;
+
+  @ApiProperty({
+    type: 'integer',
+    description: '오늘 목록의 전체 수(이미 결정한 카드 포함).',
+  })
+  total!: number;
+
+  @ApiProperty({ type: [StoreCreatorCardModel] })
+  cards!: StoreCreatorCardModel[];
 }
 
 export class CampaignRecommendationsModel {

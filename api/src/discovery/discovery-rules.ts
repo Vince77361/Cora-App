@@ -42,6 +42,8 @@ export interface DecisionInput {
   proposal?: BrandProposal;
   // 브랜드가 글을 붙여 관심을 보낼 때 그 크리에이터의 대표 콘텐츠(사본으로 저장한다).
   card?: { headline: string | null; photoPath: string | null } | null;
+  // 글이 없어도 콘텐츠 사본을 남긴다(사장님의 하트: 설계 7.5).
+  copyCard?: boolean;
 }
 
 export type DecisionWrite =
@@ -60,12 +62,12 @@ const EMPTY: Omit<DecisionFields, 'decision'> = {
   proposedPerfCap: null,
 };
 
-// 글이 붙은 관심이 상대의 "받은 제안"이 되므로 글이 있을 때만 콘텐츠 사본을 남긴다.
+// 글이 붙은 관심이 상대의 "받은 제안"이 되므로 글이 있을 때만 콘텐츠 사본을 남긴다. 사장님의 하트는 글이 없어도 남긴다(copyCard).
 function likeFields(input: DecisionInput): Partial<DecisionFields> {
   const fields: Partial<DecisionFields> = {};
-  if (input.note !== undefined) {
-    fields.note = input.note;
-    const copied = input.note !== null && input.card;
+  if (input.note !== undefined) fields.note = input.note;
+  if (input.note !== undefined || input.copyCard) {
+    const copied = (input.copyCard || input.note) && input.card;
     fields.contentTitle = copied ? input.card!.headline : null;
     fields.contentPhotoPath = copied ? input.card!.photoPath : null;
   }

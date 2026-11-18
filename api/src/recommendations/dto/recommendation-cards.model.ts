@@ -55,9 +55,60 @@ export class CreatorCardModel {
 
   @ApiProperty({
     description:
-      '항상 false. 상대가 먼저 관심을 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다.',
+      '항상 false. 상대가 먼저 하트를 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다.',
   })
   theyLikedMe!: boolean;
+}
+
+// 사장님이 넘겨 보는 크리에이터 카드(전체 둘러보기). 브랜드용 카드와 달리 협업 원칙이 없어도 만들어지고,
+// 희망 제작비와 잘 맞는 이유는 담지 않는다. 카드에는 대표 게시물이 1개 이상 있는 크리에이터만 나온다.
+export class StoreCreatorCardModel {
+  @ApiProperty({ format: 'uuid' })
+  creatorId!: string;
+
+  @ApiProperty()
+  displayName!: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: '콘텐츠 분야(크리에이터가 쓴 글). 없으면 null.',
+  })
+  contentFocus!: string | null;
+
+  @ApiProperty({
+    type: 'integer',
+    nullable: true,
+    description: '연결한 인스타그램 계정의 팔로워 수. 연결이 없으면 null.',
+  })
+  followers!: number | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    maxLength: 40,
+    description: '1번 대표 게시물의 한 줄.',
+  })
+  headline!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: '1번 대표 게시물의 그림.',
+  })
+  photoUrl!: string | null;
+
+  @ApiProperty({
+    type: [FeaturedPostModel],
+    description: '대표 게시물(1~4개, 차례대로).',
+  })
+  posts!: FeaturedPostModel[];
+
+  @ApiProperty({
+    type: [String],
+    description: '협업 원칙의 꼬리표. 협업 원칙이 없으면 빈 목록.',
+  })
+  tags!: string[];
 }
 
 // 크리에이터가 넘겨 보는 브랜드 캠페인 카드. 캠페인의 예산은 담지 않는다.

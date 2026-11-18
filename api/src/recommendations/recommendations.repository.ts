@@ -99,12 +99,12 @@ export class RecommendationsRepository {
     });
   }
 
-  // 내가 이 대상에 내린 결정. 없으면 null.
+  // 내가 이 대상에 내린 결정. 없으면 null. campaignId가 null이면 캠페인이 없는 결정(사장님의 크리에이터 결정, 크리에이터의 가게 넘김)이다.
   async findDecision(
     actorId: string,
     targetKind: SwipeTargetKind,
     targetId: string,
-    campaignId: string,
+    campaignId: string | null,
   ): Promise<SwipeDecisionKind | null> {
     const row = await this.prisma.swipeDecision.findFirst({
       where: { actorId, targetKind, targetId, campaignId, deletedAt: null },

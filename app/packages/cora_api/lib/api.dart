@@ -242,6 +242,8 @@ part 'model/settlement_method.dart';
 part 'model/source_link_input_dto.dart';
 part 'model/source_link_kind.dart';
 part 'model/store_branch_model.dart';
+part 'model/store_creator_card_model.dart';
+part 'model/store_creator_recommendations_model.dart';
 part 'model/store_detail_model.dart';
 part 'model/store_home_summary_model.dart';
 part 'model/store_onboarding_step.dart';

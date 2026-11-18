@@ -564,6 +564,10 @@ class ApiClient {
           return SourceLinkKindTypeTransformer().decode(value);
         case 'StoreBranchModel':
           return StoreBranchModel.fromJson(value);
+        case 'StoreCreatorCardModel':
+          return StoreCreatorCardModel.fromJson(value);
+        case 'StoreCreatorRecommendationsModel':
+          return StoreCreatorRecommendationsModel.fromJson(value);
         case 'StoreDetailModel':
           return StoreDetailModel.fromJson(value);
         case 'StoreHomeSummaryModel':

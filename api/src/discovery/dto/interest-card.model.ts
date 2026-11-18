@@ -11,7 +11,7 @@ export class ListInterestsQuery {
     enumName: 'InterestTab',
     required: false,
     description:
-      'saved(기본) = 내 관심 + 보류, mutual = 서로 관심, sent = 보낸 관심(응답 대기), held = 보류.',
+      'saved(기본) = 내 하트 + 저장, mutual = 서로 관심, sent = 보낸 관심(응답 대기), held = 저장.',
   })
   @IsOptional()
   @IsIn(INTEREST_TABS)
@@ -79,7 +79,7 @@ export class InterestCardModel {
 
   @ApiProperty({
     description:
-      '내가 보낸 관심에 제안(제작비, 혜택, 성과 추가)이 붙어 있다. 브랜드만 true일 수 있다.',
+      '내가 보낸 하트에 제안(제작비, 혜택, 성과 추가)이 붙어 있다. 브랜드만 true일 수 있다.',
   })
   hasProposal!: boolean;
 

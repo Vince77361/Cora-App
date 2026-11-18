@@ -19,6 +19,15 @@ export class ApplicationsRepository {
     });
   }
 
+  // 이 가게에 살아 있는 지원(APPLIED, OFFERED)을 낸 크리에이터. 사장님의 서로 관심과 전체 둘러보기 순서가 쓴다.
+  async listLiveCreatorIds(storeId: string): Promise<Set<string>> {
+    const rows = await this.prisma.application.findMany({
+      where: { storeId, ...LIVE },
+      select: { creatorId: true },
+    });
+    return new Set(rows.map((r) => r.creatorId));
+  }
+
   // 같은 가게·크리에이터의 살아 있는 지원은 부분 유니크 인덱스가 하나로 막는다.
   // 미리 읽은 뒤 동시에 만들어 unique 위반(P2002)이 나면 null로 돌려 서비스가 409로 바꾸게 한다.
   async create(

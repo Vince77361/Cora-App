@@ -10,7 +10,7 @@
 
 part of cora_api;
 
-/// 내가 저장한 결정(관심 또는 보류). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.
+/// 내가 저장한 결정(하트 또는 저장). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.
 enum SavedDecision {
   LIKE._(r'LIKE'),
   HOLD._(r'HOLD'),

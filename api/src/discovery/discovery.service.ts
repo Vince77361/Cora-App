@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Campaign, SwipeDecision, UserRole } from '@prisma/client';
+import { ApplicationsService } from '../applications/applications.service';
 import { BrandsService } from '../brands/brands.service';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
@@ -83,7 +84,7 @@ function alreadyMatched(): AppError {
   );
 }
 
-// 관심·넘김·보류와 서로 관심. 넘김과 넘긴 이유는 본인에게만 쓰이고 상대에게 가는 응답과 알림에 들어가지 않는다.
+// 하트(LIKE)·넘김·저장(HOLD)과 서로 관심. 넘김과 넘긴 이유는 본인에게만 쓰이고 상대에게 가는 응답과 알림에 들어가지 않는다.
 @Injectable()
 export class DiscoveryService {
   private readonly logger = new Logger(DiscoveryService.name);
@@ -99,6 +100,7 @@ export class DiscoveryService {
     private readonly terms: TermsService,
     private readonly collaborations: CollaborationsRepository,
     private readonly conversations: ConversationsService,
+    private readonly applications: ApplicationsService,
     private readonly repository: DiscoveryRepository,
     private readonly clock: Clock,
   ) {}
@@ -110,9 +112,10 @@ export class DiscoveryService {
     const role = await this.users.getRole(userId);
     if (role === 'BRAND') return this.brandDecide(userId, input);
     if (role === 'CREATOR') return this.creatorDecide(userId, input);
+    if (role === 'STORE') return this.storeDecide(userId, input);
     throw new AppError(
       'FORBIDDEN',
-      '브랜드나 크리에이터 계정만 관심을 보낼 수 있어요.',
+      '사장님, 브랜드, 크리에이터 계정만 하트를 보낼 수 있어요.',
     );
   }
 
@@ -152,12 +155,15 @@ export class DiscoveryService {
       campaignId = input.targetId;
     } else if (role === 'CREATOR' && input.targetKind === 'STORE') {
       campaignId = null;
-    } else if (role === 'BRAND' || role === 'CREATOR') {
+    } else if (role === 'STORE' && input.targetKind === 'CREATOR') {
+      // 사장님의 결정은 캠페인이 없다. 가게 하나에 크리에이터마다 결정 하나다.
+      campaignId = null;
+    } else if (role === 'BRAND' || role === 'CREATOR' || role === 'STORE') {
       throw new AppError('VALIDATION_FAILED', '넘길 수 없는 대상이에요.');
     } else {
       throw new AppError(
         'FORBIDDEN',
-        '브랜드나 크리에이터 계정만 쓸 수 있어요.',
+        '사장님, 브랜드, 크리에이터 계정만 쓸 수 있어요.',
       );
     }
     const existing = await this.repository.findDecision({
@@ -181,15 +187,24 @@ export class DiscoveryService {
   }
 
   // 오늘(한국 날짜) 내가 가장 나중에 한 결정을 행째 지운다(넘긴 이유와 브랜드의 제안도 함께).
-  // 오늘 한 결정이 없으면 null이고 아무것도 지우지 않는다. 서로 관심이 된 것은 되돌릴 수 없다.
+  // 오늘 한 결정이 없으면 null이고 아무것도 지우지 않는다. 서로 관심이 된 것은 되돌릴 수 없다:
+  // 브랜드·크리에이터는 matches 행이 있을 때, 사장님은 하트를 보낸 크리에이터가 그 가게에 살아 있는 지원을 가졌을 때다.
   async undoLast(userId: string): Promise<UndoneDecisionModel | null> {
     const role = await this.users.getRole(userId);
-    if (role !== 'BRAND' && role !== 'CREATOR') {
+    if (role !== 'BRAND' && role !== 'CREATOR' && role !== 'STORE') {
       throw new AppError(
         'FORBIDDEN',
-        '브랜드나 크리에이터 계정만 쓸 수 있어요.',
+        '사장님, 브랜드, 크리에이터 계정만 쓸 수 있어요.',
       );
     }
+    // 트랜잭션이 연결을 쥔 채 다른 연결을 기다리지 않게, 사장님의 서로 관심 판단에 쓸 지원자는 미리 읽는다.
+    // 읽은 뒤에 새로 지원한 사람은 이 되돌리기를 막지 못하지만, 하트가 지워질 뿐 가게의 협업·지원은 그대로라 해가 없다.
+    const applicants =
+      role === 'STORE'
+        ? await this.applications.listLiveCreatorIds(
+            (await this.stores.requireMyStore(userId)).id,
+          )
+        : null;
     const since = startOfKstDay(this.clock.now());
     const first = await this.repository.findLastSince(userId, since);
     if (!first) return null;
@@ -212,6 +227,13 @@ export class DiscoveryService {
       if (pair && (await this.repository.findMatch(pair[0], pair[1], tx))) {
         throw alreadyMatched();
       }
+      if (
+        applicants?.has(target.targetId) &&
+        target.targetKind === 'CREATOR' &&
+        target.decision === 'LIKE'
+      ) {
+        throw new AppError('CONFLICT', '되돌릴 수 없어요.');
+      }
       await this.repository.deleteDecision(target.id, tx);
       return { targetKind: target.targetKind, targetId: target.targetId };
     });
@@ -224,7 +246,7 @@ export class DiscoveryService {
     if (input.targetKind !== 'CREATOR') {
       throw new AppError(
         'VALIDATION_FAILED',
-        '브랜드는 크리에이터에게만 관심을 보낼 수 있어요.',
+        '브랜드는 크리에이터에게만 하트를 보낼 수 있어요.',
       );
     }
     const campaign = await this.campaigns.requireMyActive(userId);
@@ -261,6 +283,80 @@ export class DiscoveryService {
     });
   }
 
+  // 사장님이 전체 둘러보기에서 크리에이터에게 내리는 결정. 캠페인이 없는 결정이라(campaign_id = null) 브랜드의 matches와 섞이지 않고,
+  // 서로 관심(하트 + 그 크리에이터의 지원)도 협업을 만들지 않는다: 저장함이 두 기록의 교집합으로 계산한다(설계 5.4).
+  // 크리에이터에게는 미리 알리지 않으므로 글(note)과 조건 제안은 받지 않는다. 하트에는 글이 없어도 1번 게시물 사본을 남긴다.
+  private async storeDecide(
+    userId: string,
+    input: PutDecisionDto,
+  ): Promise<DecisionResultModel> {
+    if (input.targetKind !== 'CREATOR') {
+      throw new AppError(
+        'VALIDATION_FAILED',
+        '사장님은 크리에이터에게만 하트를 보낼 수 있어요.',
+      );
+    }
+    if (input.proposal) {
+      throw new AppError(
+        'VALIDATION_FAILED',
+        '조건 제안은 브랜드만 붙일 수 있어요.',
+      );
+    }
+    if (this.cleanNote(input.note, NOTE_MAX.CREATOR)) {
+      throw new AppError(
+        'VALIDATION_FAILED',
+        '사장님은 글 없이 하트를 보내요.',
+      );
+    }
+    const store = await this.stores.requireMyStore(userId);
+    const creatorId = input.targetId;
+    // 보이지 않는 크리에이터(피하는 업종, 차단, 탈퇴)는 없는 것과 같다.
+    const visible =
+      (await this.creators.getSummary(creatorId)) !== null &&
+      (await this.visibility.creatorVisibleTo(creatorId, {
+        userId: store.ownerId,
+        kind: 'STORE',
+        industry: store.industry,
+      }));
+    if (!visible) {
+      throw new AppError('NOT_FOUND', '크리에이터를 찾을 수 없어요.');
+    }
+    const card =
+      input.decision === 'LIKE'
+        ? await this.creators.getCardCopy(creatorId)
+        : null;
+    const key: DecisionKey = {
+      actorId: userId,
+      targetKind: 'CREATOR',
+      targetId: creatorId,
+      campaignId: null,
+    };
+    const now = this.clock.now();
+    await this.repository.transaction(async (tx) => {
+      await this.repository.lock(
+        `discovery-store-creator:${userId}:${creatorId}`,
+        tx,
+      );
+      const existing = await this.repository.findDecision(key, tx);
+      const write = planDecisionWrite(existing, {
+        decision: input.decision,
+        card,
+        copyCard: true,
+      });
+      if (write.kind === 'create') {
+        await this.repository.createDecision(key, write.data, now, tx);
+      } else if (write.kind === 'update' && existing) {
+        await this.repository.updateDecision(existing.id, write.data, now, tx);
+      }
+    });
+    return {
+      decision: input.decision,
+      matched: false,
+      collaborationId: null,
+      conversationId: null,
+    };
+  }
+
   private async creatorDecide(
     userId: string,
     input: PutDecisionDto,
@@ -268,7 +364,7 @@ export class DiscoveryService {
     if (input.targetKind !== 'CAMPAIGN') {
       throw new AppError(
         'VALIDATION_FAILED',
-        '크리에이터는 캠페인에만 관심을 보낼 수 있어요.',
+        '크리에이터는 캠페인에만 하트를 보낼 수 있어요.',
       );
     }
     if (input.proposal) {
@@ -747,7 +843,7 @@ export class DiscoveryService {
     if (input.decision !== 'LIKE') {
       throw new AppError(
         'VALIDATION_FAILED',
-        '조건 제안은 관심을 보낼 때만 붙일 수 있어요.',
+        '조건 제안은 하트를 보낼 때만 붙일 수 있어요.',
       );
     }
     const proposal = toProposal(input.proposal);

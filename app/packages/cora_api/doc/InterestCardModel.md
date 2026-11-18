@@ -11,7 +11,7 @@ Name | Type | Description | Notes
 **collaborationId** | **String** | 서로 관심이면 그 협업의 id. | 
 **feeBand** | [**FeeBand**](FeeBand.md) | 브랜드가 볼 때 그 크리에이터의 희망 제작비 구간. 크리에이터가 볼 때는 null. | 
 **feeLabel** | **int** | 카드 아래 글의 금액. 서로 관심이면 최신 판본의 제작비, 아니면 브랜드는 내가 만든 제안의 금액(없으면 null이고 앱이 feeBand를 보여 준다), 크리에이터는 캠페인의 제작비. | 
-**hasProposal** | **bool** | 내가 보낸 관심에 제안(제작비, 혜택, 성과 추가)이 붙어 있다. 브랜드만 true일 수 있다. | 
+**hasProposal** | **bool** | 내가 보낸 하트에 제안(제작비, 혜택, 성과 추가)이 붙어 있다. 브랜드만 true일 수 있다. | 
 **headline** | **String** | 크리에이터 카드의 한 줄 또는 캠페인 한 줄. | 
 **name** | **String** | 크리에이터의 활동 이름 또는 브랜드 이름. | 
 **photoUrl** | **String** |  | 

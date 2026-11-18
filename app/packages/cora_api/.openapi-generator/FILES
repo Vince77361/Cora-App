@@ -205,6 +205,8 @@ doc/SettlementMethod.md
 doc/SourceLinkInputDto.md
 doc/SourceLinkKind.md
 doc/StoreBranchModel.md
+doc/StoreCreatorCardModel.md
+doc/StoreCreatorRecommendationsModel.md
 doc/StoreDetailModel.md
 doc/StoreHomeSummaryModel.md
 doc/StoreInsightsApi.md
@@ -486,6 +488,8 @@ lib/model/settlement_method.dart
 lib/model/source_link_input_dto.dart
 lib/model/source_link_kind.dart
 lib/model/store_branch_model.dart
+lib/model/store_creator_card_model.dart
+lib/model/store_creator_recommendations_model.dart
 lib/model/store_detail_model.dart
 lib/model/store_home_summary_model.dart
 lib/model/store_onboarding_step.dart
@@ -741,6 +745,8 @@ test/settlement_method_test.dart
 test/source_link_input_dto_test.dart
 test/source_link_kind_test.dart
 test/store_branch_model_test.dart
+test/store_creator_card_model_test.dart
+test/store_creator_recommendations_model_test.dart
 test/store_detail_model_test.dart
 test/store_home_summary_model_test.dart
 test/store_insights_api_test.dart

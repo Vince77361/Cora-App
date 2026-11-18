@@ -6,6 +6,7 @@ import {
   CampaignRecommendationsModel,
   CreatorRecommendationsModel,
   PreviewCardsModel,
+  StoreCreatorRecommendationsModel,
 } from './dto/recommendations.model';
 import { RecommendationsService } from './recommendations.service';
 
@@ -24,6 +25,19 @@ export class RecommendationsController {
     @CurrentUser() user: AuthUser,
   ): Promise<CreatorRecommendationsModel> {
     return this.recommendations.listCreators(user.userId);
+  }
+
+  @Get('store-creators')
+  @ApiOperation({
+    operationId: 'listStoreCreatorRecommendations',
+    summary:
+      '사장님의 오늘 전체 둘러보기 크리에이터 카드(하루 최대 10장, 한국 시간 자정에 새로 채움)',
+  })
+  @ApiOkResponse({ type: StoreCreatorRecommendationsModel })
+  listStoreCreators(
+    @CurrentUser() user: AuthUser,
+  ): Promise<StoreCreatorRecommendationsModel> {
+    return this.recommendations.listStoreCreators(user.userId);
   }
 
   @Get('campaigns')

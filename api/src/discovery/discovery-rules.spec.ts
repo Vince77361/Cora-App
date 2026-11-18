@@ -55,6 +55,30 @@ describe('planDecisionWrite', () => {
     });
   });
 
+  it('copies the content even without a note when asked to (store hearts)', () => {
+    const write = planDecisionWrite(null, {
+      decision: 'LIKE',
+      card: { headline: '한 줄', photoPath: 'x' },
+      copyCard: true,
+    });
+    expect(write).toMatchObject({
+      kind: 'create',
+      data: { note: null, contentTitle: '한 줄', contentPhotoPath: 'x' },
+    });
+  });
+
+  it('starts a saved decision over as a heart with the copy and no leftovers', () => {
+    const write = planDecisionWrite(stored({ decision: 'HOLD' }), {
+      decision: 'LIKE',
+      card: { headline: '한 줄', photoPath: 'x' },
+      copyCard: true,
+    });
+    expect(write).toMatchObject({
+      kind: 'update',
+      data: { decision: 'LIKE', contentTitle: '한 줄', contentPhotoPath: 'x' },
+    });
+  });
+
   it('only refreshes the time for the same hold and writes nothing for the same pass', () => {
     expect(
       planDecisionWrite(stored({ decision: 'HOLD' }), { decision: 'HOLD' }),

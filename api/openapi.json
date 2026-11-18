@@ -372,7 +372,7 @@
                 "$ref": "#/components/schemas/SavedDecision"
               }
             ],
-            "description": "내가 저장한 결정(관심 또는 보류). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.",
+            "description": "내가 저장한 결정(하트 또는 저장). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.",
             "nullable": true
           },
           "notRequired": {
@@ -1989,7 +1989,7 @@
                 "$ref": "#/components/schemas/SavedDecision"
               }
             ],
-            "description": "내가 저장한 결정(관심 또는 보류). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.",
+            "description": "내가 저장한 결정(하트 또는 저장). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.",
             "nullable": true
           },
           "photoUrl": {
@@ -2017,7 +2017,7 @@
             "type": "array"
           },
           "theyLikedMe": {
-            "description": "항상 false. 상대가 먼저 관심을 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다.",
+            "description": "항상 false. 상대가 먼저 하트를 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다.",
             "type": "boolean"
           }
         },
@@ -2086,7 +2086,7 @@
             "type": "array"
           },
           "theyLikedMe": {
-            "description": "항상 false. 상대가 먼저 관심을 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다.",
+            "description": "항상 false. 상대가 먼저 하트를 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다.",
             "type": "boolean"
           }
         },
@@ -2859,7 +2859,7 @@
             "type": "integer"
           },
           "hasProposal": {
-            "description": "내가 보낸 관심에 제안(제작비, 혜택, 성과 추가)이 붙어 있다. 브랜드만 true일 수 있다.",
+            "description": "내가 보낸 하트에 제안(제작비, 혜택, 성과 추가)이 붙어 있다. 브랜드만 true일 수 있다.",
             "type": "boolean"
           },
           "headline": {
@@ -4979,7 +4979,7 @@
         "type": "object"
       },
       "SavedDecision": {
-        "description": "내가 저장한 결정(관심 또는 보류). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.",
+        "description": "내가 저장한 결정(하트 또는 저장). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.",
         "enum": [
           "LIKE",
           "HOLD"
@@ -5219,6 +5219,88 @@
           "neighborhood",
           "regionSido",
           "regionSigungu"
+        ],
+        "type": "object"
+      },
+      "StoreCreatorCardModel": {
+        "properties": {
+          "contentFocus": {
+            "description": "콘텐츠 분야(크리에이터가 쓴 글). 없으면 null.",
+            "nullable": true,
+            "type": "string"
+          },
+          "creatorId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "followers": {
+            "description": "연결한 인스타그램 계정의 팔로워 수. 연결이 없으면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "headline": {
+            "description": "1번 대표 게시물의 한 줄.",
+            "maxLength": 40,
+            "nullable": true,
+            "type": "string"
+          },
+          "photoUrl": {
+            "description": "1번 대표 게시물의 그림.",
+            "nullable": true,
+            "type": "string"
+          },
+          "posts": {
+            "description": "대표 게시물(1~4개, 차례대로).",
+            "items": {
+              "$ref": "#/components/schemas/FeaturedPostModel"
+            },
+            "type": "array"
+          },
+          "tags": {
+            "description": "협업 원칙의 꼬리표. 협업 원칙이 없으면 빈 목록.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "creatorId",
+          "displayName",
+          "contentFocus",
+          "followers",
+          "headline",
+          "photoUrl",
+          "posts",
+          "tags"
+        ],
+        "type": "object"
+      },
+      "StoreCreatorRecommendationsModel": {
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/StoreCreatorCardModel"
+            },
+            "type": "array"
+          },
+          "day": {
+            "example": "2026-11-19",
+            "format": "date",
+            "type": "string"
+          },
+          "total": {
+            "description": "오늘 목록의 전체 수(이미 결정한 카드 포함).",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "total",
+          "cards"
         ],
         "type": "object"
       },
@@ -8719,7 +8801,7 @@
             "bearer": []
           }
         ],
-        "summary": "관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.",
+        "summary": "하트(LIKE)·넘김(PASS)·저장(HOLD)을 저장한다. 브랜드·크리에이터는 반대쪽도 하트면 서로 관심(협업과 조건 버전 1)이 만들어진다. 사장님은 크리에이터에게만(campaign 없음) 결정하며 협업을 만들지 않는다.",
         "tags": [
           "Discovery"
         ]
@@ -8751,7 +8833,7 @@
             "bearer": []
           }
         ],
-        "summary": "오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다.",
+        "summary": "오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다. 서로 관심이 된 결정(사장님은 하트를 보낸 크리에이터가 그 가게에 지원해 있을 때)은 409다.",
         "tags": [
           "Discovery"
         ]
@@ -8792,7 +8874,7 @@
         "operationId": "listInterests",
         "parameters": [
           {
-            "description": "saved(기본) = 내 관심 + 보류, mutual = 서로 관심, sent = 보낸 관심(응답 대기), held = 보류.",
+            "description": "saved(기본) = 내 하트 + 저장, mutual = 서로 관심, sent = 보낸 관심(응답 대기), held = 저장.",
             "in": "query",
             "name": "tab",
             "required": false,
@@ -8821,7 +8903,7 @@
             "bearer": []
           }
         ],
-        "summary": "관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).",
+        "summary": "하트·저장 목록. 내가 하트를 보냈거나 저장한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).",
         "tags": [
           "Discovery"
         ]
@@ -8851,7 +8933,7 @@
             "bearer": []
           }
         ],
-        "summary": "크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.",
+        "summary": "크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 하트 가운데 아직 결정하지 않은 것.",
         "tags": [
           "Discovery"
         ]
@@ -8892,7 +8974,7 @@
             "description": ""
           },
           "404": {
-            "description": "그 캠페인의 브랜드가 나에게 글이나 제안을 붙인 관심을 보내지 않았다."
+            "description": "그 캠페인의 브랜드가 나에게 글이나 제안을 붙인 하트를 보내지 않았다."
           }
         },
         "security": [
@@ -8929,7 +9011,7 @@
             "bearer": []
           }
         ],
-        "summary": "가게 카드를 넘긴다(가게 카드의 관심은 지원 API로 보낸다).",
+        "summary": "가게 카드를 넘긴다(가게 카드의 하트는 지원 API로 보낸다).",
         "tags": [
           "Discovery"
         ]
@@ -10019,6 +10101,33 @@
           }
         ],
         "summary": "역할이 없는 사용자의 둘러보기 카드(읽기 전용)",
+        "tags": [
+          "Recommendations"
+        ]
+      }
+    },
+    "/recommendations/store-creators": {
+      "get": {
+        "operationId": "listStoreCreatorRecommendations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCreatorRecommendationsModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "사장님의 오늘 전체 둘러보기 크리에이터 카드(하루 최대 10장, 한국 시간 자정에 새로 채움)",
         "tags": [
           "Recommendations"
         ]

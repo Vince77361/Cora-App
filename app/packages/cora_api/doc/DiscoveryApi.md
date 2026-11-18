@@ -11,12 +11,12 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**compareCandidates**](DiscoveryApi.md#comparecandidates) | **GET** /discovery/compare | 후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.
 [**createInquiry**](DiscoveryApi.md#createinquiry) | **POST** /discovery/received-proposals/{campaignId}/inquiry | \"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.
-[**listInterests**](DiscoveryApi.md#listinterests) | **GET** /discovery/interests | 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
-[**listReceivedProposals**](DiscoveryApi.md#listreceivedproposals) | **GET** /discovery/received-proposals | 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.
-[**putDecision**](DiscoveryApi.md#putdecision) | **PUT** /discovery/decisions | 관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.
+[**listInterests**](DiscoveryApi.md#listinterests) | **GET** /discovery/interests | 하트·저장 목록. 내가 하트를 보냈거나 저장한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
+[**listReceivedProposals**](DiscoveryApi.md#listreceivedproposals) | **GET** /discovery/received-proposals | 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 하트 가운데 아직 결정하지 않은 것.
+[**putDecision**](DiscoveryApi.md#putdecision) | **PUT** /discovery/decisions | 하트(LIKE)·넘김(PASS)·저장(HOLD)을 저장한다. 브랜드·크리에이터는 반대쪽도 하트면 서로 관심(협업과 조건 버전 1)이 만들어진다. 사장님은 크리에이터에게만(campaign 없음) 결정하며 협업을 만들지 않는다.
 [**putPassReason**](DiscoveryApi.md#putpassreason) | **PUT** /discovery/decisions/pass-reason | 넘긴 카드에 이유를 남긴다. 이유 없이 넘기는 것은 이 호출을 하지 않는 것이다.
-[**putStorePass**](DiscoveryApi.md#putstorepass) | **PUT** /discovery/store-passes/{storeId} | 가게 카드를 넘긴다(가게 카드의 관심은 지원 API로 보낸다).
-[**undoLastDecision**](DiscoveryApi.md#undolastdecision) | **DELETE** /discovery/decisions/last | 오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다.
+[**putStorePass**](DiscoveryApi.md#putstorepass) | **PUT** /discovery/store-passes/{storeId} | 가게 카드를 넘긴다(가게 카드의 하트는 지원 API로 보낸다).
+[**undoLastDecision**](DiscoveryApi.md#undolastdecision) | **DELETE** /discovery/decisions/last | 오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다. 서로 관심이 된 결정(사장님은 하트를 보낸 크리에이터가 그 가게에 지원해 있을 때)은 409다.
 
 
 # **compareCandidates**
@@ -120,7 +120,7 @@ Name | Type | Description  | Notes
 # **listInterests**
 > List<InterestCardModel> listInterests(tab)
 
-관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
+하트·저장 목록. 내가 하트를 보냈거나 저장한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
 
 ### Example
 ```dart
@@ -133,7 +133,7 @@ import 'package:cora_api/api.dart';
 //defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
 
 final api_instance = DiscoveryApi();
-final tab = ; // InterestTab | saved(기본) = 내 관심 + 보류, mutual = 서로 관심, sent = 보낸 관심(응답 대기), held = 보류.
+final tab = ; // InterestTab | saved(기본) = 내 하트 + 저장, mutual = 서로 관심, sent = 보낸 관심(응답 대기), held = 저장.
 
 try {
     final result = api_instance.listInterests(tab);
@@ -147,7 +147,7 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **tab** | [**InterestTab**](.md)| saved(기본) = 내 관심 + 보류, mutual = 서로 관심, sent = 보낸 관심(응답 대기), held = 보류. | [optional] 
+ **tab** | [**InterestTab**](.md)| saved(기본) = 내 하트 + 저장, mutual = 서로 관심, sent = 보낸 관심(응답 대기), held = 저장. | [optional] 
 
 ### Return type
 
@@ -167,7 +167,7 @@ Name | Type | Description  | Notes
 # **listReceivedProposals**
 > List<ProposalModel> listReceivedProposals()
 
-크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.
+크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 하트 가운데 아직 결정하지 않은 것.
 
 ### Example
 ```dart
@@ -210,7 +210,7 @@ This endpoint does not need any parameter.
 # **putDecision**
 > DecisionResultModel putDecision(putDecisionDto)
 
-관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.
+하트(LIKE)·넘김(PASS)·저장(HOLD)을 저장한다. 브랜드·크리에이터는 반대쪽도 하트면 서로 관심(협업과 조건 버전 1)이 만들어진다. 사장님은 크리에이터에게만(campaign 없음) 결정하며 협업을 만들지 않는다.
 
 ### Example
 ```dart
@@ -303,7 +303,7 @@ void (empty response body)
 # **putStorePass**
 > putStorePass(storeId)
 
-가게 카드를 넘긴다(가게 카드의 관심은 지원 API로 보낸다).
+가게 카드를 넘긴다(가게 카드의 하트는 지원 API로 보낸다).
 
 ### Example
 ```dart
@@ -349,7 +349,7 @@ void (empty response body)
 # **undoLastDecision**
 > UndoneDecisionModel undoLastDecision()
 
-오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다.
+오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다. 서로 관심이 된 결정(사장님은 하트를 보낸 크리에이터가 그 가게에 지원해 있을 때)은 409다.
 
 ### Example
 ```dart

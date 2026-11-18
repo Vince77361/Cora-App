@@ -238,6 +238,11 @@ export class ApplicationsService {
     return this.applications.reopenOffered(applicationId);
   }
 
+  // 이 가게에 살아 있는 지원(APPLIED, OFFERED)을 낸 크리에이터. 사장님 전체 둘러보기가 지원한 사람을 앞에 놓을 때 쓴다.
+  listLiveCreatorIds(storeId: string): Promise<Set<string>> {
+    return this.applications.listLiveCreatorIds(storeId);
+  }
+
   // 가게 홈의 "새 지원자" 수. 지원자 목록과 같은 기준이라, 이 가게의 업종을 피하는 크리에이터는 세지 않는다.
   async countNew(store: Store): Promise<number> {
     return (await this.visibleApplied(store)).length;

@@ -15,7 +15,7 @@ Name | Type | Description | Notes
 **headline** | **String** |  | 
 **kind** | **String** |  | 
 **mustInclude** | **List<String>** | 꼭 담을 것. | [default to const []]
-**myDecision** | [**SavedDecision**](SavedDecision.md) | 내가 저장한 결정(관심 또는 보류). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다. | 
+**myDecision** | [**SavedDecision**](SavedDecision.md) | 내가 저장한 결정(하트 또는 저장). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다. | 
 **notRequired** | [**List<NotRequired>**](NotRequired.md) | 요구하지 않는 것. | [default to const []]
 **overlapCount** | **int** | \"내 협업 원칙과 N개가 겹쳐요\"의 N(reasons의 개수). | 
 **photoUrl** | **String** |  | 

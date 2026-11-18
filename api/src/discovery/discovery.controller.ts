@@ -54,7 +54,7 @@ export class DiscoveryController {
   @ApiOperation({
     operationId: 'putDecision',
     summary:
-      '관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.',
+      '하트(LIKE)·넘김(PASS)·저장(HOLD)을 저장한다. 브랜드·크리에이터는 반대쪽도 하트면 서로 관심(협업과 조건 버전 1)이 만들어진다. 사장님은 크리에이터에게만(campaign 없음) 결정하며 협업을 만들지 않는다.',
   })
   @ApiOkResponse({ type: DecisionResultModel })
   putDecision(
@@ -68,7 +68,7 @@ export class DiscoveryController {
   @ApiOperation({
     operationId: 'listInterests',
     summary:
-      '관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).',
+      '하트·저장 목록. 내가 하트를 보냈거나 저장한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).',
   })
   @ApiOkResponse({ type: [InterestCardModel] })
   listInterests(
@@ -82,7 +82,7 @@ export class DiscoveryController {
   @ApiOperation({
     operationId: 'listReceivedProposals',
     summary:
-      '크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.',
+      '크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 하트 가운데 아직 결정하지 않은 것.',
   })
   @ApiOkResponse({ type: [ProposalModel] })
   listReceivedProposals(
@@ -100,7 +100,7 @@ export class DiscoveryController {
   @ApiCreatedResponse({ type: InquiryResultModel })
   @ApiNotFoundResponse({
     description:
-      '그 캠페인의 브랜드가 나에게 글이나 제안을 붙인 관심을 보내지 않았다.',
+      '그 캠페인의 브랜드가 나에게 글이나 제안을 붙인 하트를 보내지 않았다.',
   })
   createInquiry(
     @CurrentUser() user: AuthUser,
@@ -144,7 +144,7 @@ export class DiscoveryController {
   @ApiOperation({
     operationId: 'undoLastDecision',
     summary:
-      '오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다.',
+      '오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다. 서로 관심이 된 결정(사장님은 하트를 보낸 크리에이터가 그 가게에 지원해 있을 때)은 409다.',
   })
   @ApiOkResponse({
     schema: {
@@ -163,7 +163,7 @@ export class DiscoveryController {
   @HttpCode(204)
   @ApiOperation({
     operationId: 'putStorePass',
-    summary: '가게 카드를 넘긴다(가게 카드의 관심은 지원 API로 보낸다).',
+    summary: '가게 카드를 넘긴다(가게 카드의 하트는 지원 API로 보낸다).',
   })
   @ApiNoContentResponse()
   async putStorePass(

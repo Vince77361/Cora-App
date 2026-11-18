@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ApplicationsModule } from '../applications/applications.module';
 import { BrandsModule } from '../brands/brands.module';
 import { CampaignsModule } from '../campaigns/campaigns.module';
 import { CollaborationsModule } from '../collaborations/collaborations.module';
@@ -16,6 +17,7 @@ import { RecommendationsService } from './recommendations.service';
 @Module({
   imports: [
     UsersModule,
+    ApplicationsModule,
     BrandsModule,
     CampaignsModule,
     CreatorsModule,

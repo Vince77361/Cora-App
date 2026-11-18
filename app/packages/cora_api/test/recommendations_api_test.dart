@@ -36,5 +36,12 @@ void main() {
     test('test listPreviewCards', () async {
       // TODO
     });
+
+    // 사장님의 오늘 전체 둘러보기 크리에이터 카드(하루 최대 10장, 한국 시간 자정에 새로 채움)
+    //
+    //Future<StoreCreatorRecommendationsModel> listStoreCreatorRecommendations() async
+    test('test listStoreCreatorRecommendations', () async {
+      // TODO
+    });
   });
 }

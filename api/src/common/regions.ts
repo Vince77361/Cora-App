@@ -20,3 +20,16 @@ export const SIDO_LIST = [
 ] as const;
 
 export type Sido = (typeof SIDO_LIST)[number];
+
+// 지역 정렬 묶음: 구·군까지 같으면 0, 시·도만 같으면 1, 그 밖(가게에 지역이 없을 때 포함)은 2.
+// 지역은 거르지 않고 순서에만 쓴다(공통 모델 4장).
+export function regionTier(
+  store: { regionSido: string | null; regionSigungu: string | null },
+  creator: { regionSido: string; regionSigungu: string | null },
+): 0 | 1 | 2 {
+  if (!store.regionSido || creator.regionSido !== store.regionSido) return 2;
+  return store.regionSigungu !== null &&
+    creator.regionSigungu === store.regionSigungu
+    ? 0
+    : 1;
+}

@@ -1053,6 +1053,7 @@ enum NotRequired {
 enum RecommendationScope {
   BRAND
   CREATOR
+  STORE
 
   @@map("recommendation_scope")
 }

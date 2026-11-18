@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { Campaign, UserRole } from '@prisma/client';
+import { Campaign, Store, UserRole } from '@prisma/client';
+import { ApplicationsService } from '../applications/applications.service';
 import { BrandsService } from '../brands/brands.service';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { kstDateString, startOfKstDay } from '../common/kst';
+import { regionTier } from '../common/regions';
 import { CreatorsService } from '../creators/creators.service';
 import { CreatorCardSource } from '../creators/dto/creator-card-source';
 import { PrinciplesModel } from '../principles/dto/principles.model';
@@ -14,7 +16,12 @@ import { StoreCardSource } from '../stores/dto/store-card-source';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { VisibilityService } from '../visibility/visibility.service';
-import { campaignFacts, toCampaignCard, toCreatorCard } from './card-models';
+import {
+  campaignFacts,
+  toCampaignCard,
+  toCreatorCard,
+  toStoreCreatorCard,
+} from './card-models';
 import { principleTags, storeHeadline, storeRewardLine } from './card-text';
 import {
   DAILY_CARD_COUNT,
@@ -35,6 +42,7 @@ import {
   CampaignRecommendationsModel,
   CreatorRecommendationsModel,
   PreviewCardsModel,
+  StoreCreatorRecommendationsModel,
 } from './dto/recommendations.model';
 import {
   CampaignFacts,
@@ -46,6 +54,10 @@ import {
   RecommendationsRepository,
   StoredItem,
 } from './recommendations.repository';
+import {
+  rankStoreCreators,
+  StoreCreatorCandidate,
+} from './store-creator-rules';
 
 const STORE_TAGS = ['소상공인', '팔로워무관'];
 
@@ -65,6 +77,7 @@ export class RecommendationsService {
     private readonly principles: PrinciplesService,
     private readonly visibility: VisibilityService,
     private readonly collaborations: CollaborationsRepository,
+    private readonly applications: ApplicationsService,
     private readonly repository: RecommendationsRepository,
     private readonly clock: Clock,
   ) {}
@@ -126,6 +139,67 @@ export class RecommendationsService {
       cards: valid
         .filter(({ source }) => !decided.has(source.userId))
         .map(({ source, p }) => toCreatorCard(source, p, facts)),
+    };
+  }
+
+  // 사장님의 오늘 전체 둘러보기. 사장님에게는 캠페인이 없어 가게 하나에 목록 하나다.
+  // 만든 목록은 그날 그대로 두고, 줄 때마다 다시 거른다(만든 뒤에 피하는 업종이 바뀌거나 대표 게시물을 지워도 바로 빠진다).
+  // 내가 이미 하트·저장·넘김한 사람은 오늘 목록에서도 뺀다: 저장한 사람은 저장함에 있고, 되돌리면 같은 자리에 다시 나온다.
+  async listStoreCreators(
+    userId: string,
+  ): Promise<StoreCreatorRecommendationsModel> {
+    await this.assertRole(userId, 'STORE', '사장님 계정만 쓸 수 있어요.');
+    const store = await this.stores.requireMyStore(userId);
+    const now = this.clock.now();
+    const day = kstDateString(now);
+    const viewer: CreatorViewer = {
+      userId: store.ownerId,
+      kind: 'STORE',
+      industry: store.industry,
+    };
+
+    const stored = await this.repository.findList(userId, 'STORE', null, day);
+    const items =
+      stored ??
+      (await this.saveIfAny(
+        userId,
+        'STORE',
+        null,
+        day,
+        await this.buildStoreCreatorList(store, viewer),
+      ));
+
+    const ids = items.map((item) => item.id);
+    const [sources, summaries, principles, visibleIds, decisions] =
+      await Promise.all([
+        this.creators.findCardSources(ids),
+        this.creators.getSummaries(ids),
+        this.principles.findMany(ids),
+        this.visibility.filterCreators(ids, viewer),
+        this.repository.listDecisions(userId, 'CREATOR'),
+      ]);
+    const sourceById = new Map(sources.map((s) => [s.userId, s]));
+    const visible = new Set(visibleIds);
+    const decided = new Set(decisions.map((d) => d.targetId));
+    const valid = ids.flatMap((id) => {
+      const source = sourceById.get(id);
+      const summary = summaries.get(id);
+      return source && summary && source.posts.length > 0 && visible.has(id)
+        ? [{ source, summary }]
+        : [];
+    });
+    return {
+      day,
+      total: valid.length,
+      cards: valid
+        .filter(({ source }) => !decided.has(source.userId))
+        .map(({ source, summary }) =>
+          toStoreCreatorCard(
+            source,
+            summary,
+            principles.get(source.userId) ?? null,
+          ),
+        ),
     };
   }
 
@@ -240,7 +314,7 @@ export class RecommendationsService {
   // 추천할 사람이 한 명도 없으면 목록을 저장하지 않는다: 하루 동안 빈 목록에 묶이지 않고 새로 생긴 상대가 바로 나온다.
   private async saveIfAny(
     userId: string,
-    scope: 'BRAND' | 'CREATOR',
+    scope: 'BRAND' | 'CREATOR' | 'STORE',
     campaignId: string | null,
     day: string,
     items: StoredItem[],
@@ -291,6 +365,51 @@ export class RecommendationsService {
       },
     );
     return rankCandidates(candidates, DAILY_CARD_COUNT).map((c) => ({
+      kind: 'CREATOR',
+      id: c.id,
+    }));
+  }
+
+  // 설계 5.3: 대표 게시물이 1개 이상이고, 피하는 업종·차단이 아니고, 끝나지 않은 협업이 없고, 내가 결정하지 않은 사람.
+  // 협업 원칙이 없어도 나온다. 순서는 지원한 사람 → 같은 구·군 → 같은 시·도 → 그 밖(store-creator-rules).
+  private async buildStoreCreatorList(
+    store: Store,
+    viewer: CreatorViewer,
+  ): Promise<StoredItem[]> {
+    const pool = (await this.creators.listCardSources()).filter(
+      (source) => source.posts.length > 0,
+    );
+    const poolIds = pool.map((c) => c.userId);
+    const [visibleIds, summaries, decisions, open, applicants] =
+      await Promise.all([
+        this.visibility.filterCreators(poolIds, viewer),
+        this.creators.getSummaries(poolIds),
+        this.repository.listDecisions(store.ownerId, 'CREATOR'),
+        this.collaborations.listOpenCreatorIds(store.ownerId, poolIds),
+        this.applications.listLiveCreatorIds(store.id),
+      ]);
+    const visible = new Set(visibleIds);
+    const decided = new Set(decisions.map((d) => d.targetId));
+    const candidates = pool.flatMap((source): StoreCreatorCandidate[] => {
+      const summary = summaries.get(source.userId);
+      if (
+        !summary ||
+        !visible.has(source.userId) ||
+        decided.has(source.userId) ||
+        open.has(source.userId)
+      ) {
+        return [];
+      }
+      return [
+        {
+          id: source.userId,
+          applied: applicants.has(source.userId),
+          tier: regionTier(store, summary),
+          joinedAt: source.joinedAt.getTime(),
+        },
+      ];
+    });
+    return rankStoreCreators(candidates, DAILY_CARD_COUNT).map((c) => ({
       kind: 'CREATOR',
       id: c.id,
     }));

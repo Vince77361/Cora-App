@@ -5,6 +5,8 @@ const BRAND = '66666666-6666-4666-8666-666666666661';
 const BRAND_2 = '66666666-6666-4666-8666-666666666662';
 const CREATOR = '66666666-6666-4666-8666-666666666663';
 const CREATOR_2 = '66666666-6666-4666-8666-666666666664';
+const STORE_OWNER = '66666666-6666-4666-8666-666666666665';
+const STORE_OWNER_2 = '66666666-6666-4666-8666-666666666666';
 
 // 거절 이유까지 확인한다. 아무 오류나 통과하면 검증 오류나 외래 키 오류로도 테스트가 통과해 버린다.
 // 유일 제약 위반은 Prisma가 P2002와 위반한 인덱스의 열(meta.target)로 알려 준다.
@@ -25,6 +27,8 @@ beforeEach(async () => {
       { id: BRAND_2, role: 'BRAND' },
       { id: CREATOR, role: 'CREATOR' },
       { id: CREATOR_2, role: 'CREATOR' },
+      { id: STORE_OWNER, role: 'STORE' },
+      { id: STORE_OWNER_2, role: 'STORE' },
     ],
   });
 });
@@ -176,6 +180,30 @@ describe('swipe_decisions', () => {
     ).resolves.toBeDefined();
   });
 
+  it('keeps one store decision per creator with campaign null and keeps stores apart', async () => {
+    // 사장님의 결정은 캠페인이 없다(campaign_id IS NULL). 부분 유니크 인덱스가 가게마다 크리에이터 하나에 결정 하나로 막는다.
+    const store = {
+      actorId: STORE_OWNER,
+      targetKind: 'CREATOR' as const,
+      targetId: CREATOR,
+      campaignId: null,
+    };
+    await prisma.swipeDecision.create({
+      data: { ...store, decision: 'HOLD' },
+    });
+    await expect(
+      prisma.swipeDecision.create({ data: { ...store, decision: 'LIKE' } }),
+    ).rejects.toMatchObject(uniqueOn('actor_id', 'target_kind', 'target_id'));
+    // 다른 가게는 같은 크리에이터에게 따로 결정한다.
+    await expect(
+      prisma.swipeDecision.create({
+        data: { ...store, actorId: STORE_OWNER_2, decision: 'LIKE' },
+      }),
+    ).resolves.toBeDefined();
+    // 사장님의 결정은 서로 관심(matches)을 만들지 않는다.
+    expect(await prisma.match.count()).toBe(0);
+  });
+
   it('keeps the brand proposal amounts on a like decision', async () => {
     const campaign = await createCampaign();
     const row = await prisma.swipeDecision.create({
@@ -308,6 +336,24 @@ describe('collaborations of a brand campaign', () => {
 describe('daily_recommendations', () => {
   const day = new Date('2026-12-01');
   const items = [{ kind: 'CREATOR', id: CREATOR }];
+
+  it('keeps one store recommendation row per store owner and day', async () => {
+    const make = (day: Date) =>
+      prisma.dailyRecommendation.create({
+        data: {
+          userId: STORE_OWNER,
+          scope: 'STORE',
+          campaignId: null,
+          day,
+          items,
+        },
+      });
+    await make(day);
+    await expect(make(day)).rejects.toMatchObject(
+      uniqueOn('user_id', 'scope', 'day'),
+    );
+    await expect(make(new Date('2026-12-02'))).resolves.toBeDefined();
+  });
 
   it('keeps one recommendation row per user, scope, campaign and day', async () => {
     const make = (campaignId: string | null, scope: 'BRAND' | 'CREATOR') =>

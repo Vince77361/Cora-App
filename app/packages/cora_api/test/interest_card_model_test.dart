@@ -34,7 +34,7 @@ void main() {
       // TODO
     });
 
-    // 내가 보낸 관심에 제안(제작비, 혜택, 성과 추가)이 붙어 있다. 브랜드만 true일 수 있다.
+    // 내가 보낸 하트에 제안(제작비, 혜택, 성과 추가)이 붙어 있다. 브랜드만 true일 수 있다.
     // bool hasProposal
     test('to test the property `hasProposal`', () async {
       // TODO

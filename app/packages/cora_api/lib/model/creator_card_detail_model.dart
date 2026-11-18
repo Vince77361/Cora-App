@@ -36,7 +36,7 @@ class CreatorCardDetailModel {
 
   String? instagramHandle;
 
-  /// 내가 저장한 결정(관심 또는 보류). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.
+  /// 내가 저장한 결정(하트 또는 저장). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다.
   SavedDecision? myDecision;
 
   String? photoUrl;
@@ -49,7 +49,7 @@ class CreatorCardDetailModel {
 
   List<String> tags;
 
-  /// 항상 false. 상대가 먼저 관심을 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다.
+  /// 항상 false. 상대가 먼저 하트를 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다.
   bool theyLikedMe;
 
   @override

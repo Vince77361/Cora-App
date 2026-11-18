@@ -100,12 +100,12 @@ Class | Method | HTTP request | Description
 *CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
 *DiscoveryApi* | [**compareCandidates**](doc//DiscoveryApi.md#comparecandidates) | **GET** /discovery/compare | 후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.
 *DiscoveryApi* | [**createInquiry**](doc//DiscoveryApi.md#createinquiry) | **POST** /discovery/received-proposals/{campaignId}/inquiry | \"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.
-*DiscoveryApi* | [**listInterests**](doc//DiscoveryApi.md#listinterests) | **GET** /discovery/interests | 관심·보류 목록. 내가 관심을 보냈거나 보류한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
-*DiscoveryApi* | [**listReceivedProposals**](doc//DiscoveryApi.md#listreceivedproposals) | **GET** /discovery/received-proposals | 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 관심 가운데 아직 결정하지 않은 것.
-*DiscoveryApi* | [**putDecision**](doc//DiscoveryApi.md#putdecision) | **PUT** /discovery/decisions | 관심·넘김·보류를 저장한다. 반대쪽도 관심이면 서로 관심(협업과 조건 버전 1)이 만들어진다.
+*DiscoveryApi* | [**listInterests**](doc//DiscoveryApi.md#listinterests) | **GET** /discovery/interests | 하트·저장 목록. 내가 하트를 보냈거나 저장한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
+*DiscoveryApi* | [**listReceivedProposals**](doc//DiscoveryApi.md#listreceivedproposals) | **GET** /discovery/received-proposals | 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 하트 가운데 아직 결정하지 않은 것.
+*DiscoveryApi* | [**putDecision**](doc//DiscoveryApi.md#putdecision) | **PUT** /discovery/decisions | 하트(LIKE)·넘김(PASS)·저장(HOLD)을 저장한다. 브랜드·크리에이터는 반대쪽도 하트면 서로 관심(협업과 조건 버전 1)이 만들어진다. 사장님은 크리에이터에게만(campaign 없음) 결정하며 협업을 만들지 않는다.
 *DiscoveryApi* | [**putPassReason**](doc//DiscoveryApi.md#putpassreason) | **PUT** /discovery/decisions/pass-reason | 넘긴 카드에 이유를 남긴다. 이유 없이 넘기는 것은 이 호출을 하지 않는 것이다.
-*DiscoveryApi* | [**putStorePass**](doc//DiscoveryApi.md#putstorepass) | **PUT** /discovery/store-passes/{storeId} | 가게 카드를 넘긴다(가게 카드의 관심은 지원 API로 보낸다).
-*DiscoveryApi* | [**undoLastDecision**](doc//DiscoveryApi.md#undolastdecision) | **DELETE** /discovery/decisions/last | 오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다.
+*DiscoveryApi* | [**putStorePass**](doc//DiscoveryApi.md#putstorepass) | **PUT** /discovery/store-passes/{storeId} | 가게 카드를 넘긴다(가게 카드의 하트는 지원 API로 보낸다).
+*DiscoveryApi* | [**undoLastDecision**](doc//DiscoveryApi.md#undolastdecision) | **DELETE** /discovery/decisions/last | 오늘(한국 날짜) 내가 가장 나중에 한 결정을 지운다. 오늘 한 결정이 없으면 본문 없이 200이다. 서로 관심이 된 결정(사장님은 하트를 보낸 크리에이터가 그 가게에 지원해 있을 때)은 409다.
 *HealthApi* | [**getHealth**](doc//HealthApi.md#gethealth) | **GET** /health | 
 *InstagramApi* | [**beginInstagramConnect**](doc//InstagramApi.md#begininstagramconnect) | **POST** /instagram/connect | 
 *InstagramApi* | [**completeInstagramConnect**](doc//InstagramApi.md#completeinstagramconnect) | **POST** /instagram/connect/complete | 
@@ -144,6 +144,7 @@ Class | Method | HTTP request | Description
 *RecommendationsApi* | [**listCampaignRecommendations**](doc//RecommendationsApi.md#listcampaignrecommendations) | **GET** /recommendations/campaigns | 크리에이터의 오늘 캠페인·가게 추천
 *RecommendationsApi* | [**listCreatorRecommendations**](doc//RecommendationsApi.md#listcreatorrecommendations) | **GET** /recommendations/creators | 브랜드의 오늘 크리에이터 추천(진행 중인 캠페인 필요)
 *RecommendationsApi* | [**listPreviewCards**](doc//RecommendationsApi.md#listpreviewcards) | **GET** /recommendations/preview | 역할이 없는 사용자의 둘러보기 카드(읽기 전용)
+*RecommendationsApi* | [**listStoreCreatorRecommendations**](doc//RecommendationsApi.md#liststorecreatorrecommendations) | **GET** /recommendations/store-creators | 사장님의 오늘 전체 둘러보기 크리에이터 카드(하루 최대 10장, 한국 시간 자정에 새로 채움)
 *ReportsApi* | [**createReport**](doc//ReportsApi.md#createreport) | **POST** /reports | 내가 참가한 방이나 그 상대를 신고한다. 운영자에게 메일이 간다. 돈이 보관 중인 협업이면 그 협업이 멈춘다.
 *StoreInsightsApi* | [**getMyStoreTrialComparison**](doc//StoreInsightsApi.md#getmystoretrialcomparison) | **GET** /stores/me/trial-comparison | 체험단 재계약 전 비교(G3). 체험단 계약 정보가 없으면 404다.
 *StoreResultApi* | [**getStoreResult**](doc//StoreResultApi.md#getstoreresult) | **GET** /collaborations/{id}/result | 사장님의 7일 결과(G1). 끝난 협업의 지급·환불과 평소 조회수 대비 배수를 돌려준다.
@@ -358,6 +359,8 @@ Class | Method | HTTP request | Description
  - [SourceLinkInputDto](doc//SourceLinkInputDto.md)
  - [SourceLinkKind](doc//SourceLinkKind.md)
  - [StoreBranchModel](doc//StoreBranchModel.md)
+ - [StoreCreatorCardModel](doc//StoreCreatorCardModel.md)
+ - [StoreCreatorRecommendationsModel](doc//StoreCreatorRecommendationsModel.md)
  - [StoreDetailModel](doc//StoreDetailModel.md)
  - [StoreHomeSummaryModel](doc//StoreHomeSummaryModel.md)
  - [StoreOnboardingStep](doc//StoreOnboardingStep.md)
