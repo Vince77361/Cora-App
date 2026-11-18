@@ -6249,6 +6249,14 @@
             "nullable": true,
             "type": "object"
           },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CollaborationKind"
+              }
+            ],
+            "description": "협업의 종류. STORE_OFFER는 가게 오퍼(사장님), BRAND_CONTRACT는 브랜드 계약이다. 화면 문구를 고를 때 쓴다."
+          },
           "periodEnd": {
             "description": "집계가 끝나는 시각.",
             "format": "date-time",
@@ -6286,6 +6294,7 @@
           }
         },
         "required": [
+          "kind",
           "status",
           "views",
           "postUrl",

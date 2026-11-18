@@ -279,11 +279,18 @@ export class SubmissionsService {
       }
     }
     try {
-      await this.collaborations.advance(collaborationId, from, to, {
-        submittedUrl: null,
-        submittedAt: null,
-        countingEndsAt: null,
-      });
+      const reverted = await this.collaborations.advance(
+        collaborationId,
+        from,
+        to,
+        { submittedUrl: null, submittedAt: null, countingEndsAt: null },
+      );
+      // 그사이 단계가 바뀌었다면(멈춤 등) 0행이다. 던지지 않으니 기록을 남긴다.
+      if (!reverted) {
+        this.logger.warn(
+          `제출을 되돌리지 못했어요(${from} → ${to}): 그사이 단계가 바뀌었어요.`,
+        );
+      }
     } catch (error) {
       this.logger.error(
         `제출을 되돌리지 못했어요(${from} → ${to}): ${error instanceof Error ? error.name : 'unknown'}`,

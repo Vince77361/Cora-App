@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Payout, Prisma } from '@prisma/client';
 import { Clock } from '../common/clock';
+import { readSnapshot } from '../contracts/contract-snapshot';
 import { AppError } from '../common/errors/app-error';
 import { securityLog } from '../common/logging/security-log';
 import { OperatorAlertPort } from '../integrations/operator-alert/operator-alert.port';
@@ -209,9 +210,9 @@ export class PayoutsService implements OnModuleInit {
     const settlement = await this.repository.findSettlement(
       payout.collaborationId,
     );
-    const withBonus =
-      !!settlement &&
-      (settlement.viewPayAmount > 0 || settlement.refundAmount > 0);
+    // 돌려받는 금액을 함께 알리는지는 계약에 성과 추가가 있었는지로 정한다. 운영 강제 지급은 지급액을 전부 수당 칸에 두므로
+    // 정산 행의 금액으로는 가를 수 없다(성과 추가가 없는 계약에 "남은 상한"이라는 말이 가면 안 된다).
+    const withBonus = !!settlement && (await this.hadBonus(payout));
     await this.notifications.notify({
       userId: payout.commissionerId,
       role: 'BRAND',
@@ -222,6 +223,20 @@ export class PayoutsService implements OnModuleInit {
       target: { kind: 'COLLABORATION', id: payout.collaborationId },
       dedupeKey: `brand-fixed-paid:${payout.id}`,
     });
+  }
+
+  // 체결된 계약 사본에 성과 추가가 있는가. 사본을 읽을 수 없으면 없는 것으로 보고 제작비 문구를 쓴다.
+  private async hadBonus(payout: PayoutWithCreator): Promise<boolean> {
+    try {
+      const snapshot = readSnapshot(
+        await this.repository.findConcludedContractSnapshot(
+          payout.collaborationId,
+        ),
+      );
+      return snapshot.performance !== null;
+    } catch {
+      return false;
+    }
   }
 
   // 운영자 알림이 실패해도 원래 흐름(이미 FAILED로 기록)을 막지 않는다.

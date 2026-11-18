@@ -14,6 +14,7 @@ Name | Type | Description | Notes
 **canUploadEvidence** | **bool** | 내가 지금 캡처 자료를 올릴 수 있으면 true. | 
 **confirmDueAt** | [**DateTime**](DateTime.md) | 확인 전일 때 자동으로 확인되는 시각. | 
 **evidence** | [**ViewReportEvidenceModel**](ViewReportEvidenceModel.md) | 올라온 캡처 자료. 없으면 null. | 
+**kind** | [**CollaborationKind**](CollaborationKind.md) | 협업의 종류. STORE_OFFER는 가게 오퍼(사장님), BRAND_CONTRACT는 브랜드 계약이다. 화면 문구를 고를 때 쓴다. | 
 **periodEnd** | [**DateTime**](DateTime.md) | 집계가 끝나는 시각. | 
 **periodStart** | [**DateTime**](DateTime.md) | 집계 시작(링크 제출 시각). | 
 **postUrl** | **String** | 크리에이터가 낸 게시 링크. | 

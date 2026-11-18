@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
@@ -17,6 +17,7 @@ import { FakeRealtimePublisher } from './support/fake-realtime-publisher';
 import { OTHER, USER_A } from './support/fake-token-verifier';
 import { PushPort } from '../src/integrations/push/push.port';
 import { CollaborationsRepository } from '../src/collaborations/collaborations.repository';
+import { ConversationsService } from '../src/conversations/conversations.service';
 import { SubmissionsService } from '../src/settlements/submissions.service';
 
 jest.setTimeout(60000);
@@ -369,6 +370,20 @@ describe('brand contract settlement', () => {
       }
     });
 
+    it('keeps a saved submission a 200 when refreshing the room fails', async () => {
+      const id = await approvedContract({ payoutDays: 7 });
+      const quiet = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      const lookup = jest
+        .spyOn(app.get(ConversationsService), 'idForCollaboration')
+        .mockRejectedValueOnce(new Error('방을 찾지 못했어요'));
+      await submit(id, REEL).expect(200);
+      lookup.mockRestore();
+      quiet.mockRestore();
+      expect((await collaborationOf(id)).stage).toBe('PUBLISHED');
+    });
+
     it('answers 409 for a collaboration that has no concluded contract yet', async () => {
       const id = await agreed();
       expect(codeOf(await submit(id, REEL).expect(409))).toBe('CONFLICT');
@@ -618,6 +633,7 @@ describe('brand contract settlement', () => {
         }),
       ]);
       expect((await report(authBrand, id).expect(200)).body).toMatchObject({
+        kind: 'BRAND_CONTRACT',
         status: 'UNCONFIRMED',
         views: 12500,
         source: 'CONNECTED_ACCOUNT',
@@ -1148,7 +1164,10 @@ describe('brand contract settlement', () => {
         settlement: null,
         payoutStatus: 'NONE',
         currentViews: 12500,
+        // 결제할 때 맡긴 금액(제작비 + 성과 추가 상한). 지갑의 보관 중 금액과 같다.
+        escrowAmount: 410000,
       });
+      expect((await walletOf()).heldAmount).toBe(410000);
       await confirmReport(authBrand, id).expect(200);
       // 계좌가 없으면 크리에이터에게만 계좌 등록이 필요하다고 보인다.
       expect(await collaborationModel(authCreator, id)).toMatchObject({
@@ -1257,6 +1276,23 @@ describe('brand contract settlement', () => {
       ]);
     });
 
+    it('answers 404 for the view report of a brand collaboration without a concluded contract', async () => {
+      const id = await agreed();
+      for (const stage of ['INQUIRY', 'AGREED', 'DROPPED'] as const) {
+        await prisma.collaboration.update({ where: { id }, data: { stage } });
+        for (const auth of [authBrand, authCreator]) {
+          expect(codeOf(await report(auth, id).expect(404))).toBe('NOT_FOUND');
+        }
+        await confirmReport(authBrand, id).expect(404);
+        await dispute(authCreator, id).expect(404);
+        await request(server)
+          .post(`/collaborations/${id}/view-evidence`)
+          .set(authCreator)
+          .send({ path: `evidence/${OTHER}/x.jpg`, views: 100 })
+          .expect(404);
+      }
+    });
+
     it('keeps a brand collaboration without a concluded contract off the wallet', async () => {
       await agreed();
       expect((await walletOf()).entries).toEqual([]);
@@ -1350,6 +1386,28 @@ describe('brand contract settlement', () => {
     });
   });
 
+  describe('forced payout wording', () => {
+    it('uses the plain fixed payout copy when the contract had no bonus', async () => {
+      const id = await approvedContract({ payoutDays: 7 });
+      await registerAccount();
+      await submit(id, REEL).expect(200);
+      const forced = await ops(
+        'force-payout',
+        '--collaboration',
+        id,
+        '--amount',
+        '200000',
+      );
+      expect(forced.exitCode).toBe(0);
+      const payout = await prisma.payout.findFirstOrThrow({});
+      clock.set(payout.scheduledFor);
+      await scheduler.runDue(clock.now());
+      const texts = await notificationTexts(authBrand);
+      expect(texts).toContain('제작비 200,000원을 크리에이터에게 지급했어요.');
+      expect(texts.filter((t) => t.includes('남은'))).toHaveLength(0);
+    });
+  });
+
   describe('robustness of the first payout', () => {
     it('pays once when two settle-fixed jobs run at the same time for the first time', async () => {
       const id = await approvedContract({ payoutDays: 7 });
@@ -1377,6 +1435,10 @@ describe('brand contract settlement', () => {
 
     it('reverts the submission and keeps the original error when the jobs cannot be scheduled', async () => {
       const id = await approvedContract({ performance: true, payoutDays: 7 });
+      // 의도한 실패라 Nest 로거의 오류 줄을 조용히 한다.
+      const quiet = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
       const advance = jest.spyOn(app.get(CollaborationsRepository), 'advance');
       const schedule = jest
         .spyOn(scheduler, 'schedule')
@@ -1395,10 +1457,14 @@ describe('brand contract settlement', () => {
       ).rejects.toThrow('큐에 올리지 못했어요');
       advance.mockRestore();
       schedule.mockRestore();
+      quiet.mockRestore();
     });
 
     it('reverts a bonus contract submission to APPROVED so the creator can submit again', async () => {
       const id = await approvedContract({ performance: true, payoutDays: 7 });
+      const quiet = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
       const schedule = jest
         .spyOn(scheduler, 'schedule')
         .mockRejectedValueOnce(new Error('큐에 올리지 못했어요'));
@@ -1408,6 +1474,7 @@ describe('brand contract settlement', () => {
         .send({ url: REEL_12500 })
         .expect(500);
       schedule.mockRestore();
+      quiet.mockRestore();
       expect(await collaborationOf(id)).toMatchObject({
         stage: 'APPROVED',
         submittedUrl: null,

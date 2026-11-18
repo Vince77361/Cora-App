@@ -19,6 +19,7 @@ class ViewReportModel {
     required this.canUploadEvidence,
     required this.confirmDueAt,
     required this.evidence,
+    required this.kind,
     required this.periodEnd,
     required this.periodStart,
     required this.postUrl,
@@ -44,6 +45,9 @@ class ViewReportModel {
 
   /// 올라온 캡처 자료. 없으면 null.
   ViewReportEvidenceModel? evidence;
+
+  /// 협업의 종류. STORE_OFFER는 가게 오퍼(사장님), BRAND_CONTRACT는 브랜드 계약이다. 화면 문구를 고를 때 쓴다.
+  CollaborationKind kind;
 
   /// 집계가 끝나는 시각.
   DateTime periodEnd;
@@ -73,6 +77,7 @@ class ViewReportModel {
           other.canUploadEvidence == canUploadEvidence &&
           other.confirmDueAt == confirmDueAt &&
           other.evidence == evidence &&
+          other.kind == kind &&
           other.periodEnd == periodEnd &&
           other.periodStart == periodStart &&
           other.postUrl == postUrl &&
@@ -89,6 +94,7 @@ class ViewReportModel {
       (canUploadEvidence.hashCode) +
       (confirmDueAt == null ? 0 : confirmDueAt!.hashCode) +
       (evidence == null ? 0 : evidence!.hashCode) +
+      (kind.hashCode) +
       (periodEnd.hashCode) +
       (periodStart.hashCode) +
       (postUrl.hashCode) +
@@ -98,7 +104,7 @@ class ViewReportModel {
 
   @override
   String toString() =>
-      'ViewReportModel[calc=$calc, canConfirm=$canConfirm, canDispute=$canDispute, canUploadEvidence=$canUploadEvidence, confirmDueAt=$confirmDueAt, evidence=$evidence, periodEnd=$periodEnd, periodStart=$periodStart, postUrl=$postUrl, source_=$source_, status=$status, views=$views]';
+      'ViewReportModel[calc=$calc, canConfirm=$canConfirm, canDispute=$canDispute, canUploadEvidence=$canUploadEvidence, confirmDueAt=$confirmDueAt, evidence=$evidence, kind=$kind, periodEnd=$periodEnd, periodStart=$periodStart, postUrl=$postUrl, source_=$source_, status=$status, views=$views]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -120,6 +126,7 @@ class ViewReportModel {
     } else {
       json[r'evidence'] = null;
     }
+    json[r'kind'] = this.kind;
     json[r'periodEnd'] = this.periodEnd.toUtc().toIso8601String();
     json[r'periodStart'] = this.periodStart.toUtc().toIso8601String();
     json[r'postUrl'] = this.postUrl;
@@ -162,6 +169,10 @@ class ViewReportModel {
             'Required key "ViewReportModel[confirmDueAt]" is missing from JSON.');
         assert(json.containsKey(r'evidence'),
             'Required key "ViewReportModel[evidence]" is missing from JSON.');
+        assert(json.containsKey(r'kind'),
+            'Required key "ViewReportModel[kind]" is missing from JSON.');
+        assert(json[r'kind'] != null,
+            'Required key "ViewReportModel[kind]" has a null value in JSON.');
         assert(json.containsKey(r'periodEnd'),
             'Required key "ViewReportModel[periodEnd]" is missing from JSON.');
         assert(json[r'periodEnd'] != null,
@@ -194,6 +205,7 @@ class ViewReportModel {
         canUploadEvidence: mapValueOfType<bool>(json, r'canUploadEvidence')!,
         confirmDueAt: mapDateTime(json, r'confirmDueAt', r''),
         evidence: ViewReportEvidenceModel.fromJson(json[r'evidence']),
+        kind: CollaborationKind.fromJson(json[r'kind'])!,
         periodEnd: mapDateTime(json, r'periodEnd', r'')!,
         periodStart: mapDateTime(json, r'periodStart', r'')!,
         postUrl: mapValueOfType<String>(json, r'postUrl')!,
@@ -262,6 +274,7 @@ class ViewReportModel {
     'canUploadEvidence',
     'confirmDueAt',
     'evidence',
+    'kind',
     'periodEnd',
     'periodStart',
     'postUrl',

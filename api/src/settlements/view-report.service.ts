@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   Collaboration,
+  CollaborationKind,
   EvidenceSource,
   Prisma,
   SettlementConfirmer,
@@ -63,6 +64,7 @@ export type ViewReportSource =
 
 // 조회 자료 확인 화면(F4)이 읽는 값. 컨트롤러의 응답 모델(ViewReportModel)과 같은 모양이다.
 export interface ViewReportView {
+  kind: CollaborationKind;
   status: ViewReportStatus;
   views: number | null;
   postUrl: string;
@@ -394,6 +396,7 @@ export class ViewReportService {
       collaboration.creatorId === userId &&
       (await this.isEvidenceOpen(collaboration, settlement));
     return {
+      kind: collaboration.kind,
       status: settlement ? settlement.status : 'COUNTING',
       views,
       postUrl: collaboration.submittedUrl,
@@ -853,6 +856,14 @@ export class ViewReportService {
       ? await this.collaborations.findById(collaborationId)
       : null;
     if (!row || (row.commissionerId !== userId && row.creatorId !== userId)) {
+      throw this.notFound();
+    }
+    // 체결된 계약이 없는 브랜드 협업(INQUIRY~AGREED, DROPPED)에는 조회 자료가 없다. 읽을 보상이 없어 아래가 500이 되기 전에 404로 막는다.
+    // 모든 진입점(읽기, 확인, 이의, 캡처)이 이 함수를 먼저 지난다.
+    if (
+      row.kind === 'BRAND_CONTRACT' &&
+      (await this.repository.findConcludedContractSnapshot(row.id)) === null
+    ) {
       throw this.notFound();
     }
     return row;

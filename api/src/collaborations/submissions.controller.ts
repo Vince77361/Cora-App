@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  Logger,
+  Param,
+  Post,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
@@ -14,6 +21,8 @@ import { SubmitContentDto } from './dto/submit-content.dto';
 @ApiBearerAuth()
 @Controller()
 export class SubmissionsController {
+  private readonly logger = new Logger(SubmissionsController.name);
+
   constructor(
     private readonly submissions: SubmissionsService,
     private readonly collaborations: CollaborationsService,
@@ -31,10 +40,16 @@ export class SubmissionsController {
   ): Promise<CollaborationModel> {
     await this.submissions.submit(user.userId, id, dto.url);
     const model = await this.collaborations.get(user.userId, id);
-    // 브랜드 계약은 방 머리의 단계가 PUBLISHED로 바뀐다. 전달이 실패해도 제출은 이미 저장됐다(publishUpdated가 던지지 않는다).
+    // 브랜드 계약은 방 머리의 단계가 PUBLISHED로 바뀐다. 제출은 이미 저장됐으니 방을 찾거나 전달하다 난 오류가 응답을 500으로 만들면 안 된다.
     if (model.kind === 'BRAND_CONTRACT') {
-      const roomId = await this.conversations.idForCollaboration(id);
-      if (roomId) await this.conversations.publishUpdated(roomId, 'STATUS');
+      try {
+        const roomId = await this.conversations.idForCollaboration(id);
+        if (roomId) await this.conversations.publishUpdated(roomId, 'STATUS');
+      } catch (error) {
+        this.logger.warn(
+          `제출 뒤 방을 갱신하지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        );
+      }
     }
     return model;
   }

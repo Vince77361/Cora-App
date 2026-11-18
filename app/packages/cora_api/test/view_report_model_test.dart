@@ -52,6 +52,12 @@ void main() {
       // TODO
     });
 
+    // 협업의 종류. STORE_OFFER는 가게 오퍼(사장님), BRAND_CONTRACT는 브랜드 계약이다. 화면 문구를 고를 때 쓴다.
+    // CollaborationKind kind
+    test('to test the property `kind`', () async {
+      // TODO
+    });
+
     // 집계가 끝나는 시각.
     // DateTime periodEnd
     test('to test the property `periodEnd`', () async {

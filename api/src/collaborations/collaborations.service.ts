@@ -830,7 +830,8 @@ export class CollaborationsService {
         row.stage,
         latest ? isMyTurn(latest, isCreator) : false,
       ),
-      escrowAmount: 0,
+      // 결제할 때 에스크로에 맡긴 금액. 가게 오퍼와 같은 출처(결제 행)이고, 지갑의 보관 중 금액과 같은 값이다.
+      escrowAmount: c.funded.get(row.id)?.escrow ?? 0,
       submitDueAt: row.submitDueAt?.toISOString() ?? null,
       submittedUrl: row.submittedUrl,
       countingEndsAt: row.countingEndsAt?.toISOString() ?? null,

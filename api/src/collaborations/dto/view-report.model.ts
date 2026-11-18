@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { CollaborationKind } from '@prisma/client';
 
 export const VIEW_REPORT_STATUSES = [
   'COUNTING',
@@ -57,6 +58,14 @@ export class ViewReportEvidenceModel {
 
 // 조회 자료 확인(F4). 조회수 수당이 있는 협업의 집계 결과와 계산이다.
 export class ViewReportModel {
+  @ApiProperty({
+    enum: CollaborationKind,
+    enumName: 'CollaborationKind',
+    description:
+      '협업의 종류. STORE_OFFER는 가게 오퍼(사장님), BRAND_CONTRACT는 브랜드 계약이다. 화면 문구를 고를 때 쓴다.',
+  })
+  kind!: CollaborationKind;
+
   @ApiProperty({
     enum: VIEW_REPORT_STATUSES,
     enumName: 'ViewReportStatus',

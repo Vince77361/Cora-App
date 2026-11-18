@@ -356,6 +356,14 @@ describe('view report', () => {
       });
     });
 
+    it('tells the app that this report belongs to a store offer', async () => {
+      const s = await seed();
+      await submitAndCalculate(s);
+      expect((await report(s.collaborationId).expect(200)).body).toMatchObject({
+        kind: 'STORE_OFFER',
+      });
+    });
+
     it('splits fixed cash and view pay', async () => {
       const s = await seed({ fixedCash: 30000 });
       await submitAndCalculate(s);
