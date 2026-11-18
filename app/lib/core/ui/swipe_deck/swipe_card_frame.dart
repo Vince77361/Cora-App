@@ -25,6 +25,7 @@ class SwipeCardFrame extends StatelessWidget {
     this.bottomInset = CoraSwipeTokens.textInsetBottom,
     this.photoAlignment = CoraSwipeTokens.photoAlignment,
     this.semanticLabel,
+    this.titleMaxLines,
   });
 
   /// 사진 주소. 없거나 불러오지 못하면 바탕색만 보인다.
@@ -56,6 +57,9 @@ class SwipeCardFrame extends StatelessWidget {
 
   /// 카드 전체의 접근성 이름. 비우면 `{이름}의 상세 보기`(01). 08 캔버스는 `{이름} 오퍼 상세 보기`다.
   final String? semanticLabel;
+
+  /// 큰 제목의 최대 줄 수. 넘으면 `…`로 줄인다. null이면 줄 수를 제한하지 않는다.
+  final int? titleMaxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +164,14 @@ class SwipeCardFrame extends StatelessWidget {
                         spacing: 10,
                         children: [
                           Text(name, style: nameStyle),
-                          Text(title, style: titleStyle),
+                          Text(
+                            title,
+                            style: titleStyle,
+                            maxLines: titleMaxLines,
+                            overflow: titleMaxLines == null
+                                ? null
+                                : TextOverflow.ellipsis,
+                          ),
                           Wrap(
                             spacing: 12,
                             crossAxisAlignment: WrapCrossAlignment.end,

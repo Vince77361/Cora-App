@@ -354,12 +354,13 @@ void main() {
       },
     );
 
-    testWidgets('find and chat are placeholders', (tester) async {
+    testWidgets('opens this screen from the 찾기 menu', (tester) async {
       await pumpStoreHome(tester);
 
       await tester.tap(find.text('찾기'));
       await tester.pumpAndSettle();
-      expect(topPath(tester), AppRoutes.storeComingSoon('찾기'));
+      expect(topPath(tester), AppRoutes.storeDiscover);
+      expect(find.text('전체 둘러보기'), findsOneWidget);
     });
 
     testWidgets('the AI writing tab opens the drafts', (tester) async {

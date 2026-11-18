@@ -1,5 +1,6 @@
 import '../../principles/domain/principles.dart' show FeeBand;
 import 'discovery_target.dart';
+import 'featured_post_ref.dart';
 import '../../store_browse/domain/store_summary.dart';
 
 /// 카드가 상대와 "잘 맞는 점"으로 보여 주는 이유(상세에 나온다). 서버의 `MatchReason`과 같다.
@@ -24,6 +25,7 @@ class CreatorCard {
     required this.feeBand,
     this.headline,
     this.photoUrl,
+    this.posts = const [],
     this.tags = const [],
     this.reasons = const [],
     this.theyLikedMe = false,
@@ -35,6 +37,9 @@ class CreatorCard {
   /// 대표 콘텐츠 한 줄. 없으면 null.
   final String? headline;
   final String? photoUrl;
+
+  /// 대표 게시물(최대 4개, 차례대로). 없으면 카드는 [photoUrl] 한 장으로 나온다.
+  final List<FeaturedPostRef> posts;
 
   /// 희망 제작비 구간.
   final FeeBand feeBand;

@@ -9,6 +9,7 @@ import '../domain/campaign_detail.dart';
 import '../domain/discovery_card.dart';
 import '../domain/discovery_repository.dart';
 import '../domain/discovery_target.dart';
+import '../domain/featured_post_ref.dart';
 import '../domain/pass_reason.dart';
 import '../domain/reward_proposal.dart';
 
@@ -222,6 +223,10 @@ class ApiDiscoveryRepository implements DiscoveryRepository {
     headline: m.headline,
     photoUrl: m.photoUrl,
     feeBand: _feeBand(m.feeBand),
+    posts: [
+      for (final p in m.posts)
+        FeaturedPostRef(photoUrl: p.photoUrl, caption: p.caption),
+    ],
     tags: List.unmodifiable(m.tags),
     reasons: [for (final r in m.reasons) _reason(r)],
     theyLikedMe: m.theyLikedMe,

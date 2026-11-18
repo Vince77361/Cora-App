@@ -20,6 +20,7 @@ import 'package:cora/features/onboarding/domain/me_repository_provider.dart';
 import 'package:cora/features/proposals/domain/proposal_repository.dart';
 import 'package:cora/features/received_proposals/domain/received_proposals_repository.dart';
 import 'package:cora/features/server_config/domain/server_config_repository.dart';
+import 'package:cora/features/store_discover/domain/store_discover_repository.dart';
 import 'package:cora/features/store_home/domain/store_home_repository.dart';
 import 'package:cora/features/wallet/domain/wallet_repository.dart';
 import 'package:cora/features/store_onboarding/domain/content_draft_repository_provider.dart';
@@ -48,6 +49,7 @@ import '../features/principles/fake_principles_repository.dart';
 import '../features/proposals/fake_proposal_repository.dart';
 import '../features/received_proposals/fake_received_proposals_repository.dart';
 import '../features/server_config/fake_server_config_repository.dart';
+import '../features/store_discover/fake_store_discover_repository.dart';
 import '../features/store_home/fake_store_home_repository.dart';
 import '../features/store_onboarding/fake_content_draft_repository.dart';
 import '../features/store_onboarding/fake_store_repository.dart';
@@ -134,6 +136,11 @@ Widget coraAppWith(
       if (!_overrides(overrides, principlesRepositoryProvider))
         principlesRepositoryProvider.overrideWithValue(
           FakePrinciplesRepository(principles: defaultPrinciples),
+        ),
+      // 사장님의 전체 둘러보기(`찾기`). 기본은 대표 게시물이 있는 크리에이터가 한 명 오늘 목록에 있는 가게다.
+      if (!_overrides(overrides, storeDiscoverRepositoryProvider))
+        storeDiscoverRepositoryProvider.overrideWithValue(
+          FakeStoreDiscoverRepository(cards: [storeCard('c1')]),
         ),
       // 03 관심·보류가 저장한 후보를 읽는다. 기본은 저장한 후보가 없는 계정이다.
       if (!_overrides(overrides, interestsRepositoryProvider))

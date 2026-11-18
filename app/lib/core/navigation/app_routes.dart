@@ -76,6 +76,14 @@ abstract final class AppRoutes {
   static const storeResultPattern =
       '/store/collaborations/:collaborationId/result';
 
+  /// 사장님의 전체 둘러보기(G1). 하단 메뉴의 `찾기`가 연다.
+  static const storeDiscover = '/store/discover';
+
+  /// 사장님의 저장함(G2). 둘러보기 알림의 `보낸 관심`·`저장함`이 `?tab=`으로 탭을 알려 연다.
+  static const storeInterests = '/store/interests';
+  static const storeSaved = '$storeInterests?$tabParam=saved';
+  static const storeSent = '$storeInterests?$tabParam=sent';
+
   /// 지원자 추천 3명(G2). 사장님 홈의 `지원자 추천`이 연다.
   static const storeApplicantPicks = '/store/applicants/picks';
 

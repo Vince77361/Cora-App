@@ -160,7 +160,8 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
       case StoreHomePage.navHome:
         vm.selectTab(StoreHomeTab.applicants);
       case StoreHomePage.navFind:
-        _comingSoon(CoraNavItems.store[index].label);
+        // 하단 메뉴의 `찾기`는 전체 둘러보기(G1)다. 홈 위로 밀려 들어온다.
+        context.push(AppRoutes.storeDiscover);
       case StoreHomePage.navChat:
         context.go(AppRoutes.chats);
       case StoreHomePage.navOffers:

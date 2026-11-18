@@ -59,6 +59,7 @@ import '../../features/payout_account/presentation/pages/payout_account_page.dar
 import '../../features/wallet/presentation/pages/wallet_page.dart';
 import '../../features/offers/presentation/pages/send_offer_page.dart';
 import '../../features/store_browse/presentation/pages/store_detail_page.dart';
+import '../../features/store_discover/presentation/pages/store_discover_page.dart';
 import '../../features/store_home/presentation/pages/store_home_page.dart';
 import '../../features/trial_compare/presentation/pages/trial_compare_page.dart';
 import '../../features/view_report/presentation/pages/view_evidence_page.dart';
@@ -401,6 +402,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.storeTrialCompare,
         pageBuilder: (context, state) =>
             CoraTransitions.push(const TrialComparePage(), key: state.pageKey),
+      ),
+      // 사장님의 전체 둘러보기(G1). 하단 메뉴의 `찾기`가 연다.
+      GoRoute(
+        path: AppRoutes.storeDiscover,
+        pageBuilder: (context, state) =>
+            CoraTransitions.push(const StoreDiscoverPage(), key: state.pageKey),
+      ),
+      // 사장님의 저장함(G2)은 다음 작업이 화면과 함께 만든다. 그 전까지는 준비 중 화면이다.
+      GoRoute(
+        path: AppRoutes.storeInterests,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const CoraComingSoonPage(title: '저장함'),
+          key: state.pageKey,
+        ),
       ),
       GoRoute(
         path: AppRoutes.storeDrafts,

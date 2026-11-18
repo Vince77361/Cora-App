@@ -195,10 +195,7 @@ class _ChatNav extends StatelessWidget {
       case _storeHome:
         context.go(AppRoutes.store);
       case _storeFind:
-        context.push(
-          AppRoutes.storeComingSoon(CoraNavItems.store[index].label),
-          extra: AppRoutes.stacked,
-        );
+        context.push(AppRoutes.storeDiscover);
       case _storeChat:
         break;
       case _storeOffers:

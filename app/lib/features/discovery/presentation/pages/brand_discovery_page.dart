@@ -248,6 +248,7 @@ class _DeckSection extends StatelessWidget {
                   card: card,
                   position: state.positionOf(card),
                   total: state.total,
+                  onOpenDetail: onTap,
                 ),
                 empty: const SizedBox.shrink(),
               ),
