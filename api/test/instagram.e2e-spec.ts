@@ -3,9 +3,12 @@ import { INestApplication } from '@nestjs/common';
 import { CollaborationStage, PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { SecretBox } from '../src/common/crypto/secret-box';
+import { InstagramPort } from '../src/integrations/instagram/instagram.port';
+import { StoragePort } from '../src/integrations/storage/storage.port';
 import { InstagramService } from '../src/instagram/instagram.service';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
+import { FakeStoragePort } from './support/fake-storage.port';
 import { USER_A } from './support/fake-token-verifier';
 
 const auth = { Authorization: 'Bearer user-a' };
@@ -19,6 +22,42 @@ interface ProfileBody {
   instagramHandle: string | null;
   instagramConnected: boolean;
   followers: number | null;
+}
+
+interface PostBody {
+  id: string;
+  kind: string;
+  caption: string | null;
+  thumbnailUrl: string;
+  durationSec: number | null;
+  sizeBytes: number | null;
+}
+interface DraftBody {
+  source: string;
+  kind: string;
+  mediaPath: string;
+  thumbnailPath: string | null;
+  caption: string | null;
+  instagramMediaId: string;
+  photoUrl: string;
+}
+interface FeaturedBody {
+  position: number;
+  kind: string;
+  instagramMediaId: string | null;
+  caption: string | null;
+}
+
+// 초안에서 저장 요청에 담는 필드만 고른다(photoUrl은 미리보기용).
+function toPutItem(draft: DraftBody) {
+  return {
+    source: draft.source,
+    kind: draft.kind,
+    mediaPath: draft.mediaPath,
+    thumbnailPath: draft.thumbnailPath,
+    caption: draft.caption,
+    instagramMediaId: draft.instagramMediaId,
+  };
 }
 
 describe('instagram', () => {
@@ -38,6 +77,14 @@ describe('instagram', () => {
     request(server).get('/instagram/connection').set(auth);
   const disconnect = () =>
     request(server).delete('/instagram/connection').set(auth);
+  const listPosts = () => request(server).get('/instagram/posts').set(auth);
+  const importPosts = (postIds: unknown) =>
+    request(server).post('/instagram/posts/import').set(auth).send({ postIds });
+  const putFeatured = (items: unknown[]) =>
+    request(server)
+      .put('/creators/me/featured-posts')
+      .set(auth)
+      .send({ items });
   const codeOf = (res: request.Response) =>
     (res.body as { error: { code: string } }).error.code;
 
@@ -73,12 +120,22 @@ describe('instagram', () => {
     prisma = new PrismaClient();
     app = await createTestApp();
     server = httpOf(app);
+    // 견본 사진 주소(picsum)로 네트워크를 타지 않게 손으로 쓴 대체로 바꾼다.
+    jest
+      .spyOn(app.get(InstagramPort), 'fetchMedia')
+      .mockImplementation((_token, postId) =>
+        Promise.resolve({
+          bytes: Buffer.from(`bytes-of-${postId}`),
+          contentType: 'image/jpeg',
+        }),
+      );
   });
   beforeEach(async () => {
     await truncateTestDb(prisma);
     await setRole('CREATOR');
   });
   afterAll(async () => {
+    jest.restoreAllMocks();
     await app.close();
     await prisma.$disconnect();
   });
@@ -318,6 +375,141 @@ describe('instagram', () => {
     await complete('haru_two').expect(200);
     expect((await getConnection().expect(200)).body).toMatchObject({
       handle: 'haru_two',
+    });
+  });
+
+  it('rejects a personal account with 409 and the guidance sentence', async () => {
+    const res = await complete('personal_minji').expect(409);
+    expect(codeOf(res)).toBe('CONFLICT');
+    expect((res.body as { error: { message: string } }).error.message).toBe(
+      '개인 계정은 연동할 수 없어요. 인스타그램 앱에서 프로페셔널 계정으로 바꾼 뒤 다시 연동해 주세요.',
+    );
+    expect(await prisma.instagramConnection.count()).toBe(0);
+  });
+
+  describe('posts', () => {
+    it('rejects requests with no token', async () => {
+      await request(server).get('/instagram/posts').expect(401);
+      await request(server)
+        .post('/instagram/posts/import')
+        .send({ postIds: ['fake-post-1'] })
+        .expect(401);
+    });
+
+    it('is for creators only', async () => {
+      await complete('haru_cafe').expect(200);
+      await setRole('STORE');
+      for (const res of [
+        await listPosts(),
+        await importPosts(['fake-post-1']),
+      ]) {
+        expect(res.status).toBe(403);
+        expect(codeOf(res)).toBe('FORBIDDEN');
+      }
+      await setRole('BRAND');
+      expect((await listPosts()).status).toBe(403);
+    });
+
+    it('returns 404 for the list and the import before connecting', async () => {
+      expect((await listPosts().expect(404)).status).toBe(404);
+      await importPosts(['fake-post-1']).expect(404);
+    });
+
+    it('lists the twelve sample posts after connecting', async () => {
+      await complete('haru_cafe').expect(200);
+      const res = await listPosts().expect(200);
+      const posts = res.body as PostBody[];
+      expect(posts).toHaveLength(12);
+      expect(posts[0]).toEqual({
+        id: 'fake-post-1',
+        kind: 'PHOTO',
+        caption: '견본 게시물 1',
+        thumbnailUrl: 'https://picsum.photos/seed/cora-ig-1/600/600',
+        durationSec: null,
+        sizeBytes: null,
+      });
+      expect(posts[1]).toMatchObject({
+        id: 'fake-post-2',
+        kind: 'VIDEO',
+        durationSec: 30,
+        sizeBytes: 8 * 1024 * 1024,
+      });
+    });
+
+    it('rejects an empty, too long or repeated post id list with 400', async () => {
+      await complete('haru_cafe').expect(200);
+      await importPosts([]).expect(400);
+      await importPosts([
+        'fake-post-1',
+        'fake-post-3',
+        'fake-post-5',
+        'fake-post-7',
+        'fake-post-9',
+      ]).expect(400);
+      await importPosts(['fake-post-1', 'fake-post-1']).expect(400);
+      await importPosts('fake-post-1').expect(400);
+    });
+
+    it('returns 404 for a post id that is not in the connected account', async () => {
+      await complete('haru_cafe').expect(200);
+      const res = await importPosts(['fake-post-1', 'fake-post-99']).expect(
+        404,
+      );
+      expect(codeOf(res)).toBe('NOT_FOUND');
+    });
+
+    it('imports posts and the drafts save as they are through PUT /creators/me/featured-posts', async () => {
+      await complete('haru_cafe').expect(200);
+      const res = await importPosts(['fake-post-3', 'fake-post-2']).expect(200);
+      const drafts = res.body as DraftBody[];
+      expect(drafts).toHaveLength(2);
+      expect(drafts[0]).toMatchObject({
+        source: 'INSTAGRAM',
+        kind: 'PHOTO',
+        thumbnailPath: null,
+        caption: '견본 게시물 3',
+        instagramMediaId: 'fake-post-3',
+      });
+      expect(drafts[0].mediaPath).toMatch(
+        new RegExp(`^featured-posts/${USER_A}/[0-9a-f-]{36}\\.jpg$`),
+      );
+      // 영상 게시물은 첫 화면 그림만 복사한다(사진 버킷은 5MB·이미지만 받는다).
+      expect(drafts[1]).toMatchObject({
+        kind: 'VIDEO',
+        instagramMediaId: 'fake-post-2',
+      });
+      expect(drafts[1].thumbnailPath).toBe(drafts[1].mediaPath);
+      const storage = app.get<FakeStoragePort>(StoragePort);
+      expect(storage.uploaded.map((u) => u.path)).toEqual(
+        drafts.map((d) => d.mediaPath),
+      );
+      expect(drafts[0].photoUrl).toBe(storage.publicUrl(drafts[0].mediaPath));
+
+      // 앱은 받은 초안의 저장 필드를 그대로 저장 요청에 넣는다(photoUrl은 미리보기용이라 요청에 없다. 서버는 모르는 필드를 400으로 막는다).
+      const items = drafts.map(toPutItem);
+      const saved = await putFeatured(items).expect(200);
+      expect(
+        (saved.body as FeaturedBody[]).map((p) => [
+          p.position,
+          p.kind,
+          p.instagramMediaId,
+          p.caption,
+        ]),
+      ).toEqual([
+        [1, 'PHOTO', 'fake-post-3', '견본 게시물 3'],
+        [2, 'VIDEO', 'fake-post-2', '견본 게시물 2'],
+      ]);
+    });
+
+    it('returns 409 for a post that is already a featured post', async () => {
+      await complete('haru_cafe').expect(200);
+      const first = await importPosts(['fake-post-1']).expect(200);
+      await putFeatured((first.body as DraftBody[]).map(toPutItem)).expect(200);
+      const res = await importPosts(['fake-post-5', 'fake-post-1']).expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      // 지운 대표 게시물은 다시 가져올 수 있다.
+      await putFeatured([]).expect(200);
+      await importPosts(['fake-post-1']).expect(200);
     });
   });
 });

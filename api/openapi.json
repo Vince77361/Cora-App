@@ -2443,6 +2443,57 @@
         ],
         "type": "object"
       },
+      "FeaturedPostDraftModel": {
+        "properties": {
+          "caption": {
+            "description": "인스타그램 글의 첫 줄(40자까지).",
+            "maxLength": 40,
+            "nullable": true,
+            "type": "string"
+          },
+          "instagramMediaId": {
+            "description": "원본 인스타그램 게시물 ID.",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeaturedPostKind"
+              }
+            ]
+          },
+          "mediaPath": {
+            "description": "서버에 복사한 사진이나 영상 파일의 경로.",
+            "type": "string"
+          },
+          "photoUrl": {
+            "description": "카드에 보이는 그림의 주소(미리보기).",
+            "type": "string"
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeaturedPostSource"
+              }
+            ]
+          },
+          "thumbnailPath": {
+            "description": "영상의 첫 화면 그림 경로. 사진은 null.",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "kind",
+          "mediaPath",
+          "thumbnailPath",
+          "caption",
+          "instagramMediaId",
+          "photoUrl"
+        ],
+        "type": "object"
+      },
       "FeaturedPostInputDto": {
         "properties": {
           "caption": {
@@ -2639,6 +2690,23 @@
         ],
         "type": "object"
       },
+      "ImportInstagramPostsDto": {
+        "properties": {
+          "postIds": {
+            "description": "가져올 인스타그램 게시물 ID. 같은 ID를 두 번 보낼 수 없다.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "postIds"
+        ],
+        "type": "object"
+      },
       "IndustryCategory": {
         "enum": [
           "FOOD_CAFE",
@@ -2722,6 +2790,49 @@
         "required": [
           "handle",
           "followers"
+        ],
+        "type": "object"
+      },
+      "InstagramPostModel": {
+        "properties": {
+          "caption": {
+            "description": "게시물 글 전체.",
+            "nullable": true,
+            "type": "string"
+          },
+          "durationSec": {
+            "description": "영상 길이(초). 사진이거나 모르면 null. 60초를 넘으면 가져올 수 없다.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "id": {
+            "description": "인스타그램 게시물 ID.",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeaturedPostKind"
+              }
+            ]
+          },
+          "sizeBytes": {
+            "description": "영상 파일 크기(바이트). 사진이거나 모르면 null. 100MB를 넘으면 가져올 수 없다.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "thumbnailUrl": {
+            "description": "격자에 보일 그림의 주소.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "caption",
+          "thumbnailUrl",
+          "durationSec",
+          "sizeBytes"
         ],
         "type": "object"
       },
@@ -8950,6 +9061,76 @@
           }
         ],
         "summary": "",
+        "tags": [
+          "Instagram"
+        ]
+      }
+    },
+    "/instagram/posts": {
+      "get": {
+        "operationId": "listInstagramPosts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InstagramPostModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "연동한 인스타그램 계정의 게시물 목록(연동이 없으면 404)",
+        "tags": [
+          "Instagram"
+        ]
+      }
+    },
+    "/instagram/posts/import": {
+      "post": {
+        "operationId": "importInstagramPosts",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportInstagramPostsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeaturedPostDraftModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "고른 게시물의 파일을 서버로 복사하고 대표 게시물 초안을 돌려준다(저장은 PUT /creators/me/featured-posts)",
         "tags": [
           "Instagram"
         ]

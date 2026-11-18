@@ -43,5 +43,19 @@ void main() {
     test('test getInstagramConnection', () async {
       // TODO
     });
+
+    // 고른 게시물의 파일을 서버로 복사하고 대표 게시물 초안을 돌려준다(저장은 PUT /creators/me/featured-posts)
+    //
+    //Future<List<FeaturedPostDraftModel>> importInstagramPosts(ImportInstagramPostsDto importInstagramPostsDto) async
+    test('test importInstagramPosts', () async {
+      // TODO
+    });
+
+    // 연동한 인스타그램 계정의 게시물 목록(연동이 없으면 404)
+    //
+    //Future<List<InstagramPostModel>> listInstagramPosts() async
+    test('test listInstagramPosts', () async {
+      // TODO
+    });
   });
 }

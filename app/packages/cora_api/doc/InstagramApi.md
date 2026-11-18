@@ -13,6 +13,8 @@ Method | HTTP request | Description
 [**completeInstagramConnect**](InstagramApi.md#completeinstagramconnect) | **POST** /instagram/connect/complete | 
 [**disconnectInstagram**](InstagramApi.md#disconnectinstagram) | **DELETE** /instagram/connection | 
 [**getInstagramConnection**](InstagramApi.md#getinstagramconnection) | **GET** /instagram/connection | 
+[**importInstagramPosts**](InstagramApi.md#importinstagramposts) | **POST** /instagram/posts/import | 고른 게시물의 파일을 서버로 복사하고 대표 게시물 초안을 돌려준다(저장은 PUT /creators/me/featured-posts)
+[**listInstagramPosts**](InstagramApi.md#listinstagramposts) | **GET** /instagram/posts | 연동한 인스타그램 계정의 게시물 목록(연동이 없으면 404)
 
 
 # **beginInstagramConnect**
@@ -178,6 +180,96 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**InstagramConnectionModel**](InstagramConnectionModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **importInstagramPosts**
+> List<FeaturedPostDraftModel> importInstagramPosts(importInstagramPostsDto)
+
+고른 게시물의 파일을 서버로 복사하고 대표 게시물 초안을 돌려준다(저장은 PUT /creators/me/featured-posts)
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = InstagramApi();
+final importInstagramPostsDto = ImportInstagramPostsDto(); // ImportInstagramPostsDto | 
+
+try {
+    final result = api_instance.importInstagramPosts(importInstagramPostsDto);
+    print(result);
+} catch (e) {
+    print('Exception when calling InstagramApi->importInstagramPosts: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **importInstagramPostsDto** | [**ImportInstagramPostsDto**](ImportInstagramPostsDto.md)|  | 
+
+### Return type
+
+[**List<FeaturedPostDraftModel>**](FeaturedPostDraftModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **listInstagramPosts**
+> List<InstagramPostModel> listInstagramPosts()
+
+연동한 인스타그램 계정의 게시물 목록(연동이 없으면 404)
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = InstagramApi();
+
+try {
+    final result = api_instance.listInstagramPosts();
+    print(result);
+} catch (e) {
+    print('Exception when calling InstagramApi->listInstagramPosts: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**List<InstagramPostModel>**](InstagramPostModel.md)
 
 ### Authorization
 

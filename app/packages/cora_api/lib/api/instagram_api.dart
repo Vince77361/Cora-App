@@ -227,4 +227,123 @@ class InstagramApi {
     }
     return null;
   }
+
+  /// 고른 게시물의 파일을 서버로 복사하고 대표 게시물 초안을 돌려준다(저장은 PUT /creators/me/featured-posts)
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [ImportInstagramPostsDto] importInstagramPostsDto (required):
+  Future<Response> importInstagramPostsWithHttpInfo(
+    ImportInstagramPostsDto importInstagramPostsDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/instagram/posts/import';
+
+    // ignore: prefer_final_locals
+    Object? postBody = importInstagramPostsDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 고른 게시물의 파일을 서버로 복사하고 대표 게시물 초안을 돌려준다(저장은 PUT /creators/me/featured-posts)
+  ///
+  /// Parameters:
+  ///
+  /// * [ImportInstagramPostsDto] importInstagramPostsDto (required):
+  Future<List<FeaturedPostDraftModel>?> importInstagramPosts(
+    ImportInstagramPostsDto importInstagramPostsDto, {
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await importInstagramPostsWithHttpInfo(
+      importInstagramPostsDto,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(
+              responseBody, 'List<FeaturedPostDraftModel>') as List)
+          .cast<FeaturedPostDraftModel>()
+          .toList(growable: false);
+    }
+    return null;
+  }
+
+  /// 연동한 인스타그램 계정의 게시물 목록(연동이 없으면 404)
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> listInstagramPostsWithHttpInfo({
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/instagram/posts';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 연동한 인스타그램 계정의 게시물 목록(연동이 없으면 404)
+  Future<List<InstagramPostModel>?> listInstagramPosts({
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await listInstagramPostsWithHttpInfo(
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(
+              responseBody, 'List<InstagramPostModel>') as List)
+          .cast<InstagramPostModel>()
+          .toList(growable: false);
+    }
+    return null;
+  }
 }

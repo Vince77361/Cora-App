@@ -167,20 +167,50 @@ describe('FeaturedPostsService', () => {
     expect(repo.rows).toHaveLength(0);
   });
 
-  it('accepts an instagram video copied under the creator folder with a thumbnail', async () => {
+  it('accepts an instagram video copied as its first frame and refuses one without it', async () => {
+    const frame = await uploaded();
     const saved = await service.replaceMine(USER, [
       {
         source: 'INSTAGRAM',
         kind: 'VIDEO',
-        mediaPath: await uploaded(USER, 'mp4'),
-        thumbnailPath: await uploaded(),
+        mediaPath: frame,
+        thumbnailPath: frame,
         caption: null,
         instagramMediaId: 'fake-post-2',
       },
     ]);
     expect(saved[0].photoUrl).toContain('.jpg');
-    expect(saved[0].mediaUrl).toContain('.mp4');
+    expect(saved[0].kind).toBe('VIDEO');
     expect(saved[0].instagramMediaId).toBe('fake-post-2');
+
+    const noFrame = await failureOf(
+      service.replaceMine(USER, [
+        {
+          source: 'INSTAGRAM',
+          kind: 'VIDEO',
+          mediaPath: await uploaded(),
+          caption: null,
+          instagramMediaId: 'fake-post-4',
+        },
+      ]),
+    );
+    expect(noFrame.code).toBe('VALIDATION_FAILED');
+  });
+
+  it('refuses a video file path since only pictures are stored', async () => {
+    const error = await failureOf(
+      service.replaceMine(USER, [
+        {
+          source: 'INSTAGRAM',
+          kind: 'VIDEO',
+          mediaPath: await uploaded(USER, 'mp4'),
+          thumbnailPath: await uploaded(),
+          caption: null,
+          instagramMediaId: 'fake-post-2',
+        },
+      ]),
+    );
+    expect(error.code).toBe('VALIDATION_FAILED');
   });
 
   it('rejects the same existing post twice and a fifth post', async () => {

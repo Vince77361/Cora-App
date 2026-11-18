@@ -16,10 +16,6 @@ import {
   FeaturedPostsRepository,
 } from './featured-posts.repository';
 
-// 인스타그램에서 가져온 영상은 서버가 featured-posts/<내 ID>/ 아래에 복사한다. 사진 확장자는 업로드 규칙이 이미 본다.
-const VIDEO_FILE_NAME =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(mp4|mov)$/;
-
 function blankToNull(value: string | null | undefined): string | null {
   const text = value?.trim();
   return text ? text : null;
@@ -100,6 +96,14 @@ export class FeaturedPostsService {
     return saved.map((row) => this.toModel(row));
   }
 
+  // 인스타그램에서 이미 대표 게시물로 가져온 원본 게시물 ID들(인스타 가져오기가 "가져옴"을 판단한다).
+  async listInstagramMediaIds(userId: string): Promise<Set<string>> {
+    const ids = (await this.posts.listLive(userId)).flatMap((row) =>
+      row.instagramMediaId ? [row.instagramMediaId] : [],
+    );
+    return new Set(ids);
+  }
+
   // 카드 목록이 줄마다 읽지 않도록 여러 크리에이터의 대표 게시물을 한 번에 읽는다. 없는 사람은 빈 목록이다.
   async listForCreators(
     userIds: string[],
@@ -142,31 +146,26 @@ export class FeaturedPostsService {
         throw wrong;
       }
     };
-    if (draft.source === 'INSTAGRAM' && draft.kind === 'VIDEO') {
-      const prefix = `featured-posts/${userId}/`;
-      if (
-        !draft.mediaPath.startsWith(prefix) ||
-        !VIDEO_FILE_NAME.test(draft.mediaPath.slice(prefix.length))
-      ) {
-        throw wrong;
-      }
-    } else {
-      photo(draft.mediaPath);
-    }
+    // 인스타그램 영상도 첫 화면 그림(사진)만 복사해 오므로 모든 게시물의 파일은 내 폴더의 사진 경로다.
+    photo(draft.mediaPath);
     if (draft.thumbnailPath) photo(draft.thumbnailPath);
   }
 
   // 올리지 않은 경로를 막는다(주소만 받고 PUT을 하지 않은 경우). 새 게시물의 파일만 본다.
   private async assertUploaded(plan: FeaturedPostPlanItem[]): Promise<void> {
-    const paths = plan.flatMap((item) =>
-      'draft' in item
-        ? [item.draft.mediaPath, item.draft.thumbnailPath ?? []].flat()
-        : [],
+    // 인스타그램 영상은 파일 경로와 첫 화면 경로가 같으므로 한 번만 확인한다.
+    const paths = new Set(
+      plan.flatMap((item) =>
+        'draft' in item
+          ? [item.draft.mediaPath, item.draft.thumbnailPath ?? []].flat()
+          : [],
+      ),
     );
-    for (const path of paths) {
-      if (!(await this.storage.exists(path, PHOTOS_BUCKET))) {
-        throw new AppError('VALIDATION_FAILED', '올리지 않은 사진이에요.');
-      }
+    const found = await Promise.all(
+      [...paths].map((path) => this.storage.exists(path, PHOTOS_BUCKET)),
+    );
+    if (found.some((exists) => !exists)) {
+      throw new AppError('VALIDATION_FAILED', '올리지 않은 사진이에요.');
     }
   }
 

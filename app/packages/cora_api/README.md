@@ -111,6 +111,8 @@ Class | Method | HTTP request | Description
 *InstagramApi* | [**completeInstagramConnect**](doc//InstagramApi.md#completeinstagramconnect) | **POST** /instagram/connect/complete | 
 *InstagramApi* | [**disconnectInstagram**](doc//InstagramApi.md#disconnectinstagram) | **DELETE** /instagram/connection | 
 *InstagramApi* | [**getInstagramConnection**](doc//InstagramApi.md#getinstagramconnection) | **GET** /instagram/connection | 
+*InstagramApi* | [**importInstagramPosts**](doc//InstagramApi.md#importinstagramposts) | **POST** /instagram/posts/import | 고른 게시물의 파일을 서버로 복사하고 대표 게시물 초안을 돌려준다(저장은 PUT /creators/me/featured-posts)
+*InstagramApi* | [**listInstagramPosts**](doc//InstagramApi.md#listinstagramposts) | **GET** /instagram/posts | 연동한 인스타그램 계정의 게시물 목록(연동이 없으면 404)
 *NotificationSettingsApi* | [**getNotificationSettings**](doc//NotificationSettingsApi.md#getnotificationsettings) | **GET** /me/notification-settings | 
 *NotificationSettingsApi* | [**putNotificationSettings**](doc//NotificationSettingsApi.md#putnotificationsettings) | **PUT** /me/notification-settings | 
 *NotificationsApi* | [**countUnreadNotifications**](doc//NotificationsApi.md#countunreadnotifications) | **GET** /notifications/unread-count | 
@@ -253,6 +255,7 @@ Class | Method | HTTP request | Description
  - [DropReasonChoice](doc//DropReasonChoice.md)
  - [EndOfferDto](doc//EndOfferDto.md)
  - [EndedOfferModel](doc//EndedOfferModel.md)
+ - [FeaturedPostDraftModel](doc//FeaturedPostDraftModel.md)
  - [FeaturedPostInputDto](doc//FeaturedPostInputDto.md)
  - [FeaturedPostKind](doc//FeaturedPostKind.md)
  - [FeaturedPostModel](doc//FeaturedPostModel.md)
@@ -262,11 +265,13 @@ Class | Method | HTTP request | Description
  - [FixedCashMaxModel](doc//FixedCashMaxModel.md)
  - [FixedCashRangeModel](doc//FixedCashRangeModel.md)
  - [HealthModel](doc//HealthModel.md)
+ - [ImportInstagramPostsDto](doc//ImportInstagramPostsDto.md)
  - [IndustryCategory](doc//IndustryCategory.md)
  - [InquiryDto](doc//InquiryDto.md)
  - [InquiryResultModel](doc//InquiryResultModel.md)
  - [InstagramConnectUrlModel](doc//InstagramConnectUrlModel.md)
  - [InstagramConnectionModel](doc//InstagramConnectionModel.md)
+ - [InstagramPostModel](doc//InstagramPostModel.md)
  - [InterestCardModel](doc//InterestCardModel.md)
  - [InterestState](doc//InterestState.md)
  - [InterestTab](doc//InterestTab.md)

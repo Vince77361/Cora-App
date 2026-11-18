@@ -447,6 +447,8 @@ class FakeInstagram extends InstagramService {
       null as never,
       null as never,
       null as never,
+      null as never,
+      null as never,
     );
   }
   getConnection(): ReturnType<InstagramService['getConnection']> {

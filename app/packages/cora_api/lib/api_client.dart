@@ -358,6 +358,8 @@ class ApiClient {
           return EndOfferDto.fromJson(value);
         case 'EndedOfferModel':
           return EndedOfferModel.fromJson(value);
+        case 'FeaturedPostDraftModel':
+          return FeaturedPostDraftModel.fromJson(value);
         case 'FeaturedPostInputDto':
           return FeaturedPostInputDto.fromJson(value);
         case 'FeaturedPostKind':
@@ -376,6 +378,8 @@ class ApiClient {
           return FixedCashRangeModel.fromJson(value);
         case 'HealthModel':
           return HealthModel.fromJson(value);
+        case 'ImportInstagramPostsDto':
+          return ImportInstagramPostsDto.fromJson(value);
         case 'IndustryCategory':
           return IndustryCategoryTypeTransformer().decode(value);
         case 'InquiryDto':
@@ -386,6 +390,8 @@ class ApiClient {
           return InstagramConnectUrlModel.fromJson(value);
         case 'InstagramConnectionModel':
           return InstagramConnectionModel.fromJson(value);
+        case 'InstagramPostModel':
+          return InstagramPostModel.fromJson(value);
         case 'InterestCardModel':
           return InterestCardModel.fromJson(value);
         case 'InterestState':

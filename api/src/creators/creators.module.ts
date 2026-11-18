@@ -17,7 +17,7 @@ import { FeaturedPostsService } from './featured-posts.service';
     FeaturedPostsService,
     FeaturedPostsRepository,
   ],
-  // 지원자·오퍼 목록을 만드는 모듈은 CreatorsService만 쓴다.
-  exports: [CreatorsService],
+  // 지원자·오퍼 목록을 만드는 모듈은 CreatorsService만 쓴다. 인스타그램 모듈은 가져온 게시물 ID를 보려고 FeaturedPostsService를 쓴다.
+  exports: [CreatorsService, FeaturedPostsService],
 })
 export class CreatorsModule {}

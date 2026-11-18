@@ -75,17 +75,32 @@ describe('featured post rules', () => {
     );
   });
 
-  it('allows an instagram video without a caption', () => {
+  it('allows an instagram video without a caption when it has a thumbnail', () => {
     expect(() =>
       validateReplacement([
         draft({
           source: 'INSTAGRAM',
           kind: 'VIDEO',
           caption: null,
+          thumbnailPath: 'featured-posts/u/t.jpg',
           instagramMediaId: 'p1',
         }),
       ]),
     ).not.toThrow();
+  });
+
+  it('rejects an instagram video without a thumbnail', () => {
+    expect(
+      failure([
+        draft({
+          source: 'INSTAGRAM',
+          kind: 'VIDEO',
+          caption: null,
+          thumbnailPath: null,
+          instagramMediaId: 'p1',
+        }),
+      ])?.code,
+    ).toBe('VALIDATION_FAILED');
   });
 });
 

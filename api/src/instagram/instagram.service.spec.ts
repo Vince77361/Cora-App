@@ -8,9 +8,16 @@ import { CollaborationsRepository } from '../collaborations/collaborations.repos
 import { SecretBox } from '../common/crypto/secret-box';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
+import { FeaturedPostsService } from '../creators/featured-posts.service';
 import { FakeInstagramAdapter } from '../integrations/instagram/fake-instagram.adapter';
+import {
+  InstagramMediaPart,
+  InstagramPort,
+  InstagramPost,
+} from '../integrations/instagram/instagram.port';
 import { UsersService } from '../users/users.service';
 import { FakeClock } from '../../test/support/fake-clock';
+import { FakeStoragePort } from '../../test/support/fake-storage.port';
 import {
   InstagramConnectionData,
   InstagramRepository,
@@ -101,6 +108,81 @@ class FakeCollaborations extends CollaborationsRepository {
   }
 }
 
+class FakeFeaturedPosts extends FeaturedPostsService {
+  mediaIds = new Set<string>();
+  constructor() {
+    super(
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+    );
+  }
+  listInstagramMediaIds() {
+    return Promise.resolve(this.mediaIds);
+  }
+}
+
+const photo = (
+  id: string,
+  caption: string | null = '사진 글',
+): InstagramPost => ({
+  id,
+  kind: 'PHOTO',
+  caption,
+  thumbnailUrl: `https://example.test/${id}.jpg`,
+  durationSec: null,
+  sizeBytes: null,
+});
+const video = (
+  id: string,
+  durationSec: number | null = 30,
+  sizeBytes: number | null = 8 * 1024 * 1024,
+): InstagramPost => ({
+  id,
+  kind: 'VIDEO',
+  caption: '영상 글',
+  thumbnailUrl: `https://example.test/${id}.jpg`,
+  durationSec,
+  sizeBytes,
+});
+
+// 게시물 목록과 파일을 정해 둔 대로 돌려주는 손 구현. 어떤 토큰으로 불렸는지 적어 둔다.
+class ScriptedInstagram extends InstagramPort {
+  posts: InstagramPost[] = [];
+  readonly tokens: (string | null)[] = [];
+  readonly fetched: { postId: string; part: InstagramMediaPart }[] = [];
+  failOn: string | null = null;
+  photoType = 'image/jpeg';
+
+  beginConnect(): Promise<{ connectUrl: string }> {
+    return Promise.resolve({ connectUrl: 'cora-dev://scripted' });
+  }
+  completeConnect(...[, code]: [creatorId: string, code: string]) {
+    return Promise.resolve({ handle: code, followers: 1, token: 'tok' });
+  }
+  fetchFollowers(): Promise<number> {
+    return Promise.resolve(1);
+  }
+  listPosts(token: string | null): Promise<InstagramPost[]> {
+    this.tokens.push(token);
+    return Promise.resolve(this.posts);
+  }
+  fetchMedia(
+    token: string | null,
+    postId: string,
+    part: InstagramMediaPart = 'MEDIA',
+  ) {
+    this.fetched.push({ postId, part });
+    if (postId === this.failOn) return Promise.reject(new Error('network'));
+    return Promise.resolve({
+      bytes: Buffer.from(`${postId}-${part}`),
+      contentType: this.photoType,
+    });
+  }
+}
+
 async function errorOf(promise: Promise<unknown>): Promise<AppError> {
   try {
     await promise;
@@ -117,17 +199,24 @@ describe('InstagramService', () => {
   let collaborations: FakeCollaborations;
   let clock: FakeClock;
   let box: SecretBox;
+  let storage: FakeStoragePort;
+  let featured: FakeFeaturedPosts;
   let service: InstagramService;
 
-  function build(secretBox: SecretBox): InstagramService {
+  function build(
+    secretBox: SecretBox,
+    port: InstagramPort = new FakeInstagramAdapter(),
+  ): InstagramService {
     return new InstagramService(
       repo,
-      new FakeInstagramAdapter(),
+      port,
       users,
       creators,
       collaborations,
       secretBox,
       clock,
+      storage,
+      featured,
     );
   }
 
@@ -137,6 +226,8 @@ describe('InstagramService', () => {
     creators = new FakeCreators();
     collaborations = new FakeCollaborations();
     clock = new FakeClock(T0);
+    storage = new FakeStoragePort();
+    featured = new FakeFeaturedPosts();
     box = new SecretBox(KEY);
     service = build(box);
   });
@@ -322,6 +413,189 @@ describe('InstagramService', () => {
     expect(await service.getMine(CREATOR)).toEqual({
       handle: 'haru_cafe',
       followers: 2100,
+    });
+  });
+
+  it('maps the personal account error to 409 with the guidance sentence', async () => {
+    const error = await errorOf(service.complete(CREATOR, 'personal_minji'));
+    expect(error.code).toBe('CONFLICT');
+    expect(error.message).toBe(
+      '개인 계정은 연동할 수 없어요. 인스타그램 앱에서 프로페셔널 계정으로 바꾼 뒤 다시 연동해 주세요.',
+    );
+    expect(repo.rows.size).toBe(0);
+    expect(creators.overwritten).toHaveLength(0);
+  });
+
+  describe('instagram posts', () => {
+    let port: ScriptedInstagram;
+
+    beforeEach(async () => {
+      port = new ScriptedInstagram();
+      port.posts = [photo('p1'), video('v1'), photo('p2'), video('v2')];
+      service = build(box, port);
+      await service.complete(CREATOR, 'haru_cafe');
+    });
+
+    it('lists the posts of the connected account with the unsealed token', async () => {
+      const posts = await service.listPosts(CREATOR);
+      expect(posts.map((p) => p.id)).toEqual(['p1', 'v1', 'p2', 'v2']);
+      expect(posts[1]).toEqual({
+        id: 'v1',
+        kind: 'VIDEO',
+        caption: '영상 글',
+        thumbnailUrl: 'https://example.test/v1.jpg',
+        durationSec: 30,
+        sizeBytes: 8 * 1024 * 1024,
+      });
+      expect(port.tokens).toEqual(['tok']);
+    });
+
+    it('passes a null token when the key is not configured', async () => {
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      service = build(new SecretBox(undefined), port);
+      await service.complete(CREATOR, 'haru_cafe');
+      await service.listPosts(CREATOR);
+      expect(port.tokens).toEqual([null]);
+      warn.mockRestore();
+    });
+
+    it("copies a photo post into storage under the creator's folder", async () => {
+      const [draft] = await service.importPosts(CREATOR, ['p1']);
+      expect(draft).toMatchObject({
+        source: 'INSTAGRAM',
+        kind: 'PHOTO',
+        thumbnailPath: null,
+        caption: '사진 글',
+        instagramMediaId: 'p1',
+      });
+      expect(draft.mediaPath).toMatch(
+        new RegExp(`^featured-posts/${CREATOR}/[0-9a-f-]{36}\\.jpg$`),
+      );
+      expect(storage.uploaded).toHaveLength(1);
+      expect(storage.uploaded[0]).toMatchObject({
+        path: draft.mediaPath,
+        contentType: 'image/jpeg',
+      });
+      expect(storage.uploaded[0].bytes.toString()).toBe('p1-MEDIA');
+      expect(draft.photoUrl).toBe(storage.publicUrl(draft.mediaPath));
+    });
+
+    it('copies only the first frame of a video and points both paths at it', async () => {
+      const [draft] = await service.importPosts(CREATOR, ['v1']);
+      expect(draft).toMatchObject({
+        source: 'INSTAGRAM',
+        kind: 'VIDEO',
+        caption: '영상 글',
+        instagramMediaId: 'v1',
+      });
+      expect(draft.mediaPath).toMatch(
+        new RegExp(`^featured-posts/${CREATOR}/[0-9a-f-]{36}\\.jpg$`),
+      );
+      expect(draft.thumbnailPath).toBe(draft.mediaPath);
+      // 사진 버킷은 5MB·이미지만 받으므로 영상 파일은 받지도 올리지도 않는다.
+      expect(port.fetched).toEqual([{ postId: 'v1', part: 'THUMBNAIL' }]);
+      expect(storage.uploaded.map((u) => u.contentType)).toEqual([
+        'image/jpeg',
+      ]);
+      expect(draft.photoUrl).toBe(storage.publicUrl(draft.mediaPath));
+    });
+
+    it('keeps the order of the picked posts', async () => {
+      const drafts = await service.importPosts(CREATOR, ['v2', 'p2']);
+      expect(drafts.map((d) => d.instagramMediaId)).toEqual(['v2', 'p2']);
+    });
+
+    it('cuts the caption to its first line of at most 40 characters', async () => {
+      port.posts = [
+        photo('long', `${'가'.repeat(50)}\n둘째 줄`),
+        photo('blank', null),
+        photo('lines', '\n  첫 줄이에요  \n둘째 줄'),
+      ];
+      const drafts = await service.importPosts(CREATOR, [
+        'long',
+        'blank',
+        'lines',
+      ]);
+      expect(drafts.map((d) => d.caption)).toEqual([
+        '가'.repeat(40),
+        null,
+        '첫 줄이에요',
+      ]);
+    });
+
+    it.each([
+      ['over 60 seconds', video('long', 61)],
+      ['over 100MB', video('big', 30, 100 * 1024 * 1024 + 1)],
+    ])('refuses a video %s without copying anything', async (_name, post) => {
+      port.posts = [photo('p1'), post];
+      const error = await errorOf(
+        service.importPosts(CREATOR, ['p1', post.id]),
+      );
+      expect(error.code).toBe('CONFLICT');
+      expect(error.message).toBe('60초가 넘는 영상은 가져올 수 없어요.');
+      expect(storage.uploaded).toHaveLength(0);
+      expect(port.fetched).toHaveLength(0);
+    });
+
+    it('accepts a video of exactly 60 seconds and 100MB', async () => {
+      port.posts = [video('edge', 60, 100 * 1024 * 1024)];
+      await expect(
+        service.importPosts(CREATOR, ['edge']),
+      ).resolves.toHaveLength(1);
+    });
+
+    it('returns 404 for a post id that is not in the connected account', async () => {
+      const error = await errorOf(service.importPosts(CREATOR, ['p1', 'nope']));
+      expect(error.code).toBe('NOT_FOUND');
+      expect(storage.uploaded).toHaveLength(0);
+    });
+
+    it('returns 409 for a post that is already a featured post', async () => {
+      featured.mediaIds = new Set(['p2']);
+      const error = await errorOf(service.importPosts(CREATOR, ['p1', 'p2']));
+      expect(error.code).toBe('CONFLICT');
+      expect(storage.uploaded).toHaveLength(0);
+    });
+
+    it('refuses a file type that cannot be a featured post', async () => {
+      port.photoType = 'image/webp';
+      const error = await errorOf(service.importPosts(CREATOR, ['p1']));
+      expect(error.code).toBe('CONFLICT');
+      expect(storage.uploaded).toHaveLength(0);
+    });
+
+    it('fails the whole import when a later copy fails and leaves the earlier file as an orphan', async () => {
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      port.failOn = 'p2';
+      const error = await errorOf(service.importPosts(CREATOR, ['p1', 'p2']));
+      expect(error.code).toBe('INTERNAL');
+      expect(storage.uploaded).toHaveLength(1);
+      warn.mockRestore();
+    });
+
+    it('does not list or import without a connection', async () => {
+      await service.disconnect(CREATOR);
+      expect((await errorOf(service.listPosts(CREATOR))).code).toBe(
+        'NOT_FOUND',
+      );
+      expect((await errorOf(service.importPosts(CREATOR, ['p1']))).code).toBe(
+        'NOT_FOUND',
+      );
+      expect(storage.uploaded).toHaveLength(0);
+    });
+
+    it('allows only creators to list or import', async () => {
+      users.role = 'STORE';
+      expect((await errorOf(service.listPosts(CREATOR))).code).toBe(
+        'FORBIDDEN',
+      );
+      expect((await errorOf(service.importPosts(CREATOR, ['p1']))).code).toBe(
+        'FORBIDDEN',
+      );
     });
   });
 });

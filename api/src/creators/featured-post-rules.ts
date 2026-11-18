@@ -55,6 +55,10 @@ export function validateReplacement(items: FeaturedPostDraft[]): void {
     if (!item.instagramMediaId) {
       invalid('인스타그램 게시물에는 게시물 ID가 필요해요.');
     }
+    // 영상 파일은 아직 보관하지 않아(7번 계획에서 새 버킷과 함께) 카드와 목록은 첫 화면 그림 하나로 보여 준다.
+    if (item.kind === 'VIDEO' && !item.thumbnailPath) {
+      invalid('영상 게시물에는 첫 화면 그림이 필요해요.');
+    }
     if (instagramIds.has(item.instagramMediaId)) {
       invalid('같은 인스타그램 게시물을 두 번 넣을 수 없어요.');
     }
