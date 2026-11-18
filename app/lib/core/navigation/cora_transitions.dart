@@ -42,6 +42,8 @@ abstract final class CoraTransitions {
     String? name,
     Object? arguments,
     String? restorationId,
+    // false이면 iOS 가장자리 밀기로 뒤로 가지 못한다. 밀기는 PopScope를 거치지 않으므로, 나갈 때 저장 여부를 묻는 화면이 쓴다.
+    bool backSwipe = true,
   }) {
     return CoraTransitionPage<T>(
       key: key,
@@ -52,7 +54,7 @@ abstract final class CoraTransitions {
       reverseTransitionDuration: CoraMotion.pushDuration,
       transitionsBuilder: _pushTransitions,
       delegatedTransition: _pushUnderlay,
-      backSwipe: true,
+      backSwipe: backSwipe,
       child: child,
     );
   }

@@ -29,6 +29,8 @@ import 'features/view_report/data/api_view_report_repository.dart';
 import 'features/view_report/domain/view_report_repository.dart';
 import 'features/creator_profile/data/api_creator_profile_repository.dart';
 import 'features/creator_profile/domain/creator_profile_repository.dart';
+import 'features/featured_posts/data/api_featured_posts_repository.dart';
+import 'features/featured_posts/domain/featured_posts_repository.dart';
 import 'features/brand_onboarding/data/api_brand_repository.dart';
 import 'features/brand_onboarding/data/api_campaign_repository.dart';
 import 'features/brand_onboarding/domain/brand_repository.dart';
@@ -206,6 +208,9 @@ Future<void> main() async {
         ),
         instagramRepositoryProvider.overrideWith(
           (ref) => ApiInstagramRepository(ref.watch(apiClientProvider)),
+        ),
+        featuredPostsRepositoryProvider.overrideWith(
+          (ref) => ApiFeaturedPostsRepository(ref.watch(apiClientProvider)),
         ),
         payoutAccountRepositoryProvider.overrideWith(
           (ref) => ApiPayoutAccountRepository(ref.watch(apiClientProvider)),

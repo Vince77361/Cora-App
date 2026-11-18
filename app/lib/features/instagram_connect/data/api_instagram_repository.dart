@@ -56,12 +56,19 @@ class ApiInstagramRepository implements InstagramRepository {
   static InstagramFailure _failure(Object error) {
     final e = ApiError.from(error);
     final status = e.status;
+    final message = status != null && status >= 400 && status < 500
+        ? e.message
+        : null;
     return InstagramFailure(
-      message: status != null && status >= 400 && status < 500
-          ? e.message
-          : null,
+      message: message,
+      // 서버가 개인 계정을 이 문장으로 거절한다(`api/src/instagram/instagram.service.ts`). 같은 409 안에서 가르는 표지다.
+      personalAccount:
+          status == 409 &&
+          (message?.startsWith(_personalAccountPrefix) ?? false),
     );
   }
+
+  static const _personalAccountPrefix = '개인 계정은 연동할 수 없어요.';
 
   static InstagramConnection _fromModel(api.InstagramConnectionModel m) =>
       InstagramConnection(handle: m.handle, followers: m.followers);

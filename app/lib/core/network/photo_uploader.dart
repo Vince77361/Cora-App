@@ -15,6 +15,9 @@ enum PhotoPurpose {
   creatorCard,
   brandPhoto,
   viewEvidence,
+
+  /// 크리에이터의 대표 게시물(사진첩에서 올린 사진). 서버가 `featured-posts/…` 폴더에 올린다.
+  featuredPost,
 }
 
 /// 서버가 받는 사진 한 장의 최대 크기(`api/src/uploads/photo-rules.ts`의 `MAX_PHOTO_BYTES`).
@@ -97,6 +100,8 @@ class ApiPhotoUploader implements PhotoUploader {
               api.CreatePhotoUploadDtoPurposeEnum.BRAND_PHOTO,
             PhotoPurpose.viewEvidence =>
               api.CreatePhotoUploadDtoPurposeEnum.VIEW_EVIDENCE,
+            PhotoPurpose.featuredPost =>
+              api.CreatePhotoUploadDtoPurposeEnum.FEATURED_POST,
           },
           sizeBytes: bytes.length,
         ),

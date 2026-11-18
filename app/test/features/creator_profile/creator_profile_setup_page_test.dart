@@ -7,6 +7,7 @@ import 'package:cora/core/ui/cora_primary_button.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile.dart';
 import 'package:cora/features/creator_profile/domain/creator_profile_repository.dart';
 import 'package:cora/features/creator_profile/presentation/pages/creator_profile_setup_page.dart';
+import 'package:cora/features/featured_posts/domain/featured_posts_repository.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/principles/domain/principles_repository.dart';
 import 'package:cora/features/principles/presentation/pages/principles_page.dart';
@@ -19,6 +20,8 @@ import '../../support/fake_photos.dart';
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
 import '../auth/fake_auth_repository.dart';
+import '../featured_posts/fake_featured_posts_repository.dart';
+import '../store_browse/creator_app_harness.dart' show topPath;
 import '../onboarding/fake_me_repository.dart';
 import '../principles/fake_principles_repository.dart';
 import '../store_browse/fake_store_browse_repository.dart';
@@ -34,6 +37,7 @@ Future<void> _pump(
   FakeCreatorProfileRepository? repo,
   FakePhotoPicker? picker,
   FakePhotoUploader? uploader,
+  FakeFeaturedPostsRepository? featured,
 }) async {
   usePhone(tester);
   await pumpCoraApp(
@@ -52,6 +56,9 @@ Future<void> _pump(
       ),
       photoPickerProvider.overrideWithValue(picker ?? FakePhotoPicker()),
       photoUploaderProvider.overrideWithValue(uploader ?? FakePhotoUploader()),
+      featuredPostsRepositoryProvider.overrideWithValue(
+        featured ?? FakeFeaturedPostsRepository(),
+      ),
     ],
   );
 }
@@ -93,50 +100,52 @@ void main() {
     expect(find.text('시작하기'), findsOneWidget);
   });
 
-  testWidgets('has the card headline and card photo inputs', (tester) async {
-    await _pump(tester);
+  testWidgets(
+    'shows the featured posts row with the count and opens the screen',
+    (tester) async {
+      await _pump(tester);
 
-    expect(find.text('대표 콘텐츠 한 줄 (선택)'), findsOneWidget);
-    expect(find.text('대표 사진 (선택)'), findsOneWidget);
-    final headline = tester.widget<TextField>(
-      find.byKey(CreatorProfileSetupPage.cardHeadlineFieldKey),
+      expect(find.text('대표 게시물 (선택)'), findsOneWidget);
+      expect(find.text('0 / 4'), findsOneWidget);
+      // 예전의 카드 한 줄·사진 입력은 대표 게시물로 대체됐다.
+      expect(find.text('대표 콘텐츠 한 줄 (선택)'), findsNothing);
+      expect(find.text('대표 사진 (선택)'), findsNothing);
+
+      await tester.ensureVisible(
+        find.byKey(CreatorProfileSetupPage.featuredPostsTileKey),
+      );
+      await tester.tap(
+        find.byKey(CreatorProfileSetupPage.featuredPostsTileKey),
+      );
+      await tester.pumpAndSettle();
+
+      expect(topPath(tester), AppRoutes.creatorFeaturedPosts);
+      expect(find.text('대표 게시물'), findsOneWidget);
+    },
+  );
+
+  testWidgets('counts the saved featured posts in the row', (tester) async {
+    await _pump(
+      tester,
+      featured: FakeFeaturedPostsRepository(
+        posts: [savedPost(1), savedPost(2)],
+      ),
     );
-    // 서버가 받는 한 줄은 40자까지다.
-    expect(
-      headline.inputFormatters!
-          .whereType<LengthLimitingTextInputFormatter>()
-          .single
-          .maxLength,
-      40,
-    );
+
+    expect(find.text('2 / 4'), findsOneWidget);
   });
 
-  testWidgets('saves the card headline and the card photo', (tester) async {
+  testWidgets('does not send the card values when saving', (tester) async {
     final repo = FakeCreatorProfileRepository();
-    final uploader = FakePhotoUploader()..path = 'creator-cards/u/c.png';
-    final picker = FakePhotoPicker(
-      next: PickedPhoto(bytes: _png, contentType: 'image/png'),
-    );
-    await _pump(tester, repo: repo, picker: picker, uploader: uploader);
+    await _pump(tester, repo: repo);
     await _typeName(tester, '서윤');
     await _chooseProvince(tester, '서울특별시');
-    await tester.enterText(
-      find.byKey(CreatorProfileSetupPage.cardHeadlineFieldKey),
-      '출근 전 30초, 오늘의 손목 루틴',
-    );
-    await tester.ensureVisible(
-      find.byKey(CreatorProfileSetupPage.cardPhotoTileKey),
-    );
-    await tester.tap(find.byKey(CreatorProfileSetupPage.cardPhotoTileKey));
-    await tester.pumpAndSettle();
-    expect(find.text('사진 바꾸기'), findsOneWidget);
 
     await tester.tap(find.text('시작하기'));
     await tester.pumpAndSettle();
 
-    expect(uploader.lastPurpose, PhotoPurpose.creatorCard);
-    expect(repo.savedCardHeadline, '출근 전 30초, 오늘의 손목 루틴');
-    expect(repo.savedCardPhotoPath, 'creator-cards/u/c.png');
+    expect(repo.saveCalls, 1);
+    expect(repo.savedDisplayName, '서윤');
   });
 
   testWidgets('the text fields draw no border of their own', (tester) async {

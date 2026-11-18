@@ -278,6 +278,15 @@ abstract final class AppRoutes {
   static const creatorPayoutAccount = '/creator/payout-account';
   static const creatorInstagram = '/creator/instagram';
 
+  /// 대표 게시물(G6). 하단 `프로필` 탭과 프로필 설정의 `대표 게시물 n / 4` 줄이 연다. 홈 위에 밀려 들어온다.
+  static const creatorFeaturedPosts = '/creator/featured-posts';
+
+  /// 인스타에서 고르기. 대표 게시물 위에 밀려 들어오고, 고른 초안 목록을 돌려준다. `extra`가 `true`이면 교체(한 개만).
+  static const creatorFeaturedPostsPick = '/creator/featured-posts/pick';
+
+  /// 사진첩에서 올리기의 한 줄 설명 화면. 고른 사진(`PickedPhoto`)을 `extra`로 받고 초안 한 개를 돌려준다.
+  static const creatorFeaturedPostsCompose = '/creator/featured-posts/compose';
+
   static String creatorComingSoon(String title) =>
       '/creator/coming-soon/${Uri.encodeComponent(title)}';
 

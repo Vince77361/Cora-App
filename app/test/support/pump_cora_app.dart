@@ -9,6 +9,8 @@ import 'package:cora/features/chat/domain/chat_repository.dart';
 import 'package:cora/features/chat/domain/realtime_connection.dart';
 import 'package:cora/features/collaboration/domain/collaboration_repository.dart';
 import 'package:cora/features/discovery/domain/discovery_repository.dart';
+import 'package:cora/features/featured_posts/domain/featured_posts_repository.dart';
+import 'package:cora/features/instagram_connect/domain/instagram_repository.dart';
 import 'package:cora/features/interests/domain/interests_repository.dart';
 import 'package:cora/features/negotiation/domain/negotiation_repository.dart';
 import 'package:cora/features/notification_settings/domain/notification_settings_repository.dart';
@@ -35,6 +37,8 @@ import '../features/brand_onboarding/fake_campaign_repository.dart';
 import '../features/chat/chat_fixtures.dart';
 import '../features/collaboration/fake_collaboration_repository.dart';
 import '../features/discovery/fake_discovery_repository.dart';
+import '../features/featured_posts/fake_featured_posts_repository.dart';
+import '../features/instagram_connect/fake_instagram_repository.dart';
 import '../features/interests/fake_interests_repository.dart';
 import '../features/negotiation/fake_negotiation_repository.dart';
 import '../features/notification_settings/fake_notification_settings_repository.dart';
@@ -150,6 +154,16 @@ Widget coraAppWith(
       if (!_overrides(overrides, receivedProposalsRepositoryProvider))
         receivedProposalsRepositoryProvider.overrideWithValue(
           FakeReceivedProposalsRepository(),
+        ),
+      // 크리에이터 프로필 설정의 `대표 게시물 n / 4` 줄과 하단 `프로필` 탭이 연 대표 게시물 화면이 읽는다. 기본은 하나도 없는 계정이다.
+      if (!_overrides(overrides, featuredPostsRepositoryProvider))
+        featuredPostsRepositoryProvider.overrideWithValue(
+          FakeFeaturedPostsRepository(),
+        ),
+      // 같은 화면이 인스타그램 연동 여부도 읽는다. 기본은 연동하지 않은 계정이다.
+      if (!_overrides(overrides, instagramRepositoryProvider))
+        instagramRepositoryProvider.overrideWithValue(
+          FakeInstagramRepository(),
         ),
       if (!_overrides(overrides, contentDraftRepositoryProvider))
         contentDraftRepositoryProvider.overrideWithValue(

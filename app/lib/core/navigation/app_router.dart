@@ -44,6 +44,9 @@ import '../../features/payment/presentation/pages/store_payment_page.dart';
 import '../../features/onboarding/presentation/pages/role_home_placeholder_page.dart';
 import '../../features/onboarding/presentation/pages/role_select_page.dart';
 import '../../features/onboarding/presentation/viewmodels/me_view_model.dart';
+import '../../features/featured_posts/presentation/pages/featured_post_compose_page.dart';
+import '../../features/featured_posts/presentation/pages/featured_posts_page.dart';
+import '../../features/featured_posts/presentation/pages/instagram_pick_page.dart';
 import '../../features/instagram_connect/presentation/pages/fake_instagram_connect_page.dart';
 import '../../features/proposals/domain/offer_version.dart';
 import '../../features/proposals/presentation/pages/counter_proposal_page.dart';
@@ -72,6 +75,7 @@ import '../../features/store_onboarding/presentation/pages/store_links_page.dart
 import '../../features/store_onboarding/presentation/pages/store_page_preview_page.dart';
 import '../config/app_config.dart';
 import '../config/app_config_provider.dart';
+import '../media/photo_picker.dart';
 import '../ui/cora_coming_soon_page.dart';
 import 'app_routes.dart';
 import 'cora_transitions.dart';
@@ -649,6 +653,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.creatorInstagram,
         pageBuilder: (context, state) => CoraTransitions.push(
           const InstagramConnectPage(),
+          key: state.pageKey,
+        ),
+      ),
+      // 대표 게시물(G6). 나갈 때 저장 여부를 물어야 해서 iOS 가장자리 밀기 뒤로 가기는 끈다(밀기는 PopScope를 거치지 않는다).
+      GoRoute(
+        path: AppRoutes.creatorFeaturedPosts,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const FeaturedPostsPage(),
+          key: state.pageKey,
+          backSwipe: false,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.creatorFeaturedPostsPick,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          InstagramPickPage(replace: state.extra == true),
+          key: state.pageKey,
+        ),
+      ),
+      // 사진 없이는 열 수 없다(고른 사진을 `extra`로 받는다).
+      GoRoute(
+        path: AppRoutes.creatorFeaturedPostsCompose,
+        redirect: (context, state) =>
+            state.extra is PickedPhoto ? null : AppRoutes.creatorFeaturedPosts,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          FeaturedPostComposePage(photo: state.extra! as PickedPhoto),
           key: state.pageKey,
         ),
       ),

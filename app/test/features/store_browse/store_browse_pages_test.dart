@@ -103,13 +103,15 @@ void main() {
       expect(find.text('준비 중이에요.'), findsNothing);
     });
 
-    testWidgets('the profile menu item still opens the coming soon page', (
+    testWidgets('the profile menu item opens the featured posts screen', (
       tester,
     ) async {
       await pumpCreatorApp(tester);
       await tester.tap(_navItem('프로필'));
       await tester.pumpAndSettle();
-      expect(find.text('준비 중이에요.'), findsOneWidget);
+      expect(topPath(tester), AppRoutes.creatorFeaturedPosts);
+      expect(find.text('대표 게시물'), findsOneWidget);
+      expect(find.text('준비 중이에요.'), findsNothing);
     });
 
     testWidgets('the interests menu item opens the interests screen', (

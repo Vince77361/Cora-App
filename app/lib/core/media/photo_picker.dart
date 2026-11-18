@@ -15,8 +15,10 @@ class PickedPhoto {
 
 /// 사진 보관함에서 사진을 한 장 고르는 포트. 화면이 `image_picker`를 직접 쓰지 않게 한다.
 abstract class PhotoPicker {
-  /// 고르지 않고 닫으면 null.
-  Future<PickedPhoto?> pick();
+  /// 고르지 않고 닫으면 null. 사진의 긴 변이 [maxSide]를 넘으면 그 길이로 줄이고 품질 [quality](0~100)로 다시 담는다.
+  /// 대표 게시물은 서버 한도(5MB)를 넘지 않게 긴 변 2048, 품질 85를 준다. 값을 주지 않으면 줄이지 않는다
+  /// (프로필 사진처럼 5MB 초과를 화면이 안내하는 곳이 지금처럼 동작하도록).
+  Future<PickedPhoto?> pick({int? maxSide, int? quality});
 }
 
 /// 기본은 실제 보관함이다. 테스트가 가짜로 바꿔 끼운다.
@@ -31,9 +33,14 @@ class ImagePickerPhotoPicker implements PhotoPicker {
   final ImagePicker _picker;
 
   @override
-  Future<PickedPhoto?> pick() async {
-    // 크기를 줄이지 않는다. 5MB를 넘는 사진은 올리기 전에 화면이 안내한다.
-    final file = await _picker.pickImage(source: ImageSource.gallery);
+  Future<PickedPhoto?> pick({int? maxSide, int? quality}) async {
+    // 값을 주지 않으면 크기를 줄이지 않는다. 5MB를 넘는 사진은 올리기 전에 화면이 안내한다.
+    final file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: maxSide?.toDouble(),
+      maxHeight: maxSide?.toDouble(),
+      imageQuality: quality,
+    );
     if (file == null) return null;
     final bytes = await file.readAsBytes();
     return PickedPhoto(bytes: bytes, contentType: _contentTypeOf(file));

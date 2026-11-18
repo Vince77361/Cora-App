@@ -17,9 +17,12 @@ abstract class InstagramRepository {
 /// 서버에 닿지 못했거나 서버가 거절했다. [message]는 서버가 화면에 그대로 보이라고 보낸 문구(4xx일
 /// 때만)이고, 없으면 화면이 일반 문구를 쓴다.
 class InstagramFailure implements Exception {
-  const InstagramFailure({this.message});
+  const InstagramFailure({this.message, this.personalAccount = false});
 
   final String? message;
+
+  /// 개인 계정이라 연동이 거절됐다(서버가 409로 안내 문구를 보낸다). 대표 게시물 화면이 개인 계정 안내를 보인다.
+  final bool personalAccount;
 
   @override
   String toString() => 'InstagramFailure()';

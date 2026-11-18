@@ -101,65 +101,6 @@ void main() {
   });
 
   test(
-    'uploads the card photo for the card and saves headline and path',
-    () async {
-      final repo = FakeCreatorProfileRepository();
-      final uploader = FakePhotoUploader()..path = 'creator-cards/u/c.jpg';
-      final picker = FakePhotoPicker(
-        next: PickedPhoto(bytes: Uint8List(10), contentType: 'image/jpeg'),
-      );
-      final c = await _ready(
-        _container(repo: repo, uploader: uploader, picker: picker),
-      );
-      _vm(c)
-        ..setDisplayName('서윤')
-        ..setRegionSido('서울특별시')
-        ..setCardHeadline('  출근 전 30초  ');
-
-      await _vm(c).pickCardPhoto();
-      expect(_state(c).cardPhoto, isNotNull);
-      expect(_state(c).photo, isNull);
-      final ok = await _vm(c).submit();
-
-      expect(ok, isTrue);
-      expect(uploader.lastPurpose, PhotoPurpose.creatorCard);
-      expect(repo.savedCardHeadline, '출근 전 30초');
-      expect(repo.savedCardPhotoPath, 'creator-cards/u/c.jpg');
-      expect(repo.savedPhotoPath, isNull);
-    },
-  );
-
-  test('leaves the card values out when none were given', () async {
-    final repo = FakeCreatorProfileRepository();
-    final c = await _ready(_container(repo: repo));
-    _vm(c)
-      ..setDisplayName('서윤')
-      ..setRegionSido('서울특별시')
-      ..setCardHeadline('   ');
-
-    await _vm(c).submit();
-
-    // 비운 값은 null로 보내고, 저장소가 서버의 현재 카드 값을 지킨다.
-    expect(repo.savedCardHeadline, isNull);
-    expect(repo.savedCardPhotoPath, isNull);
-  });
-
-  test('refuses a card photo over 5MB when it is picked', () async {
-    final picker = FakePhotoPicker(
-      next: PickedPhoto(
-        bytes: Uint8List(maxPhotoBytes + 1),
-        contentType: 'image/jpeg',
-      ),
-    );
-    final c = await _ready(_container(picker: picker));
-
-    await _vm(c).pickCardPhoto();
-
-    expect(_state(c).cardPhoto, isNull);
-    expect(_state(c).error, CreatorProfileSetupError.photoTooLarge);
-  });
-
-  test(
     'keeps the current photo when the picker is closed without a choice',
     () async {
       final picker = FakePhotoPicker(

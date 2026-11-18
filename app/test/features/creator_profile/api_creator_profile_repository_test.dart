@@ -70,7 +70,7 @@ Map<String, dynamic> _body(http.BaseRequest request) =>
     jsonDecode((request as http.Request).body) as Map<String, dynamic>;
 
 void main() {
-  test('an ordinary profile save keeps the card values', () async {
+  test('a profile save sends the profile and no card values', () async {
     final server = _ProfileServer(
       stored: _profile(headline: '출근 전 30초', cardPhotoUrl: _cardUrl),
     );
@@ -79,128 +79,37 @@ void main() {
       server,
     ).save(displayName: '서윤', regionSido: '서울특별시', contentFocus: '손목 루틴');
 
-    // PUT은 전체 교체라서, 카드 값을 서버의 현재 값 그대로 다시 보내야 지워지지 않는다.
+    // 카드의 한 줄과 사진은 대표 게시물(1번)이 정한다. 프로필 저장은 서버의 카드 값을 읽지도 보내지도 않는다.
+    expect(server.gets, isEmpty);
     final body = _body(server.puts.single);
-    expect(body['cardHeadline'], '출근 전 30초');
-    expect(body['cardPhotoPath'], 'creator-cards/u1/abc.jpg');
+    expect(body['cardHeadline'], isNull);
+    expect(body['cardPhotoPath'], isNull);
     expect(body['contentFocus'], '손목 루틴');
     expect(saved.displayName, '서윤');
   });
 
-  test('keeps the card photo path even when the url has a query', () async {
+  test('saves even when the card photo is a featured post photo', () async {
+    // 카드 사진이 대표 게시물(featured-posts/…)에서 오면 예전의 creator-cards 경로 규칙으로는 되찾을 수 없다.
     final server = _ProfileServer(
-      stored: _profile(cardPhotoUrl: '$_cardUrl?v=3'),
+      stored: _profile(
+        headline: '한 줄',
+        cardPhotoUrl:
+            'https://x.supabase.co/storage/v1/object/public/photos/featured-posts/u1/p.jpg',
+      ),
     );
 
     await _repo(server).save(displayName: '서윤', regionSido: '서울특별시');
 
-    expect(
-      _body(server.puts.single)['cardPhotoPath'],
-      'creator-cards/u1/abc.jpg',
-    );
+    expect(server.puts, hasLength(1));
   });
 
-  test(
-    'a new headline replaces the old one and the photo is still kept',
-    () async {
-      final server = _ProfileServer(
-        stored: _profile(headline: '옛 한 줄', cardPhotoUrl: _cardUrl),
-      );
-
-      await _repo(
-        server,
-      ).save(displayName: '서윤', regionSido: '서울특별시', cardHeadline: '새 한 줄');
-
-      final body = _body(server.puts.single);
-      expect(body['cardHeadline'], '새 한 줄');
-      expect(body['cardPhotoPath'], 'creator-cards/u1/abc.jpg');
-    },
-  );
-
-  test(
-    'a new card photo replaces the old one and the headline is kept',
-    () async {
-      final server = _ProfileServer(
-        stored: _profile(headline: '옛 한 줄', cardPhotoUrl: _cardUrl),
-      );
-
-      await _repo(server).save(
-        displayName: '서윤',
-        regionSido: '서울특별시',
-        cardPhotoPath: 'creator-cards/u1/new.png',
-      );
-
-      final body = _body(server.puts.single);
-      expect(body['cardHeadline'], '옛 한 줄');
-      expect(body['cardPhotoPath'], 'creator-cards/u1/new.png');
-    },
-  );
-
-  test('an empty headline clears it', () async {
-    final server = _ProfileServer(
-      stored: _profile(headline: '옛 한 줄', cardPhotoUrl: _cardUrl),
-    );
-
-    await _repo(
-      server,
-    ).save(displayName: '서윤', regionSido: '서울특별시', cardHeadline: '');
-
-    expect(_body(server.puts.single)['cardHeadline'], '');
-  });
-
-  test(
-    'sends both new card values without reading the profile first',
-    () async {
-      final server = _ProfileServer(stored: _profile());
-
-      await _repo(server).save(
-        displayName: '서윤',
-        regionSido: '서울특별시',
-        cardHeadline: '한 줄',
-        cardPhotoPath: 'creator-cards/u1/c.jpg',
-      );
-
-      expect(server.gets, isEmpty);
-      final body = _body(server.puts.single);
-      expect(body['cardHeadline'], '한 줄');
-      expect(body['cardPhotoPath'], 'creator-cards/u1/c.jpg');
-    },
-  );
-
-  test('the first save has no card to keep', () async {
-    final server = _ProfileServer();
-
-    await _repo(server).save(displayName: '서윤', regionSido: '서울특별시');
-
-    final body = _body(server.puts.single);
-    expect(body['cardHeadline'], isNull);
-    expect(body['cardPhotoPath'], isNull);
-  });
-
-  test(
-    'does not save when the current card photo path cannot be found',
-    () async {
-      final server = _ProfileServer(
-        stored: _profile(cardPhotoUrl: 'https://cdn.example.test/other/1.jpg'),
-      );
-
-      await expectLater(
-        _repo(server).save(displayName: '서윤', regionSido: '서울특별시'),
-        throwsA(isA<CreatorProfileFailure>()),
-      );
-      // 경로를 모른 채 보내면 사진이 지워지므로 PUT까지 가지 않는다.
-      expect(server.puts, isEmpty);
-    },
-  );
-
-  test('does not save when the current profile cannot be read', () async {
+  test('a save that fails raises a CreatorProfileFailure', () async {
     final server = _ProfileServer(stored: _profile())..respond = (r) => 500;
 
     await expectLater(
       _repo(server).save(displayName: '서윤', regionSido: '서울특별시'),
       throwsA(isA<CreatorProfileFailure>()),
     );
-    expect(server.puts, isEmpty);
   });
 
   test('fetch maps the card values', () async {

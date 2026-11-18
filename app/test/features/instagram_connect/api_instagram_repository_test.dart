@@ -12,6 +12,47 @@ ApiInstagramRepository _repo(FakeHttpClient fake) => ApiInstagramRepository(
 );
 
 void main() {
+  test('flags a personal account rejection', () async {
+    final fake = FakeHttpClient()
+      ..statusCode = 409
+      ..body = jsonEncode({
+        'error': {
+          'code': 'CONFLICT',
+          'message': '개인 계정은 연동할 수 없어요. 인스타그램 앱에서 프로페셔널 계정으로 바꾼 뒤 다시 연동해 주세요.',
+          'details': null,
+        },
+      });
+    await expectLater(
+      _repo(fake).complete('personal_x'),
+      throwsA(
+        isA<InstagramFailure>()
+            .having((e) => e.personalAccount, 'personalAccount', isTrue)
+            .having((e) => e.message, 'message', contains('개인 계정은')),
+      ),
+    );
+
+    // 같은 409라도 다른 문구면 개인 계정이 아니다.
+    final taken = FakeHttpClient()
+      ..statusCode = 409
+      ..body = jsonEncode({
+        'error': {
+          'code': 'CONFLICT',
+          'message': '이미 다른 계정에 연결된 인스타그램 아이디예요.',
+          'details': null,
+        },
+      });
+    await expectLater(
+      _repo(taken).complete('taken'),
+      throwsA(
+        isA<InstagramFailure>().having(
+          (e) => e.personalAccount,
+          'personalAccount',
+          isFalse,
+        ),
+      ),
+    );
+  });
+
   test('fetch maps the connection and returns null on 404', () async {
     final ok = FakeHttpClient()
       ..body = jsonEncode({'handle': 'haru_cup', 'followers': 1200});

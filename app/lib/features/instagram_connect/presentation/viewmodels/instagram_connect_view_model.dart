@@ -11,6 +11,24 @@ const connectFailedMessage = '연동하지 못했어요. 다시 시도해 주세
 /// 실패가 아니므로 실패 문구를 쓰지 않는다(캔버스에 없는 문구).
 const connectSoonMessage = '인스타그램 연동은 곧 열려요.';
 
+/// 이번 로그인에서 개인 계정이라 인스타그램 연동이 거절된 적이 있는지. 대표 게시물 화면이 개인 계정 안내(설계 7.4)를
+/// 이 값으로 보인다. 사용자가 바뀌면 지운다.
+final instagramPersonalAccountProvider =
+    NotifierProvider<InstagramPersonalAccountNotifier, bool>(
+      InstagramPersonalAccountNotifier.new,
+    );
+
+class InstagramPersonalAccountNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    ref.watch(currentUserIdProvider);
+    return false;
+  }
+
+  void mark() => state = true;
+  void clear() => state = false;
+}
+
 class InstagramConnectState {
   const InstagramConnectState({
     required this.connection,
@@ -77,6 +95,7 @@ class InstagramConnectViewModel extends AsyncNotifier<InstagramConnectState> {
     try {
       final connection = await _repo.complete(code.trim());
       if (!ref.mounted) return true;
+      ref.read(instagramPersonalAccountProvider.notifier).clear();
       state = AsyncData(current.copyWith(connection: connection, busy: false));
       return true;
     } catch (error) {
@@ -87,6 +106,9 @@ class InstagramConnectViewModel extends AsyncNotifier<InstagramConnectState> {
   bool _fail(InstagramConnectState before, Object error) {
     if (!ref.mounted) return false;
     final message = error is InstagramFailure ? error.message : null;
+    if (error is InstagramFailure && error.personalAccount) {
+      ref.read(instagramPersonalAccountProvider.notifier).mark();
+    }
     final latest = state.value ?? before;
     state = AsyncData(
       latest.copyWith(

@@ -11,9 +11,15 @@ class FakePhotoPicker implements PhotoPicker {
   PickedPhoto? next;
   int pickCalls = 0;
 
+  /// 마지막 [pick]에 넘어온 줄이기 값(주지 않았으면 null).
+  int? lastMaxSide;
+  int? lastQuality;
+
   @override
-  Future<PickedPhoto?> pick() async {
+  Future<PickedPhoto?> pick({int? maxSide, int? quality}) async {
     pickCalls++;
+    lastMaxSide = maxSide;
+    lastQuality = quality;
     return next;
   }
 }

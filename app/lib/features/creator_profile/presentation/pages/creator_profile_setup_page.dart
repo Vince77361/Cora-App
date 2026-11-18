@@ -15,6 +15,8 @@ import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_step_header.dart';
+import '../../../featured_posts/presentation/featured_posts_text.dart';
+import '../../../featured_posts/presentation/viewmodels/featured_posts_view_model.dart';
 import '../viewmodels/creator_profile_setup_view_model.dart';
 
 /// 크리에이터 최소 프로필 만들기. 이 화면은 기획 캔버스에 없다. 모양은 가장 가까운 화면인
@@ -41,11 +43,9 @@ class CreatorProfileSetupPage extends ConsumerStatefulWidget {
   @visibleForTesting
   static const instagramFieldKey = ValueKey<String>('creatorProfile.instagram');
   @visibleForTesting
-  static const cardHeadlineFieldKey = ValueKey<String>(
-    'creatorProfile.cardHeadline',
+  static const featuredPostsTileKey = ValueKey<String>(
+    'creatorProfile.featuredPosts',
   );
-  @visibleForTesting
-  static const cardPhotoTileKey = ValueKey<String>('creatorProfile.cardPhoto');
   @visibleForTesting
   static const sidoListKey = ValueKey<String>('creatorProfile.sidoList');
 
@@ -60,11 +60,9 @@ class _CreatorProfileSetupPageState
   final _sigungu = TextEditingController();
   final _focus = TextEditingController();
   final _instagram = TextEditingController();
-  final _cardHeadline = TextEditingController();
 
   @override
   void dispose() {
-    _cardHeadline.dispose();
     _name.dispose();
     _sigungu.dispose();
     _focus.dispose();
@@ -218,20 +216,17 @@ class _CreatorProfileSetupPageState
                             maxLength: 31,
                             keyboardType: TextInputType.url,
                           ),
-                          // 브랜드가 보는 카드(둘러보기)에 나오는 한 줄과 사진. 캔버스에 없는 입력이다.
-                          _TextBox(
-                            fieldKey:
-                                CreatorProfileSetupPage.cardHeadlineFieldKey,
-                            label: '대표 콘텐츠 한 줄 (선택)',
-                            hint: '예: 출근 전 30초, 오늘의 손목 루틴',
-                            controller: _cardHeadline,
-                            onChanged: vm.setCardHeadline,
-                            maxLength: 40,
-                          ),
-                          _CardPhotoTile(
-                            tileKey: CreatorProfileSetupPage.cardPhotoTileKey,
-                            photo: state.cardPhoto?.bytes,
-                            onTap: vm.pickCardPhoto,
+                          // 가게 사장님에게 가장 먼저 보이는 대표 게시물(최대 4개). 캔버스에 없는 줄이고, 누르면 대표 게시물 화면이 열린다.
+                          _FeaturedPostsTile(
+                            tileKey:
+                                CreatorProfileSetupPage.featuredPostsTileKey,
+                            count: ref
+                                .watch(featuredPostsViewModelProvider)
+                                .value
+                                ?.items
+                                .length,
+                            onTap: () =>
+                                context.push(AppRoutes.creatorFeaturedPosts),
                           ),
                         ],
                       ),
@@ -421,17 +416,18 @@ class _RegionTile extends StatelessWidget {
   }
 }
 
-/// 브랜드가 보는 카드의 `대표 사진` 칸. 입력 칸과 같은 모양이고 누르면 보관함이 열린다. 고르면
-/// 오른쪽에 작은 미리보기가 보인다.
-class _CardPhotoTile extends StatelessWidget {
-  const _CardPhotoTile({
+/// `대표 게시물` 줄. 입력 칸과 같은 모양이고 누르면 대표 게시물 화면이 열린다. 오른쪽에 지금 고른 개수(`n / 4`)가 보인다.
+class _FeaturedPostsTile extends StatelessWidget {
+  const _FeaturedPostsTile({
     required this.tileKey,
-    required this.photo,
+    required this.count,
     required this.onTap,
   });
 
   final Key tileKey;
-  final Uint8List? photo;
+
+  /// 지금 대표 게시물 수. 아직 읽는 중이면 null.
+  final int? count;
   final VoidCallback onTap;
 
   @override
@@ -440,6 +436,7 @@ class _CardPhotoTile extends StatelessWidget {
     final valueStyle = CoraTextStyles.body.copyWith(
       height: CoraTextStyles.bodySmall.height,
     );
+    final n = count ?? 0;
     return Semantics(
       container: true,
       button: true,
@@ -461,37 +458,26 @@ class _CardPhotoTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '대표 사진 (선택)',
+                        FeaturedPostsText.tileLabel,
                         style: CoraTextStyles.label.copyWith(
                           color: c.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        photo == null ? '사진 고르기' : '사진 바꾸기',
+                        FeaturedPostsText.counter(n),
                         style: valueStyle.copyWith(
-                          color: photo == null ? c.textSecondary : c.text,
+                          color: n == 0 ? c.textSecondary : c.text,
                         ),
                       ),
                     ],
                   ),
                 ),
-                if (photo != null) ...[
-                  const SizedBox(width: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(CoraRadius.sm),
-                    child: SizedBox.square(
-                      dimension: 44,
-                      child: Image.memory(
-                        photo!,
-                        fit: BoxFit.cover,
-                        gaplessPlayback: true,
-                        errorBuilder: (context, error, stack) =>
-                            ColoredBox(color: c.avatarPlaceholder),
-                      ),
-                    ),
-                  ),
-                ],
+                const SizedBox(width: 8),
+                CustomPaint(
+                  size: const Size.square(18),
+                  painter: _ChevronRightPainter(c.textSecondary),
+                ),
               ],
             ),
           ),
@@ -711,6 +697,33 @@ class _CameraPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CameraPainter old) => old.color != color;
+}
+
+class _ChevronRightPainter extends CustomPainter {
+  const _ChevronRightPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final k = size.width / 24;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2 * k
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(
+      Path()
+        ..moveTo(9 * k, 6 * k)
+        ..lineTo(15 * k, 12 * k)
+        ..lineTo(9 * k, 18 * k),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ChevronRightPainter old) => old.color != color;
 }
 
 class _ChevronDownPainter extends CustomPainter {

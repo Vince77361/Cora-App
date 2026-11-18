@@ -29,8 +29,6 @@ class FakeCreatorProfileRepository implements CreatorProfileRepository {
   String? savedContentFocus;
   String? savedInstagramHandle;
   String? savedPhotoPath;
-  String? savedCardHeadline;
-  String? savedCardPhotoPath;
 
   @override
   Future<CreatorProfile?> fetchMine() async {
@@ -47,8 +45,6 @@ class FakeCreatorProfileRepository implements CreatorProfileRepository {
     String? contentFocus,
     String? instagramHandle,
     String? photoPath,
-    String? cardHeadline,
-    String? cardPhotoPath,
   }) async {
     saveCalls++;
     savedDisplayName = displayName;
@@ -57,8 +53,6 @@ class FakeCreatorProfileRepository implements CreatorProfileRepository {
     savedContentFocus = contentFocus;
     savedInstagramHandle = instagramHandle;
     savedPhotoPath = photoPath;
-    savedCardHeadline = cardHeadline;
-    savedCardPhotoPath = cardPhotoPath;
     final hold = holdSave;
     if (hold != null) await hold.future;
     if (failSave) throw const CreatorProfileFailure();
@@ -69,10 +63,6 @@ class FakeCreatorProfileRepository implements CreatorProfileRepository {
       contentFocus: contentFocus,
       instagramHandle: instagramHandle,
       photoUrl: photoPath == null ? null : 'https://photos.test/$photoPath',
-      cardHeadline: cardHeadline,
-      cardPhotoUrl: cardPhotoPath == null
-          ? null
-          : 'https://photos.test/$cardPhotoPath',
     );
     profile = saved;
     return saved;
