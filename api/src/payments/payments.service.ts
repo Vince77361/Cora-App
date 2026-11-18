@@ -204,7 +204,7 @@ export class PaymentsService {
     tx: Prisma.TransactionClient,
   ): Promise<void> {
     if (
-      await this.collaborations.hasOpenBrandPayment(collaborationId, now, tx)
+      await this.collaborations.hasOpenPayment(collaborationId, now, tx)
     ) {
       throw new AppError('CONFLICT', PAYMENT_IN_PROGRESS_MESSAGE, {
         reason: PAYMENT_IN_PROGRESS_REASON,

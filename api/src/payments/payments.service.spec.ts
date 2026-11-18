@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Collaboration, Payment } from '@prisma/client';
 import { FakeClock } from '../../test/support/fake-clock';
 import { FakeJobScheduler } from '../../test/support/fake-job-scheduler';
+import { BRAND_PAYMENT_LOCK_MINUTES } from '../collaborations/collaboration-stage';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
@@ -107,8 +108,8 @@ class FakeCollaborationsRepository extends CollaborationsRepository {
   constructor() {
     super(null as never, null as never);
   }
-  hasOpenBrandPayment(collaborationId: string, now: Date) {
-    const since = now.getTime() - 60 * MINUTE;
+  hasOpenPayment(collaborationId: string, now: Date) {
+    const since = now.getTime() - BRAND_PAYMENT_LOCK_MINUTES * MINUTE;
     return Promise.resolve(
       this.paymentRows().some(
         (p) =>

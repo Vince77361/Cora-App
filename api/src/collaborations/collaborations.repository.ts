@@ -207,11 +207,11 @@ export class CollaborationsRepository {
       SELECT id FROM collaborations WHERE id = ${id}::uuid FOR UPDATE`;
   }
 
-  // 브랜드의 결제가 진행 중인가: PENDING이고 요청한 지 BRAND_PAYMENT_LOCK_MINUTES 분이 안 됐다.
-  // 경계(now - 잠금 시간)를 여기서 한 번만 계산해, 조건 제안·이력·그만두기가 같은 기준을 쓴다.
+  // 결제가 진행 중인가(PAYING): PENDING이고 요청한 지 BRAND_PAYMENT_LOCK_MINUTES 분이 안 됐다. 브랜드 계약과 가게 결제 모두의 기준이다.
+  // 경계(now - 잠금 시간)를 여기서 한 번만 계산해, 조건 제안·이력·그만두기·새 결제·차단이 같은 기준을 쓴다(새로 만들지 않는다).
   // 결제를 만드는 쪽(7번 작업)이 이 표에 행을 넣는다. 다른 모듈의 표라 이 저장소가 직접 읽는다(R10). 읽기만 하고 잠그지 않는다:
   // 결제 승인은 결제 → 협업 순서로 잠그므로 여기서 결제 행을 잠그면 거꾸로 잡힌다.
-  async hasOpenBrandPayment(
+  async hasOpenPayment(
     collaborationId: string,
     now: Date,
     tx?: Prisma.TransactionClient,
@@ -230,8 +230,8 @@ export class CollaborationsRepository {
     return count > 0;
   }
 
-  // 결제창이 열려 있는 결제(hasOpenBrandPayment와 같은 기준) 가운데 가장 최근 것. 계약 화면이 "지금 결제 중"의 금액을 그 행에서 읽는다.
-  findOpenBrandPayment(
+  // 결제창이 열려 있는 결제(hasOpenPayment와 같은 기준) 가운데 가장 최근 것. 계약 화면이 "지금 결제 중"의 금액을 그 행에서 읽는다.
+  findOpenPayment(
     collaborationId: string,
     now: Date,
     tx?: Prisma.TransactionClient,

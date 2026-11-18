@@ -94,7 +94,7 @@ export class SafetyService {
       for (const c of collaborations) {
         if (
           c.kind === 'BRAND_CONTRACT' &&
-          (await this.collaborations.hasOpenBrandPayment(c.id, now, tx))
+          (await this.collaborations.hasOpenPayment(c.id, now, tx))
         ) {
           throw new AppError('CONFLICT', MONEY_HELD_MESSAGE);
         }

@@ -68,7 +68,7 @@ export class ContractsService {
     let openPayment: Payment | null = null;
     if (live?.status === 'CONCLUDED') status = 'CONCLUDED';
     else if (live) {
-      openPayment = await this.collaborations.findOpenBrandPayment(
+      openPayment = await this.collaborations.findOpenPayment(
         collaboration.id,
         this.clock.now(),
       );
@@ -311,7 +311,7 @@ export class ContractsService {
     const live = await this.contracts.findLive(collaboration.id);
     if (live?.status === 'AWAITING_BRAND') {
       // 결제 중이면 계약 화면(get)처럼 결제 행에 저장된 금액을 보여 준다: 그 뒤 수수료율 설정이 바뀌어도 결제창 금액과 같다.
-      const openPayment = await this.collaborations.findOpenBrandPayment(
+      const openPayment = await this.collaborations.findOpenPayment(
         collaboration.id,
         this.clock.now(),
       );

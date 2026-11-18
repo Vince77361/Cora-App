@@ -83,7 +83,7 @@ function build(
     {
       findById: () => Promise.resolve(collaboration({ stage: state.stage })),
       lock: () => Promise.resolve(),
-      findOpenBrandPayment: () => Promise.resolve(opts.openPayment ?? null),
+      findOpenPayment: () => Promise.resolve(opts.openPayment ?? null),
     } as never,
     {
       transaction: (run: (tx: object) => Promise<unknown>) => run({}),

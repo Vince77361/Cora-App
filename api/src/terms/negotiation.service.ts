@@ -119,7 +119,7 @@ export class NegotiationService {
     const rows = await this.terms.list(collaboration.id);
     const latest = rows[0];
     if (!latest) throw this.notFound();
-    const paymentOpen = await this.collaborations.hasOpenBrandPayment(
+    const paymentOpen = await this.collaborations.hasOpenPayment(
       collaboration.id,
       this.clock.now(),
     );
@@ -288,11 +288,7 @@ export class NegotiationService {
         }
         // 브랜드가 결제창을 연 사이에 조건이 바뀌면 결제 금액이 달라지므로 막는다(60분이 지나면 풀린다).
         if (
-          await this.collaborations.hasOpenBrandPayment(
-            collaboration.id,
-            now,
-            tx,
-          )
+          await this.collaborations.hasOpenPayment(collaboration.id, now, tx)
         ) {
           throw new AppError('CONFLICT', PAYMENT_IN_PROGRESS_MESSAGE);
         }

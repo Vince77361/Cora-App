@@ -149,11 +149,7 @@ export class CollaborationsService {
         const fresh = await this.collaborations.findById(collaboration.id, tx);
         if (!fresh || !preContractStages.includes(fresh.stage)) throw cannot;
         if (
-          await this.collaborations.hasOpenBrandPayment(
-            collaboration.id,
-            now,
-            tx,
-          )
+          await this.collaborations.hasOpenPayment(collaboration.id, now, tx)
         ) {
           throw new AppError(
             'CONFLICT',
