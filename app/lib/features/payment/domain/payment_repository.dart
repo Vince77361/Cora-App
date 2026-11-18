@@ -27,13 +27,17 @@ abstract class PaymentRepository {
 
 /// 서버에 닿지 못했거나 서버가 거절했다. 서버 응답의 문구는 담지 않는다.
 class PaymentFailure implements Exception {
-  const PaymentFailure({this.conflict = false});
+  const PaymentFailure({this.conflict = false, this.inProgress = false});
 
   /// 서버가 409로 답했다(결제할 수 있는 협업이 아니거나 기한이 지났다).
   final bool conflict;
 
+  /// 409 가운데, 이미 결제가 진행 중이라(결제창을 연 지 60분 안) 새 결제를 만들지 않았다.
+  final bool inProgress;
+
   @override
-  String toString() => 'PaymentFailure(conflict: $conflict)';
+  String toString() =>
+      'PaymentFailure(conflict: $conflict, inProgress: $inProgress)';
 }
 
 /// 기본값은 일부러 던진다. main.dart가 API 구현으로, 테스트가 가짜로 바꿔 끼운다.

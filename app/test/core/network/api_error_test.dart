@@ -58,6 +58,36 @@ void main() {
       );
     });
 
+    test('tells a payment in progress apart from other conflicts', () {
+      final paying = ApiError.from(
+        ApiException(
+          409,
+          _body(
+            'CONFLICT',
+            '결제를 진행하고 있어요.',
+            details: '{"reason":"PAYMENT_IN_PROGRESS"}',
+          ),
+        ),
+      );
+      expect(paying.isConflict, isTrue);
+      expect(paying.isPaymentInProgress, isTrue);
+
+      final other = ApiError.from(ApiException(409, _body('CONFLICT', 'x')));
+      expect(other.isPaymentInProgress, isFalse);
+      // 이유 표지는 409 CONFLICT에서만 뜻이 있다.
+      final stale = ApiError.from(
+        ApiException(
+          409,
+          _body(
+            'STALE_VERSION',
+            'x',
+            details: '{"latestVersion":2,"reason":"PAYMENT_IN_PROGRESS"}',
+          ),
+        ),
+      );
+      expect(stale.isPaymentInProgress, isFalse);
+    });
+
     test('reads requestId from the error envelope', () {
       final error = ApiError.from(
         ApiException(

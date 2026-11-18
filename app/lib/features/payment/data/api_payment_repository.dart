@@ -82,7 +82,11 @@ class ApiPaymentRepository implements PaymentRepository {
     } on PaymentFailure {
       rethrow;
     } catch (error) {
-      throw PaymentFailure(conflict: ApiError.from(error).isConflict);
+      final parsed = ApiError.from(error);
+      throw PaymentFailure(
+        conflict: parsed.isConflict,
+        inProgress: parsed.isPaymentInProgress,
+      );
     }
   }
 }

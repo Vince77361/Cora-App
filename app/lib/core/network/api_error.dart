@@ -36,6 +36,11 @@ abstract final class ApiErrorCode {
   };
 }
 
+/// 서버가 `details.reason`에 담는 이유 표지(`api/src/payments/payments.service.ts`의 `PAYMENT_IN_PROGRESS_REASON`).
+abstract final class ApiErrorReason {
+  static const paymentInProgress = 'PAYMENT_IN_PROGRESS';
+}
+
 /// 서버 오류 응답(또는 연결 실패)을 화면이 분기하기 쉬운 값으로 푼 것.
 ///
 /// 서버는 모든 오류를 `{"error": {"code", "message", "details", "requestId"}}`로 보낸다. 생성된 클라이언트는
@@ -46,6 +51,7 @@ class ApiError {
     required this.code,
     this.message,
     this.latestVersion,
+    this.reason,
     this.requestId,
   });
 
@@ -71,11 +77,18 @@ class ApiError {
   /// 판본 번호. 그 밖의 오류에는 null이다.
   final int? latestVersion;
 
+  /// 같은 코드(409 `CONFLICT`)의 오류를 화면이 가를 수 있게 서버가 `details.reason`에 담아 보낸 이유 표지. 없으면 null.
+  final String? reason;
+
   /// 서버가 오류 본문에 담아 보낸 요청 ID(응답 헤더 `X-Request-Id`와 같은 값). 서버 로그와 이어 볼 때만 쓰므로
   /// 화면에는 보이지 않고 디버그 로그에만 남는다. 본문에 없거나 모양이 다르면 null.
   final String? requestId;
 
   bool get isConflict => code == ApiErrorCode.conflict;
+
+  /// 결제가 이미 진행 중이라 새 결제를 만들 수 없다(409). 결제창을 연 지 60분 안이다.
+  bool get isPaymentInProgress =>
+      isConflict && reason == ApiErrorReason.paymentInProgress;
 
   /// 수락하려는 판본이 최신이 아니다(409). 최신 번호는 [latestVersion]에 있다.
   bool get isStaleVersion => code == ApiErrorCode.staleVersion;
@@ -110,6 +123,7 @@ ApiError _fromApiException(ApiException exception) {
     code: body?.code ?? _codeForStatus(status),
     message: body?.message,
     latestVersion: body?.latestVersion,
+    reason: body?.reason,
     requestId: body?.requestId,
   );
   // 사용자에게는 보이지 않는다. 개발 중 서버 로그와 이어 보려고 디버그 빌드에서만 남긴다.
@@ -130,7 +144,13 @@ bool _isNetworkFailure(Object error) =>
     // TlsException 등 입출력 계열 실패.
     error is IOException;
 
-({String code, String? message, int? latestVersion, String? requestId})?
+({
+  String code,
+  String? message,
+  int? latestVersion,
+  String? reason,
+  String? requestId,
+})?
 _serverBody(String? raw) {
   if (raw == null || raw.isEmpty) return null;
   try {
@@ -144,6 +164,7 @@ _serverBody(String? raw) {
     final message = error['message'];
     final details = error['details'];
     final latest = details is Map ? details['latestVersion'] : null;
+    final reason = details is Map ? details['reason'] : null;
     final requestId = error['requestId'];
     return (
       code: code,
@@ -151,6 +172,7 @@ _serverBody(String? raw) {
       latestVersion: code == ApiErrorCode.staleVersion && latest is int
           ? latest
           : null,
+      reason: reason is String ? reason : null,
       // 서버가 정한 모양(영문·숫자·-, 8~64자)만 믿는다. 로그에 이상한 값이 들어가지 않게.
       requestId: requestId is String && _requestIdPattern.hasMatch(requestId)
           ? requestId

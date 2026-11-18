@@ -101,6 +101,33 @@ void main() {
     );
   });
 
+  test('marks a 409 for a payment already in progress apart from other '
+      'conflicts', () async {
+    final fake = FakeHttpClient()
+      ..statusCode = 409
+      ..body =
+          '{"error":{"code":"CONFLICT","message":"결제를 진행하고 있어요. 잠시 뒤 다시 시도해 주세요.",'
+          '"details":{"reason":"PAYMENT_IN_PROGRESS"}}}';
+
+    await expectLater(
+      _repo(fake).create('col-1', PaymentMethod.card),
+      throwsA(
+        isA<PaymentFailure>()
+            .having((f) => f.conflict, 'conflict', true)
+            .having((f) => f.inProgress, 'inProgress', true),
+      ),
+    );
+    // 다른 409는 진행 중이 아니다.
+    fake.body =
+        '{"error":{"code":"CONFLICT","message":"결제할 수 있는 협업이 아니에요.","details":null}}';
+    await expectLater(
+      _repo(fake).create('col-1', PaymentMethod.card),
+      throwsA(
+        isA<PaymentFailure>().having((f) => f.inProgress, 'inProgress', false),
+      ),
+    );
+  });
+
   test('turns any other failure into a plain failure', () async {
     final fake = FakeHttpClient()
       ..statusCode = 500

@@ -356,6 +356,31 @@ void main() {
     expect(find.text(StorePaymentPage.unavailable), findsNothing);
   });
 
+  testWidgets(
+    'says a payment is in progress, not that the offer is paid or expired',
+    (tester) async {
+      final payments = FakePaymentRepository()..inProgressOnCreate = true;
+      final launcher = FakeCheckoutLauncher();
+      await pumpPayment(tester, payments: payments, launcher: launcher);
+
+      await tester.tap(find.text(_submit));
+      await tester.pumpAndSettle();
+
+      expect(find.text(StorePaymentPage.inProgress), findsOneWidget);
+      expect(find.text(StorePaymentPage.unavailable), findsNothing);
+      expect(find.textContaining('다시 결제'), findsNothing);
+      expect(launcher.opened, isEmpty);
+      expect(payments.created, isEmpty);
+      // 화면은 그대로 살아 있고, 진행 중이 끝나면 같은 버튼으로 다시 시작할 수 있다.
+      expect(find.text(_submit), findsOneWidget);
+      payments.inProgressOnCreate = false;
+      await tester.tap(find.text(_submit));
+      await tester.pumpAndSettle();
+      expect(find.text(StorePaymentPage.inProgress), findsNothing);
+      expect(launcher.opened, hasLength(1));
+    },
+  );
+
   testWidgets('shows an error with retry when the quote cannot be loaded', (
     tester,
   ) async {

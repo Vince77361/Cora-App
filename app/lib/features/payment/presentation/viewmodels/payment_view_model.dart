@@ -41,6 +41,9 @@ enum PaymentProblem {
   /// 결제할 수 있는 오퍼가 아니다(409: 기한이 지났거나 이미 결제했다).
   unavailable,
 
+  /// 이미 결제가 진행 중이라 새 결제를 만들지 않았다(409).
+  inProgress,
+
   /// 결제를 시작하지 못했다(연결 문제 등).
   startFailed,
 }
@@ -131,7 +134,9 @@ class PaymentViewModel extends AsyncNotifier<PaymentState> {
           .open(created.checkoutUrl, amount: start.quote.total);
     } on PaymentFailure catch (failure) {
       return _stop(
-        failure.conflict
+        failure.inProgress
+            ? PaymentProblem.inProgress
+            : failure.conflict
             ? PaymentProblem.unavailable
             : PaymentProblem.startFailed,
       );

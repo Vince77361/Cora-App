@@ -783,6 +783,36 @@ void main() {
       expect(_consentOn(tester), isTrue);
     });
 
+    testWidgets('a consent refused because a payment is already in progress '
+        'shows the server wording and opens no second checkout', (
+      tester,
+    ) async {
+      // 화면을 나갔다 다시 들어오면 서버는 `PAYING`을 주고 앱은 동의할 수 있는 모양으로 돌아온다.
+      // 그때 누르면 서버가 409로 막는다: 문구만 보이고 새 결제창도 새 결제도 없다.
+      final repo = FakeNegotiationRepository()
+        ..contract = sampleContract(
+          status: ContractStatus.paying,
+          brand: true,
+          quote: contractQuote(fee: 12345),
+        )
+        ..brandConsentFailure = const NegotiationRejected(
+          '결제를 진행하고 있어요. 잠시 뒤 다시 시도해 주세요.',
+        );
+      final h = await _pump(tester, repo, role: CollaborationRole.commissioner);
+      await _checkAll(tester, _brandTexts);
+
+      await tester.tap(find.text('동의하고 계약하기'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('결제를 진행하고 있어요. 잠시 뒤 다시 시도해 주세요.'), findsOneWidget);
+      expect(find.textContaining('다시 결제'), findsNothing);
+      expect(h.launcher.opened, isEmpty);
+      expect(find.text('결제를 확인하고 있어요'), findsNothing);
+      // 결제 행의 금액과 확인란은 그대로다.
+      expect(find.text('12,345원'), findsOneWidget);
+      expect(_consentOn(tester), isTrue);
+    });
+
     testWidgets('shows the stale version state when the brand consents to an '
         'older version', (tester) async {
       final repo = FakeNegotiationRepository()

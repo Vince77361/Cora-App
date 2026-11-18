@@ -49,6 +49,9 @@ class StorePaymentPage extends ConsumerStatefulWidget {
   static const unavailable = '이미 결제했거나 결제 기한이 지난 오퍼예요.';
   static const createFailed = '결제를 시작하지 못했어요. 다시 시도해 주세요.';
 
+  /// 서버의 409 문구(`PAYMENT_IN_PROGRESS_MESSAGE`)와 같다.
+  static const inProgress = '결제를 진행하고 있어요. 잠시 뒤 다시 시도해 주세요.';
+
   /// 조회수 수당이 있을 때 내역 아래 안내. 고정 현금도 있으면 최대 현금 부담 전체를 말한다.
   static String refundNote(PaymentQuote quote) => quote.fixedCash > 0
       ? '최대 ${wonExact(quote.escrow)}, 조회수 수당은 조회수만큼, 남으면 7일 집계 후 환불해요.'
@@ -156,6 +159,7 @@ class _StorePaymentPageState extends ConsumerState<StorePaymentPage> {
   static String _problemText(PaymentProblem problem) => switch (problem) {
     PaymentProblem.incomplete => StorePaymentPage.incomplete,
     PaymentProblem.unavailable => StorePaymentPage.unavailable,
+    PaymentProblem.inProgress => StorePaymentPage.inProgress,
     PaymentProblem.startFailed => StorePaymentPage.createFailed,
   };
 }

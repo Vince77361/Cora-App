@@ -43,6 +43,7 @@ class FakePaymentRepository implements PaymentRepository {
   bool conflictOnQuote = false;
   bool failCreate = false;
   bool conflictOnCreate = false;
+  bool inProgressOnCreate = false;
 
   /// 설정하면 [fetchStatus]가 이 Completer가 끝날 때까지 기다린다(확인 중 화면을 보려고).
   Completer<void>? holdStatus;
@@ -64,6 +65,9 @@ class FakePaymentRepository implements PaymentRepository {
     String collaborationId,
     PaymentMethod method,
   ) async {
+    if (inProgressOnCreate) {
+      throw const PaymentFailure(conflict: true, inProgress: true);
+    }
     if (conflictOnCreate) throw const PaymentFailure(conflict: true);
     if (failCreate) throw const PaymentFailure();
     created.add((collaborationId: collaborationId, method: method));
