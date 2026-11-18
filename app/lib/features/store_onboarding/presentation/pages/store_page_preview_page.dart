@@ -463,7 +463,8 @@ class _Cover extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            StoreIcon(StoreIconPainter.sparkle(c.text)),
+                            // 알약 바탕이 두 모드 모두 밝은 흰색이라 별도 글자색(#17181C)을 쓴다(DarkM19G5).
+                            StoreIcon(StoreIconPainter.sparkle(c.onPhotoChip)),
                             const SizedBox(width: 6),
                             Text(
                               StorePagePreviewPage.autoFilledChip,
