@@ -136,8 +136,26 @@ void main() {
         locationFor('COLLABORATION', 'c-1', UserRole.creator),
         '/creator/collaborations/c-1',
       );
-      expect(locationFor('COLLABORATION', 'c-1', UserRole.brand), isNull);
+      expect(
+        locationFor('COLLABORATION', 'c-1', UserRole.brand),
+        AppRoutes.collaborationProgress('c-1'),
+      );
       expect(locationFor('COLLABORATION', null, UserRole.store), isNull);
+      expect(locationFor('COLLABORATION', null, UserRole.brand), isNull);
+    });
+
+    test('opens the contract screen for a brand or a creator only', () {
+      expect(
+        locationFor('CONTRACT', 'c-1', UserRole.brand),
+        AppRoutes.collaborationContract('c-1'),
+      );
+      expect(
+        locationFor('CONTRACT', 'c-1', UserRole.creator),
+        AppRoutes.collaborationContract('c-1'),
+      );
+      expect(locationFor('CONTRACT', 'c-1', UserRole.store), isNull);
+      expect(locationFor('CONTRACT', null, UserRole.brand), isNull);
+      expect(locationFor('CONTRACT', '', UserRole.creator), isNull);
     });
 
     test('opens the conversation for every role', () {

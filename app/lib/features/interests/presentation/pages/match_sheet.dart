@@ -36,6 +36,8 @@ Future<MatchSheetResult> showMatchSheet(
   final result = await showModalBottomSheet<MatchSheetResult>(
     context: context,
     isScrollControlled: true,
+    // 키보드가 올라와 시트가 화면 높이까지 커져도 닫기 X가 상태 표시줄 줄로 올라가지 않게 한다.
+    useSafeArea: true,
     // 바탕은 시트 안에서 칠한다. 시트가 열린 채 밝기가 바뀌어도 따라가게 한다.
     backgroundColor: Colors.transparent,
     // 캔버스 Pass의 뒤 덮개 rgba(15,16,18,0.45). 두 모드가 같다.

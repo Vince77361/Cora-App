@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/core/theme/cora_theme.dart';
@@ -13,6 +15,9 @@ import 'package:cora/features/interests/presentation/pages/interests_page.dart';
 import 'package:cora/features/interests/presentation/viewmodels/interests_view_model.dart'
     show InterestTab;
 import 'package:cora/features/principles/domain/principles.dart' show FeeBand;
+import 'package:cora/features/received_proposals/domain/received_proposals_repository.dart';
+import 'package:cora/features/received_proposals/presentation/pages/received_proposal_page.dart'
+    show ReceivedProposalResult;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,6 +26,7 @@ import 'package:go_router/go_router.dart';
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
 import '../discovery/fake_discovery_repository.dart';
+import '../received_proposals/fake_received_proposals_repository.dart';
 import 'fake_interests_repository.dart';
 
 /// 03을 `/brand/interests`(또는 크리에이터의 `/creator/interests`)에 올린다. 03이 여는 경로는 위치 글자만
@@ -29,6 +35,7 @@ Future<({List<String> opened, FakeInterestsRepository repo})> _pump(
   WidgetTester tester,
   FakeInterestsRepository repo, {
   FakeDiscoveryRepository? discovery,
+  FakeReceivedProposalsRepository? received,
   bool isBrand = true,
   String? query,
   ThemeData? theme,
@@ -68,6 +75,18 @@ Future<({List<String> opened, FakeInterestsRepository repo})> _pump(
           isBrand: isBrand,
           initialTab: InterestTab.fromQuery(state.uri.queryParameters['tab']),
           matchId: state.uri.queryParameters['match'],
+        ),
+      ),
+      // 10: 서로 관심이 닿았다고 03에 돌려주고 닫는다.
+      GoRoute(
+        path: AppRoutes.creatorReceivedProposalPattern,
+        builder: (context, state) => Scaffold(
+          body: TextButton(
+            onPressed: () => context.pop(
+              const ReceivedProposalResult(matchCollaborationId: 'collab-k1'),
+            ),
+            child: const Text('finish match'),
+          ),
         ),
       ),
       GoRoute(
@@ -113,6 +132,8 @@ Future<({List<String> opened, FakeInterestsRepository repo})> _pump(
     ProviderScope(
       overrides: [
         interestsRepositoryProvider.overrideWithValue(repo),
+        if (received != null)
+          receivedProposalsRepositoryProvider.overrideWithValue(received),
         discoveryRepositoryProvider.overrideWithValue(
           discovery ?? FakeDiscoveryRepository(),
         ),
@@ -618,6 +639,105 @@ void main() {
       expect(find.text('잠시 뒤 다시 시도해 주세요.'), findsOneWidget);
       // 03은 그대로 남아 있다.
       expect(find.text('저장 3'), findsOneWidget);
+    });
+  });
+
+  group('opening 05 from a received proposal', () {
+    Future<({List<String> opened, FakeInterestsRepository repo})> pumpTen(
+      WidgetTester tester,
+      FakeInterestsRepository repo,
+    ) async {
+      final env = await _pump(
+        tester,
+        repo,
+        isBrand: false,
+        received: FakeReceivedProposalsRepository(
+          proposals: [receivedProposal(brandName: '봄날 베이커리')],
+        ),
+      );
+      await tester.tap(find.text('봄날 베이커리'));
+      await tester.pumpAndSettle();
+      return env;
+    }
+
+    FakeInterestsRepository creatorRepo() => FakeInterestsRepository(
+      cards: [campaignCard('k1', name: '모아 스튜디오')],
+      match: matchInfo(isBrand: false),
+    );
+
+    testWidgets('does not wait for the list refresh before the sheet opens', (
+      tester,
+    ) async {
+      final repo = creatorRepo();
+      await pumpTen(tester, repo);
+      // 목록을 다시 읽는 일이 끝나지 않아도 05의 내용은 바로 읽어 시트가 뜬다.
+      repo.holdSaved = Completer<void>();
+
+      await tester.tap(find.text('finish match'));
+      await tester.pumpAndSettle();
+
+      expect(repo.matchesFetched, ['collab-k1']);
+      expect(find.text('서로를 골랐어요.'), findsOneWidget);
+      repo.holdSaved!.complete();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('blocks the screen with the shared loading state while 05 '
+        'loads', (tester) async {
+      final repo = creatorRepo();
+      final env = await pumpTen(tester, repo);
+      repo.holdMatch = Completer<void>();
+
+      await tester.tap(find.text('finish match'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(CoraStateView), findsOneWidget);
+      expect(find.text('불러오는 중'), findsOneWidget);
+      // 막힌 동안 아래 카드를 눌러도 다른 화면으로 가지 않는다.
+      await tester.tap(find.text('모아 스튜디오'), warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(env.opened, isEmpty);
+
+      repo.holdMatch!.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text('서로를 골랐어요.'), findsOneWidget);
+      expect(find.byType(CoraStateView), findsNothing);
+    });
+
+    testWidgets('does not open the sheet over another screen reached while '
+        'it loaded', (tester) async {
+      final repo = creatorRepo();
+      final env = await pumpTen(tester, repo);
+      repo.holdMatch = Completer<void>();
+
+      await tester.tap(find.text('finish match'));
+      await tester.pump(const Duration(milliseconds: 300));
+      // 읽는 사이 다른 화면이 03 위로 올라왔다.
+      GoRouter.of(
+        tester.element(find.byType(InterestsPage)),
+      ).push('/collaborations/x/terms');
+      await tester.pumpAndSettle();
+      expect(env.opened, ['/collaborations/x/terms']);
+
+      repo.holdMatch!.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text('서로를 골랐어요.'), findsNothing);
+      expect(find.text('opened /collaborations/x/terms'), findsOneWidget);
+    });
+
+    testWidgets('lifts the blocking state and says so when 05 cannot be read', (
+      tester,
+    ) async {
+      final repo = creatorRepo()..failMatch = true;
+      await pumpTen(tester, repo);
+
+      await tester.tap(find.text('finish match'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CoraStateView), findsNothing);
+      expect(find.text('잠시 뒤 다시 시도해 주세요.'), findsOneWidget);
     });
   });
 

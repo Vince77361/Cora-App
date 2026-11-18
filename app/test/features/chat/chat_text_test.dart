@@ -109,6 +109,10 @@ void main() {
         statusLine(roomDetail(stage: ConversationStage.contracted)),
         '계약 체결 · 제작 중',
       );
+      expect(
+        statusLine(roomDetail(stage: ConversationStage.published)),
+        '게시 확인 중',
+      );
       expect(statusLine(roomDetail(stage: ConversationStage.settled)), '협업 완료');
     });
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cora/features/discovery/domain/discovery_target.dart';
 import 'package:cora/features/discovery/domain/reward_proposal.dart';
 import 'package:cora/features/interests/domain/compare_result.dart';
@@ -38,6 +40,10 @@ class FakeInterestsRepository implements InterestsRepository {
   bool failCompare = false;
   bool failMatch = false;
 
+  /// 설정하면 [fetchSaved]·[fetchMatch]가 이 Completer가 끝날 때까지 기다린다(느린 원격을 흉내 낸다).
+  Completer<void>? holdSaved;
+  Completer<void>? holdMatch;
+
   int fetchCalls = 0;
   final compared = <({String a, String b})>[];
   final matchesFetched = <String>[];
@@ -45,6 +51,7 @@ class FakeInterestsRepository implements InterestsRepository {
   @override
   Future<List<InterestCard>> fetchSaved() async {
     fetchCalls++;
+    await holdSaved?.future;
     if (failFetch) throw const InterestsFailure();
     return List.of(cards);
   }
@@ -59,6 +66,7 @@ class FakeInterestsRepository implements InterestsRepository {
   @override
   Future<MatchInfo> fetchMatch(String collaborationId) async {
     matchesFetched.add(collaborationId);
+    await holdMatch?.future;
     if (failMatch) throw const InterestsFailure();
     return match ?? (throw const InterestsFailure());
   }

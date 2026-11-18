@@ -42,8 +42,15 @@ String? locationFor(String targetKind, String? targetId, UserRole role) {
       return switch (role) {
         UserRole.store => AppRoutes.storeCollaboration(id),
         UserRole.creator => AppRoutes.creatorCollaboration(id),
-        UserRole.brand => null,
+        // 브랜드의 협업은 진행 화면(07)이 연다. 협업 화면이 브랜드를 07로 넘기는 것과 같은 곳이다.
+        UserRole.brand => AppRoutes.collaborationProgress(id),
       };
+    case 'CONTRACT':
+      // 크리에이터가 동의했다, 계약이 체결됐다. 서버는 협업 id를 주고, 브랜드와 크리에이터가 계약 화면(D4)을 연다.
+      if (id == null) return null;
+      return role == UserRole.store
+          ? null
+          : AppRoutes.collaborationContract(id);
     case 'STORE_RESULT':
       // 정산이 끝난 협업의 7일 결과(G1). 서버는 협업 id를 준다.
       return id == null || role != UserRole.store

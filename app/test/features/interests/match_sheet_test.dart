@@ -379,6 +379,22 @@ void main() {
     expect(field.top, greaterThan(0));
   });
 
+  testWidgets('the close button stays below the status bar while the keyboard '
+      'is up', (tester) async {
+    await _pump(tester, matchInfo());
+    tester.view.physicalSize = const Size(1179, 2556);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.resetViewInsets);
+    addTearDown(tester.view.resetPadding);
+    // 상태 표시줄(위 59)과 키보드(아래 336)가 함께 있는 393 x 852 폰.
+    tester.view.padding = const FakeViewPadding(top: 59 * 3);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 336 * 3);
+    await tester.pumpAndSettle();
+
+    final close = tester.getRect(find.bySemanticsLabel('닫기'));
+    expect(close.top, greaterThanOrEqualTo(59));
+  });
+
   testWidgets('a small phone scrolls the focused input above the keyboard', (
     tester,
   ) async {

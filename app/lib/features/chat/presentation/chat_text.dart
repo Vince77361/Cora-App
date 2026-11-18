@@ -182,7 +182,9 @@ String? statusLine(ConversationDetail detail) {
     ConversationStage.guided ||
     ConversationStage.reviewing ||
     ConversationStage.approved => '계약 체결 · 제작 중',
-    ConversationStage.published || ConversationStage.settled => '협업 완료',
+    // 게시 뒤 N일 동안은 돈이 아직 보관 중이라 끝난 것처럼 읽히지 않게 지갑과 같은 말을 쓴다(판단 C14).
+    ConversationStage.published => '게시 확인 중',
+    ConversationStage.settled => '협업 완료',
     ConversationStage.agreed =>
       detail.contractStatus == ContractProgress.awaitingBrand
           ? '크리에이터 동의함 · 브랜드 결제 대기'

@@ -55,6 +55,10 @@ class InterestsPage extends ConsumerStatefulWidget {
 class _InterestsPageState extends ConsumerState<InterestsPage> {
   bool _deciding = false;
 
+  /// 05의 내용을 읽는 동안 화면을 막는 표시. 읽는 데 몇 초 걸려도 아무 일도 없는 것처럼 보이지 않게 하고,
+  /// 그사이 다른 카드를 눌러 화면을 밀지 못하게 한다.
+  bool _openingMatch = false;
+
   InterestsScope get _scope =>
       (isBrand: widget.isBrand, tab: widget.initialTab);
 
@@ -79,9 +83,13 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
   /// 05를 시트로 연다. 링크로 열린 화면([closeOnDismiss])에서 시트를 그냥 닫으면(버튼으로 이동한 것이 아니면)
   /// 발견으로 돌아간다.
   Future<void> _openMatch(String id, {bool closeOnDismiss = false}) async {
+    setState(() => _openingMatch = true);
     try {
       final info = await _vm.loadMatch(id);
       if (!mounted) return;
+      // 읽는 사이 이 화면이 맨 위가 아니게 됐으면(다른 화면으로 갔으면) 그 위에 시트를 올리지 않는다.
+      if (ModalRoute.of(context)?.isCurrent == false) return;
+      setState(() => _openingMatch = false);
       final result = await showMatchSheet(context, info);
       if (!mounted) return;
       if (closeOnDismiss && result != MatchSheetResult.moved) {
@@ -93,6 +101,8 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
       }
     } catch (_) {
       if (mounted) _vm.showNotice(DiscoveryTexts.retryLater);
+    } finally {
+      if (mounted && _openingMatch) setState(() => _openingMatch = false);
     }
   }
 
@@ -143,10 +153,11 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
     if (!mounted) return;
     final notice = result?.notice;
     if (notice != null) _vm.showNotice(notice);
-    // 관심을 보낸 캠페인은 받은 제안에서 빠졌다. 05 뒤의 목록이 옛 묶음을 쥐지 않게 먼저 새로 읽는다.
-    await _refreshAfterReturn();
+    // 관심을 보낸 캠페인은 받은 제안에서 빠졌다. 05 뒤의 목록이 옛 묶음을 쥐지 않게 새로 읽되, 05 내용을
+    // 읽는 일을 그 뒤로 미루지 않고 나란히 시작한다(원격 왕복이 줄지어 서면 시트가 몇 초 늦게 뜬다).
+    unawaited(_refreshAfterReturn());
     final matchId = result?.matchCollaborationId;
-    if (matchId != null && mounted) await _openMatch(matchId);
+    if (matchId != null) await _openMatch(matchId);
   }
 
   Future<void> _decideHeld(InterestCard card, SwipeOutcome outcome) async {
@@ -327,6 +338,21 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
                     currentIndex: CoraCreatorNavItems.likes,
                   ),
           ),
+          // 05 내용을 읽는 동안: 아래 화면을 막고 공용 불러오는 중 카드를 가운데에 둔다.
+          if (_openingMatch)
+            const Positioned.fill(
+              child: Stack(
+                children: [
+                  ModalBarrier(dismissible: false, color: Colors.transparent),
+                  Center(
+                    child: SizedBox(
+                      height: 120,
+                      child: CoraStateView.loading(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
