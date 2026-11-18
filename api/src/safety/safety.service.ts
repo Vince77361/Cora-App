@@ -69,7 +69,7 @@ export class SafetyService {
     private readonly clock: Clock,
   ) {}
 
-  // 상대를 차단한다. 두 사람 사이의 협업 가운데 돈이 보관 중인 것이 하나라도 있으면 409다.
+  // 상대를 차단한다. 두 사람 사이의 협업 가운데 돈이 보관 중인 것이나 브랜드 결제가 진행 중인 것이 하나라도 있으면 409다.
   // 통과하면 한 트랜잭션에서: 차단 행, 열린 오퍼와 결제 전 가게 협업 취소, 계약 전 브랜드 협업 종료(살아 있는 계약은 무효),
   // 두 사람 사이의 모든 방 닫기. 안내 줄도 알림도 남기지 않는다: 상대는 닫힌 방(`대화가 종료됐어요.`)만 본다.
   // 잠금 순서는 정산 → 오퍼 → 협업이다(lockAndListBetween). 결제·장부 행은 건드리지 않는다.
@@ -88,6 +88,16 @@ export class SafetyService {
       );
       if (collaborations.some((c) => isMoneyHeld(c.kind, c.stage))) {
         throw new AppError('CONFLICT', MONEY_HELD_MESSAGE);
+      }
+      // 브랜드가 결제를 진행 중(60분 안의 대기 결제)이면 돈이 곧 들어올 수 있어 돈이 보관 중일 때와 같이 막는다.
+      // 막지 않으면 협업을 끝낸 뒤 승인이 와서 전액 환급하게 되고, 그 사이 결제창은 열려 있다. 60분이 지나면 풀린다.
+      for (const c of collaborations) {
+        if (
+          c.kind === 'BRAND_CONTRACT' &&
+          (await this.collaborations.hasOpenBrandPayment(c.id, now, tx))
+        ) {
+          throw new AppError('CONFLICT', MONEY_HELD_MESSAGE);
+        }
       }
       await this.repository.saveBlock(userId, counterpartId, now, tx);
       // 열린 오퍼와 결제 전 가게 협업.

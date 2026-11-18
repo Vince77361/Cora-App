@@ -47,6 +47,7 @@ const PRINCIPLES = {
 const PERFORMANCE = { ratePer1000: 2000, cap: 60000 };
 const NOON = new Date('2026-11-11T03:00:00.000Z');
 const MINUTE = 60_000;
+const PAYING_MESSAGE = '결제를 진행하고 있어요. 잠시 뒤 다시 시도해 주세요.';
 const DAY = 24 * 60 * MINUTE;
 
 interface ContractBody {
@@ -744,22 +745,30 @@ describe('brand contract consent and payment', () => {
       ).toEqual({ latestVersion: 2 });
     });
 
-    it('replaces the pending payment when the brand pays again and holds terms changes for 60 minutes', async () => {
+    it('refuses a second brand consent while paying and holds terms changes for 60 minutes', async () => {
       const id = await agreed();
       await creatorConsented(id);
       const first = await brandPaying(id);
       clock.advance(5 * MINUTE);
-      const second = await brandPaying(id, 'EASY_PAY');
-      const rows = await prisma.payment.findMany({
-        orderBy: { requestedAt: 'asc' },
-      });
+      const second = await brandConsent(id, {
+        termsVersion: 1,
+        accepted: await textsOf(authBrand, id),
+        method: 'EASY_PAY',
+      }).expect(409);
+      expect(codeOf(second)).toBe('CONFLICT');
+      expect(messageOf(second)).toBe(PAYING_MESSAGE);
+      expect(
+        (second.body as { error: { details: unknown } }).error.details,
+      ).toEqual({ reason: 'PAYMENT_IN_PROGRESS' });
+      // 새 결제도 없고 취소된 것도 없다. 계약은 첫 결제 그대로다.
+      const rows = await prisma.payment.findMany();
       expect(rows.map((p) => [p.id, p.status])).toEqual([
-        [first.paymentId, 'CANCELLED'],
-        [second.paymentId, 'PENDING'],
+        [first.paymentId, 'PENDING'],
       ]);
       expect((await prisma.contract.findFirstOrThrow({})).paymentId).toBe(
-        second.paymentId,
+        first.paymentId,
       );
+      expect((await contractOf(authBrand, id)).status).toBe('PAYING');
 
       // 결제창이 열린 동안에는 조건 수정 제안과 그만두기가 막힌다.
       await propose(authCreator, id, {
@@ -781,6 +790,88 @@ describe('brand contract consent and payment', () => {
         productProvided: true,
         performance: null,
       }).expect(201);
+    });
+
+    it('lets the brand pay again once the 60 minute lock has passed and cancels only the expired payment', async () => {
+      const id = await agreed();
+      await creatorConsented(id);
+      const first = await brandPaying(id);
+      // 경계: 요청한 지 정확히 60분이면 풀린다(잠금은 60분 "안"이다).
+      clock.advance(59 * MINUTE);
+      await brandConsent(id, {
+        termsVersion: 1,
+        accepted: await textsOf(authBrand, id),
+        method: 'CARD',
+      }).expect(409);
+      clock.advance(MINUTE);
+      const second = await brandPaying(id, 'EASY_PAY');
+      const rows = await prisma.payment.findMany({
+        orderBy: { requestedAt: 'asc' },
+      });
+      expect(rows.map((p) => [p.id, p.status])).toEqual([
+        [first.paymentId, 'CANCELLED'],
+        [second.paymentId, 'PENDING'],
+      ]);
+      expect((await prisma.contract.findFirstOrThrow({})).paymentId).toBe(
+        second.paymentId,
+      );
+    });
+
+    it('does not count a failed payment as paying', async () => {
+      const id = await agreed();
+      await creatorConsented(id);
+      const first = await brandPaying(id);
+      await request(server)
+        .post(`/dev/fake-payments/${first.paymentId}/fail`)
+        .set(authBrand)
+        .send()
+        .expect(200);
+      expect((await contractOf(authBrand, id)).status).toBe('AWAITING_BRAND');
+      const second = await brandPaying(id);
+      expect(
+        (
+          await prisma.payment.findMany({ orderBy: { requestedAt: 'asc' } })
+        ).map((p) => [p.id, p.status]),
+      ).toEqual([
+        [first.paymentId, 'FAILED'],
+        [second.paymentId, 'PENDING'],
+      ]);
+    });
+
+    it('does not count a cancelled payment as paying', async () => {
+      const id = await agreed();
+      await creatorConsented(id);
+      const first = await brandPaying(id);
+      await prisma.payment.update({
+        where: { id: first.paymentId },
+        data: { status: 'CANCELLED' },
+      });
+      expect((await contractOf(authBrand, id)).status).toBe('AWAITING_BRAND');
+      const second = await brandPaying(id);
+      expect(second.paymentId).not.toBe(first.paymentId);
+      expect(await prisma.payment.count({ where: { status: 'PENDING' } })).toBe(
+        1,
+      );
+    });
+
+    it('answers 409 to three consents at the same time and leaves one pending payment', async () => {
+      const id = await agreed();
+      await creatorConsented(id);
+      const texts = await textsOf(authBrand, id);
+      const results = await Promise.all(
+        [0, 1, 2].map(() =>
+          brandConsent(id, {
+            termsVersion: 1,
+            accepted: texts,
+            method: 'CARD',
+          }),
+        ),
+      );
+      expect(results.map((r) => r.status).sort()).toEqual([201, 409, 409]);
+      expect(await prisma.payment.count()).toBe(1);
+      expect(await prisma.payment.count({ where: { status: 'PENDING' } })).toBe(
+        1,
+      );
     });
   });
 
@@ -1028,8 +1119,16 @@ describe('brand contract consent and payment', () => {
       const id = await agreed();
       await creatorConsented(id);
       const first = await brandPaying(id);
-      clock.advance(MINUTE);
+      // 결제창을 연 채 60분이 지나 잠금이 풀린 뒤 다시 결제했다(첫 결제는 만료돼 취소로 바뀐다).
+      clock.advance(61 * MINUTE);
       const second = await brandPaying(id);
+      expect(
+        (
+          await prisma.payment.findUniqueOrThrow({
+            where: { id: first.paymentId },
+          })
+        ).status,
+      ).toBe('CANCELLED');
       // 첫 결제창이 열려 있다가 승인됐다: 같은 계약의 결제라 체결한다.
       await approve(first.paymentId).expect(200);
       expect((await collaborationOf(id)).stage).toBe('CONTRACTED');
@@ -1119,6 +1218,48 @@ describe('brand contract consent and payment', () => {
       expect(await ledgerOf(id)).toHaveLength(4);
     });
 
+    it('still refunds in full when the late approval is for a payment that was cancelled after the contract was voided', async () => {
+      const { id, paymentId } = await voidedByNewTerms();
+      await prisma.payment.update({
+        where: { id: paymentId },
+        data: { status: 'CANCELLED' },
+      });
+      await approve(paymentId).expect(200);
+      expect((await collaborationOf(id)).stage).toBe('NEGOTIATING');
+      expect(await balanceOf(id)).toMatchObject({
+        ESCROW: 0,
+        FEE_REVENUE: 0,
+        STORE_REFUND: 385000,
+      });
+      expect(pg.refunds).toHaveLength(1);
+      expect(pg.refunds[0].amount).toBe(385000);
+    });
+
+    it('still refunds in full when the late approval is for a cancelled payment of a dropped collaboration', async () => {
+      const id = await agreed();
+      await creatorConsented(id);
+      const { paymentId } = await brandPaying(id);
+      clock.advance(61 * MINUTE);
+      await request(server)
+        .post(`/collaborations/${id}/drop`)
+        .set(authCreator)
+        .send({ reason: 'BUDGET' })
+        .expect(200);
+      await prisma.payment.update({
+        where: { id: paymentId },
+        data: { status: 'CANCELLED' },
+      });
+      await approve(paymentId).expect(200);
+      expect((await collaborationOf(id)).stage).toBe('DROPPED');
+      expect(await balanceOf(id)).toMatchObject({
+        ESCROW: 0,
+        FEE_REVENUE: 0,
+        STORE_REFUND: 385000,
+      });
+      expect(pg.refunds).toHaveLength(1);
+      expect(pg.refunds[0].amount).toBe(385000);
+    });
+
     it('refunds an old payment even when a new contract for the same collaboration awaits payment', async () => {
       const { id, paymentId } = await voidedByNewTerms();
       // 판본 2를 확인해 다시 합의하고 크리에이터가 새로 동의한다.
@@ -1154,7 +1295,8 @@ describe('brand contract consent and payment', () => {
       const id = await agreed();
       await creatorConsented(id);
       const { paymentId } = await brandPaying(id);
-      // 결제창을 열어 둔 채 크리에이터가 브랜드를 차단했다(돈이 아직 보관 중이 아니라 차단된다).
+      // 결제창을 열어 둔 채 60분이 지나 잠금이 풀린 뒤 크리에이터가 브랜드를 차단했다(돈이 아직 보관 중이 아니라 차단된다).
+      clock.advance(61 * MINUTE);
       await request(server)
         .post(`/conversations/${await roomIdOf(id)}/block`)
         .set(authCreator)
@@ -1188,8 +1330,9 @@ describe('brand contract consent and payment', () => {
         brandConsent(id, { termsVersion: 1, accepted: texts, method: 'CARD' }),
       ]);
       expect(approval.status).toBe(200);
-      // 승인이 먼저면 계약이 이미 체결돼 409이고, 나중이면 새 결제가 생긴다.
-      expect([201, 409]).toContain(second.status);
+      // 승인이 먼저면 계약이 이미 체결돼 409이고, 나중이면 결제 진행 중이라 409다. 어느 쪽이든 새 결제는 없다.
+      expect(second.status).toBe(409);
+      expect(await prisma.payment.count()).toBe(1);
       const stage = (await collaborationOf(id)).stage;
       expect(stage).toBe('CONTRACTED');
       expect(

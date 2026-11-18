@@ -391,6 +391,87 @@ describe('safety (block and report)', () => {
       ).toEqual(T0);
     });
 
+    describe('while a brand payment is in progress', () => {
+      const insertPayment = (
+        collaborationId: string,
+        status: 'PENDING' | 'FAILED' | 'CANCELLED',
+        requestedAt: Date,
+      ) =>
+        prisma.payment.create({
+          data: {
+            collaborationId,
+            amountEscrow: 300000,
+            amountFee: 30000,
+            feeRate: 10,
+            method: 'CARD',
+            status,
+            requestedAt,
+          },
+        });
+
+      it('refuses to block and changes nothing', async () => {
+        await seedParties();
+        const agreed = await seedBrandCollab('AGREED');
+        const contract = await seedContract(agreed.collaborationId);
+        await insertPayment(agreed.collaborationId, 'PENDING', T0);
+        const inquiry = await seedBrandCollab('INQUIRY', {
+          status: 'REQUESTED',
+        });
+        clock.set(new Date(T0.getTime() + 30 * 60 * 1000));
+        const res = await block(agreed.roomId, authB).expect(409);
+        expect(codeOf(res)).toBe('CONFLICT');
+        expect(messageOf(res)).toBe(HELD_MESSAGE);
+        expect(await prisma.block.count()).toBe(0);
+        expect((await collaborationOf(agreed.collaborationId)).stage).toBe(
+          'AGREED',
+        );
+        expect((await collaborationOf(inquiry.collaborationId)).stage).toBe(
+          'INQUIRY',
+        );
+        expect(
+          (
+            await prisma.contract.findUniqueOrThrow({
+              where: { id: contract.id },
+            })
+          ).status,
+        ).toBe('AWAITING_BRAND');
+        expect((await roomOf(agreed.roomId)).status).toBe('OPEN');
+        expect(await prisma.payment.findFirstOrThrow({})).toMatchObject({
+          status: 'PENDING',
+        });
+        // 다른 방에서 눌러도, 맡긴 브랜드가 눌러도 같다.
+        await block(inquiry.roomId, authB).expect(409);
+        await block(agreed.roomId, authA).expect(409);
+        expect(await prisma.block.count()).toBe(0);
+      });
+
+      it('allows the block once the 60 minute lock has passed', async () => {
+        await seedParties();
+        const agreed = await seedBrandCollab('AGREED');
+        await seedContract(agreed.collaborationId);
+        await insertPayment(agreed.collaborationId, 'PENDING', T0);
+        clock.set(new Date(T0.getTime() + 60 * 60 * 1000));
+        await block(agreed.roomId, authB).expect(200);
+        expect((await collaborationOf(agreed.collaborationId)).stage).toBe(
+          'DROPPED',
+        );
+      });
+
+      it.each(['FAILED', 'CANCELLED'] as const)(
+        'does not count a %s payment as in progress',
+        async (status) => {
+          await seedParties();
+          const agreed = await seedBrandCollab('AGREED');
+          await seedContract(agreed.collaborationId);
+          await insertPayment(agreed.collaborationId, status, T0);
+          await block(agreed.roomId, authB).expect(200);
+          expect((await collaborationOf(agreed.collaborationId)).stage).toBe(
+            'DROPPED',
+          );
+        },
+      );
+    });
+
     it('cancels a store offer that is waiting for payment together with its collaboration', async () => {
       await seedParties('STORE');
       const awaiting = await seedStoreCollab('AWAITING_PAYMENT');

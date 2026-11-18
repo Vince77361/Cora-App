@@ -53,6 +53,16 @@ export interface ApplyResultOptions {
   swallowNotifyErrors?: boolean;
 }
 
+// 결제가 진행 중인 협업(PENDING이고 요청한 지 60분이 안 됐다)에 새 결제를 만들려 할 때의 409.
+// 결제창을 연 사람이 같은 결제에 대해 두 번째 결제창을 열면 돈이 두 번 나갈 수 있어, 서버가 막는다(앱의 막음은 같은 화면을 연 동안만이다).
+// 가게 사장님과 브랜드 모두 자기 결제를 다시 시도하는 사람이라 "브랜드가"를 빼고, 조건 제안·그만두기 쪽 문구(브랜드가 결제를 진행하고 있어요)와 같은 말투로 둔다.
+export const PAYMENT_IN_PROGRESS_MESSAGE =
+  '결제를 진행하고 있어요. 잠시 뒤 다시 시도해 주세요.';
+
+// 같은 409(CONFLICT) 가운데 결제가 진행 중이라 막은 것을 앱이 가를 수 있게 details.reason에 싣는 표지.
+// 앱은 이 값으로 "이미 결제했거나 기한이 지났어요" 같은 다른 409 문구와 구분해 보인다.
+export const PAYMENT_IN_PROGRESS_REASON = 'PAYMENT_IN_PROGRESS';
+
 type ApprovalOutcome = 'funded' | 'not-awaiting-payment' | 'already-handled';
 
 const recheckJobKey = (paymentId: string, attempt: number) =>
@@ -110,10 +120,13 @@ export class PaymentsService {
         ) {
           return rollback('not-payable');
         }
+        // 오퍼 → 결제 순서(승인과 같다)로 결제 행을 잠가, 같은 협업에 동시에 만드는 요청이 서로의 대기 결제를 보게 한다.
+        await this.payments.lockOpenPayments(collaborationId, tx);
         const current = await this.collaborations.findById(collaborationId, tx);
         if (current?.stage !== 'AWAITING_PAYMENT') {
           return rollback('not-payable');
         }
+        await this.refuseWhilePaying(collaborationId, now, tx);
         return this.payments.replacePending(
           {
             collaborationId,
@@ -148,7 +161,8 @@ export class PaymentsService {
 
   // 브랜드 계약의 결제를 만든다(계약 모듈의 동의 트랜잭션 안에서 부른다). 보관액은 계약 사본의 최대 현금 부담(제작비 + 성과 추가 상한)이고
   // 수수료는 그 금액 × 수수료율이다. 값은 요청이 아니라 계약 사본에서 온 인자만 쓴다.
-  // 대기 중인 결제가 있으면 취소로 바꾸고 새로 만든다(3번과 같다). requestedAt을 넣어 60분 동안 조건 제안·그만두기가 막힌다.
+  // 결제가 진행 중(60분 안의 대기 결제)이면 409로 막고 아무것도 바꾸지 않는다. 60분이 지난 대기 결제만 취소로 바꾸고 새로 만든다.
+  // requestedAt을 넣어 60분 동안 조건 제안·그만두기·새 결제·차단이 막힌다.
   // 호출한 쪽이 lockOpenPayments로 결제 행을 먼저 잠근 뒤 협업 행을 잠가야 한다(승인과 같은 순서: 결제 → 협업).
   async createForContract(
     collaborationId: string,
@@ -167,6 +181,8 @@ export class PaymentsService {
     if (escrow <= 0) {
       throw new Error('계약에 낼 돈이 없어요.');
     }
+    const now = this.clock.now();
+    await this.refuseWhilePaying(collaborationId, now, tx);
     return this.payments.replacePending(
       {
         collaborationId,
@@ -174,10 +190,26 @@ export class PaymentsService {
         amountFee: feeFor(escrow, input.feeRate),
         feeRate: input.feeRate,
         method: input.method,
-        requestedAt: this.clock.now(),
+        requestedAt: now,
       },
       tx,
     );
+  }
+
+  // 이 협업에 진행 중인 결제(조건 제안·그만두기를 막는 것과 같은 기준: 대기 중이고 요청한 지 60분이 안 됐다)가 있으면 409.
+  // 호출한 쪽의 트랜잭션 안에서, 결제 행을 잠근 뒤에 부른다. 취소·실패·승인된 결제와 60분이 지난 대기 결제는 진행 중이 아니다.
+  private async refuseWhilePaying(
+    collaborationId: string,
+    now: Date,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    if (
+      await this.collaborations.hasOpenBrandPayment(collaborationId, now, tx)
+    ) {
+      throw new AppError('CONFLICT', PAYMENT_IN_PROGRESS_MESSAGE, {
+        reason: PAYMENT_IN_PROGRESS_REASON,
+      });
+    }
   }
 
   // 협업의 대기·취소 결제 행을 잠근다. 승인 트랜잭션이 결제 → 협업 순으로 잡으므로, 결제를 바꾸고 협업도 잠그는 쪽은 이것을 먼저 부른다.

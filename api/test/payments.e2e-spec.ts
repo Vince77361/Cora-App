@@ -28,6 +28,7 @@ const auth = { Authorization: 'Bearer user-a' };
 // 한국 시간 낮 12시: 방해 금지 시간이 아니라 푸시가 나간다.
 const T0 = new Date('2026-12-01T03:00:00.000Z');
 const MINUTE = 60 * 1000;
+const PAYING_MESSAGE = '결제를 진행하고 있어요. 잠시 뒤 다시 시도해 주세요.';
 const DAY = 24 * 60 * MINUTE;
 const REGION = { regionSido: '서울특별시', regionSigungu: '성동구' };
 // 새 기본 조건: 식사권 + 1,000회당 2,000원, 상한 60,000원(최대 현금 부담 60,000원, 수수료 6,000원).
@@ -396,19 +397,19 @@ describe('payments', () => {
       await pay(s.collaborationId, 'CRYPTO').expect(400);
     });
 
-    it('leaves exactly one pending payment when three creates arrive at the same time', async () => {
+    it('leaves exactly one pending payment when three creates arrive at the same time and answers 409 to the others', async () => {
       const s = await seed();
       const results = await Promise.all([
         pay(s.collaborationId),
         pay(s.collaborationId),
         pay(s.collaborationId),
       ]);
-      expect(results.map((r) => r.status)).toEqual([201, 201, 201]);
+      expect(results.map((r) => r.status).sort()).toEqual([201, 409, 409]);
       const rows = await prisma.payment.findMany({
         where: { collaborationId: s.collaborationId },
       });
-      expect(rows.filter((p) => p.status === 'PENDING')).toHaveLength(1);
-      expect(rows.filter((p) => p.status === 'CANCELLED')).toHaveLength(2);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].status).toBe('PENDING');
     });
 
     it('answers 409 and creates nothing when the owner cancels the offer first', async () => {
@@ -422,14 +423,58 @@ describe('payments', () => {
       expect(await prisma.payment.count()).toBe(0);
     });
 
-    it('replaces a pending payment when the owner starts again', async () => {
+    it('refuses a second payment while one is in progress and creates and cancels nothing', async () => {
       const s = await seed();
       const first = await startPayment(s.collaborationId);
+      clock.advance(30 * MINUTE);
+      const res = await pay(s.collaborationId, 'EASY_PAY').expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect((res.body as { error: { message: string } }).error.message).toBe(
+        PAYING_MESSAGE,
+      );
+      expect(
+        (res.body as { error: { details: unknown } }).error.details,
+      ).toEqual({ reason: 'PAYMENT_IN_PROGRESS' });
+      const rows = await prisma.payment.findMany({
+        where: { collaborationId: s.collaborationId },
+      });
+      expect(rows.map((p) => [p.id, p.status])).toEqual([[first, 'PENDING']]);
+      await statusOf(first).expect(200, { status: 'PENDING' });
+    });
+
+    it('lets the owner start again after the 60 minute lock and cancels only the expired payment', async () => {
+      const s = await seed();
+      const first = await startPayment(s.collaborationId);
+      clock.advance(59 * MINUTE);
+      await pay(s.collaborationId).expect(409);
+      clock.advance(MINUTE);
       const second = await startPayment(s.collaborationId);
       expect(second).not.toBe(first);
       expect(await paymentStatus(first)).toBe('CANCELLED');
       expect(await paymentStatus(second)).toBe('PENDING');
       await statusOf(first).expect(200, { status: 'CANCELLED' });
+    });
+
+    it('lets the owner start again after a failed payment', async () => {
+      const s = await seed();
+      const first = await startPayment(s.collaborationId);
+      await webhook(first, 'FAILED').expect(200);
+      expect(await paymentStatus(first)).toBe('FAILED');
+      const second = await startPayment(s.collaborationId);
+      expect(await paymentStatus(first)).toBe('FAILED');
+      expect(await paymentStatus(second)).toBe('PENDING');
+    });
+
+    it('does not count a cancelled payment as in progress', async () => {
+      const s = await seed();
+      const first = await startPayment(s.collaborationId);
+      await prisma.payment.update({
+        where: { id: first },
+        data: { status: 'CANCELLED' },
+      });
+      const second = await startPayment(s.collaborationId);
+      expect(await paymentStatus(second)).toBe('PENDING');
+      expect(await prisma.payment.count()).toBe(2);
     });
   });
 
@@ -741,6 +786,8 @@ describe('payments', () => {
     it('funds the collaboration when the approval arrives for a payment that a newer one replaced', async () => {
       const s = await seed();
       const first = await startPayment(s.collaborationId);
+      // 결제창을 연 채 60분이 지나 잠금이 풀린 뒤 다시 결제하면 첫 결제는 만료돼 취소로 바뀐다.
+      clock.advance(61 * MINUTE);
       const second = await startPayment(s.collaborationId);
       expect(await paymentStatus(first)).toBe('CANCELLED');
       await webhook(first, 'APPROVED').expect(200);

@@ -22,6 +22,7 @@ import { BrandPayments } from './brand-payments';
 import { PaymentsRepository } from './payments.repository';
 import {
   LATE_APPROVAL_SUBJECT,
+  PAYMENT_IN_PROGRESS_MESSAGE,
   PaymentsService,
   RECHECK_MAX_ATTEMPTS,
 } from './payments.service';
@@ -101,8 +102,21 @@ class FakePaymentsRepository extends PaymentsRepository {
 
 class FakeCollaborationsRepository extends CollaborationsRepository {
   row: Collaboration = collaboration();
+  // 진행 중인 결제를 결제 가짜의 행에서 읽는다(실제 저장소와 같은 기준: 대기 중이고 요청한 지 60분이 안 됐다).
+  paymentRows: () => Payment[] = () => [];
   constructor() {
     super(null as never, null as never);
+  }
+  hasOpenBrandPayment(collaborationId: string, now: Date) {
+    const since = now.getTime() - 60 * MINUTE;
+    return Promise.resolve(
+      this.paymentRows().some(
+        (p) =>
+          p.collaborationId === collaborationId &&
+          p.status === 'PENDING' &&
+          p.requestedAt.getTime() > since,
+      ),
+    );
   }
   findById(id: string) {
     return Promise.resolve(id === this.row.id ? { ...this.row } : null);
@@ -193,6 +207,7 @@ function payment(over: Partial<Payment> = {}): Payment {
 function build(feeRate = 10) {
   const payments = new FakePaymentsRepository();
   const collaborations = new FakeCollaborationsRepository();
+  collaborations.paymentRows = () => payments.rows;
   const clock = new FakeClock(T0);
   const scheduler = new FakeJobScheduler(new JobHandlerRegistry());
   const alerts = new FakeOperatorAlert();
@@ -406,18 +421,57 @@ describe('PaymentsService', () => {
   });
 
   describe('create', () => {
-    it('cancels the earlier pending payment, creates a new one and schedules the first recheck', async () => {
+    it('creates a pending payment and schedules the first recheck in ten minutes', async () => {
       const t = build();
-      const first = await t.service.create(OWNER, COLLAB, 'CARD');
-      const second = await t.service.create(OWNER, COLLAB, 'TRANSFER');
-      expect(t.payments.rows.map((p) => p.status)).toEqual([
-        'CANCELLED',
-        'PENDING',
+      const created = await t.service.create(OWNER, COLLAB, 'CARD');
+      expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+        [created.paymentId, 'PENDING'],
       ]);
-      expect(first.paymentId).not.toBe(second.paymentId);
       const job = t.scheduler.pending().find((j) => j.jobKey.endsWith(':1'));
       expect(job?.runAt).toEqual(new Date(T0.getTime() + 10 * MINUTE));
     });
+
+    it('refuses a second payment while one is in progress and neither cancels nor creates anything', async () => {
+      const t = build();
+      const first = await t.service.create(OWNER, COLLAB, 'CARD');
+      t.clock.set(new Date(T0.getTime() + 59 * MINUTE));
+      const checkout = jest.spyOn(t.pg, 'createCheckout');
+      await expect(
+        t.service.create(OWNER, COLLAB, 'TRANSFER'),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: PAYMENT_IN_PROGRESS_MESSAGE,
+        details: { reason: 'PAYMENT_IN_PROGRESS' },
+      });
+      expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+        [first.paymentId, 'PENDING'],
+      ]);
+      expect(checkout).not.toHaveBeenCalled();
+    });
+
+    it('cancels only the expired pending payment and creates a new one after the 60 minute lock', async () => {
+      const t = build();
+      const first = await t.service.create(OWNER, COLLAB, 'CARD');
+      t.clock.set(new Date(T0.getTime() + 60 * MINUTE));
+      const second = await t.service.create(OWNER, COLLAB, 'TRANSFER');
+      expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+        [first.paymentId, 'CANCELLED'],
+        [second.paymentId, 'PENDING'],
+      ]);
+    });
+
+    it.each(['FAILED', 'CANCELLED'] as const)(
+      'does not count a %s payment as in progress',
+      async (status) => {
+        const t = build();
+        t.payments.rows.push(payment({ id: 'old-pay', status }));
+        const created = await t.service.create(OWNER, COLLAB, 'CARD');
+        expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+          ['old-pay', status],
+          [created.paymentId, 'PENDING'],
+        ]);
+      },
+    );
 
     it('answers 409 when the offer or the collaboration changed after the first check', async () => {
       const t = build();
@@ -834,6 +888,41 @@ describe('PaymentsService', () => {
           null as never,
         ),
       ).rejects.toThrow();
+    });
+
+    it('refuses a contract payment while one is in progress and only replaces an expired one', async () => {
+      const t = build();
+      const input = {
+        fixedCash: 350000,
+        performance: null,
+        feeRate: 10,
+        method: 'CARD' as const,
+      };
+      const first = await t.service.createForContract(
+        COLLAB,
+        input,
+        null as never,
+      );
+      t.clock.set(new Date(T0.getTime() + 10 * MINUTE));
+      await expect(
+        t.service.createForContract(COLLAB, input, null as never),
+      ).rejects.toMatchObject({
+        code: 'CONFLICT',
+        message: PAYMENT_IN_PROGRESS_MESSAGE,
+      });
+      expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+        [first.id, 'PENDING'],
+      ]);
+      t.clock.set(new Date(T0.getTime() + 61 * MINUTE));
+      const second = await t.service.createForContract(
+        COLLAB,
+        input,
+        null as never,
+      );
+      expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+        [first.id, 'CANCELLED'],
+        [second.id, 'PENDING'],
+      ]);
     });
 
     it('applies an approved brand payment through the handler once and retries the rest on a repeat', async () => {
