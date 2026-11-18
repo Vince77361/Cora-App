@@ -52,6 +52,8 @@ function build(
     stage?: Collaboration['stage'];
     live?: Contract | null;
     feeRate?: number;
+    // 새 결제 전에 PG에 다시 물은 결과(PaymentsService.reconcilePendingBeforeNewPayment).
+    reconcile?: 'none' | 'failed' | 'approved' | 'pending';
     openPayment?: {
       amountEscrow: number;
       amountFee: number;
@@ -66,6 +68,8 @@ function build(
   };
   const created: unknown[] = [];
   const paymentCalls: unknown[] = [];
+  // 호출 순서: PG 재확인이 동의 트랜잭션보다 먼저여야 한다(외부 호출은 트랜잭션 밖).
+  const events: string[] = [];
   const notified: unknown[] = [];
   const contracts = {
     findLive: () => Promise.resolve(state.live),
@@ -86,12 +90,19 @@ function build(
       findOpenPayment: () => Promise.resolve(opts.openPayment ?? null),
     } as never,
     {
-      transaction: (run: (tx: object) => Promise<unknown>) => run({}),
+      transaction: (run: (tx: object) => Promise<unknown>) => {
+        events.push('transaction');
+        return run({});
+      },
       latest: () => Promise.resolve(state.latest),
       versionBefore: () => Promise.resolve(null),
     } as never,
     {
       brandFeeRate: () => opts.feeRate ?? 10,
+      reconcilePendingBeforeNewPayment: () => {
+        events.push('reconcile');
+        return Promise.resolve(opts.reconcile ?? 'none');
+      },
       lockOpenPayments: () => Promise.resolve(),
       createForContract: (...args: unknown[]) => {
         paymentCalls.push(args);
@@ -129,7 +140,7 @@ function build(
     } as never,
     { now: () => NOW },
   );
-  return { service, state, created, paymentCalls, notified };
+  return { service, state, created, paymentCalls, notified, events };
 }
 
 const texts = (role: 'CREATOR' | 'BRAND', version = 2) =>
@@ -335,6 +346,30 @@ describe('ContractsService', () => {
         },
         {},
       ]);
+    });
+
+    it('asks the PG about a payment in progress before it opens the consent transaction', async () => {
+      const t = build({ live: consentedContract(), reconcile: 'failed' });
+      await t.service.consentAsBrand(BRAND, COLLAB, {
+        termsVersion: 2,
+        accepted: texts('BRAND'),
+        method: 'CARD',
+      });
+      expect(t.events).toEqual(['reconcile', 'transaction']);
+      expect(t.paymentCalls).toHaveLength(1);
+    });
+
+    it('answers 409 and creates no payment when the PG says the payment in progress was approved', async () => {
+      const t = build({ live: consentedContract(), reconcile: 'approved' });
+      await expect(
+        t.service.consentAsBrand(BRAND, COLLAB, {
+          termsVersion: 2,
+          accepted: texts('BRAND'),
+          method: 'CARD',
+        }),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+      expect(t.events).toEqual(['reconcile']);
+      expect(t.paymentCalls).toHaveLength(0);
     });
 
     it('refuses wrong texts and an older version without creating a payment', async () => {

@@ -223,6 +223,15 @@ export class ContractsService {
       throw new AppError('FORBIDDEN', '브랜드만 동의할 수 있어요.');
     }
     const feeRate = this.payments.brandFeeRate();
+    // 결제가 진행 중이면 409를 내기 전에 PG에 한 번 묻는다(가게 결제와 같은 도우미). 외부 호출이라 아래 트랜잭션(행 잠금) 밖에서 끝낸다.
+    // PG가 실패로 확인하면 그 결제를 FAILED로 바꾸고 이 요청에서 새 결제로 간다. 승인이면 방금 적용했으니 새 결제 없이 409로 끝낸다.
+    if (
+      (await this.payments.reconcilePendingBeforeNewPayment(
+        collaboration.id,
+      )) === 'approved'
+    ) {
+      throw new AppError('CONFLICT', '지금은 계약에 동의할 수 없어요.');
+    }
 
     const saved = await this.terms.transaction(async (tx) => {
       // 잠금 순서: 결제 → 협업 → 계약(결제 승인과 같다). 협업을 먼저 잠그면 같은 협업의 승인과 서로 기다린다.

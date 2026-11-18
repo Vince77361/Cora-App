@@ -6,6 +6,7 @@ import { Clock } from '../src/common/clock';
 import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
 import { FakePaymentAdapter } from '../src/integrations/payment/fake-payment.adapter';
 import { PaymentPort } from '../src/integrations/payment/payment.port';
+import { assertBalanced } from '../src/ledger/ledger-postings';
 import { PaymentsService } from '../src/payments/payments.service';
 import { PushPort } from '../src/integrations/push/push.port';
 import { JobScheduler } from '../src/jobs/job-scheduler';
@@ -790,6 +791,135 @@ describe('brand contract consent and payment', () => {
         productProvided: true,
         performance: null,
       }).expect(201);
+    });
+
+    // 결제가 진행 중인 계약에서 다시 동의하면 409를 내기 전에 PG에 한 번 다시 묻는다(트랜잭션 밖). PG가 확인한 결과만 믿는다.
+    describe('asking the PG before refusing a second consent', () => {
+      const again = async (id: string, method = 'EASY_PAY') =>
+        brandConsent(id, {
+          termsVersion: (await contractOf(authBrand, id)).termsVersion,
+          accepted: await textsOf(authBrand, id),
+          method,
+        });
+      const reasonOf = (res: request.Response) =>
+        (res.body as { error: { details: { reason: string } } }).error.details
+          .reason;
+      it('marks the payment failed and creates the new one in the same request when the PG says it failed', async () => {
+        const id = await agreed();
+        await creatorConsented(id);
+        const first = await brandPaying(id);
+        clock.advance(4 * MINUTE);
+        pg.recordResult({ paymentId: first.paymentId, status: 'FAILED' });
+        const res = await again(id);
+        expect(res.status).toBe(201);
+        const second = (res.body as PaymentCreated).paymentId;
+        expect(second).not.toBe(first.paymentId);
+        expect(
+          (
+            await prisma.payment.findMany({ orderBy: { createdAt: 'asc' } })
+          ).map((p) => [p.id, p.status]),
+        ).toEqual([
+          [first.paymentId, 'FAILED'],
+          [second, 'PENDING'],
+        ]);
+        expect((await prisma.contract.findFirstOrThrow({})).paymentId).toBe(
+          second,
+        );
+        expect((await contractOf(authBrand, id)).status).toBe('PAYING');
+        expect(await ledgerOf(id)).toHaveLength(0);
+        // 새 결제가 진행 중이라 이제부터는 409다(잠금이 남지 않고 새로 걸린다).
+        expect((await again(id)).status).toBe(409);
+      });
+
+      it('applies an approval once, concludes the contract, creates nothing and answers 409', async () => {
+        const id = await agreed();
+        await creatorConsented(id);
+        const first = await brandPaying(id);
+        pg.recordResult({ paymentId: first.paymentId, status: 'APPROVED' });
+        const res = await again(id);
+        expect(res.status).toBe(409);
+        expect(codeOf(res)).toBe('CONFLICT');
+        expect(await prisma.payment.count()).toBe(1);
+        expect(
+          (
+            await prisma.payment.findUniqueOrThrow({
+              where: { id: first.paymentId },
+            })
+          ).status,
+        ).toBe('APPROVED');
+        expect((await collaborationOf(id)).stage).toBe('CONTRACTED');
+        expect(await prisma.contract.findFirstOrThrow({})).toMatchObject({
+          status: 'CONCLUDED',
+          paymentId: first.paymentId,
+        });
+        const ledger = await ledgerOf(id);
+        expect(ledger).toHaveLength(2);
+        assertBalanced(ledger);
+        expect(await balanceOf(id)).toMatchObject({
+          ESCROW: 350000,
+          FEE_REVENUE: 35000,
+        });
+        expect((await again(id)).status).toBe(409);
+        expect(await ledgerOf(id)).toHaveLength(2);
+      });
+
+      it('applies an approval once even when three attempts arrive at the same time', async () => {
+        const id = await agreed();
+        await creatorConsented(id);
+        const first = await brandPaying(id);
+        pg.recordResult({ paymentId: first.paymentId, status: 'APPROVED' });
+        const results = await Promise.all([again(id), again(id), again(id)]);
+        expect(results.map((r) => r.status)).toEqual([409, 409, 409]);
+        expect(await prisma.payment.count()).toBe(1);
+        const ledger = await ledgerOf(id);
+        expect(ledger).toHaveLength(2);
+        assertBalanced(ledger);
+        expect(
+          await prisma.contract.count({ where: { status: 'CONCLUDED' } }),
+        ).toBe(1);
+      });
+
+      it.each(['pending', 'unreachable'] as const)(
+        'answers the same 409 and changes nothing when the PG is %s',
+        async (mode) => {
+          const id = await agreed();
+          await creatorConsented(id);
+          const first = await brandPaying(id);
+          // 운영자 알림 가짜는 파일 전체가 같이 쓰므로 restoreAllMocks 대신 이 가짜만 되돌린다.
+          const ask =
+            mode === 'unreachable'
+              ? jest
+                  .spyOn(pg, 'fetchStatus')
+                  .mockRejectedValue(new Error('down'))
+              : null;
+          const res = await again(id);
+          ask?.mockRestore();
+          expect(res.status).toBe(409);
+          expect(messageOf(res)).toBe(PAYING_MESSAGE);
+          expect(reasonOf(res)).toBe('PAYMENT_IN_PROGRESS');
+          expect(
+            (await prisma.payment.findMany()).map((p) => [p.id, p.status]),
+          ).toEqual([[first.paymentId, 'PENDING']]);
+          expect((await prisma.contract.findFirstOrThrow({})).paymentId).toBe(
+            first.paymentId,
+          );
+        },
+      );
+
+      it('leaves exactly one new payment when three consents arrive while the PG says failed', async () => {
+        const id = await agreed();
+        await creatorConsented(id);
+        const first = await brandPaying(id);
+        pg.recordResult({ paymentId: first.paymentId, status: 'FAILED' });
+        const results = await Promise.all([again(id), again(id), again(id)]);
+        expect(results.map((r) => r.status).sort()).toEqual([201, 409, 409]);
+        for (const res of results.filter((r) => r.status === 409)) {
+          expect(reasonOf(res)).toBe('PAYMENT_IN_PROGRESS');
+        }
+        expect(
+          (await prisma.payment.findMany()).map((p) => p.status).sort(),
+        ).toEqual(['FAILED', 'PENDING']);
+      });
     });
 
     it('lets the brand pay again once the 60 minute lock has passed and cancels only the expired payment', async () => {

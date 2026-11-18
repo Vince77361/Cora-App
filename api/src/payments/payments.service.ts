@@ -63,6 +63,14 @@ export const PAYMENT_IN_PROGRESS_MESSAGE =
 // 앱은 이 값으로 "이미 결제했거나 기한이 지났어요" 같은 다른 409 문구와 구분해 보인다.
 export const PAYMENT_IN_PROGRESS_REASON = 'PAYMENT_IN_PROGRESS';
 
+// 진행 중인 결제를 PG에 다시 물을 때 기다리는 시간. 넘으면 답을 못 받은 것으로 보고 기존 409를 낸다(요청을 오래 붙잡지 않는다).
+export const PG_STATUS_TIMEOUT_MS = 5000;
+
+// 새 결제를 만들려 할 때 진행 중이던 대기 결제를 PG에 다시 물은 결과.
+// none: 진행 중인 결제가 없다(PG에 묻지 않았다). pending: PG가 아직 모르거나 답을 못 받았다(409로 간다).
+// failed: PG가 실패로 확인해 그 결제를 FAILED로 바꿨다(새 결제로 간다). approved: PG가 승인으로 확인해 승인을 적용했다(새 결제를 만들지 않는다).
+export type PendingReconcile = 'none' | 'pending' | 'failed' | 'approved';
+
 type ApprovalOutcome = 'funded' | 'not-awaiting-payment' | 'already-handled';
 
 const recheckJobKey = (paymentId: string, attempt: number) =>
@@ -108,6 +116,14 @@ export class PaymentsService {
   ): Promise<PaymentCreatedModel> {
     await this.refuseBrandContract(userId, collaborationId);
     const collaboration = await this.requirePayable(userId, collaborationId);
+    // 진행 중인 결제가 있으면 409를 내기 전에 PG에 한 번 묻는다. PG 호출은 외부 포트라 아래 트랜잭션(행 잠금) 밖에서 끝낸다.
+    // 승인이면 방금 적용했으니 새 결제 없이 409(협업은 이미 결제 뒤라 "결제할 수 있는 협업이 아니에요"가 자연스럽다).
+    if (
+      (await this.reconcilePendingBeforeNewPayment(collaborationId)) ===
+      'approved'
+    ) {
+      throw this.notPayable();
+    }
     const quote = await this.quoteOf(collaboration);
     const now = this.clock.now();
     // 오퍼 행을 먼저 잠그고(승인과 같은 오퍼 → 결제 순서) 오퍼와 협업이 아직 결제를 기다리는지 다시 본다:
@@ -196,6 +212,68 @@ export class PaymentsService {
     );
   }
 
+  // 새 결제를 만들기 직전에 호출한다(가게 결제 생성과 브랜드 계약 동의가 같은 도우미를 쓴다). 반드시 트랜잭션·행 잠금 밖에서 부른다:
+  // PG 조회는 외부 호출이라 잠금을 쥔 채 기다리면 같은 협업의 승인·취소가 함께 멈춘다.
+  // 진행 중(PAYING = 60분 안의 PENDING)인 결제가 있으면 PG에 한 번 묻고, PG가 확인한 것만 따른다. 앱이 "결제창을 닫았다"고 해도 취소하지 않는다.
+  // - FAILED: 기존 applyResult 길로 그 결제를 FAILED로 바꾼다(조건부 갱신 PENDING → FAILED, 장부는 건드리지 않는다). 호출한 쪽이 이어서 새 결제를 만든다.
+  // - APPROVED: 기존 applyResult 길로 승인을 한 번만 적용한다(보관·장부·알림은 같은 키라 동시에 와도 한 번이다). 호출한 쪽은 새 결제를 만들지 않고 409로 끝낸다.
+  // - 아직 대기이거나 조회가 실패·시간 초과·적용 실패: 아무것도 바꾸지 않는다. 호출한 쪽의 트랜잭션 안 검사(refuseWhilePaying)가 기존 409를 낸다.
+  // 이 결과는 어디까지나 "미리 보기"다: 호출한 쪽은 트랜잭션 안에서 잠금을 잡고 진행 중 여부를 다시 확인하므로, 사이에 끼어든 승인이나 동시 요청은 거기서 걸러진다.
+  async reconcilePendingBeforeNewPayment(
+    collaborationId: string,
+  ): Promise<PendingReconcile> {
+    const open = await this.collaborations.findOpenPayment(
+      collaborationId,
+      this.clock.now(),
+    );
+    if (!open) return 'none';
+    const found = await this.askPgWithin(open.id);
+    if (!found || found.status === 'PENDING') return 'pending';
+    try {
+      await this.applyResult(
+        {
+          paymentId: open.id,
+          pgTransactionId: found.pgTransactionId,
+          status: found.status,
+        },
+        // 요청을 받는 길이라 이미 저장된 결제를 알림 실패 때문에 오류로 돌려주지 않는다(원장 판단 R22).
+        { swallowNotifyErrors: true },
+      );
+    } catch (error) {
+      // 적용하지 못했으면 결제는 그대로 대기다(승인은 재확인 작업이 이어 맡는다). 새 결제를 만들지 않고 409로 둔다.
+      this.logger.warn(
+        `진행 중인 결제의 PG 결과를 적용하지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+      return 'pending';
+    }
+    return found.status === 'FAILED' ? 'failed' : 'approved';
+  }
+
+  // PG에 결제 상태를 한 번 묻는다. 오류나 시간 초과는 "답을 못 받음"(null)이다: 호출한 쪽은 아무것도 취소하지 않는다.
+  private async askPgWithin(
+    paymentId: string,
+  ): Promise<Awaited<ReturnType<PaymentPort['fetchStatus']>> | null> {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        this.paymentPort.fetchStatus(paymentId),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error('PG 조회 시간 초과')),
+            PG_STATUS_TIMEOUT_MS,
+          );
+        }),
+      ]);
+    } catch (error) {
+      this.logger.warn(
+        `진행 중인 결제를 PG에 다시 묻지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   // 이 협업에 진행 중인 결제(조건 제안·그만두기를 막는 것과 같은 기준: 대기 중이고 요청한 지 60분이 안 됐다)가 있으면 409.
   // 호출한 쪽의 트랜잭션 안에서, 결제 행을 잠근 뒤에 부른다. 취소·실패·승인된 결제와 60분이 지난 대기 결제는 진행 중이 아니다.
   private async refuseWhilePaying(
@@ -203,9 +281,7 @@ export class PaymentsService {
     now: Date,
     tx: Prisma.TransactionClient,
   ): Promise<void> {
-    if (
-      await this.collaborations.hasOpenPayment(collaborationId, now, tx)
-    ) {
+    if (await this.collaborations.hasOpenPayment(collaborationId, now, tx)) {
       throw new AppError('CONFLICT', PAYMENT_IN_PROGRESS_MESSAGE, {
         reason: PAYMENT_IN_PROGRESS_REASON,
       });

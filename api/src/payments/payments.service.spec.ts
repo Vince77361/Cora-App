@@ -20,10 +20,12 @@ import { OffersService } from '../offers/offers.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { BrandPayments } from './brand-payments';
+import { PaymentsController } from './payments.controller';
 import { PaymentsRepository } from './payments.repository';
 import {
   LATE_APPROVAL_SUBJECT,
   PAYMENT_IN_PROGRESS_MESSAGE,
+  PG_STATUS_TIMEOUT_MS,
   PaymentsService,
   RECHECK_MAX_ATTEMPTS,
 } from './payments.service';
@@ -60,7 +62,9 @@ class FakePaymentsRepository extends PaymentsRepository {
       if (p.collaborationId === input.collaborationId && p.status === 'PENDING')
         p.status = 'CANCELLED';
     }
-    const row = payment({ id: `pay-${this.rows.length + 1}`, ...input });
+    // applyResult는 UUID가 아닌 id를 모르는 결제로 보므로 가짜도 UUID 모양의 id를 만든다.
+    const id = `99999999-9999-4999-8999-${String(this.rows.length + 1).padStart(12, '0')}`;
+    const row = payment({ id, ...input });
     this.rows.push(row);
     return Promise.resolve(row);
   }
@@ -117,6 +121,19 @@ class FakeCollaborationsRepository extends CollaborationsRepository {
           p.status === 'PENDING' &&
           p.requestedAt.getTime() > since,
       ),
+    );
+  }
+  findOpenPayment(collaborationId: string, now: Date) {
+    const since = now.getTime() - BRAND_PAYMENT_LOCK_MINUTES * MINUTE;
+    return Promise.resolve(
+      this.paymentRows()
+        .filter(
+          (p) =>
+            p.collaborationId === collaborationId &&
+            p.status === 'PENDING' &&
+            p.requestedAt.getTime() > since,
+        )
+        .at(-1) ?? null,
     );
   }
   findById(id: string) {
@@ -510,6 +527,190 @@ describe('PaymentsService', () => {
         .mockRejectedValue(new Error('redis down'));
       const created = await t.service.create(OWNER, COLLAB, 'CARD');
       expect(created.paymentId).toBeDefined();
+    });
+  });
+
+  // 새 결제를 만들려 할 때 진행 중(PAYING)인 대기 결제가 있으면, 409를 내기 전에 PG에 한 번만 다시 묻는다.
+  // PG가 확인한 FAILED만 잠금을 푼다(앱이 "창을 닫았다"고 하는 말로는 아무것도 취소하지 않는다).
+  describe('asking the PG before refusing a new payment', () => {
+    const inProgress = async (t: ReturnType<typeof build>) =>
+      (await t.service.create(OWNER, COLLAB, 'CARD')).paymentId;
+
+    it('marks the payment in progress failed and lets the new payment through in the same call when the PG says it failed', async () => {
+      const t = build();
+      const first = await inProgress(t);
+      t.pg.recordResult({ paymentId: first, status: 'FAILED' });
+      const created = await t.service.create(OWNER, COLLAB, 'TRANSFER');
+      expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+        [first, 'FAILED'],
+        [created.paymentId, 'PENDING'],
+      ]);
+    });
+
+    it('asks the PG exactly once per attempt and only for the payment in progress', async () => {
+      const t = build();
+      const ask = jest.spyOn(t.pg, 'fetchStatus');
+      await inProgress(t);
+      expect(ask).not.toHaveBeenCalled();
+      await expect(t.service.create(OWNER, COLLAB, 'CARD')).rejects.toThrow();
+      expect(ask).toHaveBeenCalledTimes(1);
+      expect(ask).toHaveBeenCalledWith(t.payments.rows[0].id);
+    });
+
+    it('does not ask the PG when the pending payment is already past the 60 minute lock', async () => {
+      const t = build();
+      const first = await inProgress(t);
+      t.clock.set(new Date(T0.getTime() + 60 * MINUTE));
+      const ask = jest.spyOn(t.pg, 'fetchStatus');
+      const second = await t.service.create(OWNER, COLLAB, 'CARD');
+      expect(ask).not.toHaveBeenCalled();
+      expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+        [first, 'CANCELLED'],
+        [second.paymentId, 'PENDING'],
+      ]);
+    });
+
+    it('applies an approval once, funds the collaboration and answers 409 without creating a payment', async () => {
+      const t = build();
+      const first = await inProgress(t);
+      t.pg.recordResult({
+        paymentId: first,
+        status: 'APPROVED',
+        pgTransactionId: 'tx-1',
+      });
+      const checkout = jest.spyOn(t.pg, 'createCheckout');
+      await expect(
+        t.service.create(OWNER, COLLAB, 'TRANSFER'),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+      expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+        [first, 'APPROVED'],
+      ]);
+      expect(t.collaborations.row.stage).toBe('FUNDED');
+      expect(t.ledgerPosts.map((p) => p.key)).toEqual([`payment:${first}`]);
+      expect(checkout).not.toHaveBeenCalled();
+      // 다시 눌러도 장부와 알림은 한 번 그대로다.
+      await expect(t.service.create(OWNER, COLLAB, 'CARD')).rejects.toThrow();
+      expect(t.ledgerPosts).toHaveLength(1);
+      expect(t.notified).toHaveLength(1);
+    });
+
+    it.each([
+      [
+        'still pending',
+        () =>
+          Promise.resolve({
+            status: 'PENDING' as const,
+            pgTransactionId: null,
+          }),
+      ],
+      ['unreachable', () => Promise.reject(new Error('pg down'))],
+    ])(
+      'answers the same 409 and changes nothing when the PG is %s',
+      async (_name, answer) => {
+        const t = build();
+        const first = await inProgress(t);
+        jest.spyOn(t.pg, 'fetchStatus').mockImplementation(answer);
+        await expect(
+          t.service.create(OWNER, COLLAB, 'CARD'),
+        ).rejects.toMatchObject({
+          code: 'CONFLICT',
+          message: PAYMENT_IN_PROGRESS_MESSAGE,
+          details: { reason: 'PAYMENT_IN_PROGRESS' },
+        });
+        expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+          [first, 'PENDING'],
+        ]);
+        expect(t.collaborations.row.stage).toBe('AWAITING_PAYMENT');
+      },
+    );
+
+    it('gives up on a PG that does not answer in time and answers 409', async () => {
+      jest.useFakeTimers();
+      try {
+        const t = build();
+        const first = await inProgress(t);
+        jest
+          .spyOn(t.pg, 'fetchStatus')
+          .mockImplementation(() => new Promise(() => undefined));
+        const attempt = expect(
+          t.service.create(OWNER, COLLAB, 'CARD'),
+        ).rejects.toMatchObject({
+          message: PAYMENT_IN_PROGRESS_MESSAGE,
+        });
+        await jest.advanceTimersByTimeAsync(PG_STATUS_TIMEOUT_MS);
+        await attempt;
+        expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+          [first, 'PENDING'],
+        ]);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('treats an approval it cannot apply as still in progress', async () => {
+      const t = build();
+      const first = await inProgress(t);
+      // PG가 승인이라면서 거래 번호를 주지 않으면 적용하지 못한다: 새 결제를 만들지 말고 409로 둔다.
+      jest
+        .spyOn(t.pg, 'fetchStatus')
+        .mockResolvedValue({ status: 'APPROVED', pgTransactionId: null });
+      await expect(
+        t.service.create(OWNER, COLLAB, 'CARD'),
+      ).rejects.toMatchObject({ message: PAYMENT_IN_PROGRESS_MESSAGE });
+      expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+        [first, 'PENDING'],
+      ]);
+    });
+
+    it('serves the brand contract path through the same helper', async () => {
+      const t = build();
+      const input = {
+        fixedCash: 350000,
+        performance: null,
+        feeRate: 10,
+        method: 'CARD' as const,
+      };
+      const first = await t.service.createForContract(
+        COLLAB,
+        input,
+        null as never,
+      );
+      // 계약 동의는 트랜잭션 전에 이 도우미를 부르고, PG가 실패라 하면 같은 요청에서 새 결제로 간다.
+      await expect(
+        t.service.reconcilePendingBeforeNewPayment(COLLAB),
+      ).resolves.toBe('pending');
+      t.pg.recordResult({ paymentId: first.id, status: 'FAILED' });
+      await expect(
+        t.service.reconcilePendingBeforeNewPayment(COLLAB),
+      ).resolves.toBe('failed');
+      const second = await t.service.createForContract(
+        COLLAB,
+        input,
+        null as never,
+      );
+      expect(t.payments.rows.map((p) => [p.id, p.status])).toEqual([
+        [first.id, 'FAILED'],
+        [second.id, 'PENDING'],
+      ]);
+      await expect(
+        t.service.reconcilePendingBeforeNewPayment('no-payment-collab'),
+      ).resolves.toBe('none');
+    });
+
+    it('has no way for the app to cancel a payment: the controller only quotes, creates and reads', () => {
+      const routes = Object.getOwnPropertyNames(
+        PaymentsController.prototype,
+      ).filter((name) => name !== 'constructor');
+      expect(routes.sort()).toEqual(['create', 'getQuote', 'getStatus']);
+      for (const name of routes) {
+        const handler = Object.getOwnPropertyDescriptor(
+          PaymentsController.prototype,
+          name,
+        )?.value as object;
+        const method = Reflect.getMetadata('method', handler) as number;
+        // RequestMethod: GET = 0, POST = 1. 취소·삭제·수정(PUT/PATCH/DELETE)은 없다.
+        expect([0, 1]).toContain(method);
+      }
     });
   });
 

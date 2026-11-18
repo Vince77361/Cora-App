@@ -12,6 +12,7 @@ import { Clock } from '../src/common/clock';
 import { FakePaymentAdapter } from '../src/integrations/payment/fake-payment.adapter';
 import { OperatorAlertPort } from '../src/integrations/operator-alert/operator-alert.port';
 import { PaymentPort } from '../src/integrations/payment/payment.port';
+import { assertBalanced } from '../src/ledger/ledger-postings';
 import { PushPort } from '../src/integrations/push/push.port';
 import { JobHandlerRegistry } from '../src/jobs/job-handler-registry';
 import { JobScheduler } from '../src/jobs/job-scheduler';
@@ -475,6 +476,144 @@ describe('payments', () => {
       const second = await startPayment(s.collaborationId);
       expect(await paymentStatus(second)).toBe('PENDING');
       expect(await prisma.payment.count()).toBe(2);
+    });
+  });
+
+  // 새 결제를 만들려 할 때 진행 중(PAYING)인 대기 결제가 있으면 409를 내기 전에 PG에 한 번 다시 묻는다.
+  // PG가 확인한 결과만 믿는다: 앱이 "창을 닫았다"고 하는 말로는 아무것도 취소하지 않는다.
+  describe('asking the PG before refusing a new payment', () => {
+    const reasonOf = (res: request.Response) =>
+      (res.body as { error: { details: { reason: string } } }).error.details
+        .reason;
+    const payments = (collaborationId: string) =>
+      prisma.payment.findMany({
+        where: { collaborationId },
+        orderBy: { createdAt: 'asc' },
+      });
+
+    it('marks the payment failed and creates the new one in the same request when the PG says it failed', async () => {
+      const s = await seed();
+      const first = await startPayment(s.collaborationId);
+      clock.advance(5 * MINUTE);
+      pg.recordResult({ paymentId: first, status: 'FAILED' });
+      const res = await pay(s.collaborationId, 'EASY_PAY').expect(201);
+      const second = (res.body as CreatedBody).paymentId;
+      expect(second).not.toBe(first);
+      expect(
+        (await payments(s.collaborationId)).map((p) => [p.id, p.status]),
+      ).toEqual([
+        [first, 'FAILED'],
+        [second, 'PENDING'],
+      ]);
+      // 잠금이 남지 않는다: 새 결제가 진행 중이라 다시 누르면 그때부터 409다.
+      await pay(s.collaborationId).expect(409);
+      expect(await prisma.payment.count()).toBe(2);
+      expect(await ledgerOf(s.collaborationId)).toHaveLength(0);
+    });
+
+    it('applies an approval exactly once, funds the collaboration, creates nothing and answers 409', async () => {
+      const s = await seed();
+      const first = await startPayment(s.collaborationId);
+      pg.recordResult({ paymentId: first, status: 'APPROVED' });
+      const res = await pay(s.collaborationId).expect(409);
+      expect(codeOf(res)).toBe('CONFLICT');
+      expect(await payments(s.collaborationId)).toHaveLength(1);
+      expect(await paymentStatus(first)).toBe('APPROVED');
+      expect((await collaborationOf(s.collaborationId)).stage).toBe('FUNDED');
+      const ledger = await ledgerOf(s.collaborationId);
+      expect(new Set(ledger.map((e) => e.idempotencyKey))).toEqual(
+        new Set([`payment:${first}`]),
+      );
+      expect(ledger).toHaveLength(2);
+      assertBalanced(ledger);
+      expect(push.sent).toHaveLength(1);
+      // 다시 눌러도 장부는 그대로다.
+      await pay(s.collaborationId).expect(409);
+      expect(await ledgerOf(s.collaborationId)).toHaveLength(2);
+      expect(await payments(s.collaborationId)).toHaveLength(1);
+    });
+
+    it('applies an approval once even when three attempts arrive at the same time', async () => {
+      const s = await seed();
+      const first = await startPayment(s.collaborationId);
+      pg.recordResult({ paymentId: first, status: 'APPROVED' });
+      const results = await Promise.all([
+        pay(s.collaborationId),
+        pay(s.collaborationId),
+        pay(s.collaborationId),
+      ]);
+      expect(results.map((r) => r.status)).toEqual([409, 409, 409]);
+      expect(await payments(s.collaborationId)).toHaveLength(1);
+      const ledger = await ledgerOf(s.collaborationId);
+      expect(ledger).toHaveLength(2);
+      assertBalanced(ledger);
+      expect(await prisma.notification.count()).toBe(1);
+      expect(push.sent).toHaveLength(1);
+      expect((await collaborationOf(s.collaborationId)).fundedAt).toEqual(T0);
+    });
+
+    it('answers the same 409 and changes nothing while the PG still says pending', async () => {
+      const s = await seed();
+      const first = await startPayment(s.collaborationId);
+      const res = await pay(s.collaborationId).expect(409);
+      expect(reasonOf(res)).toBe('PAYMENT_IN_PROGRESS');
+      expect(
+        (await payments(s.collaborationId)).map((p) => [p.id, p.status]),
+      ).toEqual([[first, 'PENDING']]);
+    });
+
+    it('answers the same 409 and changes nothing when the PG cannot be reached', async () => {
+      const s = await seed();
+      const first = await startPayment(s.collaborationId);
+      // 운영자 알림 가짜는 파일 전체가 같이 쓰므로 restoreAllMocks 대신 이 가짜만 되돌린다.
+      const ask = jest
+        .spyOn(pg, 'fetchStatus')
+        .mockRejectedValue(new Error('pg down'));
+      const res = await pay(s.collaborationId).expect(409);
+      ask.mockRestore();
+      expect(reasonOf(res)).toBe('PAYMENT_IN_PROGRESS');
+      expect(
+        (await payments(s.collaborationId)).map((p) => [p.id, p.status]),
+      ).toEqual([[first, 'PENDING']]);
+      expect((await collaborationOf(s.collaborationId)).stage).toBe(
+        'AWAITING_PAYMENT',
+      );
+    });
+
+    it('leaves exactly one new payment and no second pending row when three attempts arrive while the PG says failed', async () => {
+      const s = await seed();
+      const first = await startPayment(s.collaborationId);
+      pg.recordResult({ paymentId: first, status: 'FAILED' });
+      const results = await Promise.all([
+        pay(s.collaborationId),
+        pay(s.collaborationId),
+        pay(s.collaborationId),
+      ]);
+      expect(results.map((r) => r.status).sort()).toEqual([201, 409, 409]);
+      for (const res of results.filter((r) => r.status === 409)) {
+        expect(reasonOf(res)).toBe('PAYMENT_IN_PROGRESS');
+      }
+      const rows = await payments(s.collaborationId);
+      expect(rows.map((p) => p.status).sort()).toEqual(['FAILED', 'PENDING']);
+      expect(rows.find((p) => p.id === first)?.status).toBe('FAILED');
+    });
+
+    it('has no route the app could use to cancel or close a payment', async () => {
+      const s = await seed();
+      const first = await startPayment(s.collaborationId);
+      for (const [method, path] of [
+        ['post', `/payments/${first}/cancel`],
+        ['post', `/payments/${first}/close`],
+        ['post', `/payments/${first}/fail`],
+        ['patch', `/payments/${first}`],
+        ['put', `/payments/${first}`],
+        ['delete', `/payments/${first}`],
+        ['delete', `/collaborations/${s.collaborationId}/payments`],
+      ] as const) {
+        await request(server)[method](path).set(auth).send({}).expect(404);
+      }
+      await statusOf(first).expect(200, { status: 'PENDING' });
+      expect(await paymentStatus(first)).toBe('PENDING');
     });
   });
 
