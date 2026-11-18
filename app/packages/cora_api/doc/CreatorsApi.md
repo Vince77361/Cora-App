@@ -11,7 +11,9 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**createMyCreatorSeries**](CreatorsApi.md#createmycreatorseries) | **POST** /creators/me/series | 
 [**getMyCreatorProfile**](CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
+[**getMyFeaturedPosts**](CreatorsApi.md#getmyfeaturedposts) | **GET** /creators/me/featured-posts | 
 [**listMyCreatorSeries**](CreatorsApi.md#listmycreatorseries) | **GET** /creators/me/series | 
+[**replaceMyFeaturedPosts**](CreatorsApi.md#replacemyfeaturedposts) | **PUT** /creators/me/featured-posts | 
 [**upsertMyCreatorProfile**](CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
 
 
@@ -105,6 +107,49 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **getMyFeaturedPosts**
+> List<FeaturedPostModel> getMyFeaturedPosts()
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = CreatorsApi();
+
+try {
+    final result = api_instance.getMyFeaturedPosts();
+    print(result);
+} catch (e) {
+    print('Exception when calling CreatorsApi->getMyFeaturedPosts: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**List<FeaturedPostModel>**](FeaturedPostModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **listMyCreatorSeries**
 > List<CreatorSeriesModel> listMyCreatorSeries()
 
@@ -144,6 +189,53 @@ This endpoint does not need any parameter.
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **replaceMyFeaturedPosts**
+> List<FeaturedPostModel> replaceMyFeaturedPosts(replaceFeaturedPostsDto)
+
+
+
+### Example
+```dart
+import 'package:cora_api/api.dart';
+// TODO Configure HTTP Bearer authorization: bearer
+// Case 1. Use String Token
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken('YOUR_ACCESS_TOKEN');
+// Case 2. Use Function which generate token.
+// String yourTokenGeneratorFunction() { ... }
+//defaultApiClient.getAuthentication<HttpBearerAuth>('bearer').setAccessToken(yourTokenGeneratorFunction);
+
+final api_instance = CreatorsApi();
+final replaceFeaturedPostsDto = ReplaceFeaturedPostsDto(); // ReplaceFeaturedPostsDto | 
+
+try {
+    final result = api_instance.replaceMyFeaturedPosts(replaceFeaturedPostsDto);
+    print(result);
+} catch (e) {
+    print('Exception when calling CreatorsApi->replaceMyFeaturedPosts: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **replaceFeaturedPostsDto** | [**ReplaceFeaturedPostsDto**](ReplaceFeaturedPostsDto.md)|  | 
+
+### Return type
+
+[**List<FeaturedPostModel>**](FeaturedPostModel.md)
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

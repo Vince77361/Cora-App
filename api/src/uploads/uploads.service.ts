@@ -26,6 +26,8 @@ const RULES: Record<
   CREATOR_PHOTO: { role: 'CREATOR', dir: 'creators' },
   // 브랜드가 넘겨 보는 카드 사진. 프로필 사진과 폴더를 나눠 서로의 경로를 못 바꿔 끼우게 한다.
   CREATOR_CARD: { role: 'CREATOR', dir: 'creator-cards' },
+  // 대표 게시물의 사진(사진첩 올리기, 인스타그램에서 복사한 파일). 카드 사진과 폴더를 나눈다.
+  FEATURED_POST: { role: 'CREATOR', dir: 'featured-posts' },
   BRAND_PHOTO: { role: 'BRAND', dir: 'brands' },
   VIEW_EVIDENCE: { role: 'CREATOR', dir: 'evidence', bucket: PRIVATE_BUCKET },
 };

@@ -199,7 +199,13 @@ class FakeCreatorsService extends CreatorsService {
   readonly profiles = new Map<string, CreatorProfileModel>();
 
   constructor() {
-    super(null as never, null as never, null as never, null as never);
+    super(
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+    );
   }
 
   add(

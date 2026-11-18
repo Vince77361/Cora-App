@@ -282,7 +282,13 @@ class FakeCreatorsService extends CreatorsService {
   summary: CreatorSummaryModel | null = null;
 
   constructor() {
-    super(null as never, null as never, null as never, null as never);
+    super(
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+    );
   }
 
   getSummary(): Promise<CreatorSummaryModel | null> {

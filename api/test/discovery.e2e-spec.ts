@@ -7,6 +7,7 @@ import { Clock } from '../src/common/clock';
 import { PushPort } from '../src/integrations/push/push.port';
 import { RealtimePublisher } from '../src/realtime/realtime-publisher';
 import { createTestApp, httpOf } from './helpers/create-test-app';
+import { setCardPost } from './helpers/featured-posts';
 import { flushMessages } from './helpers/flush-messages';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
@@ -321,30 +322,25 @@ describe('discovery decisions', () => {
 
     it('copies the creator card title and photo when a brand likes with a note', async () => {
       await bothSides();
-      await prisma.creatorProfile.update({
-        where: { userId: OTHER },
-        data: {
-          cardHeadline: '출근길 한 컵 이야기',
-          cardPhotoPath: `creator-cards/${OTHER}/${randomUUID()}.jpg`,
-        },
-      });
-      const card = await prisma.creatorProfile.findUniqueOrThrow({
-        where: { userId: OTHER },
+      const mediaPath = `featured-posts/${OTHER}/${randomUUID()}.jpg`;
+      await setCardPost(prisma, OTHER, {
+        caption: '출근길 한 컵 이야기',
+        mediaPath,
       });
       await brandLike({ note: '아침 사진이 좋았어요' }).expect(200);
       const [row] = await decisionRows();
       expect(row).toMatchObject({
         note: '아침 사진이 좋았어요',
         contentTitle: '출근길 한 컵 이야기',
-        contentPhotoPath: card.cardPhotoPath,
+        contentPhotoPath: mediaPath,
       });
     });
 
     it('does not copy the card when the like carries no note', async () => {
       await bothSides();
-      await prisma.creatorProfile.update({
-        where: { userId: OTHER },
-        data: { cardHeadline: '출근길 한 컵 이야기' },
+      await setCardPost(prisma, OTHER, {
+        caption: '출근길 한 컵 이야기',
+        mediaPath: `featured-posts/${OTHER}/${randomUUID()}.jpg`,
       });
       await brandLike().expect(200);
       const [row] = await decisionRows();

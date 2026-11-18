@@ -94,7 +94,9 @@ Class | Method | HTTP request | Description
 *ConversationsApi* | [**setConversationMuted**](doc//ConversationsApi.md#setconversationmuted) | **PUT** /conversations/{id}/mute | 이 방의 알림을 끄거나 켠다.
 *CreatorsApi* | [**createMyCreatorSeries**](doc//CreatorsApi.md#createmycreatorseries) | **POST** /creators/me/series | 
 *CreatorsApi* | [**getMyCreatorProfile**](doc//CreatorsApi.md#getmycreatorprofile) | **GET** /creators/me | 
+*CreatorsApi* | [**getMyFeaturedPosts**](doc//CreatorsApi.md#getmyfeaturedposts) | **GET** /creators/me/featured-posts | 
 *CreatorsApi* | [**listMyCreatorSeries**](doc//CreatorsApi.md#listmycreatorseries) | **GET** /creators/me/series | 
+*CreatorsApi* | [**replaceMyFeaturedPosts**](doc//CreatorsApi.md#replacemyfeaturedposts) | **PUT** /creators/me/featured-posts | 
 *CreatorsApi* | [**upsertMyCreatorProfile**](doc//CreatorsApi.md#upsertmycreatorprofile) | **PUT** /creators/me | 
 *DiscoveryApi* | [**compareCandidates**](doc//DiscoveryApi.md#comparecandidates) | **GET** /discovery/compare | 후보 비교(브랜드). 이 캠페인에서 내가 저장한 두 크리에이터를 같은 결과물 기준으로 견주고 다른 줄을 알려 준다. 팔로워 수는 없다.
 *DiscoveryApi* | [**createInquiry**](doc//DiscoveryApi.md#createinquiry) | **POST** /discovery/received-proposals/{campaignId}/inquiry | \"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.
@@ -251,6 +253,10 @@ Class | Method | HTTP request | Description
  - [DropReasonChoice](doc//DropReasonChoice.md)
  - [EndOfferDto](doc//EndOfferDto.md)
  - [EndedOfferModel](doc//EndedOfferModel.md)
+ - [FeaturedPostInputDto](doc//FeaturedPostInputDto.md)
+ - [FeaturedPostKind](doc//FeaturedPostKind.md)
+ - [FeaturedPostModel](doc//FeaturedPostModel.md)
+ - [FeaturedPostSource](doc//FeaturedPostSource.md)
  - [FeeBand](doc//FeeBand.md)
  - [FeeRatesModel](doc//FeeRatesModel.md)
  - [FixedCashMaxModel](doc//FixedCashMaxModel.md)
@@ -327,6 +333,7 @@ Class | Method | HTTP request | Description
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)
  - [RecommendedApplicantModel](doc//RecommendedApplicantModel.md)
  - [RecommendedApplicantsModel](doc//RecommendedApplicantsModel.md)
+ - [ReplaceFeaturedPostsDto](doc//ReplaceFeaturedPostsDto.md)
  - [ReportCreatedModel](doc//ReportCreatedModel.md)
  - [ReportReason](doc//ReportReason.md)
  - [ReportTargetKind](doc//ReportTargetKind.md)

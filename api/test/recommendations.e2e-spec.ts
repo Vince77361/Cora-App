@@ -12,6 +12,7 @@ import request from 'supertest';
 import { Clock } from '../src/common/clock';
 import { RecommendationsRepository } from '../src/recommendations/recommendations.repository';
 import { createTestApp, httpOf } from './helpers/create-test-app';
+import { setCardPost } from './helpers/featured-posts';
 import { createOffer } from './helpers/create-offer';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
@@ -168,9 +169,12 @@ describe('recommendations', () => {
         userId,
         displayName: name,
         instagramHandle: o.handle ?? `${name}_ig`,
-        cardHeadline: `${name}의 한 줄`,
         ...REGION,
       },
+    });
+    await setCardPost(prisma, userId, {
+      caption: `${name}의 한 줄`,
+      mediaPath: `featured-posts/${userId}/a.jpg`,
     });
     if (o.principles !== null) {
       const p = { ...PRINCIPLES, ...o.principles };
@@ -455,7 +459,20 @@ describe('recommendations', () => {
         displayName: 'card',
         instagramHandle: 'card_ig',
         headline: 'card의 한 줄',
-        photoUrl: null,
+        // 카드 첫 장은 대표 게시물 1번이다. 사진이 그 게시물의 사진이고 게시물 목록도 함께 내려간다.
+        photoUrl: `https://fake-storage.test/public/featured-posts/${creatorId}/a.jpg`,
+        posts: [
+          {
+            id: expect.any(String) as string,
+            position: 1,
+            source: 'GALLERY',
+            kind: 'PHOTO',
+            photoUrl: `https://fake-storage.test/public/featured-posts/${creatorId}/a.jpg`,
+            mediaUrl: `https://fake-storage.test/public/featured-posts/${creatorId}/a.jpg`,
+            caption: 'card의 한 줄',
+            instagramMediaId: null,
+          },
+        ],
         feeBand: 'W400K',
         tags: ['얼굴출연없음', '솔직후기', '액세서리·주얼리'],
         theyLikedMe: false,

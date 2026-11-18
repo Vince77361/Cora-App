@@ -52,6 +52,12 @@ void main() {
       // TODO
     });
 
+    // 대표 게시물(최대 4개, 차례대로). 없으면 빈 목록이고 이때 photoUrl이 프로필 사진이다.
+    // List<FeaturedPostModel> posts (default value: const [])
+    test('to test the property `posts`', () async {
+      // TODO
+    });
+
     // 크리에이터의 협업 원칙과 겹치는 규칙. 많을수록 잘 맞는다.
     // List<MatchReason> reasons (default value: const [])
     test('to test the property `reasons`', () async {

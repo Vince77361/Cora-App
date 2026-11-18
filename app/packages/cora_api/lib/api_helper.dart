@@ -136,6 +136,12 @@ String parameterToString(dynamic value) {
   if (value is DropReasonChoice) {
     return DropReasonChoiceTypeTransformer().encode(value).toString();
   }
+  if (value is FeaturedPostKind) {
+    return FeaturedPostKindTypeTransformer().encode(value).toString();
+  }
+  if (value is FeaturedPostSource) {
+    return FeaturedPostSourceTypeTransformer().encode(value).toString();
+  }
   if (value is FeeBand) {
     return FeeBandTypeTransformer().encode(value).toString();
   }

@@ -358,6 +358,14 @@ class ApiClient {
           return EndOfferDto.fromJson(value);
         case 'EndedOfferModel':
           return EndedOfferModel.fromJson(value);
+        case 'FeaturedPostInputDto':
+          return FeaturedPostInputDto.fromJson(value);
+        case 'FeaturedPostKind':
+          return FeaturedPostKindTypeTransformer().decode(value);
+        case 'FeaturedPostModel':
+          return FeaturedPostModel.fromJson(value);
+        case 'FeaturedPostSource':
+          return FeaturedPostSourceTypeTransformer().decode(value);
         case 'FeeBand':
           return FeeBandTypeTransformer().decode(value);
         case 'FeeRatesModel':
@@ -510,6 +518,8 @@ class ApiClient {
           return RecommendedApplicantModel.fromJson(value);
         case 'RecommendedApplicantsModel':
           return RecommendedApplicantsModel.fromJson(value);
+        case 'ReplaceFeaturedPostsDto':
+          return ReplaceFeaturedPostsDto.fromJson(value);
         case 'ReportCreatedModel':
           return ReportCreatedModel.fromJson(value);
         case 'ReportReason':

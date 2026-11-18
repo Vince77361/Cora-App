@@ -24,6 +24,7 @@ import {
 import type { OfferTermsModel } from '../../src/stores/dto/offer-terms.model';
 import {
   MockApplicationData,
+  MockFeaturedPostData,
   MockOfferData,
   MockSeedDb,
   MockVersionData,
@@ -37,6 +38,7 @@ export interface MockSeedDeps {
 }
 
 interface MockJson {
+  contents: { creatorKey: string; title: string; image: string }[];
   creators: {
     key: string;
     name: string;
@@ -99,6 +101,19 @@ const CREATORS: readonly {
   { phone: '010-0000-0006', key: 'noodleDiary', contentFocus: '라멘 리뷰' },
   { phone: '010-0000-0007', key: 'min', contentFocus: null },
 ];
+
+// 대표 게시물(카드 첫 장)로 쓰는 시드. 사진이 있는 크리에이터마다 자기 콘텐츠(mock.contents)가 1번이고,
+// 뒤는 같은 묶음의 다른 사진이다. 사람마다 개수가 달라 1~4개짜리 카드를 모두 볼 수 있다(서윤 2개, 하루 한 컵 3개, 민 4개).
+const FEATURED_EXTRA_IMAGES = [
+  'images/unused-illustration-watch-on-wrist.png',
+  'images/unused-illustration-portrait-grey-knit.png',
+  'images/store-hangeureut-ramen-1.png',
+] as const;
+const FEATURED_POST_COUNT: Record<string, number> = {
+  seoyun: 2,
+  onecup: 3,
+  min: 4,
+};
 
 const STORE_OWNER_PHONE = '010-0000-0001';
 // 캔버스에 활동 지역이 없어서 시연용으로 모두 서울특별시, 구·군 없음으로 둔다.
@@ -193,6 +208,27 @@ export async function runMockSeed(
       regionSigungu: null,
     });
     log(`…${spec.phone.slice(-4)} CREATOR: 프로필 맞춤(${creator.name})`);
+
+    const content = mock.contents.find((c) => c.creatorKey === spec.key);
+    const count = FEATURED_POST_COUNT[spec.key];
+    if (content && count) {
+      const sources = [content.image, ...FEATURED_EXTRA_IMAGES].slice(0, count);
+      const posts: MockFeaturedPostData[] = [];
+      for (const [index, image] of sources.entries()) {
+        const mediaPath = `featured-posts/${userId}/seed-${index + 1}${extname(image)}`;
+        await uploadImage(storage, image, mediaPath);
+        posts.push({
+          mediaPath,
+          // 한 줄은 40자까지다. 1번은 콘텐츠 제목의 줄바꿈을 공백으로 이은 것이다.
+          caption:
+            index === 0
+              ? content.title.replace(/\s*\n\s*/g, ' ')
+              : `견본 게시물 ${index + 1}`,
+        });
+      }
+      await db.replaceFeaturedPosts(userId, posts);
+      log(`…${spec.phone.slice(-4)} CREATOR: 대표 게시물 ${posts.length}개`);
+    }
   }
 
   const flow = mock.storeFlow;

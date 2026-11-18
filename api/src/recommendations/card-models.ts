@@ -34,6 +34,7 @@ export function toCreatorCard(
     instagramHandle: source.instagramHandle,
     headline: source.headline,
     photoUrl: source.photoUrl,
+    posts: source.posts,
     feeBand: p.feeBand,
     tags: principleTags(p),
     reasons: matchScore(p, facts).reasons,

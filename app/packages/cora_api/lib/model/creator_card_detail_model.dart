@@ -20,6 +20,7 @@ class CreatorCardDetailModel {
     required this.instagramHandle,
     required this.myDecision,
     required this.photoUrl,
+    this.posts = const [],
     this.reasons = const [],
     this.tags = const [],
     required this.theyLikedMe,
@@ -40,6 +41,9 @@ class CreatorCardDetailModel {
 
   String? photoUrl;
 
+  /// 대표 게시물(최대 4개, 차례대로). 없으면 빈 목록이고 이때 photoUrl이 프로필 사진이다.
+  List<FeaturedPostModel> posts;
+
   /// 크리에이터의 협업 원칙과 겹치는 규칙. 많을수록 잘 맞는다.
   List<MatchReason> reasons;
 
@@ -59,6 +63,7 @@ class CreatorCardDetailModel {
           other.instagramHandle == instagramHandle &&
           other.myDecision == myDecision &&
           other.photoUrl == photoUrl &&
+          _deepEquality.equals(other.posts, posts) &&
           _deepEquality.equals(other.reasons, reasons) &&
           _deepEquality.equals(other.tags, tags) &&
           other.theyLikedMe == theyLikedMe;
@@ -73,13 +78,14 @@ class CreatorCardDetailModel {
       (instagramHandle == null ? 0 : instagramHandle!.hashCode) +
       (myDecision == null ? 0 : myDecision!.hashCode) +
       (photoUrl == null ? 0 : photoUrl!.hashCode) +
+      (posts.hashCode) +
       (reasons.hashCode) +
       (tags.hashCode) +
       (theyLikedMe.hashCode);
 
   @override
   String toString() =>
-      'CreatorCardDetailModel[creatorId=$creatorId, displayName=$displayName, feeBand=$feeBand, headline=$headline, instagramHandle=$instagramHandle, myDecision=$myDecision, photoUrl=$photoUrl, reasons=$reasons, tags=$tags, theyLikedMe=$theyLikedMe]';
+      'CreatorCardDetailModel[creatorId=$creatorId, displayName=$displayName, feeBand=$feeBand, headline=$headline, instagramHandle=$instagramHandle, myDecision=$myDecision, photoUrl=$photoUrl, posts=$posts, reasons=$reasons, tags=$tags, theyLikedMe=$theyLikedMe]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -106,6 +112,7 @@ class CreatorCardDetailModel {
     } else {
       json[r'photoUrl'] = null;
     }
+    json[r'posts'] = this.posts;
     json[r'reasons'] = this.reasons;
     json[r'tags'] = this.tags;
     json[r'theyLikedMe'] = this.theyLikedMe;
@@ -143,6 +150,10 @@ class CreatorCardDetailModel {
             'Required key "CreatorCardDetailModel[myDecision]" is missing from JSON.');
         assert(json.containsKey(r'photoUrl'),
             'Required key "CreatorCardDetailModel[photoUrl]" is missing from JSON.');
+        assert(json.containsKey(r'posts'),
+            'Required key "CreatorCardDetailModel[posts]" is missing from JSON.');
+        assert(json[r'posts'] != null,
+            'Required key "CreatorCardDetailModel[posts]" has a null value in JSON.');
         assert(json.containsKey(r'reasons'),
             'Required key "CreatorCardDetailModel[reasons]" is missing from JSON.');
         assert(json[r'reasons'] != null,
@@ -166,6 +177,7 @@ class CreatorCardDetailModel {
         instagramHandle: mapValueOfType<String>(json, r'instagramHandle'),
         myDecision: SavedDecision.fromJson(json[r'myDecision']),
         photoUrl: mapValueOfType<String>(json, r'photoUrl'),
+        posts: FeaturedPostModel.listFromJson(json[r'posts']),
         reasons: MatchReason.listFromJson(json[r'reasons']),
         tags: json[r'tags'] is Iterable
             ? (json[r'tags'] as Iterable).cast<String>().toList(growable: false)
@@ -234,6 +246,7 @@ class CreatorCardDetailModel {
     'instagramHandle',
     'myDecision',
     'photoUrl',
+    'posts',
     'reasons',
     'tags',
     'theyLikedMe',

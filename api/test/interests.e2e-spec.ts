@@ -4,6 +4,7 @@ import { IndustryCategory, PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { Clock } from '../src/common/clock';
 import { createTestApp, httpOf } from './helpers/create-test-app';
+import { setCardPost } from './helpers/featured-posts';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
 import { OTHER, USER_A } from './support/fake-token-verifier';
@@ -161,9 +162,12 @@ describe('interests, received proposals and card details', () => {
       data: {
         userId: id,
         displayName,
-        cardHeadline: `${displayName}의 한 줄`,
         ...REGION,
       },
+    });
+    await setCardPost(prisma, id, {
+      caption: `${displayName}의 한 줄`,
+      mediaPath: `featured-posts/${id}/a.jpg`,
     });
     await prisma.creatorPrinciples.create({
       data: {
@@ -472,12 +476,9 @@ describe('interests, received proposals and card details', () => {
   describe('received proposals', () => {
     it('lists a noted like until the creator decides, with the content copy', async () => {
       const campaignId = await bothSides();
-      await prisma.creatorProfile.update({
-        where: { userId: OTHER },
-        data: {
-          cardHeadline: '아침 한 컵',
-          cardPhotoPath: `creator-cards/${OTHER}/a.jpg`,
-        },
+      await setCardPost(prisma, OTHER, {
+        caption: '아침 한 컵',
+        mediaPath: `featured-posts/${OTHER}/a.jpg`,
       });
       await brandDecide(OTHER, 'LIKE', { note: '결이 좋아서요' });
       const [proposal] = await received();
@@ -491,7 +492,7 @@ describe('interests, received proposals and card details', () => {
         performance: null,
         format: 'REELS',
       });
-      expect(proposal.contentPhotoUrl).toContain('creator-cards');
+      expect(proposal.contentPhotoUrl).toContain('featured-posts');
       expect(JSON.stringify(proposal)).not.toContain('budget');
 
       await creatorDecide(campaignId, 'PASS');

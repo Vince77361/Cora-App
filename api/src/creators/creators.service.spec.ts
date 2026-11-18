@@ -5,15 +5,18 @@ import { UploadRateLimiter } from '../uploads/upload-rate-limiter';
 import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
 import { FakeClock } from '../../test/support/fake-clock';
+import { FakeFeaturedPostsRepository } from '../../test/support/fake-featured-posts.repository';
 import { FakeStoragePort } from '../../test/support/fake-storage.port';
 import type { UpsertCreatorProfileDto } from './dto/upsert-creator-profile.dto';
 import { CreatorsRepository } from './creators.repository';
 import type {
+  CreatorCardRow,
   CreatorProfileData,
   CreatorSeriesData,
   CreatorProfileRow,
 } from './creators.repository';
 import { CreatorsService } from './creators.service';
+import { FeaturedPostsService } from './featured-posts.service';
 
 const USER = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
@@ -52,11 +55,27 @@ class FakeCreatorsRepository extends CreatorsRepository {
     return rows.flatMap((row) => (row ? [row] : []));
   }
 
+  listForCards(ids?: string[]): Promise<CreatorCardRow[]> {
+    return Promise.resolve(
+      [...this.rows.values()]
+        .filter((r) => !r.deletedAt && (!ids || ids.includes(r.userId)))
+        .map((row) => {
+          const profile: Partial<CreatorProfileRow> = { ...row };
+          delete profile.instagram;
+          return { ...(profile as CreatorCardRow), joinedAt: row.createdAt };
+        }),
+    );
+  }
+
   upsert(userId: string, data: CreatorProfileData): Promise<CreatorProfileRow> {
     const now = new Date();
+    const before = this.rows.get(userId);
     const row: CreatorProfileRow = {
-      id: this.rows.get(userId)?.id ?? `id-${userId}`,
+      id: before?.id ?? `id-${userId}`,
       userId,
+      // 옛 카드 열은 저장 요청이 건드리지 않는다.
+      cardHeadline: before?.cardHeadline ?? null,
+      cardPhotoPath: before?.cardPhotoPath ?? null,
       ...data,
       createdAt: now,
       updatedAt: now,
@@ -137,6 +156,9 @@ async function codeOf(promise: Promise<unknown>): Promise<string | undefined> {
 describe('CreatorsService', () => {
   let repo: FakeCreatorsRepository;
   let users: FakeUsersService;
+  let featuredRepo: FakeFeaturedPostsRepository;
+  let featured: FeaturedPostsService;
+  let storage: FakeStoragePort;
   let service: CreatorsService;
   const input: UpsertCreatorProfileDto = {
     displayName: '민지',
@@ -146,17 +168,21 @@ describe('CreatorsService', () => {
   beforeEach(() => {
     repo = new FakeCreatorsRepository();
     users = new FakeUsersService();
-    const storage = new FakeStoragePort();
-    service = new CreatorsService(
-      repo,
+    storage = new FakeStoragePort();
+    const uploads = new UploadsService(
       users,
-      new UploadsService(
-        users,
-        storage,
-        new UploadRateLimiter(new FakeClock()),
-      ),
       storage,
+      new UploadRateLimiter(new FakeClock()),
     );
+    featuredRepo = new FakeFeaturedPostsRepository();
+    featured = new FeaturedPostsService(
+      featuredRepo,
+      users,
+      uploads,
+      storage,
+      new FakeClock(),
+    );
+    service = new CreatorsService(repo, users, uploads, storage, featured);
   });
 
   it('returns null for a missing profile and for a soft-deleted one', async () => {
@@ -237,21 +263,73 @@ describe('CreatorsService', () => {
     expect(repo.rows.size).toBe(0);
   });
 
-  it('builds the card photo url and checks the card photo folder', async () => {
-    const card = `creator-cards/${USER}/44444444-4444-4444-8444-444444444444.jpg`;
+  it('ignores the legacy card fields in the profile save', async () => {
     const saved = await service.upsertMine(USER, {
       ...input,
       cardHeadline: '  카페 릴스 전문 ',
-      cardPhotoPath: card,
+      cardPhotoPath: `creator-cards/${USER}/44444444-4444-4444-8444-444444444444.jpg`,
     });
-    expect(saved.cardHeadline).toBe('카페 릴스 전문');
-    expect(saved.cardPhotoUrl).toBe(`https://fake-storage.test/public/${card}`);
-    // 프로필 사진 폴더의 경로는 카드 사진으로 못 쓴다.
-    expect(
-      await codeOf(
-        service.upsertMine(USER, { ...input, cardPhotoPath: PHOTO }),
-      ),
-    ).toBe('FORBIDDEN');
+    expect(saved.cardHeadline).toBeNull();
+    expect(saved.cardPhotoUrl).toBeNull();
+    // 내 폴더가 아닌 경로가 와도 읽지 않으니 거절하지도 않는다.
+    await expect(
+      service.upsertMine(USER, { ...input, cardPhotoPath: PHOTO }),
+    ).resolves.toBeDefined();
+  });
+
+  async function addPosts(userId: string, captions: string[]): Promise<void> {
+    const items = [];
+    for (const caption of captions) {
+      const path = `featured-posts/${userId}/${randomUUID()}.jpg`;
+      await storage.createUploadUrl(path);
+      items.push({
+        source: 'GALLERY' as const,
+        kind: 'PHOTO' as const,
+        mediaPath: path,
+        caption,
+      });
+    }
+    await featured.replaceMine(userId, items);
+  }
+
+  it('returns the first post as the card copy', async () => {
+    await service.upsertMine(USER, { ...input, photoPath: PHOTO });
+    await addPosts(USER, ['카페 릴스 전문', '두 번째']);
+    const first = featuredRepo.rows.find((r) => r.position === 1)!;
+    expect(await service.getCardCopy(USER)).toEqual({
+      headline: '카페 릴스 전문',
+      photoPath: first.mediaPath,
+    });
+    // 썸네일이 있으면 카드 사진은 썸네일이다.
+    first.thumbnailPath = `featured-posts/${USER}/${randomUUID()}.jpg`;
+    expect((await service.getCardCopy(USER))?.photoPath).toBe(
+      first.thumbnailPath,
+    );
+    // 응답의 옛 이름 두 칸도 1번 게시물에서 채운다.
+    const profile = await service.getMine(USER);
+    expect(profile.cardHeadline).toBe('카페 릴스 전문');
+    expect(profile.cardPhotoUrl).toBe(
+      `https://fake-storage.test/public/${first.thumbnailPath}`,
+    );
+    expect(await service.getCardCopy(OTHER)).toBeNull();
+  });
+
+  it('falls back to the profile photo when there is no post', async () => {
+    await service.upsertMine(USER, { ...input, photoPath: PHOTO });
+    expect(await service.getCardCopy(USER)).toEqual({
+      headline: null,
+      photoPath: null,
+    });
+    const [card] = await service.findCardSources([USER]);
+    expect(card.headline).toBeNull();
+    expect(card.posts).toEqual([]);
+    expect(card.photoUrl).toBe(`https://fake-storage.test/public/${PHOTO}`);
+
+    await addPosts(USER, ['카페 릴스 전문']);
+    const [withPost] = await service.findCardSources([USER]);
+    expect(withPost.headline).toBe('카페 릴스 전문');
+    expect(withPost.posts).toHaveLength(1);
+    expect(withPost.photoUrl).toBe(withPost.posts[0].photoUrl);
   });
 
   it('requires the CREATOR role for reading and writing', async () => {

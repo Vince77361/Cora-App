@@ -1903,6 +1903,7 @@
               "STORE_COVER",
               "CREATOR_PHOTO",
               "CREATOR_CARD",
+              "FEATURED_POST",
               "BRAND_PHOTO",
               "VIEW_EVIDENCE"
             ],
@@ -1995,6 +1996,13 @@
             "nullable": true,
             "type": "string"
           },
+          "posts": {
+            "description": "대표 게시물(최대 4개, 차례대로). 없으면 빈 목록이고 이때 photoUrl이 프로필 사진이다.",
+            "items": {
+              "$ref": "#/components/schemas/FeaturedPostModel"
+            },
+            "type": "array"
+          },
           "reasons": {
             "description": "크리에이터의 협업 원칙과 겹치는 규칙. 많을수록 잘 맞는다.",
             "items": {
@@ -2019,6 +2027,7 @@
           "instagramHandle",
           "headline",
           "photoUrl",
+          "posts",
           "feeBand",
           "tags",
           "reasons",
@@ -2056,6 +2065,13 @@
             "nullable": true,
             "type": "string"
           },
+          "posts": {
+            "description": "대표 게시물(최대 4개, 차례대로). 없으면 빈 목록이고 이때 photoUrl이 프로필 사진이다.",
+            "items": {
+              "$ref": "#/components/schemas/FeaturedPostModel"
+            },
+            "type": "array"
+          },
           "reasons": {
             "description": "크리에이터의 협업 원칙과 겹치는 규칙. 많을수록 잘 맞는다.",
             "items": {
@@ -2080,6 +2096,7 @@
           "instagramHandle",
           "headline",
           "photoUrl",
+          "posts",
           "feeBand",
           "tags",
           "reasons",
@@ -2110,11 +2127,13 @@
       "CreatorProfileModel": {
         "properties": {
           "cardHeadline": {
+            "description": "대표 게시물 1번의 한 줄. 대표 게시물이 없으면 null.",
             "maxLength": 40,
             "nullable": true,
             "type": "string"
           },
           "cardPhotoUrl": {
+            "description": "대표 게시물 1번의 그림. 대표 게시물이 없으면 null.",
             "nullable": true,
             "type": "string"
           },
@@ -2423,6 +2442,118 @@
           "endedBy"
         ],
         "type": "object"
+      },
+      "FeaturedPostInputDto": {
+        "properties": {
+          "caption": {
+            "description": "한 줄 설명. 사진첩 게시물은 필수.",
+            "maxLength": 40,
+            "nullable": true,
+            "type": "object"
+          },
+          "id": {
+            "description": "내 대표 게시물의 ID. 이것만 보내면 기존 게시물을 그대로 두고 이 차례에 놓는다.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "instagramMediaId": {
+            "nullable": true,
+            "type": "object"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeaturedPostKind"
+              }
+            ]
+          },
+          "mediaPath": {
+            "description": "올린 파일의 경로. 사진첩은 POST /uploads/photos(FEATURED_POST)가 준 경로, 인스타그램은 가져오기가 준 경로.",
+            "type": "string"
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeaturedPostSource"
+              }
+            ]
+          },
+          "thumbnailPath": {
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "FeaturedPostKind": {
+        "enum": [
+          "PHOTO",
+          "VIDEO"
+        ],
+        "type": "string"
+      },
+      "FeaturedPostModel": {
+        "properties": {
+          "caption": {
+            "maxLength": 40,
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "instagramMediaId": {
+            "description": "인스타그램에서 가져왔으면 원본 게시물 ID.",
+            "nullable": true,
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeaturedPostKind"
+              }
+            ]
+          },
+          "mediaUrl": {
+            "description": "사진이나 영상 파일의 주소.",
+            "type": "string"
+          },
+          "photoUrl": {
+            "description": "카드에 보이는 그림. 썸네일이 있으면 썸네일, 없으면 사진.",
+            "type": "string"
+          },
+          "position": {
+            "maximum": 4,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeaturedPostSource"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "source",
+          "kind",
+          "photoUrl",
+          "mediaUrl",
+          "caption",
+          "instagramMediaId"
+        ],
+        "type": "object"
+      },
+      "FeaturedPostSource": {
+        "enum": [
+          "INSTAGRAM",
+          "GALLERY"
+        ],
+        "type": "string"
       },
       "FeeBand": {
         "enum": [
@@ -4569,6 +4700,21 @@
         ],
         "type": "object"
       },
+      "ReplaceFeaturedPostsDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeaturedPostInputDto"
+            },
+            "maxItems": 4,
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
       "ReportCreatedModel": {
         "properties": {
           "id": {
@@ -5996,12 +6142,12 @@
       "UpsertCreatorProfileDto": {
         "properties": {
           "cardHeadline": {
-            "description": "브랜드가 보는 카드의 한 줄. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.",
+            "description": "더는 읽지 않아요. 카드 첫 장은 대표 게시물(PUT /creators/me/featured-posts)의 1번이에요.",
             "maxLength": 40,
             "type": "string"
           },
           "cardPhotoPath": {
-            "description": "브랜드가 보는 카드의 사진 경로. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.",
+            "description": "더는 읽지 않아요. 카드 첫 장은 대표 게시물(PUT /creators/me/featured-posts)의 1번이에요.",
             "type": "string"
           },
           "contentFocus": {
@@ -8135,6 +8281,74 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreatorProfileModel"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Creators"
+        ]
+      }
+    },
+    "/creators/me/featured-posts": {
+      "get": {
+        "operationId": "getMyFeaturedPosts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeaturedPostModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Creators"
+        ]
+      },
+      "put": {
+        "operationId": "replaceMyFeaturedPosts",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceFeaturedPostsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeaturedPostModel"
+                  },
+                  "type": "array"
                 }
               }
             },

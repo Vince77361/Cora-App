@@ -402,7 +402,13 @@ class FakeApplications extends ApplicationsService {
 
 class FakeCreators extends CreatorsService {
   constructor() {
-    super(null as never, null as never, null as never, null as never);
+    super(
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+    );
   }
   getActor(userId: string): ReturnType<CreatorsService['getActor']> {
     return Promise.resolve(

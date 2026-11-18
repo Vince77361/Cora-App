@@ -235,6 +235,7 @@ enum CreatePhotoUploadDtoPurposeEnum {
   STORE_COVER._(r'STORE_COVER'),
   CREATOR_PHOTO._(r'CREATOR_PHOTO'),
   CREATOR_CARD._(r'CREATOR_CARD'),
+  FEATURED_POST._(r'FEATURED_POST'),
   BRAND_PHOTO._(r'BRAND_PHOTO'),
   VIEW_EVIDENCE._(r'VIEW_EVIDENCE'),
   ;
@@ -307,6 +308,8 @@ class CreatePhotoUploadDtoPurposeEnumTypeTransformer {
           return CreatePhotoUploadDtoPurposeEnum.CREATOR_PHOTO;
         case r'CREATOR_CARD':
           return CreatePhotoUploadDtoPurposeEnum.CREATOR_CARD;
+        case r'FEATURED_POST':
+          return CreatePhotoUploadDtoPurposeEnum.FEATURED_POST;
         case r'BRAND_PHOTO':
           return CreatePhotoUploadDtoPurposeEnum.BRAND_PHOTO;
         case r'VIEW_EVIDENCE':

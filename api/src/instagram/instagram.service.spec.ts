@@ -75,7 +75,13 @@ class FakeUsers extends UsersService {
 class FakeCreators extends CreatorsService {
   readonly overwritten: { userId: string; handle: string }[] = [];
   constructor() {
-    super(null as never, null as never, null as never, null as never);
+    super(
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+    );
   }
   overwriteInstagramHandle(userId: string, handle: string): Promise<void> {
     this.overwritten.push({ userId, handle });

@@ -1,8 +1,10 @@
 import { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
+import { StoragePort } from '../src/integrations/storage/storage.port';
 import { createTestApp, httpOf } from './helpers/create-test-app';
 import { truncateTestDb } from './helpers/truncate-test-db';
+import { FakeStoragePort } from './support/fake-storage.port';
 import { OTHER, USER_A } from './support/fake-token-verifier';
 
 const auth = { Authorization: 'Bearer user-a' };
@@ -93,45 +95,45 @@ describe('creators', () => {
     expect(await prisma.creatorProfile.count()).toBe(1);
   });
 
-  it('saves the card headline and photo and clears them on a full replace', async () => {
+  it('accepts the legacy card fields but ignores them and reads the card from the first featured post', async () => {
     const saved = await put({
       cardHeadline: '  카페 릴스 전문  ',
       cardPhotoPath: CARD,
     }).expect(200);
     expect(saved.body).toMatchObject({
-      cardHeadline: '카페 릴스 전문',
-      cardPhotoUrl: `https://fake-storage.test/public/${CARD}`,
-    });
-    const got = await request(server).get('/creators/me').set(auth).expect(200);
-    expect(got.body).toEqual(saved.body);
-    const row = await prisma.creatorProfile.findFirstOrThrow();
-    expect(row).toMatchObject({
-      cardHeadline: '카페 릴스 전문',
-      cardPhotoPath: CARD,
-    });
-    // 전체 교체라서 빠뜨리면 지워진다. 공백뿐인 한 줄도 같다.
-    const cleared = await put({ cardHeadline: '   ' }).expect(200);
-    expect(cleared.body).toMatchObject({
       cardHeadline: null,
       cardPhotoUrl: null,
     });
-  });
-
-  it('rejects a card headline longer than 40 characters', async () => {
-    await put({ cardHeadline: 'a'.repeat(41) }).expect(400);
-    await put({ cardHeadline: 'a'.repeat(40) }).expect(200);
-  });
-
-  it('rejects a card photo path under another user id or from the profile photo folder', async () => {
-    const other = await put({
-      cardPhotoPath: CARD.replace(USER_A, OTHER),
-    }).expect(403);
-    expect(codeOf(other)).toBe('FORBIDDEN');
-    const profilePhoto = await put({ cardPhotoPath: PHOTO }).expect(403);
-    expect(codeOf(profilePhoto)).toBe('FORBIDDEN');
-    // 프로필 사진 자리에 카드 사진 경로도 못 쓴다.
+    // 옛 열은 건드리지 않는다.
+    expect(await prisma.creatorProfile.findFirstOrThrow()).toMatchObject({
+      cardHeadline: null,
+      cardPhotoPath: null,
+    });
+    // 프로필 사진 자리에 카드 사진 경로는 여전히 못 쓴다.
     await put({ photoPath: CARD }).expect(403);
-    expect(await prisma.creatorProfile.count()).toBe(0);
+
+    const path = `featured-posts/${USER_A}/55555555-5555-4555-8555-555555555555.jpg`;
+    const storage = app.get<FakeStoragePort>(StoragePort);
+    await storage.createUploadUrl(path);
+    await request(server)
+      .put('/creators/me/featured-posts')
+      .set(auth)
+      .send({
+        items: [
+          {
+            source: 'GALLERY',
+            kind: 'PHOTO',
+            mediaPath: path,
+            caption: '카페 릴스 전문',
+          },
+        ],
+      })
+      .expect(200);
+    const got = await request(server).get('/creators/me').set(auth).expect(200);
+    expect(got.body).toMatchObject({
+      cardHeadline: '카페 릴스 전문',
+      cardPhotoUrl: `https://fake-storage.test/public/${path}`,
+    });
   });
 
   it('requires the CREATOR role', async () => {

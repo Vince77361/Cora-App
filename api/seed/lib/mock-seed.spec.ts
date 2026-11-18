@@ -9,6 +9,7 @@ import { runMockSeed } from './mock-seed';
 import {
   MockApplicationData,
   MockCreatorProfileData,
+  MockFeaturedPostData,
   MockOfferData,
   MockSeedDb,
   MockSeriesData,
@@ -31,6 +32,15 @@ class FakeMockSeedDb implements MockSeedDb {
   offers: (MockOfferData & { storeId: string })[] = [];
   collaborations: (MockCollaborationData & { storeId: string })[] = [];
   series: MockSeriesData[] = [];
+  readonly featuredPosts = new Map<string, MockFeaturedPostData[]>();
+
+  replaceFeaturedPosts(
+    userId: string,
+    posts: MockFeaturedPostData[],
+  ): Promise<void> {
+    this.featuredPosts.set(userId, posts);
+    return Promise.resolve();
+  }
 
   upsertCreatorProfile(
     userId: string,
@@ -101,6 +111,33 @@ function setup() {
 }
 
 describe('runMockSeed', () => {
+  it('gives the three creators with photos 2, 3 and 4 featured posts in the creator folder', async () => {
+    const { db, storage, run } = setup();
+
+    await run();
+
+    const lengths = [...db.featuredPosts.entries()].map(([id, posts]) => [
+      id,
+      posts.length,
+    ]);
+    expect(lengths).toEqual([
+      [idOf('010-0000-0003'), 2],
+      [idOf('010-0000-0004'), 3],
+      [idOf('010-0000-0007'), 4],
+    ]);
+    const seoyun = db.featuredPosts.get(idOf('010-0000-0003')) ?? [];
+    expect(seoyun[0].caption).toBe('출근 전 30초, 오늘의 손목 루틴');
+    for (const posts of db.featuredPosts.values()) {
+      for (const post of posts) {
+        expect(post.caption.length).toBeLessThanOrEqual(40);
+        expect(storage.uploaded.map((u) => u.path)).toContain(post.mediaPath);
+      }
+    }
+    expect(seoyun[0].mediaPath).toBe(
+      `featured-posts/${idOf('010-0000-0003')}/seed-1.jpg`,
+    );
+  });
+
   it('writes the five creator profiles from the canvas values', async () => {
     const { db, run } = setup();
 
@@ -150,8 +187,13 @@ describe('runMockSeed', () => {
     expect(db.stores.get(owner)?.coverPhotoPath).toBe(
       `stores/${owner}/seed-cover.png`,
     );
-    // 사진이 있는 크리에이터 3명 + 가게 사진 1장.
-    expect(storage.uploaded.map((u) => u.path).sort()).toEqual(
+    // 사진이 있는 크리에이터 3명 + 가게 사진 1장(대표 게시물 사진은 따로 본다).
+    expect(
+      storage.uploaded
+        .map((u) => u.path)
+        .filter((path) => !path.startsWith('featured-posts/'))
+        .sort(),
+    ).toEqual(
       [
         `creators/${idOf('010-0000-0003')}/seed-profile.jpg`,
         `creators/${idOf('010-0000-0004')}/seed-profile.png`,

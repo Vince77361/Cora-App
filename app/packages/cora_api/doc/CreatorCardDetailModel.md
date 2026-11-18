@@ -15,6 +15,7 @@ Name | Type | Description | Notes
 **instagramHandle** | **String** |  | 
 **myDecision** | [**SavedDecision**](SavedDecision.md) | 내가 저장한 결정(관심 또는 보류). 결정하지 않았으면 null. 넘긴 카드는 상세가 404라서 PASS는 나오지 않는다. | 
 **photoUrl** | **String** |  | 
+**posts** | [**List<FeaturedPostModel>**](FeaturedPostModel.md) | 대표 게시물(최대 4개, 차례대로). 없으면 빈 목록이고 이때 photoUrl이 프로필 사진이다. | [default to const []]
 **reasons** | [**List<MatchReason>**](MatchReason.md) | 크리에이터의 협업 원칙과 겹치는 규칙. 많을수록 잘 맞는다. | [default to const []]
 **tags** | **List<String>** |  | [default to const []]
 **theyLikedMe** | **bool** | 항상 false. 상대가 먼저 관심을 보냈는지는 미리 알려 주지 않고, 순서에만 쓴다. | 

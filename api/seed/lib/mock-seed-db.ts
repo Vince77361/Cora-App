@@ -24,6 +24,12 @@ export interface MockCreatorProfileData {
   regionSigungu: string | null;
 }
 
+// 시드가 만드는 대표 게시물(모두 사진첩, 사진). 순서는 목록의 차례(1번부터)다.
+export interface MockFeaturedPostData {
+  mediaPath: string;
+  caption: string;
+}
+
 export interface MockStoreData {
   name: string;
   category: string;
@@ -175,6 +181,11 @@ export interface MockSeedDb {
     userId: string,
     data: MockCreatorProfileData,
   ): Promise<void>;
+  // 이 크리에이터의 대표 게시물을 목록으로 통째로 바꾼다(목업 계정의 행만 대상이라 실제로 지우고 다시 만든다).
+  replaceFeaturedPosts(
+    userId: string,
+    posts: MockFeaturedPostData[],
+  ): Promise<void>;
   // 가게는 한 계정에 하나라 ownerId로 맞춘다. 출처 링크는 목업 목록으로 통째로 바꾼다.
   upsertStore(
     ownerId: string,
@@ -199,6 +210,25 @@ export class PrismaMockSeedDb implements MockSeedDb {
       // deletedAt을 비우는 건, 지워진 채 남은 목업 프로필이 시드 뒤에도 안 보이는 것을 막기 위해서다.
       update: { ...data, deletedAt: null },
     });
+  }
+
+  async replaceFeaturedPosts(
+    userId: string,
+    posts: MockFeaturedPostData[],
+  ): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.featuredPost.deleteMany({ where: { creatorId: userId } }),
+      this.prisma.featuredPost.createMany({
+        data: posts.map((post, index) => ({
+          creatorId: userId,
+          position: index + 1,
+          source: 'GALLERY' as const,
+          kind: 'PHOTO' as const,
+          mediaPath: post.mediaPath,
+          caption: post.caption,
+        })),
+      }),
+    ]);
   }
 
   async upsertStore(

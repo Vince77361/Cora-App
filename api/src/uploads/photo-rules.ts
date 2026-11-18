@@ -16,6 +16,7 @@ export const PHOTO_PURPOSES = [
   'STORE_COVER',
   'CREATOR_PHOTO',
   'CREATOR_CARD',
+  'FEATURED_POST',
   'BRAND_PHOTO',
   'VIEW_EVIDENCE',
 ] as const;

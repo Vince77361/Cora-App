@@ -18,6 +18,7 @@ import {
   CreatorSummaryModel,
 } from './dto/creator-profile.model';
 import { UpsertCreatorProfileDto } from './dto/upsert-creator-profile.dto';
+import { FeaturedPostsService } from './featured-posts.service';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -38,6 +39,7 @@ export class CreatorsService {
     private readonly users: UsersService,
     private readonly uploads: UploadsService,
     private readonly storage: StoragePort,
+    private readonly featured: FeaturedPostsService,
   ) {}
 
   async getMine(userId: string): Promise<CreatorProfileModel> {
@@ -54,13 +56,10 @@ export class CreatorsService {
     input: UpsertCreatorProfileDto,
   ): Promise<CreatorProfileModel> {
     await this.assertCreator(userId);
+    // input.cardHeadline·cardPhotoPath는 받기만 하고 읽지 않는다: 카드 첫 장은 대표 게시물 1번이다(옛 열은 그대로 남는다).
     const photoPath = blankToNull(input.photoPath);
     if (photoPath) {
       this.uploads.assertOwnedPath(userId, photoPath, 'CREATOR_PHOTO');
-    }
-    const cardPhotoPath = blankToNull(input.cardPhotoPath);
-    if (cardPhotoPath) {
-      this.uploads.assertOwnedPath(userId, cardPhotoPath, 'CREATOR_CARD');
     }
     const handle = blankToNull(input.instagramHandle);
     // 연결된 계정이 있으면 프로필의 인스타그램 아이디는 항상 그 계정이다. 직접 적은 값(없는 값 포함)은 무시한다.
@@ -74,8 +73,6 @@ export class CreatorsService {
       photoPath,
       regionSido: input.regionSido,
       regionSigungu: blankToNull(input.regionSigungu),
-      cardHeadline: blankToNull(input.cardHeadline),
-      cardPhotoPath,
     });
     return this.toProfile(row);
   }
@@ -146,16 +143,12 @@ export class CreatorsService {
   // 브랜드에게 보여 주는 카드의 재료(하루 추천, 둘러보기). 활동 중인 크리에이터 전부를 최근 가입 순으로 준다.
   // 협업 원칙과 피하는 업종은 여기서 모른다: 읽는 쪽이 VisibilityService로 거른다.
   async listCardSources(): Promise<CreatorCardSource[]> {
-    return (await this.creators.listForCards()).map((row) =>
-      this.toCardSource(row),
-    );
+    return this.toCardSources(await this.creators.listForCards());
   }
 
   // 저장된 목록의 크리에이터만 다시 읽는다. 탈퇴했거나 프로필이 지워졌으면 빠진다.
   async findCardSources(ids: string[]): Promise<CreatorCardSource[]> {
-    return (await this.creators.listForCards(ids)).map((row) =>
-      this.toCardSource(row),
-    );
+    return this.toCardSources(await this.creators.listForCards(ids));
   }
 
   // 알림이 상대의 이름과 사진 경로를 사본으로 저장할 때 쓴다. 프로필이 없거나 지워졌으면 null.
@@ -170,16 +163,19 @@ export class CreatorsService {
       : null;
   }
 
-  // 브랜드가 글을 붙여 관심을 보낼 때 저장하는 콘텐츠 사본(카드 한 줄과 카드 사진 경로).
-  // 경로는 응답에 내리지 않는 값이라 이 서비스가 따로 꺼내 준다. 프로필이 없으면 null.
+  // 하트를 보낼 때 남기는 콘텐츠 사본(카드 첫 장의 한 줄과 사진 경로). 카드 첫 장은 대표 게시물 1번이다.
+  // 경로는 응답에 내리지 않는 값이라 이 서비스가 따로 꺼내 준다. 프로필이 없으면 null, 대표 게시물이 없으면 두 값 모두 null.
   async getCardCopy(userId: string): Promise<{
     headline: string | null;
     photoPath: string | null;
   } | null> {
     const row = await this.creators.findActiveByUserId(userId);
-    return row
-      ? { headline: row.cardHeadline, photoPath: row.cardPhotoPath }
-      : null;
+    if (!row) return null;
+    const first = await this.featured.getFirstPostCopy(userId);
+    return {
+      headline: first?.headline ?? null,
+      photoPath: first?.photoPath ?? null,
+    };
   }
 
   // 지원처럼 프로필이 있어야 하는 동작이 앞에서 부른다.
@@ -197,17 +193,27 @@ export class CreatorsService {
     }
   }
 
-  // 사진은 카드용 사진이 없으면 프로필 사진으로 대신한다.
-  private toCardSource(row: CreatorCardRow): CreatorCardSource {
-    const path = row.cardPhotoPath ?? row.photoPath;
-    return {
-      userId: row.userId,
-      displayName: row.displayName,
-      instagramHandle: row.instagramHandle,
-      headline: row.cardHeadline,
-      photoUrl: path ? this.storage.publicUrl(path) : null,
-      joinedAt: row.joinedAt,
-    };
+  // 읽기 한 번으로 대표 게시물을 모두 붙인다. 한 줄과 사진은 1번 게시물에서, 게시물이 없으면 프로필 사진으로 대신한다.
+  private async toCardSources(
+    rows: CreatorCardRow[],
+  ): Promise<CreatorCardSource[]> {
+    const postsById = await this.featured.listForCreators(
+      rows.map((row) => row.userId),
+    );
+    return rows.map((row) => {
+      const posts = postsById.get(row.userId) ?? [];
+      return {
+        userId: row.userId,
+        displayName: row.displayName,
+        instagramHandle: row.instagramHandle,
+        headline: posts[0]?.caption ?? null,
+        photoUrl:
+          posts[0]?.photoUrl ??
+          (row.photoPath ? this.storage.publicUrl(row.photoPath) : null),
+        posts,
+        joinedAt: row.joinedAt,
+      };
+    });
   }
 
   private toSummary(row: CreatorProfileRow): CreatorSummaryModel {
@@ -223,14 +229,18 @@ export class CreatorsService {
     };
   }
 
-  private toProfile(row: CreatorProfileRow): CreatorProfileModel {
+  // cardHeadline·cardPhotoUrl은 앱이 대표 게시물 화면으로 바뀌기 전까지 깨지지 않게 1번 게시물에서 채운다.
+  private async toProfile(
+    row: CreatorProfileRow,
+  ): Promise<CreatorProfileModel> {
+    const first = (await this.featured.listForCreators([row.userId])).get(
+      row.userId,
+    )?.[0];
     return {
       ...this.toSummary(row),
       instagramHandle: row.instagramHandle,
-      cardHeadline: row.cardHeadline,
-      cardPhotoUrl: row.cardPhotoPath
-        ? this.storage.publicUrl(row.cardPhotoPath)
-        : null,
+      cardHeadline: first?.caption ?? null,
+      cardPhotoUrl: first?.photoUrl ?? null,
     };
   }
 }

@@ -8,8 +8,8 @@ import 'package:cora_api/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**cardHeadline** | **String** |  | 
-**cardPhotoUrl** | **String** |  | 
+**cardHeadline** | **String** | 대표 게시물 1번의 한 줄. 대표 게시물이 없으면 null. | 
+**cardPhotoUrl** | **String** | 대표 게시물 1번의 그림. 대표 게시물이 없으면 null. | 
 **contentFocus** | **String** |  | 
 **displayName** | **String** |  | 
 **followers** | **int** | 연결한 계정의 팔로워 수. 연결이 없거나 읽지 못했으면 null. | 

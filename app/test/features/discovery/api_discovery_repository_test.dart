@@ -27,6 +27,8 @@ const _creatorCard = {
   'headline': '출근 전 30초, 오늘의 손목 루틴',
   'instagramHandle': null,
   'photoUrl': 'https://x/y.jpg',
+  // 서버는 대표 게시물을 항상 내려 준다(없으면 빈 목록). 앱 도메인은 아직 읽지 않는다.
+  'posts': [],
   'reasons': ['FIELD', 'TRIAL'],
   'tags': ['얼굴출연없음', '소품'],
   'theyLikedMe': true,

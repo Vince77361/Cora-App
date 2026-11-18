@@ -8,8 +8,8 @@ import 'package:cora_api/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**cardHeadline** | **String** | 브랜드가 보는 카드의 한 줄. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다. | [optional] 
-**cardPhotoPath** | **String** | 브랜드가 보는 카드의 사진 경로. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다. | [optional] 
+**cardHeadline** | **String** | 더는 읽지 않아요. 카드 첫 장은 대표 게시물(PUT /creators/me/featured-posts)의 1번이에요. | [optional] 
+**cardPhotoPath** | **String** | 더는 읽지 않아요. 카드 첫 장은 대표 게시물(PUT /creators/me/featured-posts)의 1번이에요. | [optional] 
 **contentFocus** | **String** |  | [optional] 
 **displayName** | **String** |  | 
 **instagramHandle** | **String** | 영문, 숫자, 점, 밑줄. 앞의 @ 하나는 떼고 저장한다. | [optional] 

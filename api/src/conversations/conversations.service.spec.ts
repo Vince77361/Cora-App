@@ -120,7 +120,13 @@ class FakeCreators extends CreatorsService {
   };
 
   constructor() {
-    super(null as never, null as never, null as never, null as never);
+    super(
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+      null as never,
+    );
   }
 
   getCardCopy() {

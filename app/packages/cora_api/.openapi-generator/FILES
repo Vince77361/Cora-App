@@ -90,6 +90,10 @@ doc/DropCollaborationDto.md
 doc/DropReasonChoice.md
 doc/EndOfferDto.md
 doc/EndedOfferModel.md
+doc/FeaturedPostInputDto.md
+doc/FeaturedPostKind.md
+doc/FeaturedPostModel.md
+doc/FeaturedPostSource.md
 doc/FeeBand.md
 doc/FeeRatesModel.md
 doc/FixedCashMaxModel.md
@@ -177,6 +181,7 @@ doc/ReceivedOfferTab.md
 doc/RecommendationsApi.md
 doc/RecommendedApplicantModel.md
 doc/RecommendedApplicantsModel.md
+doc/ReplaceFeaturedPostsDto.md
 doc/ReportCreatedModel.md
 doc/ReportReason.md
 doc/ReportTargetKind.md
@@ -375,6 +380,10 @@ lib/model/drop_collaboration_dto.dart
 lib/model/drop_reason_choice.dart
 lib/model/end_offer_dto.dart
 lib/model/ended_offer_model.dart
+lib/model/featured_post_input_dto.dart
+lib/model/featured_post_kind.dart
+lib/model/featured_post_model.dart
+lib/model/featured_post_source.dart
 lib/model/fee_band.dart
 lib/model/fee_rates_model.dart
 lib/model/fixed_cash_max_model.dart
@@ -451,6 +460,7 @@ lib/model/received_offer_model.dart
 lib/model/received_offer_tab.dart
 lib/model/recommended_applicant_model.dart
 lib/model/recommended_applicants_model.dart
+lib/model/replace_featured_posts_dto.dart
 lib/model/report_created_model.dart
 lib/model/report_reason.dart
 lib/model/report_target_kind.dart
@@ -610,6 +620,10 @@ test/drop_collaboration_dto_test.dart
 test/drop_reason_choice_test.dart
 test/end_offer_dto_test.dart
 test/ended_offer_model_test.dart
+test/featured_post_input_dto_test.dart
+test/featured_post_kind_test.dart
+test/featured_post_model_test.dart
+test/featured_post_source_test.dart
 test/fee_band_test.dart
 test/fee_rates_model_test.dart
 test/fixed_cash_max_model_test.dart
@@ -697,6 +711,7 @@ test/received_offer_tab_test.dart
 test/recommendations_api_test.dart
 test/recommended_applicant_model_test.dart
 test/recommended_applicants_model_test.dart
+test/replace_featured_posts_dto_test.dart
 test/report_created_model_test.dart
 test/report_reason_test.dart
 test/report_target_kind_test.dart

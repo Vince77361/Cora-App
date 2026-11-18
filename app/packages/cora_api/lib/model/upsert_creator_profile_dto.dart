@@ -23,7 +23,7 @@ class UpsertCreatorProfileDto {
     this.regionSigungu,
   });
 
-  /// 브랜드가 보는 카드의 한 줄. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.
+  /// 더는 읽지 않아요. 카드 첫 장은 대표 게시물(PUT /creators/me/featured-posts)의 1번이에요.
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated
@@ -32,7 +32,7 @@ class UpsertCreatorProfileDto {
   ///
   String? cardHeadline;
 
-  /// 브랜드가 보는 카드의 사진 경로. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.
+  /// 더는 읽지 않아요. 카드 첫 장은 대표 게시물(PUT /creators/me/featured-posts)의 1번이에요.
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated

@@ -9,6 +9,7 @@ import { PushPort } from '../src/integrations/push/push.port';
 import { RedisIoAdapter } from '../src/realtime/redis-io.adapter';
 import { MAX_SOCKETS_PER_USER } from '../src/realtime/realtime.gateway';
 import { createTestApp, httpOf } from './helpers/create-test-app';
+import { setCardPost } from './helpers/featured-posts';
 import { flushMessages } from './helpers/flush-messages';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
@@ -110,9 +111,11 @@ describe('realtime gateway', () => {
         userId: OTHER,
         displayName: '하루 한 컵',
         regionSido: '서울특별시',
-        cardHeadline: '출근길 한 컵',
-        cardPhotoPath: 'creators/card.jpg',
       },
+    });
+    await setCardPost(prisma, OTHER, {
+      caption: '출근길 한 컵',
+      mediaPath: `featured-posts/${OTHER}/card.jpg`,
     });
     const campaign = await prisma.campaign.create({
       data: {

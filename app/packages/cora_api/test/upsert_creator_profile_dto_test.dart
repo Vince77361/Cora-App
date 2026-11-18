@@ -16,13 +16,13 @@ void main() {
   // final instance = UpsertCreatorProfileDto();
 
   group('test UpsertCreatorProfileDto', () {
-    // 브랜드가 보는 카드의 한 줄. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.
+    // 더는 읽지 않아요. 카드 첫 장은 대표 게시물(PUT /creators/me/featured-posts)의 1번이에요.
     // String cardHeadline
     test('to test the property `cardHeadline`', () async {
       // TODO
     });
 
-    // 브랜드가 보는 카드의 사진 경로. 이 요청은 전체 교체라서 비우거나 빠뜨리면 지운다.
+    // 더는 읽지 않아요. 카드 첫 장은 대표 게시물(PUT /creators/me/featured-posts)의 1번이에요.
     // String cardPhotoPath
     test('to test the property `cardPhotoPath`', () async {
       // TODO

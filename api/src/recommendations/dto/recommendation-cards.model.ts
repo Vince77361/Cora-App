@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { FeeBand } from '@prisma/client';
+import { FeaturedPostModel } from '../../creators/dto/featured-post.model';
 import { StoreSummaryModel } from '../../stores/dto/store-public.model';
 import type { MatchReason } from '../match-score';
 
@@ -35,6 +36,13 @@ export class CreatorCardModel {
 
   @ApiProperty({ type: String, nullable: true })
   photoUrl!: string | null;
+
+  @ApiProperty({
+    type: [FeaturedPostModel],
+    description:
+      '대표 게시물(최대 4개, 차례대로). 없으면 빈 목록이고 이때 photoUrl이 프로필 사진이다.',
+  })
+  posts!: FeaturedPostModel[];
 
   @ApiProperty({ enum: FeeBand, enumName: 'FeeBand' })
   feeBand!: FeeBand;

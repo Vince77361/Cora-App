@@ -26,8 +26,10 @@ class CreatorProfileModel {
     required this.userId,
   });
 
+  /// 대표 게시물 1번의 한 줄. 대표 게시물이 없으면 null.
   String? cardHeadline;
 
+  /// 대표 게시물 1번의 그림. 대표 게시물이 없으면 null.
   String? cardPhotoUrl;
 
   String? contentFocus;

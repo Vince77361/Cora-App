@@ -16,6 +16,7 @@ import { PushPort } from '../src/integrations/push/push.port';
 import { PresenceService } from '../src/realtime/presence.service';
 import { RealtimePublisher } from '../src/realtime/realtime-publisher';
 import { createTestApp, httpOf } from './helpers/create-test-app';
+import { setCardPost } from './helpers/featured-posts';
 import { flushMessages } from './helpers/flush-messages';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
@@ -130,9 +131,11 @@ describe('conversations', () => {
         userId: OTHER,
         displayName: '하루 한 컵',
         regionSido: '서울특별시',
-        cardHeadline: '출근길 한 컵',
-        cardPhotoPath: 'creators/card.jpg',
       },
+    });
+    await setCardPost(prisma, OTHER, {
+      caption: '출근길 한 컵',
+      mediaPath: `featured-posts/${OTHER}/card.jpg`,
     });
     const campaign = await prisma.campaign.create({
       data: {
@@ -425,11 +428,11 @@ describe('conversations', () => {
         mine: true,
       });
       expect(body.card?.title).toBe('출근길 한 컵');
-      expect(body.card?.photoUrl).toContain('creators/card.jpg');
+      expect(body.card?.photoUrl).toContain(`featured-posts/${OTHER}/card.jpg`);
       // 프로필의 카드를 고쳐도 보낸 카드는 그대로다.
-      await prisma.creatorProfile.update({
-        where: { userId: OTHER },
-        data: { cardHeadline: '바뀐 제목', cardPhotoPath: null },
+      await setCardPost(prisma, OTHER, {
+        caption: '바뀐 제목',
+        mediaPath: `featured-posts/${OTHER}/changed.jpg`,
       });
       const seen = await messages(authBrand, roomId);
       expect(seen[0].card?.title).toBe('출근길 한 컵');
@@ -437,7 +440,7 @@ describe('conversations', () => {
       const row = await prisma.message.findFirstOrThrow();
       expect(row).toMatchObject({
         cardTitle: '출근길 한 컵',
-        cardPhotoPath: 'creators/card.jpg',
+        cardPhotoPath: `featured-posts/${OTHER}/card.jpg`,
       });
     });
 
@@ -475,10 +478,7 @@ describe('conversations', () => {
       expect(codeOf(await send(authBrand, roomId, card).expect(403))).toBe(
         'FORBIDDEN',
       );
-      await prisma.creatorProfile.update({
-        where: { userId: OTHER },
-        data: { cardHeadline: null },
-      });
+      await setCardPost(prisma, OTHER, null);
       expect(codeOf(await send(authCreator, roomId, card).expect(409))).toBe(
         'CONFLICT',
       );

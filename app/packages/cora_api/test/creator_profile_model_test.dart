@@ -16,11 +16,13 @@ void main() {
   // final instance = CreatorProfileModel();
 
   group('test CreatorProfileModel', () {
+    // 대표 게시물 1번의 한 줄. 대표 게시물이 없으면 null.
     // String cardHeadline
     test('to test the property `cardHeadline`', () async {
       // TODO
     });
 
+    // 대표 게시물 1번의 그림. 대표 게시물이 없으면 null.
     // String cardPhotoUrl
     test('to test the property `cardPhotoUrl`', () async {
       // TODO

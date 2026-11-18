@@ -35,9 +35,18 @@ export class CreatorProfileModel extends CreatorSummaryModel {
   @ApiProperty({ type: String, nullable: true })
   instagramHandle!: string | null;
 
-  @ApiProperty({ type: String, nullable: true, maxLength: 40 })
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    maxLength: 40,
+    description: '대표 게시물 1번의 한 줄. 대표 게시물이 없으면 null.',
+  })
   cardHeadline!: string | null;
 
-  @ApiProperty({ type: String, nullable: true })
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: '대표 게시물 1번의 그림. 대표 게시물이 없으면 null.',
+  })
   cardPhotoUrl!: string | null;
 }

@@ -32,8 +32,22 @@ void main() {
 
     //
     //
+    //Future<List<FeaturedPostModel>> getMyFeaturedPosts() async
+    test('test getMyFeaturedPosts', () async {
+      // TODO
+    });
+
+    //
+    //
     //Future<List<CreatorSeriesModel>> listMyCreatorSeries() async
     test('test listMyCreatorSeries', () async {
+      // TODO
+    });
+
+    //
+    //
+    //Future<List<FeaturedPostModel>> replaceMyFeaturedPosts(ReplaceFeaturedPostsDto replaceFeaturedPostsDto) async
+    test('test replaceMyFeaturedPosts', () async {
       // TODO
     });
 
