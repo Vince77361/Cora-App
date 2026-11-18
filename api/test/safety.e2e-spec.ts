@@ -260,6 +260,24 @@ describe('safety (block and report)', () => {
     await request(server).post('/reports').expect(401);
   });
 
+  // 결제 행을 바로 만든다(가게·브랜드 협업 모두).
+  const insertPayment = (
+    collaborationId: string,
+    status: 'PENDING' | 'FAILED' | 'CANCELLED',
+    requestedAt: Date,
+  ) =>
+    prisma.payment.create({
+      data: {
+        collaborationId,
+        amountEscrow: 300000,
+        amountFee: 30000,
+        feeRate: 10,
+        method: 'CARD',
+        status,
+        requestedAt,
+      },
+    });
+
   describe('block', () => {
     it('refuses to block while money is held in any collaboration between the two', async () => {
       await seedParties();
@@ -392,23 +410,6 @@ describe('safety (block and report)', () => {
     });
 
     describe('while a brand payment is in progress', () => {
-      const insertPayment = (
-        collaborationId: string,
-        status: 'PENDING' | 'FAILED' | 'CANCELLED',
-        requestedAt: Date,
-      ) =>
-        prisma.payment.create({
-          data: {
-            collaborationId,
-            amountEscrow: 300000,
-            amountFee: 30000,
-            feeRate: 10,
-            method: 'CARD',
-            status,
-            requestedAt,
-          },
-        });
-
       it('refuses to block and changes nothing', async () => {
         await seedParties();
         const agreed = await seedBrandCollab('AGREED');
@@ -467,6 +468,72 @@ describe('safety (block and report)', () => {
           await block(agreed.roomId, authB).expect(200);
           expect((await collaborationOf(agreed.collaborationId)).stage).toBe(
             'DROPPED',
+          );
+        },
+      );
+    });
+
+    // 가게 협업도 결제가 진행 중(60분 안의 대기 결제)이면 브랜드와 같이 막는다: 막지 않으면 오퍼가 취소된 뒤 결제창에서 돈이 나가 수동 환급이 된다.
+    describe('while a store payment is in progress', () => {
+      it('refuses to block with the same 409 and changes nothing', async () => {
+        await seedParties('STORE');
+        const awaiting = await seedStoreCollab('AWAITING_PAYMENT');
+        const payment = await insertPayment(
+          awaiting.collaborationId,
+          'PENDING',
+          T0,
+        );
+        clock.set(new Date(T0.getTime() + 30 * 60 * 1000));
+        for (const [auth, room] of [
+          [authB, awaiting.roomId],
+          [authA, awaiting.roomId],
+        ] as const) {
+          const res = await block(room, auth).expect(409);
+          expect(codeOf(res)).toBe('CONFLICT');
+          expect(messageOf(res)).toBe(HELD_MESSAGE);
+        }
+        expect(await prisma.block.count()).toBe(0);
+        expect((await collaborationOf(awaiting.collaborationId)).stage).toBe(
+          'AWAITING_PAYMENT',
+        );
+        expect(
+          (
+            await prisma.offer.findUniqueOrThrow({
+              where: { id: awaiting.offerId },
+            })
+          ).status,
+        ).toBe('ACCEPTED');
+        expect((await roomOf(awaiting.roomId)).status).toBe('OPEN');
+        expect(
+          (
+            await prisma.payment.findUniqueOrThrow({
+              where: { id: payment.id },
+            })
+          ).status,
+        ).toBe('PENDING');
+      });
+
+      it('allows the block once the 60 minute lock has passed and cancels the offer as before', async () => {
+        await seedParties('STORE');
+        const awaiting = await seedStoreCollab('AWAITING_PAYMENT');
+        await insertPayment(awaiting.collaborationId, 'PENDING', T0);
+        clock.set(new Date(T0.getTime() + 60 * 60 * 1000));
+        await block(awaiting.roomId, authB).expect(200);
+        expect((await collaborationOf(awaiting.collaborationId)).stage).toBe(
+          'CANCELLED',
+        );
+        expect((await roomOf(awaiting.roomId)).status).toBe('CLOSED');
+      });
+
+      it.each(['FAILED', 'CANCELLED'] as const)(
+        'does not count a %s payment as in progress',
+        async (status) => {
+          await seedParties('STORE');
+          const awaiting = await seedStoreCollab('AWAITING_PAYMENT');
+          await insertPayment(awaiting.collaborationId, status, T0);
+          await block(awaiting.roomId, authB).expect(200);
+          expect((await collaborationOf(awaiting.collaborationId)).stage).toBe(
+            'CANCELLED',
           );
         },
       );
