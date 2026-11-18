@@ -120,6 +120,9 @@ abstract final class AppRoutes {
   /// 03의 저장 탭. 01의 `저장한 후보 보기`가 연다.
   static const brandSaved = '$brandInterests?tab=saved';
 
+  /// 03의 보낸 관심 탭. 01의 하트 알림 `보낸 관심`이 연다.
+  static const brandSent = '$brandInterests?tab=sent';
+
   /// 서로 관심 확인(05). 03 화면이 시트로 여는 것이라 `match` 쿼리로 협업 [collaborationId]를 알린다
   /// (알림 가는 곳 `MATCH`와 같은 모양이다).
   static String brandMatch(String collaborationId) =>
@@ -139,8 +142,11 @@ abstract final class AppRoutes {
   /// 크리에이터의 관심·보류 목록(03, 크리에이터 쪽).
   static const creatorInterests = '/creator/interests';
 
-  /// 크리에이터의 03 보류 탭. 08의 `보류 보기`가 연다.
+  /// 크리에이터의 03 저장(`held`) 탭. 08의 저장 알림 `저장함`이 연다.
   static const creatorHeld = '$creatorInterests?$tabParam=held';
+
+  /// 크리에이터의 03 보낸 관심 탭. 08의 하트 알림 `보낸 관심`이 연다.
+  static const creatorSent = '$creatorInterests?$tabParam=sent';
 
   /// 크리에이터 쪽 서로 관심 확인(05).
   static String creatorMatch(String collaborationId) =>

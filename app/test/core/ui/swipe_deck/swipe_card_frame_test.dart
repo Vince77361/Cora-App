@@ -90,17 +90,6 @@ void main() {
     expect(find.byType(Hero), findsNothing);
   });
 
-  testWidgets('stamps read 관심, 넘김 and 보류', (tester) async {
-    for (final (outcome, label) in [
-      (SwipeOutcome.like, '관심'),
-      (SwipeOutcome.pass, '넘김'),
-      (SwipeOutcome.hold, '보류'),
-    ]) {
-      await tester.pumpWidget(_wrap(Center(child: SwipeStamp(outcome))));
-      expect(find.text(label), findsOneWidget);
-    }
-  });
-
   testWidgets('stamps tilt 14 degrees outward and hold stays level', (
     tester,
   ) async {

@@ -75,7 +75,6 @@ class _BrandDiscoveryPageState extends ConsumerState<BrandDiscoveryPage> {
     showPassReasonSheet(
       context,
       onSave: (reason) => _vm.setPassReason(target, reason),
-      onUndo: _vm.undoLast,
     );
   }
 
@@ -100,7 +99,7 @@ class _BrandDiscoveryPageState extends ConsumerState<BrandDiscoveryPage> {
         key: ValueKey(toast.serial),
         message: DiscoveryTexts.likeToast,
         action: DiscoveryTexts.likeToastAction,
-        onAction: () => context.push(AppRoutes.brandInterests),
+        onAction: () => context.push(AppRoutes.brandSent),
         onDismiss: dismiss,
       ),
       DiscoveryToastKind.hold => DiscoveryToastBanner(
@@ -255,7 +254,7 @@ class _DeckSection extends StatelessWidget {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 26,
+                bottom: 16,
                 child: SwipeActionButtons(
                   canUndo: state.canUndo,
                   onUndo: onUndo,

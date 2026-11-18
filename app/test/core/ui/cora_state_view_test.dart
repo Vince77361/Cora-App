@@ -20,7 +20,7 @@ void main() {
 
     await pump(CoraStateView.allSeen(onOpenSaved: () {}));
     expect(find.text('오늘 추천을 모두 봤어요'), findsOneWidget);
-    expect(find.text('관심과 저장에 담은 후보를 비교해 보세요. 내일 새 추천이 올라와요.'), findsOneWidget);
+    expect(find.text('하트와 저장에 담은 후보를 비교해 보세요. 내일 새 추천이 올라와요.'), findsOneWidget);
     expect(find.text('저장한 후보 보기'), findsOneWidget);
 
     await pump(CoraStateView.loadFailed(onRetry: () {}));
@@ -204,7 +204,7 @@ void main() {
             kind: CoraStateKind.allSeen,
             view: CoraStateView.allSeen(onOpenSaved: () {}),
             title: '오늘 추천을 모두 봤어요',
-            description: '관심과 저장에 담은 후보를 비교해 보세요. 내일 새 추천이 올라와요.',
+            description: '하트와 저장에 담은 후보를 비교해 보세요. 내일 새 추천이 올라와요.',
             action: '저장한 후보 보기',
           ),
           (

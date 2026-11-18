@@ -173,22 +173,35 @@ void main() {
       final repo = _three();
       await _openPreview(tester, repo);
 
-      await tester.tap(find.bySemanticsLabel('관심 있어요'));
+      await tester.tap(find.bySemanticsLabel('하트'));
       await tester.pumpAndSettle();
       _expectBackOnRolePage(tester, hint: true);
 
       await tester.tap(find.text('등록 없이 먼저 둘러보기'));
       await tester.pumpAndSettle();
-      await tester.tap(find.bySemanticsLabel('보류'));
+      await tester.tap(find.bySemanticsLabel('저장'));
       await tester.pumpAndSettle();
       _expectBackOnRolePage(tester, hint: true);
       _expectNothingSaved(repo);
     },
   );
 
+  testWidgets('the undo button is dimmed and does nothing in the preview', (
+    tester,
+  ) async {
+    final repo = _three();
+    await _openPreview(tester, repo);
+
+    await tester.tap(find.bySemanticsLabel('되돌리기'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PreviewDiscoveryPage), findsOneWidget);
+    _expectNothingSaved(repo);
+  });
+
   testWidgets('the hint disappears after three seconds', (tester) async {
     await _openPreview(tester, _three());
-    await tester.tap(find.bySemanticsLabel('관심 있어요'));
+    await tester.tap(find.bySemanticsLabel('하트'));
     await tester.pumpAndSettle();
     expect(find.text(_hint), findsOneWidget);
 
@@ -248,8 +261,7 @@ void main() {
     expect(find.byType(NotificationBell), findsNothing);
     expect(find.textContaining('@'), findsNothing);
     expect(find.textContaining('인스타'), findsNothing);
-    // 01의 되돌리기 버튼도 없다(되돌릴 결정이 없다).
-    expect(find.bySemanticsLabel('되돌리기'), findsNothing);
+    expect(find.bySemanticsLabel('되돌리기'), findsOneWidget);
   });
 
   testWidgets('shows the end-of-preview state with the choose-role button', (

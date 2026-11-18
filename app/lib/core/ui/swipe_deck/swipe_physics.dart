@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-/// 카드를 넘긴 결과. 오른쪽은 관심, 왼쪽은 넘김, 위쪽은 보류다.
+/// 카드를 넘긴 결과. 오른쪽은 하트(`LIKE`), 왼쪽은 넘김, 위쪽은 저장(`HOLD`)이다.
 enum SwipeOutcome { like, pass, hold }
 
 /// 넘기기 기준(캔버스 01의 `dx > 110`, `dx < -110`, `dy < -140 && |dx| < 80`).
@@ -13,7 +13,7 @@ const double swipeHoldMaxSideways = 80;
 const double swipeMaxTiltDegrees = 12;
 
 /// 놓은 자리에서 어떤 결과가 되는지. 기준에 못 미치면 null이고 카드는 제자리로 돌아간다.
-/// 가로 기준을 먼저 보므로 비스듬히 크게 밀면 위쪽 보류가 아니라 관심·넘김이다.
+/// 가로 기준을 먼저 보므로 비스듬히 크게 밀면 위쪽 저장이 아니라 하트·넘김이다.
 SwipeOutcome? resolveSwipe(Offset offset) {
   if (offset.dx > swipeSideThreshold) return SwipeOutcome.like;
   if (offset.dx < -swipeSideThreshold) return SwipeOutcome.pass;
@@ -34,7 +34,7 @@ double tiltFor(double dx, double width) {
 }
 
 /// 도장의 불투명도. 해당 기준의 0%에서 100%까지 0에서 1로 오른다.
-/// 보류는 옆으로 80 이상 기울면 보류가 아니므로 사라진다.
+/// 저장은 옆으로 80 이상 기울면 저장이 아니므로 사라진다.
 double stampOpacity(Offset offset, SwipeOutcome outcome) {
   final progress = switch (outcome) {
     SwipeOutcome.like => offset.dx / swipeSideThreshold,

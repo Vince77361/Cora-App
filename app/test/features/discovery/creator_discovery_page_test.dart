@@ -225,11 +225,11 @@ void main() {
 
     expect(repo.decisions.single.outcome, SwipeOutcome.like);
     expect(repo.decisions.single.target, const DiscoveryTarget.campaign('k1'));
-    expect(find.text('관심을 보냈어요. 브랜드도 고르면 알려드려요.'), findsOneWidget);
+    expect(find.text('하트를 보냈어요. 브랜드도 고르면 알려드려요.'), findsOneWidget);
 
-    await tester.tap(find.text('관심 목록'));
+    await tester.tap(find.text('보낸 관심'));
     await tester.pumpAndSettle();
-    expect(opened, ['/creator/interests']);
+    expect(opened, ['/creator/interests?tab=sent']);
   });
 
   testWidgets('swiping a campaign left shows the creator pass toast', (
@@ -254,9 +254,9 @@ void main() {
       await _swipe(tester, '모아 스튜디오', const Offset(0, -300));
 
       expect(repo.decisions.single.outcome, SwipeOutcome.hold);
-      expect(find.text('보류함에 담았어요.'), findsOneWidget);
+      expect(find.text('저장했어요. 나만 볼 수 있어요.'), findsOneWidget);
 
-      await tester.tap(find.text('보류 보기'));
+      await tester.tap(find.text('저장함'));
       await tester.pumpAndSettle();
       expect(opened, ['/creator/interests?tab=held']);
     },
@@ -271,7 +271,7 @@ void main() {
     await _swipe(tester, '모아 스튜디오', const Offset(300, 0));
 
     expect(find.text('모아 스튜디오와 서로 관심이 닿았어요.'), findsOneWidget);
-    expect(find.text('관심을 보냈어요. 브랜드도 고르면 알려드려요.'), findsNothing);
+    expect(find.text('하트를 보냈어요. 브랜드도 고르면 알려드려요.'), findsNothing);
 
     await tester.tap(find.text('확인하기'));
     await tester.pumpAndSettle();
@@ -281,12 +281,12 @@ void main() {
   testWidgets('the toast goes away after three seconds', (tester) async {
     await _pump(tester, _mixed());
     await _swipe(tester, '모아 스튜디오', const Offset(300, 0));
-    expect(find.text('관심을 보냈어요. 브랜드도 고르면 알려드려요.'), findsOneWidget);
+    expect(find.text('하트를 보냈어요. 브랜드도 고르면 알려드려요.'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 3));
     await tester.pump();
 
-    expect(find.text('관심을 보냈어요. 브랜드도 고르면 알려드려요.'), findsNothing);
+    expect(find.text('하트를 보냈어요. 브랜드도 고르면 알려드려요.'), findsNothing);
   });
 
   group('store cards', () {
@@ -380,12 +380,12 @@ void main() {
 
       expect(repo.decisions, isEmpty);
       expect(stores.applied, isEmpty);
-      expect(find.text('보류함에 담았어요.'), findsNothing);
+      expect(find.text('저장했어요. 나만 볼 수 있어요.'), findsNothing);
       expect(find.text('한그릇 라멘'), findsOneWidget);
       expect(find.text('내 원칙과 맞는 캠페인 1 / 2'), findsOneWidget);
 
       // 보류 버튼도 같다.
-      await tester.tap(find.bySemanticsLabel('보류'));
+      await tester.tap(find.bySemanticsLabel('저장'));
       await tester.pumpAndSettle();
       expect(repo.decisions, isEmpty);
       expect(find.text('한그릇 라멘'), findsOneWidget);
@@ -534,7 +534,7 @@ void main() {
     expect(opened, ['/creator/stores/s1']);
   });
 
-  testWidgets('the three buttons decide too', (tester) async {
+  testWidgets('the heart, pass and save buttons decide too', (tester) async {
     final repo = FakeDiscoveryRepository(
       campaignCards: [
         discoveryCampaign('k1'),
@@ -544,11 +544,11 @@ void main() {
     );
     await _pump(tester, repo);
 
-    await tester.tap(find.bySemanticsLabel('관심 있어요'));
+    await tester.tap(find.bySemanticsLabel('하트'));
     await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel('넘기기'));
     await tester.pumpAndSettle();
-    await tester.tap(find.bySemanticsLabel('보류'));
+    await tester.tap(find.bySemanticsLabel('저장'));
     await tester.pumpAndSettle();
 
     expect(repo.decisions.map((d) => d.outcome), [
@@ -610,7 +610,7 @@ void main() {
     // 08 다크: 바탕 #0F1012, 글자 #F2F3F5, 그림자 rgba(23,24,28,0.16).
     expect(toast.color, const Color(0xFF0F1012));
     expect(toast.boxShadow!.single.color, const Color(0x2917181C));
-    final text = tester.widget<Text>(find.text('관심을 보냈어요. 브랜드도 고르면 알려드려요.'));
+    final text = tester.widget<Text>(find.text('하트를 보냈어요. 브랜드도 고르면 알려드려요.'));
     expect(text.style!.color, const Color(0xFFF2F3F5));
 
     final deck = tester

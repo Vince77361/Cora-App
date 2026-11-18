@@ -190,9 +190,8 @@ class _PreviewDeck extends StatelessWidget {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 26,
+                bottom: 16,
                 child: SwipeActionButtons(
-                  showUndo: false,
                   canUndo: false,
                   onUndo: () {},
                   onPass: () => controller.swipe(SwipeOutcome.pass),

@@ -136,7 +136,7 @@ void main() {
     expect(repo.decisions.single.outcome, SwipeOutcome.like);
     expect(repo.decisions.single.note, '손목 루틴이 브랜드 분위기와 잘 맞아요');
     expect(find.byType(CreatorCardDetailPage), findsNothing);
-    expect(find.text('관심을 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
+    expect(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
   });
 
   testWidgets('liking with an empty note sends no note', (tester) async {

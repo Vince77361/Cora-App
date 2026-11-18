@@ -312,7 +312,7 @@ void main() {
       expect(sent.note, '손목 위 시계 아침 루틴');
       // 서로 관심이 아직 아니면 03으로 돌아와 알린다.
       expect(find.text('브랜드가 좋아한 점'), findsNothing);
-      expect(find.text('관심을 보냈어요. 브랜드도 고르면 알려드려요.'), findsOneWidget);
+      expect(find.text('하트를 보냈어요. 브랜드도 고르면 알려드려요.'), findsOneWidget);
     });
 
     testWidgets('the arrow sends the same interest and an empty line sends '

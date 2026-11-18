@@ -7,19 +7,18 @@ import '../../../../core/theme/cora_swipe_tokens.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../domain/pass_reason.dart';
-import '../../domain/undo_result.dart';
 import '../discovery_text.dart';
 
 /// 02 넘기기 이유. 아래에서 올라오는 시트로, 이미 넘긴 **뒤에** 알림의 `이유 남기기`를 눌렀을 때만 뜬다.
 /// 넘김은 시트가 뜨기 전에 저장돼 있다.
 ///
 /// - [onSave]: 이유를 골랐고 `이유 남기고 다음 보기`를 눌렀을 때. 실패하면 던지고 시트는 열려 있다.
-/// - [onUndo]: `되돌리기`. 되돌렸으면 시트를 닫고, 되돌릴 수 없으면 시트 안에 안내를 보인다.
-/// - 고르지 않고 `이유 없이 다음 보기`를 누르거나 시트를 내려 닫으면 아무것도 저장하지 않는다.
+///   고른 이유가 없으면 이 버튼은 꺼진 모양이다.
+/// - `건너뛰기`를 누르거나 시트를 내려 닫으면 아무것도 저장하지 않는다(둘이 같다).
+/// - 되돌리기는 시트가 아니라 카드 아래 버튼 줄이 맡는다(2026-11-19 설계 4.2장).
 Future<void> showPassReasonSheet(
   BuildContext context, {
   required Future<void> Function(PassReason reason) onSave,
-  required Future<UndoResult> Function() onUndo,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -35,20 +34,15 @@ Future<void> showPassReasonSheet(
         color: context.colors.background,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      child: PassReasonSheet(onSave: onSave, onUndo: onUndo),
+      child: PassReasonSheet(onSave: onSave),
     ),
   );
 }
 
 class PassReasonSheet extends StatefulWidget {
-  const PassReasonSheet({
-    super.key,
-    required this.onSave,
-    required this.onUndo,
-  });
+  const PassReasonSheet({super.key, required this.onSave});
 
   final Future<void> Function(PassReason reason) onSave;
-  final Future<UndoResult> Function() onUndo;
 
   @override
   State<PassReasonSheet> createState() => _PassReasonSheetState();
@@ -59,14 +53,10 @@ class _PassReasonSheetState extends State<PassReasonSheet> {
   bool _busy = false;
   String? _message;
 
-  Future<void> _primary() async {
+  Future<void> _save() async {
     // 저장하는 동안의 연타가 두 번 저장하거나 시트를 두 번 닫지 않게 한다.
-    if (_busy) return;
     final reason = _picked;
-    if (reason == null) {
-      Navigator.of(context).pop();
-      return;
-    }
+    if (_busy || reason == null) return;
     setState(() {
       _busy = true;
       _message = null;
@@ -84,29 +74,16 @@ class _PassReasonSheetState extends State<PassReasonSheet> {
     if (mounted) Navigator.of(context).pop();
   }
 
-  Future<void> _undo() async {
+  void _skip() {
     if (_busy) return;
-    setState(() {
-      _busy = true;
-      _message = null;
-    });
-    final result = await widget.onUndo();
-    if (!mounted) return;
-    if (result == UndoResult.undone) {
-      Navigator.of(context).pop();
-      return;
-    }
-    setState(() {
-      _busy = false;
-      _message = result == UndoResult.nothing
-          ? DiscoveryTexts.undoTooLate
-          : DiscoveryTexts.retryLater;
-    });
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // 저장하는 동안에도 모양은 켜진 채로 둔다. 누름만 `_save`가 막는다.
+    final canSave = _picked != null;
     final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
     return Padding(
       padding: EdgeInsets.fromLTRB(0, 12, 0, bottom),
@@ -184,24 +161,23 @@ class _PassReasonSheetState extends State<PassReasonSheet> {
                 Semantics(
                   container: true,
                   button: true,
-                  enabled: !_busy,
-                  onTap: _busy ? null : _primary,
+                  enabled: canSave && !_busy,
+                  onTap: canSave && !_busy ? _save : null,
                   child: ExcludeSemantics(
                     child: CoraPressable(
-                      onTap: _busy ? () {} : _primary,
+                      onTap: canSave ? _save : null,
                       child: Container(
                         height: 56,
                         alignment: Alignment.center,
+                        // 고른 이유가 없으면 꺼진 모양(`accent` 버튼이 꺼질 때와 같은 `surface` 바탕).
                         decoration: BoxDecoration(
-                          color: c.accent,
+                          color: canSave ? c.accent : c.surface,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
-                          _picked == null
-                              ? DiscoveryTexts.reasonSkip
-                              : DiscoveryTexts.reasonSave,
+                          DiscoveryTexts.reasonSave,
                           style: CoraTextStyles.button.copyWith(
-                            color: c.onAccent,
+                            color: canSave ? c.onAccent : c.textSecondary,
                           ),
                         ),
                       ),
@@ -212,15 +188,15 @@ class _PassReasonSheetState extends State<PassReasonSheet> {
                   container: true,
                   button: true,
                   enabled: !_busy,
-                  onTap: _busy ? null : _undo,
+                  onTap: _busy ? null : _skip,
                   child: ExcludeSemantics(
                     child: CoraPressable(
-                      onTap: _busy ? () {} : _undo,
+                      onTap: _busy ? () {} : _skip,
                       child: Container(
                         height: 44,
                         alignment: Alignment.center,
                         child: Text(
-                          DiscoveryTexts.reasonUndo,
+                          DiscoveryTexts.reasonSkip,
                           style: CoraTextStyles.buttonMedium.copyWith(
                             fontSize: 14,
                             color: c.textSecondary,

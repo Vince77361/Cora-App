@@ -15,7 +15,7 @@ export 'swipe_physics.dart' show SwipeOutcome;
 
 /// 카드를 끌어서 넘기는 덱(캔버스 01 발견, 08 크리에이터의 발견, 9A 둘러보기).
 ///
-/// 맨 위 카드만 움직인다. 오른쪽으로 밀면 관심, 왼쪽은 넘김, 위쪽은 보류다(기준은
+/// 맨 위 카드만 움직인다. 오른쪽으로 밀면 하트, 왼쪽은 넘김, 위쪽은 저장이다(기준은
 /// [resolveSwipe]). 다음 카드는 뒤에서 96% 크기로 보이다가 앞 카드가 나가면 100%가 된다.
 ///
 /// 한 번에 한 장만 넘어간다. 카드가 날아가는 동안과 [onSwiped]가 끝나기 전에는 끌기와
@@ -23,7 +23,7 @@ export 'swipe_physics.dart' show SwipeOutcome;
 /// [onSwiped]가 예외를 던지면 카드는 제자리로 돌아온다. 오류를 보여 주는 일은 [onSwiped]를
 /// 만든 쪽이 한다(여기서는 삼킨다).
 ///
-/// [accepts]가 어떤 방향을 받지 않는다고 하면(예: 읽기만 하는 둘러보기의 관심) 그 방향으로는 카드가
+/// [accepts]가 어떤 방향을 받지 않는다고 하면(예: 읽기만 하는 둘러보기의 하트) 그 방향으로는 카드가
 /// 날아가지 않는다. 놓으면 스프링으로 제자리에 돌아오고, 다 멈춘 뒤에 [onRejected]가 불린다.
 ///
 /// 이 덱은 자기가 넘긴 카드를 기억해 [items]에서 숨긴다. 부모가 넘긴 카드를 목록에서 지워도,
@@ -160,7 +160,7 @@ class _SwipeDeckState<T> extends State<SwipeDeck<T>>
 
   Future<void> _springBack() => _animateTo(Offset.zero, fly: false);
 
-  /// 화면 밖의 도착점. 가로로 넘길 때는 놓은 높이를 그대로 두고, 보류는 똑바로 위로 간다.
+  /// 화면 밖의 도착점. 가로로 넘길 때는 놓은 높이를 그대로 두고, 저장은 똑바로 위로 간다.
   Offset _flyTarget(SwipeOutcome outcome) {
     final current = _offset.value;
     return switch (outcome) {

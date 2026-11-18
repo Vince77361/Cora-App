@@ -79,7 +79,7 @@ class CoraStateView extends StatelessWidget {
   const CoraStateView.allSeen({super.key, required VoidCallback onOpenSaved})
     : kind = CoraStateKind.allSeen,
       title = '오늘 추천을 모두 봤어요',
-      description = '관심과 저장에 담은 후보를 비교해 보세요. 내일 새 추천이 올라와요.',
+      description = '하트와 저장에 담은 후보를 비교해 보세요. 내일 새 추천이 올라와요.',
       actionLabel = '저장한 후보 보기',
       onAction = onOpenSaved,
       secondaryLabel = null,

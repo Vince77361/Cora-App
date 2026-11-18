@@ -476,7 +476,7 @@ void main() {
 
     expect(discovery.decisions.single.outcome, SwipeOutcome.like);
     expect(discovery.decisions.single.target.id, 'c3');
-    expect(find.text('관심을 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
+    expect(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
     expect(find.text('보류 0'), findsOneWidget);
     expect(find.text('보낸 관심 2'), findsOneWidget);
   });
@@ -839,7 +839,7 @@ void main() {
     await tester.tap(find.text('관심 보내기'));
     await tester.pumpAndSettle();
 
-    expect(find.text('관심을 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
+    expect(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
     expect(find.text('보류 0'), findsOneWidget);
     expect(find.text('보낸 관심 2'), findsOneWidget);
   });

@@ -7,19 +7,21 @@ import '../../theme/cora_swipe_tokens.dart';
 import '../../theme/cora_text_styles.dart';
 import 'swipe_physics.dart';
 
-/// 카드 위에 번쩍이는 도장(`관심`, `넘김`, `보류`). 자리와 불투명도는 [SwipeDeck]이 정한다.
+/// 카드 위에 번쩍이는 도장(`하트`, `넘김`, `저장`). 자리와 불투명도는 [SwipeDeck]이 정한다.
+/// 서버 값(`LIKE`/`HOLD`)과 코드 이름([SwipeOutcome.like]/[SwipeOutcome.hold])은 그대로이고 화면 이름만
+/// 하트·저장이다(2026-11-19 회의 반영 설계 3장).
 ///
-/// 캔버스 01: 테두리 5, 모서리 12, 글자 40·900. `관심`은 라임 테두리와 글자(바탕 rgba(31,42,0,0.55))에
-/// -14도, `넘김`은 흰색에 14도, `보류`는 흰색에 기울임 없이 너비 124다.
+/// 캔버스 M19G1Heart/Save: 테두리 5, 모서리 12, 글자 40·900. `하트`는 라임 테두리와 글자(바탕
+/// rgba(31,42,0,0.55))에 -14도, `넘김`은 흰색에 14도, `저장`은 흰색에 기울임 없이 너비 124다.
 class SwipeStamp extends StatelessWidget {
   const SwipeStamp(this.outcome, {super.key});
 
   final SwipeOutcome outcome;
 
   static String labelOf(SwipeOutcome outcome) => switch (outcome) {
-    SwipeOutcome.like => '관심',
+    SwipeOutcome.like => '하트',
     SwipeOutcome.pass => '넘김',
-    SwipeOutcome.hold => '보류',
+    SwipeOutcome.hold => '저장',
   };
 
   @override
@@ -41,7 +43,7 @@ class SwipeStamp extends StatelessWidget {
         borderRadius: BorderRadius.circular(CoraSwipeTokens.stampRadius),
       ),
       child: Padding(
-        // 캔버스 padding 2px 14px. 보류는 너비 124에 가운데 정렬이라 좌우 여백을 따로 두지 않는다.
+        // 캔버스 padding 2px 14px. 저장은 너비 124에 가운데 정렬이라 좌우 여백을 따로 두지 않는다.
         padding: EdgeInsets.symmetric(
           vertical: 2,
           horizontal: outcome == SwipeOutcome.hold ? 0 : 14,

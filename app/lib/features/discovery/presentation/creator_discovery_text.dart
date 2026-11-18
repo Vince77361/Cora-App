@@ -11,13 +11,15 @@ abstract final class CreatorDiscoveryTexts {
   static String badge(int position, int total) =>
       '내 원칙과 맞는 캠페인 $position / $total';
 
-  // 알림 문구와 단추(캔버스 08). 브랜드 쪽(01)과 `넘겼어요`·`관심을 보냈어요`가 다르다.
+  // 알림 문구와 단추(캔버스 08). 브랜드 쪽(01)과 `넘겼어요`·`하트를 보냈어요`의 상대 이름이 다르다.
   static const passToast = '넘겼어요. 브랜드에는 알리지 않아요.';
   static const passToastAction = '이유 남기기';
-  static const likeToast = '관심을 보냈어요. 브랜드도 고르면 알려드려요.';
-  static const likeToastAction = '관심 목록';
-  static const holdToast = '보류함에 담았어요.';
-  static const holdToastAction = '보류 보기';
+
+  /// 캔버스 밖: 08의 시안이 없어 01(`M19G1Heart`)의 문구에 상대 이름만 브랜드로 바꾼다.
+  static const likeToast = '하트를 보냈어요. 브랜드도 고르면 알려드려요.';
+  static const likeToastAction = '보낸 관심';
+  static const holdToast = '저장했어요. 나만 볼 수 있어요.';
+  static const holdToastAction = '저장함';
   static const matchToastAction = '확인하기';
   static String matchToast(String brandName) =>
       '${josa(brandName, JosaPair.gwaWa)} 서로 관심이 닿았어요.';

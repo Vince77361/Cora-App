@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'swipe_physics.dart';
 
-/// 버튼(되돌리기 옆의 넘기기·보류·관심)으로 카드를 넘길 때 쓴다. [SwipeDeck]에 붙이면
+/// 버튼(되돌리기 옆의 넘기기·저장·하트)으로 카드를 넘길 때 쓴다. [SwipeDeck]에 붙이면
 /// 끌어서 넘길 때와 같은 움직임으로 맨 위 카드를 보낸다.
 ///
 /// [busy]가 바뀌면 알려 주므로 버튼을 잠그는 데 쓸 수 있다.

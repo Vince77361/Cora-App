@@ -1,7 +1,6 @@
 import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/features/brand_onboarding/presentation/widgets/close_campaign_sheet.dart';
-import 'package:cora/features/discovery/domain/undo_result.dart';
 import 'package:cora/features/discovery/presentation/widgets/like_note_sheet.dart';
 import 'package:cora/features/discovery/presentation/widgets/pass_reason_sheet.dart';
 import 'package:cora/features/interests/presentation/widgets/hold_sheet.dart';
@@ -62,11 +61,7 @@ void main() {
   ) async {
     await _expectSheetFollowsTheme(
       tester,
-      (context) => showPassReasonSheet(
-        context,
-        onSave: (_) async {},
-        onUndo: () async => UndoResult.undone,
-      ),
+      (context) => showPassReasonSheet(context, onSave: (_) async {}),
     );
   });
 

@@ -174,12 +174,12 @@ void main() {
 
     expect(repo.decisions.single.outcome, SwipeOutcome.like);
     expect(repo.decisions.single.target.id, 'c1');
-    expect(find.text('관심을 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
+    expect(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
     expect(find.text('운영자 추천 2 / 3'), findsOneWidget);
 
-    await tester.tap(find.text('관심 목록'));
+    await tester.tap(find.text('보낸 관심'));
     await tester.pumpAndSettle();
-    expect(opened, ['/brand/interests']);
+    expect(opened, ['/brand/interests?tab=sent']);
   });
 
   testWidgets('swiping left shows the pass toast with a reason link', (
@@ -204,22 +204,22 @@ void main() {
     await _swipe(tester, '서윤의 작은 취향', const Offset(0, -300));
 
     expect(repo.decisions.single.outcome, SwipeOutcome.hold);
-    expect(find.text('보류함에 담았어요.'), findsOneWidget);
+    expect(find.text('저장했어요. 나만 볼 수 있어요.'), findsOneWidget);
 
-    await tester.tap(find.text('보류 보기'));
+    await tester.tap(find.text('저장함'));
     await tester.pumpAndSettle();
     expect(opened, ['/brand/interests?tab=saved']);
   });
 
-  testWidgets('the three buttons decide too', (tester) async {
+  testWidgets('the heart, pass and save buttons decide too', (tester) async {
     final repo = _three();
     await _pump(tester, repo);
 
-    await tester.tap(find.bySemanticsLabel('관심 있어요'));
+    await tester.tap(find.bySemanticsLabel('하트'));
     await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel('넘기기'));
     await tester.pumpAndSettle();
-    await tester.tap(find.bySemanticsLabel('보류'));
+    await tester.tap(find.bySemanticsLabel('저장'));
     await tester.pumpAndSettle();
 
     expect(repo.decisions.map((d) => d.outcome), [
@@ -229,17 +229,70 @@ void main() {
     ]);
   });
 
+  testWidgets(
+    'shows the save toast with the 저장함 action and the heart toast with the '
+    '보낸 관심 action',
+    (tester) async {
+      final repo = _three();
+      await _pump(tester, repo);
+
+      await _swipe(tester, '서윤의 작은 취향', const Offset(0, -300));
+      expect(find.text('저장했어요. 나만 볼 수 있어요.'), findsOneWidget);
+      expect(find.text('저장함'), findsOneWidget);
+      expect(find.text('보낸 관심'), findsNothing);
+
+      // 새 알림이 이전 알림을 대신한다.
+      await _swipe(tester, '민의 옷장 기록', const Offset(300, 0));
+      expect(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
+      expect(find.text('보낸 관심'), findsOneWidget);
+      expect(find.text('저장함'), findsNothing);
+    },
+  );
+
+  testWidgets('the undo button brings the passed card back to the top', (
+    tester,
+  ) async {
+    final repo = _three();
+    await _pump(tester, repo);
+    await _swipe(tester, '서윤의 작은 취향', const Offset(-300, 0));
+    expect(find.text('운영자 추천 2 / 3'), findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel('되돌리기'));
+    await tester.pumpAndSettle();
+
+    expect(repo.undoCalls, 1);
+    // 넘겼던 카드가 맨 앞에 다시 있다.
+    expect(find.text('운영자 추천 1 / 3'), findsOneWidget);
+    expect(find.text('서윤의 작은 취향'), findsOneWidget);
+  });
+
+  testWidgets(
+    'the undo button says it is too late when nothing can be undone',
+    (tester) async {
+      final repo = _three();
+      await _pump(tester, repo);
+      await _swipe(tester, '서윤의 작은 취향', const Offset(-300, 0));
+      repo.nothingToUndo = true;
+
+      await tester.tap(find.bySemanticsLabel('되돌리기'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('되돌릴 수 없어요. 내일 추천에 다시 나올 수 있어요.'), findsOneWidget);
+      expect(find.text('운영자 추천 1 / 3'), findsNothing);
+    },
+  );
+
   testWidgets('the toast goes away after three seconds', (tester) async {
     await _pump(tester, _three());
     await _swipe(tester, '서윤의 작은 취향', const Offset(300, 0));
-    expect(find.text('관심을 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
+    expect(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 2));
-    expect(find.text('관심을 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
+    expect(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
     await tester.pump(const Duration(seconds: 1));
     await tester.pump();
 
-    expect(find.text('관심을 보냈어요. 상대도 고르면 알려드려요.'), findsNothing);
+    expect(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'), findsNothing);
   });
 
   testWidgets('a mutual like shows the match toast', (tester) async {
@@ -249,7 +302,7 @@ void main() {
     await _swipe(tester, '서윤의 작은 취향', const Offset(300, 0));
 
     expect(find.text('서윤의 작은 취향과 서로 관심이 닿았어요.'), findsOneWidget);
-    expect(find.text('관심을 보냈어요. 상대도 고르면 알려드려요.'), findsNothing);
+    expect(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'), findsNothing);
 
     await tester.tap(find.text('확인하기'));
     await tester.pumpAndSettle();
@@ -258,7 +311,7 @@ void main() {
   });
 
   testWidgets(
-    'the reason sheet opens with nothing picked and the no-reason button',
+    'the reason sheet opens with nothing picked, a disabled save button and skip',
     (tester) async {
       await _pump(tester, _three());
       await _swipe(tester, '서윤의 작은 취향', const Offset(-300, 0));
@@ -274,9 +327,11 @@ void main() {
       for (final reason in PassReason.values) {
         expect(find.text(reason.label), findsOneWidget);
       }
-      expect(find.text('이유 없이 다음 보기'), findsOneWidget);
-      expect(find.text('이유 남기고 다음 보기'), findsNothing);
-      expect(find.text('되돌리기'), findsWidgets);
+      expect(find.text('이유 남기고 다음 보기'), findsOneWidget);
+      expect(find.text('건너뛰기'), findsOneWidget);
+      expect(find.text('이유 없이 다음 보기'), findsNothing);
+      // 되돌리기는 카드 아래 버튼 줄이 맡는다. 시트에는 줄이 없다(버튼 줄의 글자 하나뿐).
+      expect(find.text('되돌리기'), findsOneWidget);
     },
   );
 
@@ -291,14 +346,16 @@ void main() {
 
     await tester.tap(find.text('금액이 안 맞아요'));
     await tester.pumpAndSettle();
-    expect(find.text('이유 남기고 다음 보기'), findsOneWidget);
 
-    // 하나만 고르고, 고른 것을 다시 누르면 풀린다.
+    // 하나만 고르고, 고른 것을 다시 누르면 풀려 저장 버튼이 다시 꺼진다.
     await tester.tap(find.text('분야가 달라요'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('분야가 달라요'));
     await tester.pumpAndSettle();
-    expect(find.text('이유 없이 다음 보기'), findsOneWidget);
+    await tester.tap(find.text('이유 남기고 다음 보기'));
+    await tester.pumpAndSettle();
+    expect(repo.reasons, isEmpty);
+    expect(find.text('넘겼어요. 이유를 남길까요?'), findsOneWidget);
     await tester.tap(find.text('금액이 안 맞아요'));
     await tester.pumpAndSettle();
 
@@ -317,7 +374,7 @@ void main() {
     await tester.tap(find.text('이유 남기기'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('이유 없이 다음 보기'));
+    await tester.tap(find.text('건너뛰기'));
     await tester.pumpAndSettle();
 
     expect(repo.reasons, isEmpty);
@@ -352,46 +409,6 @@ void main() {
   });
 
   testWidgets(
-    'undo on the reason sheet brings the passed card back to the top',
-    (tester) async {
-      final repo = _three();
-      await _pump(tester, repo);
-      await _swipe(tester, '서윤의 작은 취향', const Offset(-300, 0));
-      expect(find.text('운영자 추천 2 / 3'), findsOneWidget);
-
-      await tester.tap(find.text('이유 남기기'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('되돌리기').last);
-      await tester.pumpAndSettle();
-
-      expect(repo.undoCalls, 1);
-      expect(find.text('넘겼어요. 이유를 남길까요?'), findsNothing);
-      // 넘겼던 카드가 맨 앞에 다시 있다.
-      expect(find.text('운영자 추천 1 / 3'), findsOneWidget);
-      expect(find.text('서윤의 작은 취향'), findsOneWidget);
-    },
-  );
-
-  testWidgets('undo says it is too late when the server has nothing to undo', (
-    tester,
-  ) async {
-    final repo = _three();
-    await _pump(tester, repo);
-    await _swipe(tester, '서윤의 작은 취향', const Offset(-300, 0));
-    repo.nothingToUndo = true;
-
-    await tester.tap(find.text('이유 남기기'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('되돌리기').last);
-    await tester.pumpAndSettle();
-
-    expect(find.text('되돌릴 수 없어요. 내일 추천에 다시 나올 수 있어요.'), findsOneWidget);
-    // 시트는 열려 있고 넘긴 카드는 그대로 넘겨져 있다.
-    expect(find.text('넘겼어요. 이유를 남길까요?'), findsOneWidget);
-    expect(find.text('운영자 추천 1 / 3'), findsNothing);
-  });
-
-  testWidgets(
     'shows the shared all-seen state with the saved-candidates button and undo',
     (tester) async {
       final repo = FakeDiscoveryRepository(cards: [], total: 2);
@@ -400,7 +417,7 @@ void main() {
       expect(find.byType(CoraStateView), findsOneWidget);
       expect(find.text('오늘 추천을 모두 봤어요'), findsOneWidget);
       expect(
-        find.text('관심과 저장에 담은 후보를 비교해 보세요. 내일 새 추천이 올라와요.'),
+        find.text('하트와 저장에 담은 후보를 비교해 보세요. 내일 새 추천이 올라와요.'),
         findsOneWidget,
       );
       expect(find.text('마지막 카드 되돌리기'), findsOneWidget);
@@ -541,7 +558,7 @@ void main() {
     expect(decoration.color, CoraColors.dark.toastSurface);
     // 다크는 그림자 없음(투명).
     expect(decoration.boxShadow!.single.color.a, 0);
-    final text = tester.widget<Text>(find.text('관심을 보냈어요. 상대도 고르면 알려드려요.'));
+    final text = tester.widget<Text>(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'));
     expect(text.style!.color, const Color(0xFFFFFFFF));
   });
 }

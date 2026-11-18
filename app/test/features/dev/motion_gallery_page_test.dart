@@ -148,14 +148,14 @@ void main() {
       (w) => w is Text && w.data == label && w.style?.fontSize == 13,
     );
 
-    await tester.tap(button('관심'));
+    await tester.tap(button('하트'));
     await tester.pumpAndSettle();
     expect(find.text('서윤의 작은 취향'), findsNothing);
     expect(find.text('민의 옷장 기록'), findsWidgets);
 
     await tester.tap(button('넘김'));
     await tester.pumpAndSettle();
-    await tester.tap(button('보류'));
+    await tester.tap(button('저장'));
     await tester.pumpAndSettle();
     expect(find.text('처음부터 다시'), findsOneWidget);
   });

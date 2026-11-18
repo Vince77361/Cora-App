@@ -79,7 +79,6 @@ class _CreatorDiscoveryPageState extends ConsumerState<CreatorDiscoveryPage> {
     showPassReasonSheet(
       context,
       onSave: (reason) => _vm.setPassReason(target, reason),
-      onUndo: _vm.undoLast,
     );
   }
 
@@ -115,7 +114,7 @@ class _CreatorDiscoveryPageState extends ConsumerState<CreatorDiscoveryPage> {
         creator: true,
         message: CreatorDiscoveryTexts.likeToast,
         action: CreatorDiscoveryTexts.likeToastAction,
-        onAction: () => context.push(AppRoutes.creatorInterests),
+        onAction: () => context.push(AppRoutes.creatorSent),
         onDismiss: dismiss,
       ),
       CreatorToastKind.hold => DiscoveryToastBanner(
@@ -298,7 +297,7 @@ class _DeckSection extends StatelessWidget {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 26,
+                bottom: 16,
                 child: SwipeActionButtons(
                   canUndo: state.canUndo,
                   onUndo: onUndo,

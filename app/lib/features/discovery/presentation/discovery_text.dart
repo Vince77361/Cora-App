@@ -11,10 +11,10 @@ abstract final class DiscoveryTexts {
   // 알림 문구와 단추(캔버스 01)
   static const passToast = '넘겼어요. 상대에게는 알리지 않아요.';
   static const passToastAction = '이유 남기기';
-  static const likeToast = '관심을 보냈어요. 상대도 고르면 알려드려요.';
-  static const likeToastAction = '관심 목록';
-  static const holdToast = '보류함에 담았어요.';
-  static const holdToastAction = '보류 보기';
+  static const likeToast = '하트를 보냈어요. 상대도 고르면 알려드려요.';
+  static const likeToastAction = '보낸 관심';
+  static const holdToast = '저장했어요. 나만 볼 수 있어요.';
+  static const holdToastAction = '저장함';
   static const matchToastAction = '확인하기';
   static String matchToast(String name) =>
       '${josa(name, JosaPair.gwaWa)} 서로 관심이 닿았어요.';
@@ -29,11 +29,12 @@ abstract final class DiscoveryTexts {
     FeeBand.w500kPlus => '50만 원 이상',
   };
 
-  // 버튼 이름(스크린 리더, 캔버스 aria-label)
+  // 카드 아래 버튼 넷의 글자 라벨이자 스크린 리더 이름(캔버스 M19G1Swipe). 서버 값 `HOLD`는 `저장`,
+  // `LIKE`는 `하트`로 부른다.
   static const undoLabel = '되돌리기';
   static const passLabel = '넘기기';
-  static const holdLabel = '보류';
-  static const likeLabel = '관심 있어요';
+  static const holdLabel = '저장';
+  static const likeLabel = '하트';
 
   // 다 봤을 때(계획: 2026-11-12 개정. 카드는 F8 공용 위젯)
   static const undoLast = '마지막 카드 되돌리기';
@@ -43,9 +44,8 @@ abstract final class DiscoveryTexts {
   // 02 넘기기 이유(캔버스 Pass)
   static const reasonTitle = '넘겼어요. 이유를 남길까요?';
   static const reasonBody = '선택이에요. 남기면 다음 추천에만 반영하고 상대에게는 알리지 않아요.';
-  static const reasonSkip = '이유 없이 다음 보기';
   static const reasonSave = '이유 남기고 다음 보기';
-  static const reasonUndo = '되돌리기';
+  static const reasonSkip = '건너뛰기';
   static const undoTooLate = '되돌릴 수 없어요. 내일 추천에 다시 나올 수 있어요.';
 
   // 등록 없이 먼저 둘러보기(9A, 계획·설계의 문구. 캔버스에 없다). 알약만 01의 머리를 따른다.
