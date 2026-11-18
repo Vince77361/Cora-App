@@ -238,6 +238,9 @@ String parameterToString(dynamic value) {
   if (value is SourceLinkKind) {
     return SourceLinkKindTypeTransformer().encode(value).toString();
   }
+  if (value is StoreInterestTab) {
+    return StoreInterestTabTypeTransformer().encode(value).toString();
+  }
   if (value is StoreOnboardingStep) {
     return StoreOnboardingStepTypeTransformer().encode(value).toString();
   }

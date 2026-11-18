@@ -210,6 +210,8 @@ doc/StoreCreatorRecommendationsModel.md
 doc/StoreDetailModel.md
 doc/StoreHomeSummaryModel.md
 doc/StoreInsightsApi.md
+doc/StoreInterestCardModel.md
+doc/StoreInterestTab.md
 doc/StoreOnboardingStep.md
 doc/StoreProposalDto.md
 doc/StoreProposalResultModel.md
@@ -492,6 +494,8 @@ lib/model/store_creator_card_model.dart
 lib/model/store_creator_recommendations_model.dart
 lib/model/store_detail_model.dart
 lib/model/store_home_summary_model.dart
+lib/model/store_interest_card_model.dart
+lib/model/store_interest_tab.dart
 lib/model/store_onboarding_step.dart
 lib/model/store_proposal_dto.dart
 lib/model/store_proposal_result_model.dart
@@ -750,6 +754,8 @@ test/store_creator_recommendations_model_test.dart
 test/store_detail_model_test.dart
 test/store_home_summary_model_test.dart
 test/store_insights_api_test.dart
+test/store_interest_card_model_test.dart
+test/store_interest_tab_test.dart
 test/store_onboarding_step_test.dart
 test/store_proposal_dto_test.dart
 test/store_proposal_result_model_test.dart

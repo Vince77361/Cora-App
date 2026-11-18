@@ -291,6 +291,77 @@ class DiscoveryApi {
     return null;
   }
 
+  /// 사장님 저장함: tab=saved는 내가 저장한 크리에이터, tab=sent는 내가 하트를 보낸 크리에이터(서로 관심 표지 포함). 가게 계정만 쓴다. 보낸 제안은 GET /offers/proposals를 쓴다.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [StoreInterestTab] tab:
+  ///   saved(기본) = 내가 저장한 크리에이터, sent = 내가 하트를 보낸 크리에이터.
+  Future<Response> listStoreInterestsWithHttpInfo({
+    StoreInterestTab? tab,
+    Future<void>? abortTrigger,
+  }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/discovery/store-interests';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (tab != null) {
+      queryParams.addAll(_queryParams('', 'tab', tab));
+    }
+
+    const contentTypes = <String>[];
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// 사장님 저장함: tab=saved는 내가 저장한 크리에이터, tab=sent는 내가 하트를 보낸 크리에이터(서로 관심 표지 포함). 가게 계정만 쓴다. 보낸 제안은 GET /offers/proposals를 쓴다.
+  ///
+  /// Parameters:
+  ///
+  /// * [StoreInterestTab] tab:
+  ///   saved(기본) = 내가 저장한 크리에이터, sent = 내가 하트를 보낸 크리에이터.
+  Future<List<StoreInterestCardModel>?> listStoreInterests({
+    StoreInterestTab? tab,
+    Future<void>? abortTrigger,
+  }) async {
+    final response = await listStoreInterestsWithHttpInfo(
+      tab: tab,
+      abortTrigger: abortTrigger,
+    );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty &&
+        response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(
+              responseBody, 'List<StoreInterestCardModel>') as List)
+          .cast<StoreInterestCardModel>()
+          .toList(growable: false);
+    }
+    return null;
+  }
+
   /// 하트(LIKE)·넘김(PASS)·저장(HOLD)을 저장한다. 브랜드·크리에이터는 반대쪽도 하트면 서로 관심(협업과 조건 버전 1)이 만들어진다. 사장님은 크리에이터에게만(campaign 없음) 결정하며 협업을 만들지 않는다.
   ///
   /// Note: This method returns the HTTP [Response].

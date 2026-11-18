@@ -27,6 +27,8 @@ const CREATOR_C = '44444444-4444-4444-8444-444444444444';
 // 서비스 규칙만 보려고 메모리에 저장하는 손 구현. 조건부 갱신(SQL)과 유니크 인덱스는 e2e가 확인한다.
 class FakeApplicationsRepository extends ApplicationsRepository {
   readonly rows: Application[] = [];
+  // 사장님이 하트를 보낸 크리에이터. 결정 저장소의 읽기를 대신한다.
+  readonly hearts = new Set<string>();
   seq = 0;
 
   constructor() {
@@ -67,6 +69,10 @@ class FakeApplicationsRepository extends ApplicationsRepository {
     };
     this.rows.push(row);
     return Promise.resolve(row);
+  }
+
+  hasStoreHeart(_ownerId: string, creatorId: string): Promise<boolean> {
+    return Promise.resolve(this.hearts.has(creatorId));
   }
 
   cancelApplied(storeId: string, creatorId: string): Promise<boolean> {
@@ -388,6 +394,64 @@ describe('ApplicationsService', () => {
       expect([...(await service.listLiveCreatorIds(store.id))].sort()).toEqual(
         [CREATOR, CREATOR_B].sort(),
       );
+    });
+  });
+
+  describe('mutual interest with a store heart', () => {
+    it('notifies both sides when the creator applies after the store sent a heart', async () => {
+      repo.hearts.add(CREATOR);
+
+      await service.apply(CREATOR, store.id);
+
+      const mutual = push.sent.filter((n) => n.kind === 'MUTUAL_INTEREST');
+      const key = `store-mutual:${store.id}:${CREATOR}`;
+      expect(mutual).toEqual([
+        {
+          userId: OWNER,
+          role: 'STORE',
+          kind: 'MUTUAL_INTEREST',
+          actor: {
+            userId: CREATOR,
+            name: '활동 2',
+            photoPath: 'creators/2.jpg',
+          },
+          target: { kind: 'STORE_INTERESTS', id: null },
+          dedupeKey: key,
+        },
+        {
+          userId: CREATOR,
+          role: 'CREATOR',
+          kind: 'MUTUAL_INTEREST',
+          actor: { userId: OWNER, name: '한그릇 라멘', photoPath: null },
+          target: { kind: 'STORE_DETAIL', id: store.id },
+          dedupeKey: key,
+        },
+      ]);
+    });
+
+    it('sends nothing when the heart is gone by the time the notification is sent', async () => {
+      await service.apply(CREATOR, store.id);
+      push.sent.length = 0;
+
+      await service.notifyStoreMutual(store, CREATOR);
+
+      expect(push.sent).toEqual([]);
+    });
+
+    it('does not send a mutual interest notification without a heart', async () => {
+      await service.apply(CREATOR, store.id);
+
+      expect(push.sent.map((n) => n.kind)).toEqual(['APPLICATION_RECEIVED']);
+    });
+
+    it('keeps the application when the notification fails', async () => {
+      repo.hearts.add(CREATOR);
+      push.fail = true;
+
+      await expect(service.apply(CREATOR, store.id)).resolves.toMatchObject({
+        status: 'APPLIED',
+      });
+      expect(repo.rows).toHaveLength(1);
     });
   });
 

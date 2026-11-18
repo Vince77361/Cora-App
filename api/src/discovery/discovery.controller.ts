@@ -25,6 +25,7 @@ import type { AuthUser } from '../auth/current-user.decorator';
 import { DiscoveryService } from './discovery.service';
 import { CompareService } from './compare.service';
 import { InterestsService } from './interests.service';
+import { StoreInterestsService } from './store-interests.service';
 import {
   DecisionResultModel,
   UndoneDecisionModel,
@@ -35,6 +36,10 @@ import {
   ListInterestsQuery,
   ProposalModel,
 } from './dto/interest-card.model';
+import {
+  ListStoreInterestsQuery,
+  StoreInterestCardModel,
+} from './dto/store-interest.model';
 import { InquiryDto } from './dto/inquiry.dto';
 import { InquiryResultModel } from './dto/inquiry-result.model';
 import { PassReasonDto } from './dto/pass-reason.dto';
@@ -47,6 +52,7 @@ export class DiscoveryController {
   constructor(
     private readonly discovery: DiscoveryService,
     private readonly interests: InterestsService,
+    private readonly storeInterests: StoreInterestsService,
     private readonly compareService: CompareService,
   ) {}
 
@@ -76,6 +82,20 @@ export class DiscoveryController {
     @Query() query: ListInterestsQuery,
   ): Promise<InterestCardModel[]> {
     return this.interests.list(user.userId, query.tab ?? 'saved');
+  }
+
+  @Get('store-interests')
+  @ApiOperation({
+    operationId: 'listStoreInterests',
+    summary:
+      '사장님 저장함: tab=saved는 내가 저장한 크리에이터, tab=sent는 내가 하트를 보낸 크리에이터(서로 관심 표지 포함). 가게 계정만 쓴다. 보낸 제안은 GET /offers/proposals를 쓴다.',
+  })
+  @ApiOkResponse({ type: [StoreInterestCardModel] })
+  listStoreInterests(
+    @CurrentUser() user: AuthUser,
+    @Query() query: ListStoreInterestsQuery,
+  ): Promise<StoreInterestCardModel[]> {
+    return this.storeInterests.list(user.userId, query.tab ?? 'saved');
   }
 
   @Get('received-proposals')

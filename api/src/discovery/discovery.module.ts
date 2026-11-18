@@ -17,6 +17,7 @@ import { DiscoveryController } from './discovery.controller';
 import { DiscoveryRepository } from './discovery.repository';
 import { DiscoveryService } from './discovery.service';
 import { InterestsService } from './interests.service';
+import { StoreInterestsService } from './store-interests.service';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { InterestsService } from './interests.service';
   providers: [
     DiscoveryService,
     InterestsService,
+    StoreInterestsService,
     CompareService,
     DiscoveryRepository,
   ],

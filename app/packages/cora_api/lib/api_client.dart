@@ -572,6 +572,10 @@ class ApiClient {
           return StoreDetailModel.fromJson(value);
         case 'StoreHomeSummaryModel':
           return StoreHomeSummaryModel.fromJson(value);
+        case 'StoreInterestCardModel':
+          return StoreInterestCardModel.fromJson(value);
+        case 'StoreInterestTab':
+          return StoreInterestTabTypeTransformer().decode(value);
         case 'StoreOnboardingStep':
           return StoreOnboardingStepTypeTransformer().decode(value);
         case 'StoreProposalDto':

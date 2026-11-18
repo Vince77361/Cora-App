@@ -5,7 +5,10 @@ import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
 import { regionTier } from '../common/regions';
 import { CreatorsService } from '../creators/creators.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import {
+  NotificationsService,
+  NotifyInput,
+} from '../notifications/notifications.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { VisibilityService } from '../visibility/visibility.service';
@@ -81,11 +84,62 @@ export class ApplicationsService {
         `지원 알림을 남기지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
       );
     }
+    // 사장님이 먼저 하트를 보낸 크리에이터가 지원하면 서로 관심이다(설계 5.4). 협업은 만들지 않고 알리기만 한다.
+    try {
+      await this.notifyStoreMutual(store, userId);
+    } catch (error) {
+      this.logger.warn(
+        `서로 관심을 확인하지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+      );
+    }
     return {
       id: created.id,
       storeId: created.storeId,
       status: created.status,
     };
+  }
+
+  // 사장님의 서로 관심(하트 + 지원) 알림. 하트와 지원 가운데 나중에 일어난 쪽이 부르고, 양쪽에 한 번씩만 간다
+  // (dedupeKey가 가게·크리에이터 쌍이라 하트를 다시 보내거나 지원을 취소했다 다시 해도 두 번째는 줄을 만들지 않는다).
+  // 알림이 실패해도 서로 관심은 유효하다: 저장함이 두 기록의 교집합으로 계산한다.
+  // 보내기 직전에 사장님의 하트가 지금 있는지 다시 읽는다: 하트를 되돌리는 요청과 겹쳐도 사라진 하트에는 알리지 않는다.
+  async notifyStoreMutual(store: Store, creatorId: string): Promise<void> {
+    if (!(await this.applications.hasStoreHeart(store.ownerId, creatorId))) {
+      return;
+    }
+    const dedupeKey = `store-mutual:${store.id}:${creatorId}`;
+    const send = async (input: NotifyInput): Promise<void> => {
+      try {
+        await this.notifications.notify({ ...input, dedupeKey });
+      } catch (error) {
+        this.logger.warn(
+          `서로 관심 알림을 남기지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        );
+      }
+    };
+    const creator = await this.creators.getActor(creatorId).catch(() => null);
+    await send({
+      userId: store.ownerId,
+      role: 'STORE',
+      kind: 'MUTUAL_INTEREST',
+      actor: creator ?? {
+        userId: creatorId,
+        name: '크리에이터',
+        photoPath: null,
+      },
+      target: { kind: 'STORE_INTERESTS', id: null },
+    });
+    await send({
+      userId: creatorId,
+      role: 'CREATOR',
+      kind: 'MUTUAL_INTEREST',
+      actor: {
+        userId: store.ownerId,
+        name: store.name ?? '가게',
+        photoPath: store.coverPhotoPath,
+      },
+      target: { kind: 'STORE_DETAIL', id: store.id },
+    });
   }
 
   // 지원 중(APPLIED)일 때만 취소한다. 오퍼를 받은 지원은 받은 오퍼에서 거절하게 안내한다.

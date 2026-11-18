@@ -28,7 +28,11 @@ export type NotificationTarget = {
     // 대화방(id = 방 id). 메시지 요청과 그 수락 알림이 간다.
     | 'CONVERSATION'
     // 계약 화면(id = 협업 id). 크리에이터의 동의와 계약 체결 알림이 간다.
-    | 'CONTRACT';
+    | 'CONTRACT'
+    // 사장님의 저장함 "보낸 관심" 탭(id 없음). 하트를 보낸 크리에이터가 지원해서 서로 관심이 닿은 알림이 간다.
+    | 'STORE_INTERESTS'
+    // 가게 상세(id = 가게 id). 크리에이터에게 가는 같은 알림이다.
+    | 'STORE_DETAIL';
   id: string | null;
 };
 

@@ -102,6 +102,7 @@ Class | Method | HTTP request | Description
 *DiscoveryApi* | [**createInquiry**](doc//DiscoveryApi.md#createinquiry) | **POST** /discovery/received-proposals/{campaignId}/inquiry | \"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.
 *DiscoveryApi* | [**listInterests**](doc//DiscoveryApi.md#listinterests) | **GET** /discovery/interests | 하트·저장 목록. 내가 하트를 보냈거나 저장한 것만 나온다(넘긴 것은 어디에도 나오지 않는다).
 *DiscoveryApi* | [**listReceivedProposals**](doc//DiscoveryApi.md#listreceivedproposals) | **GET** /discovery/received-proposals | 크리에이터가 받은 제안: 글이나 조건 제안이 붙은 브랜드의 하트 가운데 아직 결정하지 않은 것.
+*DiscoveryApi* | [**listStoreInterests**](doc//DiscoveryApi.md#liststoreinterests) | **GET** /discovery/store-interests | 사장님 저장함: tab=saved는 내가 저장한 크리에이터, tab=sent는 내가 하트를 보낸 크리에이터(서로 관심 표지 포함). 가게 계정만 쓴다. 보낸 제안은 GET /offers/proposals를 쓴다.
 *DiscoveryApi* | [**putDecision**](doc//DiscoveryApi.md#putdecision) | **PUT** /discovery/decisions | 하트(LIKE)·넘김(PASS)·저장(HOLD)을 저장한다. 브랜드·크리에이터는 반대쪽도 하트면 서로 관심(협업과 조건 버전 1)이 만들어진다. 사장님은 크리에이터에게만(campaign 없음) 결정하며 협업을 만들지 않는다.
 *DiscoveryApi* | [**putPassReason**](doc//DiscoveryApi.md#putpassreason) | **PUT** /discovery/decisions/pass-reason | 넘긴 카드에 이유를 남긴다. 이유 없이 넘기는 것은 이 호출을 하지 않는 것이다.
 *DiscoveryApi* | [**putStorePass**](doc//DiscoveryApi.md#putstorepass) | **PUT** /discovery/store-passes/{storeId} | 가게 카드를 넘긴다(가게 카드의 하트는 지원 API로 보낸다).
@@ -363,6 +364,8 @@ Class | Method | HTTP request | Description
  - [StoreCreatorRecommendationsModel](doc//StoreCreatorRecommendationsModel.md)
  - [StoreDetailModel](doc//StoreDetailModel.md)
  - [StoreHomeSummaryModel](doc//StoreHomeSummaryModel.md)
+ - [StoreInterestCardModel](doc//StoreInterestCardModel.md)
+ - [StoreInterestTab](doc//StoreInterestTab.md)
  - [StoreOnboardingStep](doc//StoreOnboardingStep.md)
  - [StoreProposalDto](doc//StoreProposalDto.md)
  - [StoreProposalResultModel](doc//StoreProposalResultModel.md)

@@ -28,6 +28,23 @@ export class ApplicationsRepository {
     return new Set(rows.map((r) => r.creatorId));
   }
 
+  // 사장님이 그 크리에이터에게 하트(LIKE)를 보냈는가. 사장님의 결정은 campaign_id가 없다.
+  // 지원 모듈이 결정 모듈을 import하면 순환이라(결정 모듈이 지원을 읽는다) 이 읽기만 여기서 직접 한다.
+  async hasStoreHeart(ownerId: string, creatorId: string): Promise<boolean> {
+    const row = await this.prisma.swipeDecision.findFirst({
+      where: {
+        actorId: ownerId,
+        targetKind: 'CREATOR',
+        targetId: creatorId,
+        campaignId: null,
+        decision: 'LIKE',
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
   // 같은 가게·크리에이터의 살아 있는 지원은 부분 유니크 인덱스가 하나로 막는다.
   // 미리 읽은 뒤 동시에 만들어 unique 위반(P2002)이 나면 null로 돌려 서비스가 409로 바꾸게 한다.
   async create(

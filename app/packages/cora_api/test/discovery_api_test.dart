@@ -44,6 +44,13 @@ void main() {
       // TODO
     });
 
+    // 사장님 저장함: tab=saved는 내가 저장한 크리에이터, tab=sent는 내가 하트를 보낸 크리에이터(서로 관심 표지 포함). 가게 계정만 쓴다. 보낸 제안은 GET /offers/proposals를 쓴다.
+    //
+    //Future<List<StoreInterestCardModel>> listStoreInterests({ StoreInterestTab tab }) async
+    test('test listStoreInterests', () async {
+      // TODO
+    });
+
     // 하트(LIKE)·넘김(PASS)·저장(HOLD)을 저장한다. 브랜드·크리에이터는 반대쪽도 하트면 서로 관심(협업과 조건 버전 1)이 만들어진다. 사장님은 크리에이터에게만(campaign 없음) 결정하며 협업을 만들지 않는다.
     //
     //Future<DecisionResultModel> putDecision(PutDecisionDto putDecisionDto) async

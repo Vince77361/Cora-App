@@ -4639,7 +4639,7 @@
             ]
           },
           "note": {
-            "description": "LIKE에 붙이는 글. 크리에이터는 40자(조건 버전의 제목), 브랜드는 100자(좋아한 점).",
+            "description": "LIKE에 붙이는 글. 크리에이터는 40자(조건 버전의 제목), 브랜드는 100자(좋아한 점). 사장님은 글을 받지 않아요(보내면 400).",
             "maxLength": 100,
             "nullable": true,
             "type": "object"
@@ -5423,6 +5423,57 @@
           "inProgress"
         ],
         "type": "object"
+      },
+      "StoreInterestCardModel": {
+        "properties": {
+          "contentFocus": {
+            "description": "분야.",
+            "nullable": true,
+            "type": "string"
+          },
+          "creatorId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "followers": {
+            "description": "인스타그램 팔로워 수. 연동하지 않았으면 null.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "mutual": {
+            "description": "서로 관심: 내가 하트를 보냈고 그 크리에이터가 이 가게에 살아 있는 지원(APPLIED·OFFERED)을 가졌다. 저장 탭에서는 늘 false다.",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "크리에이터의 활동 이름.",
+            "type": "string"
+          },
+          "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "shortName": {
+            "description": "\"{X}의 …\" 꼴이면 X, 아니면 이름 전체. 버튼 글자에 쓴다.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "creatorId",
+          "name",
+          "shortName",
+          "contentFocus",
+          "followers",
+          "photoUrl",
+          "mutual"
+        ],
+        "type": "object"
+      },
+      "StoreInterestTab": {
+        "enum": [
+          "saved",
+          "sent"
+        ],
+        "type": "string"
       },
       "StoreOnboardingStep": {
         "enum": [
@@ -8983,6 +9034,46 @@
           }
         ],
         "summary": "\"조건부터 질문하기\": 서로 관심을 만들지 않고 브랜드에게 메시지 요청을 보낸다. 협업(INQUIRY)과 메시지 요청 방과 첫 메시지가 한 번에 만들어진다.",
+        "tags": [
+          "Discovery"
+        ]
+      }
+    },
+    "/discovery/store-interests": {
+      "get": {
+        "operationId": "listStoreInterests",
+        "parameters": [
+          {
+            "description": "saved(기본) = 내가 저장한 크리에이터, sent = 내가 하트를 보낸 크리에이터.",
+            "in": "query",
+            "name": "tab",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StoreInterestTab"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StoreInterestCardModel"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "사장님 저장함: tab=saved는 내가 저장한 크리에이터, tab=sent는 내가 하트를 보낸 크리에이터(서로 관심 표지 포함). 가게 계정만 쓴다. 보낸 제안은 GET /offers/proposals를 쓴다.",
         "tags": [
           "Discovery"
         ]

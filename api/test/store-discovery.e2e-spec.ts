@@ -7,7 +7,7 @@ import { createTestApp, httpOf } from './helpers/create-test-app';
 import { setCardPost } from './helpers/featured-posts';
 import { truncateTestDb } from './helpers/truncate-test-db';
 import { FakeClock } from './support/fake-clock';
-import { USER_A } from './support/fake-token-verifier';
+import { OTHER, USER_A } from './support/fake-token-verifier';
 
 // user-a는 사장님이다. 크리에이터와 다른 가게는 DB에 바로 만든다.
 const authA = { Authorization: 'Bearer user-a' };
@@ -407,6 +407,217 @@ describe('store discovery (전체 둘러보기)', () => {
 
       expect(codeOf(res)).toBe('CONFLICT');
       expect(await prisma.swipeDecision.count()).toBe(1);
+    });
+  });
+
+  describe('store interests (저장함)', () => {
+    interface InterestCard {
+      creatorId: string;
+      name: string;
+      shortName: string;
+      contentFocus: string | null;
+      followers: number | null;
+      photoUrl: string | null;
+      mutual: boolean;
+    }
+    interface NotificationPage {
+      items: {
+        tab: string;
+        text: string;
+        target: { kind: string; id: string | null };
+      }[];
+    }
+    const list = (tab: string, auth = authA) =>
+      request(server).get(`/discovery/store-interests?tab=${tab}`).set(auth);
+    const interestsOf = async (tab: string) =>
+      (await list(tab).expect(200)).body as InterestCard[];
+    const inbox = async (auth: { Authorization: string }) =>
+      (
+        (await request(server).get('/notifications').set(auth).expect(200))
+          .body as NotificationPage
+      ).items;
+    const mutualCount = () =>
+      prisma.notification.count({ where: { kind: 'MUTUAL_INTEREST' } });
+
+    // user-b를 지원할 수 있는 크리에이터로 만든다.
+    async function makeCreatorB(): Promise<string> {
+      await request(server)
+        .patch('/me/role')
+        .set(authB)
+        .send({ role: 'CREATOR' })
+        .expect(200);
+      await request(server)
+        .put('/creators/me')
+        .set(authB)
+        .send({
+          displayName: '하루 한 컵',
+          contentFocus: '카페 릴스',
+          regionSido: SEOUL,
+          regionSigungu: '마포구',
+        })
+        .expect(200);
+      return OTHER;
+    }
+    const applyB = () =>
+      request(server).post(`/stores/${storeId}/applications`).set(authB).send();
+
+    it('lists saved and sent creators for the store only', async () => {
+      await makeStore();
+      const saved = await seedCreator('저장한 사람');
+      const sent = await seedCreator('하트 보낸 사람');
+      const passed = await seedCreator('넘긴 사람');
+      await decide(saved, 'HOLD').expect(200);
+      await decide(sent, 'LIKE').expect(200);
+      await decide(passed, 'PASS').expect(200);
+      // 다른 가게의 결정은 읽히지 않는다.
+      const other = randomUUID();
+      await prisma.user.create({ data: { id: other, role: 'STORE' } });
+      await prisma.swipeDecision.create({
+        data: {
+          actorId: other,
+          targetKind: 'CREATOR',
+          targetId: passed,
+          decision: 'HOLD',
+        },
+      });
+
+      expect((await interestsOf('saved')).map((c) => c.creatorId)).toEqual([
+        saved,
+      ]);
+      expect(await interestsOf('sent')).toEqual([
+        {
+          creatorId: sent,
+          name: '하트 보낸 사람',
+          shortName: '하트 보낸 사람',
+          contentFocus: '맛집 릴스',
+          followers: null,
+          photoUrl: null,
+          mutual: false,
+        },
+      ]);
+      // 탭을 주지 않으면 저장 탭이다.
+      const fallback = await request(server)
+        .get('/discovery/store-interests')
+        .set(authA)
+        .expect(200);
+      expect((fallback.body as InterestCard[]).map((c) => c.creatorId)).toEqual(
+        [saved],
+      );
+    });
+
+    it('moves a creator between the tabs when the decision changes', async () => {
+      await makeStore();
+      const creator = await seedCreator('마음 바꾼 사람');
+      await decide(creator, 'HOLD').expect(200);
+      await decide(creator, 'LIKE').expect(200);
+
+      expect(await interestsOf('saved')).toEqual([]);
+      expect((await interestsOf('sent')).map((c) => c.creatorId)).toEqual([
+        creator,
+      ]);
+    });
+
+    it('serves store owners only and rejects a bad tab', async () => {
+      await request(server).get('/discovery/store-interests').expect(401);
+      await request(server)
+        .patch('/me/role')
+        .set(authA)
+        .send({ role: 'BRAND' })
+        .expect(200);
+      const res = await list('saved').expect(403);
+      expect(codeOf(res)).toBe('FORBIDDEN');
+      await request(server)
+        .patch('/me/role')
+        .set(authB)
+        .send({ role: 'CREATOR' })
+        .expect(200);
+      await list('saved', authB).expect(403);
+    });
+
+    it('rejects an unknown tab with 400', async () => {
+      await makeStore();
+      await list('held').expect(400);
+    });
+
+    it('hides creators who avoid the store industry', async () => {
+      await makeStore('ALCOHOL');
+      const creator = await seedCreator('피하는 사람');
+      await decide(creator, 'HOLD').expect(200);
+      await prisma.creatorPrinciples.update({
+        where: { creatorId: creator },
+        data: { blockedIndustries: ['ALCOHOL'] },
+      });
+
+      expect(await interestsOf('saved')).toEqual([]);
+    });
+
+    it('notifies both sides once when a heart meets an existing application', async () => {
+      await makeStore();
+      const creator = await makeCreatorB();
+      await applyB().expect(201);
+      expect(await mutualCount()).toBe(0);
+
+      await decide(creator, 'LIKE').expect(200);
+      // 하트를 다시 보내도 알림은 늘지 않는다.
+      await decide(creator, 'LIKE').expect(200);
+
+      expect(await mutualCount()).toBe(2);
+      expect(await inbox(authA)).toEqual([
+        expect.objectContaining({
+          tab: 'MATCHING',
+          text: '하루 한 컵과 서로 관심이 닿았어요.',
+          target: { kind: 'STORE_INTERESTS', id: null },
+        }),
+        expect.anything(),
+      ]);
+      expect((await inbox(authB)).filter((n) => n.tab === 'MATCHING')).toEqual([
+        expect.objectContaining({
+          text: '한그릇 라멘과 서로 관심이 닿았어요.',
+          target: { kind: 'STORE_DETAIL', id: storeId },
+        }),
+      ]);
+      const sent = await interestsOf('sent');
+      expect(sent.map((c) => [c.creatorId, c.mutual])).toEqual([
+        [creator, true],
+      ]);
+    });
+
+    it('notifies both sides once when an application meets an existing heart', async () => {
+      await makeStore();
+      const creator = await makeCreatorB();
+      await decide(creator, 'LIKE').expect(200);
+      expect(await mutualCount()).toBe(0);
+      expect((await interestsOf('sent'))[0].mutual).toBe(false);
+
+      await applyB().expect(201);
+      // 지원을 취소했다가 다시 해도 알림은 늘지 않는다.
+      await request(server)
+        .delete(`/stores/${storeId}/applications/mine`)
+        .set(authB)
+        .expect(204);
+      await applyB().expect(201);
+
+      expect(await mutualCount()).toBe(2);
+      expect((await interestsOf('sent'))[0].mutual).toBe(true);
+    });
+
+    it('never creates a match, collaboration or conversation', async () => {
+      await makeStore();
+      const creator = await makeCreatorB();
+      await applyB().expect(201);
+      await decide(creator, 'LIKE').expect(200);
+
+      expect(await prisma.match.count()).toBe(0);
+      expect(await prisma.collaboration.count()).toBe(0);
+      expect(await prisma.conversation.count()).toBe(0);
+    });
+
+    it('does not notify for a save or when the creator has not applied', async () => {
+      await makeStore();
+      const creator = await makeCreatorB();
+      await decide(creator, 'HOLD').expect(200);
+      await applyB().expect(201);
+      expect(await mutualCount()).toBe(0);
     });
   });
 });

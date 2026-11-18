@@ -125,6 +125,9 @@ function build(options: { role?: string | null } = {}) {
   const visibility = new FakeVisibility();
   const repository = new FakeDiscoveryRepository();
   const liveApplicants = new Set<string>();
+  // 서로 관심 알림이 불린 크리에이터. 알림의 내용·중복 방지는 지원 서비스와 e2e가 확인한다.
+  const mutualNotified: string[] = [];
+  const notifyFails = { current: false };
   const collaborationsCreated: unknown[] = [];
   const role = { current: options.role === undefined ? 'STORE' : options.role };
   const cardCopy = {
@@ -161,6 +164,11 @@ function build(options: { role?: string | null } = {}) {
     null as never,
     {
       listLiveCreatorIds: () => Promise.resolve(liveApplicants),
+      notifyStoreMutual: (_store: Store, creatorId: string) => {
+        if (notifyFails.current) return Promise.reject(new Error('down'));
+        mutualNotified.push(creatorId);
+        return Promise.resolve();
+      },
     } as unknown as ApplicationsService,
     repository,
     clock,
@@ -171,6 +179,8 @@ function build(options: { role?: string | null } = {}) {
     repository,
     service,
     liveApplicants,
+    mutualNotified,
+    notifyFails,
     collaborationsCreated,
     role,
     cardCopy,
@@ -273,6 +283,54 @@ describe('DiscoveryService for a store owner', () => {
     expect(result.matched).toBe(false);
     expect(repository.matchesCreated).toEqual([]);
     expect(collaborationsCreated).toEqual([]);
+  });
+
+  it('notifies once when a heart meets an existing application', async () => {
+    const { service, liveApplicants, mutualNotified } = build();
+    liveApplicants.add(CREATOR);
+
+    await service.decide(OWNER, heart);
+
+    expect(mutualNotified).toEqual([CREATOR]);
+  });
+
+  it('does not notify for a heart on a creator who has not applied', async () => {
+    const { service, mutualNotified } = build();
+
+    await service.decide(OWNER, heart);
+
+    expect(mutualNotified).toEqual([]);
+  });
+
+  it('does not notify for a save or a pass on a creator who applied', async () => {
+    const { service, liveApplicants, mutualNotified } = build();
+    liveApplicants.add(CREATOR);
+
+    await service.decide(OWNER, { ...heart, decision: 'HOLD' });
+    await service.decide(OWNER, { ...heart, decision: 'PASS' });
+
+    expect(mutualNotified).toEqual([]);
+  });
+
+  it('does not notify twice when the heart is repeated', async () => {
+    const { service, liveApplicants, mutualNotified } = build();
+    liveApplicants.add(CREATOR);
+
+    await service.decide(OWNER, heart);
+    await service.decide(OWNER, heart);
+
+    expect(mutualNotified).toEqual([CREATOR]);
+  });
+
+  it('keeps the heart when the mutual interest notification fails', async () => {
+    const { service, repository, liveApplicants, notifyFails } = build();
+    liveApplicants.add(CREATOR);
+    notifyFails.current = true;
+
+    await expect(service.decide(OWNER, heart)).resolves.toMatchObject({
+      decision: 'LIKE',
+    });
+    expect(repository.rows).toHaveLength(1);
   });
 
   it('refuses a store decision on a hidden creator with 404', async () => {

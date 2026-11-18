@@ -246,6 +246,8 @@ part 'model/store_creator_card_model.dart';
 part 'model/store_creator_recommendations_model.dart';
 part 'model/store_detail_model.dart';
 part 'model/store_home_summary_model.dart';
+part 'model/store_interest_card_model.dart';
+part 'model/store_interest_tab.dart';
 part 'model/store_onboarding_step.dart';
 part 'model/store_proposal_dto.dart';
 part 'model/store_proposal_result_model.dart';

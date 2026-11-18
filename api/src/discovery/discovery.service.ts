@@ -198,7 +198,8 @@ export class DiscoveryService {
       );
     }
     // 트랜잭션이 연결을 쥔 채 다른 연결을 기다리지 않게, 사장님의 서로 관심 판단에 쓸 지원자는 미리 읽는다.
-    // 읽은 뒤에 새로 지원한 사람은 이 되돌리기를 막지 못하지만, 하트가 지워질 뿐 가게의 협업·지원은 그대로라 해가 없다.
+    // 읽은 뒤에 새로 지원한 사람은 이 되돌리기를 막지 못해 하트가 지워질 수 있다. 가게의 협업·지원은 그대로이고,
+    // 서로 관심 알림은 보내기 직전에 하트를 다시 읽어서(notifyStoreMutual) 지워진 하트에는 가지 않는다.
     const applicants =
       role === 'STORE'
         ? await this.applications.listLiveCreatorIds(
@@ -303,10 +304,7 @@ export class DiscoveryService {
       );
     }
     if (this.cleanNote(input.note, NOTE_MAX.CREATOR)) {
-      throw new AppError(
-        'VALIDATION_FAILED',
-        '사장님은 글을 붙일 수 없어요.',
-      );
+      throw new AppError('VALIDATION_FAILED', '사장님은 글을 붙일 수 없어요.');
     }
     const store = await this.stores.requireMyStore(userId);
     const creatorId = input.targetId;
@@ -332,7 +330,7 @@ export class DiscoveryService {
       campaignId: null,
     };
     const now = this.clock.now();
-    await this.repository.transaction(async (tx) => {
+    const newHeart = await this.repository.transaction(async (tx) => {
       await this.repository.lock(
         `discovery-store-creator:${userId}:${creatorId}`,
         tx,
@@ -348,7 +346,24 @@ export class DiscoveryService {
       } else if (write.kind === 'update' && existing) {
         await this.repository.updateDecision(existing.id, write.data, now, tx);
       }
+      // 이미 하트였던 것을 다시 보내는 것(사본만 새로 쓰는 갱신)은 새 하트가 아니다.
+      return input.decision === 'LIKE' && existing?.decision !== 'LIKE';
     });
+    // 하트가 새로 보내졌을 때만, 커밋 뒤에 지원을 읽는다: 이미 지원한 크리에이터면 서로 관심이다.
+    // 지원이 하트와 동시에 오면 둘 다 알리려 할 수 있지만 알림의 dedupeKey가 한 번만 남긴다.
+    // 알림이 실패해도 저장된 하트는 유효하다(원장 판단 R22).
+    if (newHeart) {
+      try {
+        const applicants = await this.applications.listLiveCreatorIds(store.id);
+        if (applicants.has(creatorId)) {
+          await this.applications.notifyStoreMutual(store, creatorId);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `사장님의 서로 관심을 확인하지 못했어요: ${error instanceof Error ? error.name : 'unknown'}`,
+        );
+      }
+    }
     return {
       decision: input.decision,
       matched: false,
