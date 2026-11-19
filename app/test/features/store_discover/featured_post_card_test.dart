@@ -31,12 +31,9 @@ Future<void> _pumpCard(WidgetTester tester, Widget card) async {
   await tester.pumpAndSettle();
 }
 
-/// 스크린 리더가 [finder]의 노드에 [action]을 보낸 것처럼 부른다.
-void _perform(WidgetTester tester, Finder finder, SemanticsAction action) =>
-    tester.binding.rootPipelineOwner.semanticsOwner!.performAction(
-      tester.getSemantics(finder).id,
-      action,
-    );
+/// 스크린 리더가 [action]을 가진 노드(카드 하나뿐이다)에 그 동작을 보낸 것처럼 부른다.
+void _perform(WidgetTester tester, SemanticsAction action) =>
+    tester.semantics.performAction(find.semantics.byAction(action), action);
 
 void main() {
   setUpAll(loadAppFonts);
@@ -73,20 +70,20 @@ void main() {
       isFalse,
     );
 
-    _perform(tester, viewer, SemanticsAction.increase);
+    _perform(tester, SemanticsAction.increase);
     await tester.pumpAndSettle();
     expect(find.text('하루 한 컵 게시물 2'), findsOneWidget);
     node = tester.getSemantics(viewer);
     expect(node.value, '2 / 4');
     expect(node.getSemanticsData().hasAction(SemanticsAction.decrease), isTrue);
 
-    _perform(tester, viewer, SemanticsAction.decrease);
+    _perform(tester, SemanticsAction.decrease);
     await tester.pumpAndSettle();
     expect(find.text('하루 한 컵 게시물 1'), findsOneWidget);
 
     // 맨 끝에서는 다음이 없다.
     for (var i = 0; i < 3; i++) {
-      _perform(tester, viewer, SemanticsAction.increase);
+      _perform(tester, SemanticsAction.increase);
       await tester.pumpAndSettle();
     }
     node = tester.getSemantics(viewer);
