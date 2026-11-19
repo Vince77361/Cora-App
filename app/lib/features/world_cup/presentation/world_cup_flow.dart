@@ -5,6 +5,14 @@ import '../../../core/navigation/app_routes.dart';
 import '../domain/world_cup_candidate.dart';
 import 'widgets/world_cup_count_sheet.dart';
 
+/// 결과 화면의 `제안하기`가 하는 일. 사장님은 받는 사람이 채워진 오퍼 작성(A5), 브랜드는 보상 제안(F1)을 연다. 서버에
+/// 쓰는 일은 그 화면이 하고 월드컵 자신은 아무것도 쓰지 않는다. 뒤에 띄울 안내가 있으면 돌려준다.
+typedef WorldCupPropose =
+    Future<WorldCupNotice?> Function(
+      BuildContext context,
+      WorldCupCandidate winner,
+    );
+
 /// 대결 화면이 받는 것: 저장한 사람 전부([saved]), 몇 강으로 할지([size]), 우승자에게 제안하는 방법([onPropose]).
 /// 판마다 새로 만들고 같은 값을 가졌어도 다른 판이다(그래서 `==`를 두지 않는다. 다시 하기가 새 대진을 뽑는다).
 class WorldCupMatchArgs {

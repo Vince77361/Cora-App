@@ -1,5 +1,3 @@
-import 'package:flutter/widgets.dart' show BuildContext;
-
 /// 월드컵에 나가는 사람 한 명. 사장님 저장함의 크리에이터와 브랜드 저장함의 크리에이터 카드를 각 저장함이 이 모양으로
 /// 바꿔 넘긴다. 같은 [id]는 같은 사람이다.
 class WorldCupCandidate {
@@ -46,11 +44,3 @@ class WorldCupNotice {
   final String? actionLabel;
   final void Function()? onAction;
 }
-
-/// 결과 화면의 `제안하기`가 하는 일. 사장님은 받는 사람이 채워진 오퍼 작성(A5), 브랜드는 보상 제안(F1)을 연다. 서버에
-/// 쓰는 일은 그 화면이 하고 월드컵 자신은 아무것도 쓰지 않는다. 뒤에 띄울 안내가 있으면 돌려준다.
-typedef WorldCupPropose =
-    Future<WorldCupNotice?> Function(
-      BuildContext context,
-      WorldCupCandidate winner,
-    );
