@@ -5,6 +5,7 @@ import 'package:cora/core/ui/cora_secondary_button.dart';
 import 'package:cora/features/store_onboarding/domain/my_store.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/store_edit_page.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/store_page_preview_page.dart';
+import 'package:cora/features/store_onboarding/presentation/widgets/store_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -386,10 +387,8 @@ void main() {
     expect(recruitTop.dx, 16);
     expect(aiTop.dx, 16);
     expect(aiTop.dy - tester.getBottomLeft(recruit).dy, 8);
-    expect(
-      screen.height - tester.getBottomLeft(ai).dy,
-      greaterThanOrEqualTo(32),
-    );
+    // 시험 화면은 안전 영역이 없어서 아래 여백이 정확히 32다(안전 영역이 있으면 그 값이 더 크면 그걸 쓴다).
+    expect(screen.height - tester.getBottomLeft(ai).dy, 32);
   });
 
   testWidgets('keeps the cover photo at 256 high', (tester) async {
@@ -565,5 +564,40 @@ void main() {
     expect(_textColor(tester, '대표 메뉴'), dark.textSecondary);
     expect(dark.subtleAction, const Color(0xFF2A2D33));
     expect(_textColor(tester, 'AI로 직접 제작'), dark.onSubtleAction);
+  });
+
+  testWidgets('paints the sparkle on the auto-filled pill with the pill text '
+      'color in light and dark', (tester) async {
+    await _pumpPage(tester);
+    Color sparkleColor() {
+      final row = find
+          .ancestor(
+            of: find.text(StorePagePreviewPage.autoFilledChip),
+            matching: find.byType(Row),
+          )
+          .first;
+      final paint = tester.widget<CustomPaint>(
+        find.descendant(of: row, matching: find.byType(CustomPaint)).first,
+      );
+      return (paint.painter! as StoreIconPainter).color;
+    }
+
+    expect(sparkleColor(), CoraColors.light.onPhotoChip);
+    expect(
+      _textColor(tester, StorePagePreviewPage.autoFilledChip),
+      CoraColors.light.onPhotoChip,
+    );
+
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await tester.pumpAndSettle();
+
+    // 알약 바탕이 다크에서도 밝은 흰색이라 글자와 반짝임이 어두운 색(#17181C) 그대로다(DarkM19G5).
+    expect(sparkleColor(), CoraColors.dark.onPhotoChip);
+    expect(
+      _textColor(tester, StorePagePreviewPage.autoFilledChip),
+      CoraColors.dark.onPhotoChip,
+    );
+    expect(CoraColors.dark.onPhotoChip, const Color(0xFF17181C));
   });
 }
