@@ -13,6 +13,7 @@ import 'package:cora/features/interests/presentation/pages/interests_page.dart';
 import 'package:cora/features/offers/presentation/pages/send_offer_page.dart';
 import 'package:cora/features/proposals/domain/proposal_repository.dart';
 import 'package:cora/features/server_config/domain/server_config_repository.dart';
+import 'package:cora/features/store_interests/domain/store_interest.dart';
 import 'package:cora/features/store_interests/domain/store_interests_repository.dart';
 import 'package:cora/features/store_interests/presentation/pages/store_interests_page.dart';
 import 'package:cora/features/world_cup/presentation/pages/world_cup_match_page.dart';
@@ -62,19 +63,25 @@ void main() {
     late FakeProposalRepository proposals;
     late List<({String uri, Object? extra})> opened;
 
-    Future<void> pump(WidgetTester tester, {int saved = 8}) async {
+    Future<void> pump(
+      WidgetTester tester, {
+      int saved = 8,
+      List<StoreInterest>? list,
+    }) async {
       useCanvasPhone(tester);
       opened = [];
       interests = FakeStoreInterestsRepository(
-        saved: [
-          for (var i = 1; i <= saved; i++)
-            storeInterest(
-              'c$i',
-              name: '크리에이터 $i',
-              contentFocus: '리빙 릴스',
-              followers: 100 * i,
-            ),
-        ],
+        saved:
+            list ??
+            [
+              for (var i = 1; i <= saved; i++)
+                storeInterest(
+                  'c$i',
+                  name: '크리에이터 $i',
+                  contentFocus: '리빙 릴스',
+                  followers: 100 * i,
+                ),
+            ],
       );
       proposals = FakeProposalRepository();
       final router = GoRouter(
@@ -140,6 +147,77 @@ void main() {
       final args = opened.single.extra! as SendOfferArgs;
       expect(args.creator!.userId, champion.id);
       expect(args.creator!.displayName, champion.name);
+    });
+
+    testWidgets('shows the first featured post line and photo on the cards '
+        'when the creator has one', (tester) async {
+      await pump(
+        tester,
+        list: [
+          for (var i = 1; i <= 4; i++)
+            storeInterest(
+              'c$i',
+              name: '크리에이터 $i',
+              contentFocus: '리빙 릴스',
+              followers: 100 * i,
+              photoUrl: 'https://x/profile-$i.jpg',
+              headline: '대표 한 줄 $i',
+              representativePhotoUrl: 'https://x/first-$i.jpg',
+            ),
+        ],
+      );
+      await tester.tap(find.text('월드컵 하기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('시작하기'));
+      await tester.pumpAndSettle();
+
+      final cards = tester
+          .widgetList<WorldCupCard>(find.byType(WorldCupCard))
+          .map((w) => w.candidate)
+          .toList();
+      expect(cards, hasLength(2));
+      for (final c in cards) {
+        final n = c.id.substring(1);
+        expect(c.headline, '대표 한 줄 $n');
+        // 사진은 프로필 사진이 아니라 대표 게시물 1번이다.
+        expect(c.photoUrl, 'https://x/first-$n.jpg');
+        expect(find.text('대표 한 줄 $n'), findsOneWidget);
+        // 활동 이름은 작은 글자로 한 줄 위에 보인다.
+        expect(find.text(c.name), findsOneWidget);
+      }
+    });
+
+    testWidgets('shows the creator name as the big line and falls back to the '
+        'profile photo when there is no featured post', (tester) async {
+      await pump(
+        tester,
+        list: [
+          for (var i = 1; i <= 4; i++)
+            storeInterest(
+              'c$i',
+              name: '크리에이터 $i',
+              contentFocus: '리빙 릴스',
+              followers: 100 * i,
+              photoUrl: 'https://x/profile-$i.jpg',
+            ),
+        ],
+      );
+      await tester.tap(find.text('월드컵 하기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('시작하기'));
+      await tester.pumpAndSettle();
+
+      final cards = tester
+          .widgetList<WorldCupCard>(find.byType(WorldCupCard))
+          .map((w) => w.candidate)
+          .toList();
+      expect(cards, hasLength(2));
+      for (final c in cards) {
+        expect(c.headline, isNull);
+        expect(c.photoUrl, 'https://x/profile-${c.id.substring(1)}.jpg');
+        // 한 줄이 없으면 활동 이름이 큰 글자 하나로만 나온다.
+        expect(find.text(c.name), findsOneWidget);
+      }
     });
 
     testWidgets('writes nothing to the server and reads the box only once', (

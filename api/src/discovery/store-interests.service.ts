@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ApplicationsService } from '../applications/applications.service';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
+import { FeaturedPostsService } from '../creators/featured-posts.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { VisibilityService } from '../visibility/visibility.service';
@@ -21,6 +22,7 @@ export class StoreInterestsService {
     private readonly users: UsersService,
     private readonly stores: StoresService,
     private readonly creators: CreatorsService,
+    private readonly featuredPosts: FeaturedPostsService,
     private readonly visibility: VisibilityService,
     private readonly applications: ApplicationsService,
     private readonly repository: DiscoveryRepository,
@@ -52,10 +54,15 @@ export class StoreInterestsService {
         : Promise.resolve(new Set<string>()),
     ]);
     const visible = new Set(visibleIds);
+    // 월드컵 카드는 대표 게시물 1번의 사진과 한 줄을 쓴다. 보이는 크리에이터만 한 번에 읽어 줄마다 읽지 않는다.
+    const posts = await this.featuredPosts.listForCreators(
+      ids.filter((id) => visible.has(id)),
+    );
     return rows.flatMap((row): StoreInterestCardModel[] => {
       const summary = summaries.get(row.targetId);
       // 피하는 업종·차단·탈퇴로 보이지 않게 된 크리에이터는 없는 것과 같다.
       if (!summary || !visible.has(row.targetId)) return [];
+      const first = posts.get(row.targetId)?.[0];
       return [
         {
           creatorId: summary.userId,
@@ -64,6 +71,8 @@ export class StoreInterestsService {
           contentFocus: summary.contentFocus,
           followers: summary.followers,
           photoUrl: summary.photoUrl,
+          headline: first?.caption ?? null,
+          representativePhotoUrl: first?.photoUrl ?? null,
           mutual: applicants.has(row.targetId),
         },
       ];

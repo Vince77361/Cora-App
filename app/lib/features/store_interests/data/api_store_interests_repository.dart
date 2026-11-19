@@ -36,6 +36,8 @@ class ApiStoreInterestsRepository implements StoreInterestsRepository {
     contentFocus: m.contentFocus,
     followers: m.followers,
     photoUrl: m.photoUrl,
+    headline: m.headline,
+    representativePhotoUrl: m.representativePhotoUrl,
     mutual: m.mutual,
   );
 }

@@ -4,6 +4,8 @@ import { ApplicationsService } from '../applications/applications.service';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
 import type { CreatorSummaryModel } from '../creators/dto/creator-profile.model';
+import type { FeaturedPostModel } from '../creators/dto/featured-post.model';
+import { FeaturedPostsService } from '../creators/featured-posts.service';
 import { StoresService } from '../stores/stores.service';
 import { UsersService } from '../users/users.service';
 import { DiscoveryRepository } from './discovery.repository';
@@ -83,6 +85,9 @@ function build(role: string | null = 'STORE') {
     [B, summary(B, '하루 한 컵')],
     [C, summary(C, '셋째')],
   ]);
+  // 크리에이터별 대표 게시물 목록(1번이 앞). 없는 사람은 빈 목록이다.
+  const posts = new Map<string, Partial<FeaturedPostModel>[]>();
+  const postReads: string[][] = [];
   const service = new StoreInterestsService(
     { getRole: () => Promise.resolve(role) } as unknown as UsersService,
     {
@@ -104,13 +109,29 @@ function build(role: string | null = 'STORE') {
           ),
         ),
     } as unknown as CreatorsService,
+    {
+      listForCreators: (ids: string[]) => {
+        postReads.push(ids);
+        return Promise.resolve(
+          new Map(ids.map((id) => [id, posts.get(id) ?? []])),
+        );
+      },
+    } as unknown as FeaturedPostsService,
     visibility,
     {
       listLiveCreatorIds: () => Promise.resolve(applicants),
     } as unknown as ApplicationsService,
     repository,
   );
-  return { service, repository, visibility, applicants, summaries };
+  return {
+    service,
+    repository,
+    visibility,
+    applicants,
+    summaries,
+    posts,
+    postReads,
+  };
 }
 
 describe('StoreInterestsService', () => {
@@ -143,9 +164,54 @@ describe('StoreInterestsService', () => {
         contentFocus: '맛집 릴스',
         followers: 12000,
         photoUrl: null,
+        headline: null,
+        representativePhotoUrl: null,
         mutual: false,
       },
     ]);
+  });
+
+  it('adds the first featured post line and photo without touching the profile photo', async () => {
+    const { service, repository, summaries, posts } = build();
+    summaries.set(A, {
+      ...summary(A, '서윤의 작은 취향'),
+      photoUrl: 'profile.jpg',
+    });
+    posts.set(A, [
+      { position: 1, caption: '성수동 카페 릴스', photoUrl: 'first.jpg' },
+      { position: 2, caption: '두 번째', photoUrl: 'second.jpg' },
+    ]);
+    repository.add(OWNER, A, 'HOLD');
+
+    const [card] = await service.list(OWNER, 'saved');
+
+    expect(card.headline).toBe('성수동 카페 릴스');
+    expect(card.representativePhotoUrl).toBe('first.jpg');
+    expect(card.photoUrl).toBe('profile.jpg');
+  });
+
+  it('keeps a null headline when the first post has no caption', async () => {
+    const { service, repository, posts } = build();
+    posts.set(A, [{ position: 1, caption: null, photoUrl: 'first.jpg' }]);
+    repository.add(OWNER, A, 'HOLD');
+
+    const [card] = await service.list(OWNER, 'saved');
+
+    expect(card.headline).toBeNull();
+    expect(card.representativePhotoUrl).toBe('first.jpg');
+  });
+
+  it('reads featured posts once for all visible creators', async () => {
+    const { service, repository, postReads, visibility } = build();
+    repository.add(OWNER, A, 'HOLD');
+    repository.add(OWNER, B, 'HOLD');
+    repository.add(OWNER, C, 'HOLD');
+    visibility.hiddenCreators.add(C);
+
+    await service.list(OWNER, 'saved');
+
+    expect(postReads).toHaveLength(1);
+    expect([...postReads[0]].sort()).toEqual([A, B].sort());
   });
 
   it('orders by the most recent decision first', async () => {

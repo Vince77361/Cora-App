@@ -111,7 +111,9 @@ class _StoreInterestsPageState extends ConsumerState<StoreInterestsPage> {
           WorldCupCandidate(
             id: p.creatorId,
             name: p.name,
-            photoUrl: p.photoUrl,
+            headline: p.headline,
+            // 월드컵 카드는 대표 게시물 1번 사진이다. 게시물이 없으면 프로필 사진으로 대신한다.
+            photoUrl: p.representativePhotoUrl ?? p.photoUrl,
             meta: StoreDiscoverTexts.infoLine(p.contentFocus, p.followers),
             savedOrder: i + 1,
           ),

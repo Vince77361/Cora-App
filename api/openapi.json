@@ -5466,6 +5466,11 @@
             "nullable": true,
             "type": "integer"
           },
+          "headline": {
+            "description": "대표 게시물 1번의 한 줄. 게시물이 없거나 한 줄이 비었으면 null. 이상형 월드컵 카드가 쓴다.",
+            "nullable": true,
+            "type": "string"
+          },
           "mutual": {
             "description": "서로 관심: 내가 하트를 보냈고 그 크리에이터가 이 가게에 살아 있는 지원(APPLIED·OFFERED)을 가졌다. 저장 탭에서는 늘 false다.",
             "type": "boolean"
@@ -5475,6 +5480,11 @@
             "type": "string"
           },
           "photoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "representativePhotoUrl": {
+            "description": "대표 게시물 1번의 사진(영상이면 썸네일). 없으면 null. photoUrl(프로필 사진)과 다르다.",
             "nullable": true,
             "type": "string"
           },
@@ -5490,6 +5500,8 @@
           "contentFocus",
           "followers",
           "photoUrl",
+          "headline",
+          "representativePhotoUrl",
           "mutual"
         ],
         "type": "object"

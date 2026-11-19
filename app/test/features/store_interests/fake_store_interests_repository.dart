@@ -8,6 +8,8 @@ StoreInterest storeInterest(
   String? contentFocus = '리빙 릴스',
   int? followers = 640,
   String? photoUrl,
+  String? headline,
+  String? representativePhotoUrl,
   bool mutual = false,
 }) => StoreInterest(
   creatorId: id,
@@ -16,6 +18,8 @@ StoreInterest storeInterest(
   contentFocus: contentFocus,
   followers: followers,
   photoUrl: photoUrl,
+  headline: headline,
+  representativePhotoUrl: representativePhotoUrl,
   mutual: mutual,
 );
 

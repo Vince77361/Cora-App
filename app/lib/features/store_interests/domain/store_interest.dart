@@ -7,6 +7,8 @@ class StoreInterest {
     this.contentFocus,
     this.followers,
     this.photoUrl,
+    this.headline,
+    this.representativePhotoUrl,
     this.mutual = false,
   });
 
@@ -23,7 +25,15 @@ class StoreInterest {
 
   /// 연결한 인스타그램 계정의 팔로워 수. 연결이 없으면 null.
   final int? followers;
+
+  /// 프로필 사진. 저장 줄의 아바타가 쓴다.
   final String? photoUrl;
+
+  /// 대표 게시물 1번의 한 줄. 월드컵 카드가 쓴다. 없으면 null.
+  final String? headline;
+
+  /// 대표 게시물 1번의 사진. 월드컵 카드 바탕이다. 없으면 null이라 프로필 사진으로 대신한다.
+  final String? representativePhotoUrl;
 
   /// 서로 관심: 내가 하트를 보냈고 그 크리에이터가 이 가게에 살아 있는 지원을 가졌다. 저장 탭에서는 늘 false다.
   final bool mutual;

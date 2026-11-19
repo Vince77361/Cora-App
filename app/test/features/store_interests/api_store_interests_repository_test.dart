@@ -19,6 +19,8 @@ Map<String, Object?> _row(String id, {bool mutual = false}) => {
   'contentFocus': '일상형 릴스',
   'followers': 3100,
   'photoUrl': 'https://x/$id.jpg',
+  'headline': '성수동 카페 릴스',
+  'representativePhotoUrl': 'https://x/$id-first.jpg',
   'mutual': mutual,
 };
 
@@ -37,6 +39,8 @@ void main() {
     expect(rows.single.contentFocus, '일상형 릴스');
     expect(rows.single.followers, 3100);
     expect(rows.single.photoUrl, 'https://x/c1.jpg');
+    expect(rows.single.headline, '성수동 카페 릴스');
+    expect(rows.single.representativePhotoUrl, 'https://x/c1-first.jpg');
     expect(rows.single.mutual, isFalse);
   });
 

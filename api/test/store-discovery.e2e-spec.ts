@@ -418,6 +418,8 @@ describe('store discovery (전체 둘러보기)', () => {
       contentFocus: string | null;
       followers: number | null;
       photoUrl: string | null;
+      headline: string | null;
+      representativePhotoUrl: string | null;
       mutual: boolean;
     }
     interface NotificationPage {
@@ -492,6 +494,10 @@ describe('store discovery (전체 둘러보기)', () => {
           contentFocus: '맛집 릴스',
           followers: null,
           photoUrl: null,
+          headline: '하트 보낸 사람의 한 줄',
+          representativePhotoUrl: expect.stringContaining(
+            `featured-posts/${sent}/a.jpg`,
+          ) as string,
           mutual: false,
         },
       ]);
@@ -557,6 +563,8 @@ describe('store discovery (전체 둘러보기)', () => {
       await applyB().expect(201);
       expect(await mutualCount()).toBe(0);
 
+      // 고정 시계라 두 알림의 시각이 같으면 받은함 순서가 id 무작위로 갈린다. 하트를 지원보다 나중으로 둔다.
+      clock.set(new Date('2026-11-19T03:05:00.000Z'));
       await decide(creator, 'LIKE').expect(200);
       // 하트를 다시 보내도 알림은 늘지 않는다.
       await decide(creator, 'LIKE').expect(200);

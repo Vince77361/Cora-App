@@ -33,6 +33,12 @@ void main() {
       // TODO
     });
 
+    // 대표 게시물 1번의 한 줄. 게시물이 없거나 한 줄이 비었으면 null. 이상형 월드컵 카드가 쓴다.
+    // String headline
+    test('to test the property `headline`', () async {
+      // TODO
+    });
+
     // 서로 관심: 내가 하트를 보냈고 그 크리에이터가 이 가게에 살아 있는 지원(APPLIED·OFFERED)을 가졌다. 저장 탭에서는 늘 false다.
     // bool mutual
     test('to test the property `mutual`', () async {
@@ -47,6 +53,12 @@ void main() {
 
     // String photoUrl
     test('to test the property `photoUrl`', () async {
+      // TODO
+    });
+
+    // 대표 게시물 1번의 사진(영상이면 썸네일). 없으면 null. photoUrl(프로필 사진)과 다르다.
+    // String representativePhotoUrl
+    test('to test the property `representativePhotoUrl`', () async {
       // TODO
     });
 
