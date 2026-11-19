@@ -3,9 +3,12 @@ import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/core/ui/cora_bottom_nav.dart';
 import 'package:cora/core/ui/cora_state_view.dart';
+import 'package:cora/core/ui/swipe_deck/swipe_deck.dart';
 import 'package:cora/core/ui/swipe_deck/swipe_physics.dart' show SwipeOutcome;
+import 'package:cora/features/discovery/domain/featured_post_ref.dart';
 import 'package:cora/features/discovery/domain/pass_reason.dart';
 import 'package:cora/features/discovery/presentation/widgets/swipe_progress_bar.dart';
+import 'package:cora/features/store_discover/domain/store_creator_card.dart';
 import 'package:cora/features/store_discover/domain/store_discover_repository.dart';
 import 'package:cora/features/store_discover/presentation/pages/store_discover_page.dart';
 import 'package:cora/features/store_discover/presentation/viewmodels/store_discover_view_model.dart';
@@ -404,15 +407,20 @@ void main() {
   testWidgets('does not overflow at 1.3x text scale and uses dark tokens', (
     tester,
   ) async {
+    final longLine = '아주 긴 한 줄 설명을 마흔 글자까지 꽉 채워서 써 본 대표 게시물입니다 정말로';
     await _pump(
       tester,
       FakeStoreDiscoverRepository(
         cards: [
-          storeCard(
-            'c1',
-            name: '아주 긴 활동 이름을 가진 크리에이터의 작은 취향 기록',
-            tags: const ['리빙', '아침루틴', '주말', '식탁'],
+          StoreCreatorCard(
+            creatorId: 'c1',
+            displayName: '아주 긴 활동 이름을 가진 크리에이터의 작은 취향 기록',
+            contentFocus: '리빙 릴스',
             followers: 1234567,
+            headline: longLine,
+            photoUrl: null,
+            posts: [FeaturedPostRef(photoUrl: null, caption: longLine)],
+            tags: const ['리빙', '아침루틴', '주말', '식탁'],
           ),
         ],
       ),
@@ -422,14 +430,32 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
-    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
     final context = tester.element(find.byType(StoreDiscoverPage));
     expect(Theme.of(context).brightness, Brightness.dark);
     expect(context.colors.background, const Color(0xFF0F1012));
+    // 바탕은 다크 배경(#0F1012)이다(화면 바탕과 카드 영역 뒤).
+    expect(Theme.of(context).scaffoldBackgroundColor, const Color(0xFF0F1012));
+    final section = tester.widget<DecoratedBox>(
+      find
+          .ancestor(
+            of: find.byType(SwipeDeck<StoreCreatorCard>),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
     expect(
-      scaffold.backgroundColor ?? context.colors.background,
-      context.colors.background,
+      (section.decoration as BoxDecoration).color,
+      const Color(0xFF0F1012),
     );
     expect(find.text('리빙 릴스 · 팔로워 1,234,567'), findsOneWidget);
+
+    // 한 줄이 두 줄을 넘으면 두 줄에서 말줄임표로 멈춘다(1.3배에서도 세 줄이 되지 않는다).
+    final title = tester.widget<Text>(find.text(longLine));
+    expect(title.maxLines, 2);
+    final lineHeight =
+        title.style!.fontSize! * 1.3 * (title.style!.height ?? 1.2);
+    final height = tester.getSize(find.text(longLine)).height;
+    expect(height, greaterThan(lineHeight * 1.5));
+    expect(height, lessThanOrEqualTo(lineHeight * 2 + 2));
   });
 }
