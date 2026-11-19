@@ -4,8 +4,7 @@ import '../../../../core/ui/swipe_deck/swipe_physics.dart' show SwipeOutcome;
 import '../../../discovery/domain/discovery_target.dart';
 import '../../../discovery/domain/pass_reason.dart';
 import '../../../discovery/domain/undo_result.dart';
-import '../../../discovery/presentation/viewmodels/brand_discovery_view_model.dart'
-    show DiscoveryToast, DiscoveryToastKind;
+import '../../../discovery/domain/discovery_toast.dart';
 import '../../domain/store_creator_card.dart';
 import '../../domain/store_discover_repository.dart';
 import '../../../store_interests/presentation/viewmodels/store_interests_view_model.dart'

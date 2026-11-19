@@ -9,9 +9,8 @@ import '../../../../core/theme/cora_swipe_tokens.dart';
 import '../../../../core/ui/cora_bottom_nav.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../../core/ui/swipe_deck/swipe_deck.dart';
+import '../../../discovery/domain/discovery_toast.dart';
 import '../../../discovery/presentation/discovery_text.dart';
-import '../../../discovery/presentation/viewmodels/brand_discovery_view_model.dart'
-    show DiscoveryToast, DiscoveryToastKind;
 import '../../../discovery/presentation/widgets/discovery_toast.dart';
 import '../../../discovery/presentation/widgets/pass_reason_sheet.dart';
 import '../../../discovery/presentation/widgets/swipe_action_buttons.dart';
