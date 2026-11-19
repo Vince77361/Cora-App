@@ -140,29 +140,6 @@ class FakeApplicationsRepository extends ApplicationsRepository {
         .length,
     );
   }
-
-  findAppliedOfStore(
-    storeId: string,
-    applicationId: string,
-  ): Promise<Application | null> {
-    return Promise.resolve(
-      this.rows.find(
-        (r) =>
-          r.id === applicationId &&
-          r.storeId === storeId &&
-          r.status === 'APPLIED' &&
-          !r.deletedAt,
-      ) ?? null,
-    );
-  }
-
-  markSkipped(applicationId: string, at: Date): Promise<void> {
-    const row = this.rows.find((r) => r.id === applicationId);
-    if (row?.status === 'APPLIED' && row.skippedFromPicksAt === null) {
-      row.skippedFromPicksAt = at;
-    }
-    return Promise.resolve();
-  }
 }
 
 // 마친 협업 수만 손으로 정해 준다.
@@ -819,8 +796,8 @@ describe('ApplicationsService', () => {
       users.role = 'STORE';
       const near = await applicant(['서울특별시', '성동구']);
       const far = await applicant(['부산광역시', '해운대구']);
-      // 한 장씩 보던 화면이 없어져 넘긴 표시는 이 응답에서 쓰지 않는다.
-      await service.skipRecommended(OWNER, near);
+      // 한 장씩 보던 화면이 없어져 넘긴 표시는 이 응답에서 쓰지 않는다. 옛 데이터에 남은 표시를 직접 심는다.
+      repo.rows.find((r) => r.id === near)!.skippedFromPicksAt = clock.now();
       const res = await service.listRecommended(OWNER);
       expect(res.items.map((i) => i.applicationId)).toEqual([near, far]);
       expect(res.totalNew).toBe(2);
@@ -954,51 +931,6 @@ describe('ApplicationsService', () => {
       expect(res.source).toBe('ALL');
       expect(res.totalNew).toBe(2);
       expect(idsOf(res)).toEqual([ok]);
-    });
-  });
-
-  describe('skipRecommended', () => {
-    it('keeps the first skip time when called twice', async () => {
-      users.role = 'STORE';
-      const row = (await repo.create(store.id, CREATOR))!;
-      await service.skipRecommended(OWNER, row.id);
-      const first = row.skippedFromPicksAt;
-      expect(first).toEqual(clock.now());
-      clock.set(new Date('2026-11-15T03:00:00.000Z'));
-      await service.skipRecommended(OWNER, row.id);
-      expect(row.skippedFromPicksAt).toEqual(first);
-    });
-
-    it('returns 404 for an applicant who avoids the store industry', async () => {
-      users.role = 'STORE';
-      const row = (await repo.create(store.id, CREATOR))!;
-      visibility.hiddenCreators.add(CREATOR);
-      expect(await codeOf(service.skipRecommended(OWNER, row.id))).toBe(
-        'NOT_FOUND',
-      );
-      expect(row.skippedFromPicksAt).toBeNull();
-    });
-
-    it('returns 404 for an application of another store, a missing one or a malformed id', async () => {
-      users.role = 'STORE';
-      const other = (await repo.create(randomUUID(), CREATOR))!;
-      expect(await codeOf(service.skipRecommended(OWNER, other.id))).toBe(
-        'NOT_FOUND',
-      );
-      expect(await codeOf(service.skipRecommended(OWNER, randomUUID()))).toBe(
-        'NOT_FOUND',
-      );
-      expect(await codeOf(service.skipRecommended(OWNER, 'nope'))).toBe(
-        'NOT_FOUND',
-      );
-      expect(other.skippedFromPicksAt).toBeNull();
-    });
-
-    it('requires the STORE role', async () => {
-      users.role = 'CREATOR';
-      expect(await codeOf(service.skipRecommended(OWNER, randomUUID()))).toBe(
-        'FORBIDDEN',
-      );
     });
   });
 

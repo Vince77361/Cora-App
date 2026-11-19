@@ -44,14 +44,6 @@ export class ApplicationsController {
     return this.applications.listRecommended(user.userId);
   }
 
-  @Post('me/applications/:id/skip')
-  @HttpCode(204)
-  @ApiOperation({ operationId: 'skipRecommendedApplicant' })
-  @ApiNoContentResponse()
-  skip(@CurrentUser() user: AuthUser, @Param('id') id: string): Promise<void> {
-    return this.applications.skipRecommended(user.userId, id);
-  }
-
   @Post(':id/applications')
   @ApiOperation({ operationId: 'applyToStore' })
   @ApiCreatedResponse({ type: ApplicationModel })

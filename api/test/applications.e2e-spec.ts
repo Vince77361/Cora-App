@@ -559,10 +559,6 @@ describe('applications', () => {
     const at = (minute: number) => new Date(Date.UTC(2026, 10, 11, 0, minute));
     const recommended = () =>
       request(server).get('/stores/me/applications/recommended').set(auth);
-    const skip = (applicationId: string) =>
-      request(server)
-        .post(`/stores/me/applications/${applicationId}/skip`)
-        .set(auth);
 
     interface RecommendedBody {
       source: 'APPLICANTS' | 'ALL';
@@ -686,7 +682,11 @@ describe('applications', () => {
         at(1),
       );
       await seedApplicant(storeId, '부산', BUSAN, 'APPLIED', at(2));
-      await skip(near).expect(204);
+      // 옛 데이터에 남은 넘긴 표시를 직접 심는다(엔드포인트는 없어졌다).
+      await prisma.application.update({
+        where: { id: near },
+        data: { skippedFromPicksAt: new Date() },
+      });
       const body = (await recommended().expect(200)).body as RecommendedBody;
       expect(names(body)).toEqual(['성동', '부산']);
       expect(body.totalNew).toBe(2);
@@ -884,56 +884,18 @@ describe('applications', () => {
       });
     });
 
-    it('keeps the first skip time when skipping twice', async () => {
-      const id = await seedApplicant(storeId, '성동', SEONGDONG);
-      await skip(id).expect(204);
-      const first = (
-        await prisma.application.findUniqueOrThrow({ where: { id } })
-      ).skippedFromPicksAt;
-      await skip(id).expect(204);
-      expect(
-        (await prisma.application.findUniqueOrThrow({ where: { id } }))
-          .skippedFromPicksAt,
-      ).toEqual(first);
-    });
-
-    it('returns 404 when skipping an application of another store', async () => {
-      const other = await seedStore();
-      const theirs = await seedApplicant(other.id, '남의 지원자', SEONGDONG);
-      await skip(theirs).expect(404);
-      expect(
-        (await prisma.application.findUniqueOrThrow({ where: { id: theirs } }))
-          .skippedFromPicksAt,
-      ).toBeNull();
-      await skip(randomUUID()).expect(404);
-      await skip('not-a-uuid').expect(404);
-      // 오퍼를 이미 보낸 지원은 추천 밖이라 넘길 것이 없다.
-      const offered = await seedApplicant(
-        storeId,
-        '오퍼 받음',
-        SEONGDONG,
-        'OFFERED',
-      );
-      await skip(offered).expect(404);
-    });
-
     it('requires the STORE role and a store', async () => {
-      const id = await seedApplicant(storeId, '성동', SEONGDONG);
+      await seedApplicant(storeId, '성동', SEONGDONG);
       await setRole('CREATOR');
       await recommended().expect(403);
-      await skip(id).expect(403);
       await setRole('STORE');
       await prisma.store.updateMany({ data: { deletedAt: new Date() } });
       await recommended().expect(404);
-      await skip(id).expect(404);
     });
 
     it('rejects requests with no token', async () => {
       await request(server)
         .get('/stores/me/applications/recommended')
-        .expect(401);
-      await request(server)
-        .post(`/stores/me/applications/${randomUUID()}/skip`)
         .expect(401);
     });
   });

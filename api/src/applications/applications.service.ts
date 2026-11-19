@@ -308,26 +308,6 @@ export class ApplicationsService {
     }));
   }
 
-  // 지원 상태는 바꾸지 않고 추천에서만 뺀다. 내 가게의 지원 중 지원이 아니면 404(남의 것과 없는 것을 가르지 않는다).
-  async skipRecommended(userId: string, applicationId: string): Promise<void> {
-    await this.assertRole(userId, 'STORE', '가게 계정만 쓸 수 있어요.');
-    const store = await this.stores.requireMyStore(userId);
-    // uuid 모양이 아닌 값은 DB에 보내지 않고 없는 지원으로 본다(500이 되지 않게).
-    const row = UUID.test(applicationId)
-      ? await this.applications.findAppliedOfStore(store.id, applicationId)
-      : null;
-    // 피하는 업종 때문에 목록에서 빠진 지원자는 없는 지원과 같게 404다.
-    const visible = row
-      ? await this.visibility.filterCreators([row.creatorId], {
-          userId: store.ownerId,
-          kind: 'STORE',
-          industry: store.industry,
-        })
-      : [];
-    if (!row || visible.length === 0) throw this.notFound();
-    await this.applications.markSkipped(row.id, this.clock.now());
-  }
-
   // 오퍼 모듈이 쓴다. 오퍼를 보낼 때 그 크리에이터의 지원 중 지원을 오퍼 받음으로 바꾼다.
   markOffered(storeId: string, creatorId: string): Promise<string | null> {
     return this.applications.markOffered(storeId, creatorId);

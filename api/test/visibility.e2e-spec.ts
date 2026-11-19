@@ -321,22 +321,6 @@ describe('visibility', () => {
       );
     });
 
-    it('returns 404 when skipping a recommendation of an applicant who avoids the industry', async () => {
-      const avoiding = await seedCreator('술 피함', ['ALCOHOL']);
-      const row = await prisma.application.create({
-        data: { storeId, creatorId: avoiding, status: 'APPLIED' },
-      });
-      const res = await request(server)
-        .post(`/stores/me/applications/${row.id}/skip`)
-        .set(auth)
-        .expect(404);
-      expect(codeOf(res)).toBe('NOT_FOUND');
-      const after = await prisma.application.findUniqueOrThrow({
-        where: { id: row.id },
-      });
-      expect(after.skippedFromPicksAt).toBeNull();
-    });
-
     it('drops an applicant from the list as soon as they start avoiding the industry', async () => {
       const creator = await seedCreator('나중에 피함', ['GAMBLING']);
       await prisma.application.create({
