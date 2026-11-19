@@ -125,7 +125,21 @@ class InterestsViewModel extends AsyncNotifier<InterestsState> {
   void selectTab(InterestTab tab) {
     final current = state.value;
     if (current == null || current.tab == tab) return;
-    state = AsyncData(current.copyWith(tab: tab));
+    // 비교는 한 탭의 카드끼리만 한다. 새 탭에 보이지 않는 선택을 남기면 안 보이는 카드로 `선택한 2명 비교하기`가
+    // 켜지고, 2명 한도도 보이지 않는 선택이 채우므로 탭을 옮길 때 이 탭에 없는 선택을 비운다.
+    final visibleIds = {
+      for (final c in current.cards)
+        if (tab.includes(c.state)) c.id,
+    };
+    state = AsyncData(
+      current.copyWith(
+        tab: tab,
+        selected: [
+          for (final id in current.selected)
+            if (visibleIds.contains(id)) id,
+        ],
+      ),
+    );
   }
 
   /// 비교 동그라미를 누른다. 세 번째는 고르지 않고 false를 돌려주며 안내 문구를 띄운다.

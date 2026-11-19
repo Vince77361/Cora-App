@@ -383,7 +383,28 @@ void main() {
     await tester.tap(find.text('저장 1'));
     await tester.pumpAndSettle();
     expect(_notPicked(), findsOneWidget);
+  });
+
+  testWidgets('drops the picks that are not on the opened tab, so the button '
+      'never counts cards you cannot see', (tester) async {
+    final env = await _pump(tester, _three(), query: 'tab=sent');
     expect(find.text('선택한 2명 비교하기'), findsOneWidget);
+
+    await tester.tap(find.text('저장 1'));
+    await tester.pumpAndSettle();
+
+    // 보낸 관심 탭에서 고른 두 장은 이 탭에 안 보이므로 세지 않는다.
+    expect(_picked(), findsNothing);
+    expect(find.text('선택한 0명 비교하기'), findsOneWidget);
+    expect(find.text('비교할 후보 2명을 골라 주세요.'), findsOneWidget);
+    await tester.tap(find.text('선택한 0명 비교하기'));
+    await tester.pumpAndSettle();
+    expect(env.opened, isEmpty);
+
+    // 이 탭의 카드를 고르면 그 한 장만 센다.
+    await tester.tap(_notPicked());
+    await tester.pumpAndSettle();
+    expect(find.text('선택한 1명 비교하기'), findsOneWidget);
   });
 
   testWidgets('tapping the circle toggles the comparison check', (
@@ -406,15 +427,20 @@ void main() {
   });
 
   testWidgets('a third selection is refused with a message', (tester) async {
-    await _pump(tester, _three(), query: 'tab=sent');
-    await tester.tap(find.text('저장 1'));
-    await tester.pumpAndSettle();
+    final repo = FakeInterestsRepository(
+      cards: [
+        brandCard('c1', name: '서윤의 작은 취향', state: InterestState.mutual),
+        brandCard('c2', name: '민의 옷장 기록'),
+        brandCard('c4', name: '한 끼 기록'),
+      ],
+    );
+    await _pump(tester, repo, query: 'tab=sent');
 
     await tester.tap(_notPicked());
     await tester.pump();
 
     expect(find.text('비교는 2명까지예요.'), findsOneWidget);
-    expect(_picked(), findsNothing);
+    expect(_picked(), findsNWidgets(2));
     expect(_notPicked(), findsOneWidget);
 
     // 알림은 3초 뒤에 사라진다.
