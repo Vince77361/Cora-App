@@ -173,6 +173,11 @@ void main() {
       expect(eight.semifinalists, hasLength(3));
       expect(eight.semifinalists, isNot(contains(eight.champion)));
       expect(eight.participants, containsAll(eight.semifinalists));
+      // 항상 첫째 칸을 고르면 8강의 승자는 대진의 짝수 번째(0, 2, 4, 6) 사람이다. 우승자는 그 가운데 첫째라서
+      // 4강 진출자는 나머지 셋이고 8강에서 진 사람은 섞이지 않는다.
+      final p = eight.participants;
+      expect(eight.champion, p[0]);
+      expect(eight.semifinalists, [p[2], p[4], p[6]]);
     });
 
     test('rejects a winner who is not in the current match', () {
