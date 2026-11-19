@@ -206,7 +206,8 @@ class _Body extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final now = ref.watch(clockProvider).now();
-    final store = ref.watch(myStoreViewModelProvider).value;
+    final storeState = ref.watch(myStoreViewModelProvider);
+    final store = storeState.value;
     final picks = ref.watch(storeHomePicksViewModelProvider).value;
     final newApplications = state.summary.newApplications;
     final terms = store?.defaultTerms;
@@ -231,21 +232,32 @@ class _Body extends ConsumerWidget {
           _Header(onBellReturn: onBellReturn),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-            child: RecruitBox(
-              headline: terms == null ? null : recruitHeadline(terms.reward),
-              detail: terms == null ? null : recruitDetail(terms.reward),
-              hasApplicants: applied,
-              newApplications: shownCount,
-              onFix: () => context.push(
-                AppRoutes.storeOnboardingTerms,
-                extra: AppRoutes.stacked,
-              ),
-              onOpenApplicants: () => context.push(AppRoutes.storeApplicants),
-              onSetTerms: () => context.push(
-                AppRoutes.storeOnboardingTerms,
-                extra: AppRoutes.stacked,
-              ),
-            ),
+            // 내 가게를 아직 못 읽었으면 모집 조건이 있는지 모른다. 그때 `모집 조건 정하기`를 보이면 이미
+            // 공개한 가게에 틀린 안내라서, 가게를 읽은 뒤(`store != null`)에만 공개 전 모양을 쓴다.
+            child: store == null
+                ? RecruitBoxPending(
+                    onRetry: storeState.hasError && !storeState.isLoading
+                        ? () => ref.invalidate(myStoreViewModelProvider)
+                        : null,
+                  )
+                : RecruitBox(
+                    headline: terms == null
+                        ? null
+                        : recruitHeadline(terms.reward),
+                    detail: terms == null ? null : recruitDetail(terms.reward),
+                    hasApplicants: applied,
+                    newApplications: shownCount,
+                    onFix: () => context.push(
+                      AppRoutes.storeOnboardingTerms,
+                      extra: AppRoutes.stacked,
+                    ),
+                    onOpenApplicants: () =>
+                        context.push(AppRoutes.storeApplicants),
+                    onSetTerms: () => context.push(
+                      AppRoutes.storeOnboardingTerms,
+                      extra: AppRoutes.stacked,
+                    ),
+                  ),
           ),
           if (trialBanner != null)
             Padding(

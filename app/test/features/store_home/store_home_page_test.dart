@@ -2,6 +2,14 @@ import 'dart:async';
 
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_colors.dart';
+import 'package:cora/core/theme/cora_theme.dart';
+import 'package:cora/core/time/clock.dart';
+import 'package:cora/features/applicant_picks/domain/applicant_picks_repository.dart';
+import 'package:cora/features/notifications/domain/notification_repository.dart';
+import 'package:cora/features/store_home/domain/store_home_repository.dart';
+import 'package:cora/features/store_onboarding/domain/store_repository.dart';
+import 'package:cora/features/store_onboarding/presentation/viewmodels/my_store_view_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cora/core/ui/cora_state_view.dart';
 import 'package:cora/features/applicant_picks/domain/applicant_pick.dart';
 import 'package:cora/features/offer_terms/domain/offer_terms.dart';
@@ -17,10 +25,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
+import '../../support/fake_clock.dart';
 import '../applicant_picks/fake_applicant_picks_repository.dart';
+import '../notifications/fake_notification_repository.dart';
 import '../store_onboarding/fake_store_repository.dart';
 import 'fake_store_home_repository.dart';
 import 'store_home_harness.dart';
+
+class _PendingStore extends MyStoreViewModel {
+  @override
+  Future<MyStore?> build() => Completer<MyStore?>().future;
+}
+
+class _FailingStore extends MyStoreViewModel {
+  @override
+  Future<MyStore?> build() async => throw const StoreFailure();
+}
 
 const _fix = '고치기';
 const _all = '전체 둘러보기';
@@ -75,7 +95,9 @@ void main() {
       expect(find.textContaining('1,000회당'), findsNothing);
     });
 
-    testWidgets('shows the unpublished state with 모집 조건 정하기', (tester) async {
+    testWidgets('shows the state without recruit terms with 모집 조건 정하기', (
+      tester,
+    ) async {
       await pumpStoreHome(
         tester,
         stores: FakeStoreRepository(
@@ -93,6 +115,63 @@ void main() {
       await tester.tap(find.text('모집 조건 정하기'));
       await tester.pumpAndSettle();
       expect(topPath(tester), AppRoutes.storeOnboardingTerms);
+    });
+  });
+
+  group('while my store is not known yet', () {
+    // 진입 경로가 내 가게를 먼저 읽어서 앱을 통해서는 이 상태가 거의 안 보인다. 그래서 홈 화면만 직접 띄운다.
+    Future<void> pumpHomeOnly(
+      WidgetTester tester,
+      MyStoreViewModel Function() store,
+    ) async {
+      usePhone(tester);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            myStoreViewModelProvider.overrideWith(store),
+            storeHomeRepositoryProvider.overrideWithValue(
+              FakeStoreHomeRepository(applicants: sampleApplicants()),
+            ),
+            applicantPicksRepositoryProvider.overrideWithValue(
+              FakeApplicantPicksRepository(
+                picks: sampleAppliedPicks(),
+                totalNew: 3,
+              ),
+            ),
+            notificationRepositoryProvider.overrideWithValue(
+              FakeNotificationRepository(),
+            ),
+            clockProvider.overrideWithValue(FakeClock()),
+          ],
+          child: MaterialApp(
+            theme: coraLightTheme,
+            home: const StoreHomePage(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+    }
+
+    testWidgets('shows a loading box, not the unset-terms box, while my store '
+        'is loading', (tester) async {
+      await pumpHomeOnly(tester, _PendingStore.new);
+
+      expect(find.text('크리에이터 모집'), findsOneWidget);
+      expect(find.text('불러오는 중'), findsOneWidget);
+      expect(find.text('모집 조건을 정하고 공개해요'), findsNothing);
+      expect(find.text('모집 조건 정하기'), findsNothing);
+      expect(find.text(_fix), findsNothing);
+    });
+
+    testWidgets('shows a retry, not the unset-terms box, when my store failed '
+        'to load', (tester) async {
+      await pumpHomeOnly(tester, _FailingStore.new);
+
+      expect(find.text('모집 조건을 불러오지 못했어요'), findsOneWidget);
+      expect(find.text('다시 시도'), findsOneWidget);
+      expect(find.text('모집 조건을 정하고 공개해요'), findsNothing);
+      expect(find.text('모집 조건 정하기'), findsNothing);
     });
   });
 

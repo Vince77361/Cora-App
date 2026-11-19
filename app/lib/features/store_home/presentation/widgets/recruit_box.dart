@@ -4,6 +4,7 @@ import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_pressable.dart';
+import '../../../../core/ui/cora_state_view.dart';
 
 /// 홈의 `크리에이터 모집` 상자(캔버스 M19G4 `<section>`): 안쪽 16, 모서리 20, `surface` 바탕. 위에는 모집 조건
 /// 한 줄과 `고치기`, 구분선 아래에는 `{n} 새 지원`과 `지원자 보기`(지원 있음) 또는 `아직 지원이 없어요`(없음).
@@ -264,6 +265,92 @@ class _FixButton extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 내 가게를 아직 읽지 못한 동안의 `크리에이터 모집` 자리(캔버스 밖). 모집 조건이 있는지 모르는 채로
+/// `모집 조건을 정하고 공개해요`를 보이면 이미 공개한 가게에 틀린 안내가 되어서, 읽는 중에는 상자 틀만 두고
+/// 실패하면 다시 시도만 둔다.
+class RecruitBoxPending extends StatelessWidget {
+  const RecruitBoxPending({super.key, this.onRetry});
+
+  /// 읽기에 실패했으면 다시 시도하는 동작. null이면 읽는 중이다.
+  final VoidCallback? onRetry;
+
+  static const loading = '불러오는 중';
+  static const failed = '모집 조건을 불러오지 못했어요';
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final onRetry = this.onRetry;
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: RecruitBox.label,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(CoraRadius.field),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 8,
+            children: [
+              Text(
+                RecruitBox.label,
+                style: CoraTextStyles.fieldLabel.copyWith(
+                  color: c.textSecondary,
+                ),
+              ),
+              if (onRetry == null)
+                Text(
+                  loading,
+                  style: CoraTextStyles.buttonMedium.copyWith(
+                    color: c.textSecondary,
+                  ),
+                )
+              else ...[
+                Text(
+                  failed,
+                  style: CoraTextStyles.buttonMedium.copyWith(color: c.text),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: CoraPressable(
+                    onTap: onRetry,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: c.notifyTabSelected,
+                        borderRadius: BorderRadius.circular(CoraRadius.pill),
+                      ),
+                      child: SizedBox(
+                        height: 34,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Center(
+                            widthFactor: 1,
+                            child: Text(
+                              CoraStateView.retryLabel,
+                              maxLines: 1,
+                              style: CoraTextStyles.caption.copyWith(
+                                color: c.text,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),
