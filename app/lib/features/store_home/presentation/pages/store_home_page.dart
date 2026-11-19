@@ -217,6 +217,8 @@ class _Body extends ConsumerWidget {
         ? newApplications > 0
         : picks.source == PicksSource.applicants;
     final trialBanner = store?.trialBanner;
+    // `새 지원`(summary.newApplications)과 추천의 `totalNew`는 서버에서 같은 정의다(둘 다 업종을 피하는 지원자를 뺀
+    // 지원 중 건수, `visibleApplied`). 그래서 `지원한 {n}명 중`의 n은 summary 숫자를 그대로 쓴다.
     final shownCount = newApplications > 0
         ? newApplications
         : (picks?.items.length ?? 0);
