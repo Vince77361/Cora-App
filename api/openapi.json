@@ -10491,35 +10491,6 @@
         ]
       }
     },
-    "/stores/me/applications/{id}/skip": {
-      "post": {
-        "operationId": "skipRecommendedApplicant",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "",
-        "tags": [
-          "Applications"
-        ]
-      }
-    },
     "/stores/me/branches": {
       "get": {
         "operationId": "findMyStoreBranches",

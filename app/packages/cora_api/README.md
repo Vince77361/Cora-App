@@ -63,7 +63,6 @@ Class | Method | HTTP request | Description
 *ApplicationsApi* | [**cancelMyApplication**](doc//ApplicationsApi.md#cancelmyapplication) | **DELETE** /stores/{id}/applications/mine | 
 *ApplicationsApi* | [**listMyStoreApplicants**](doc//ApplicationsApi.md#listmystoreapplicants) | **GET** /stores/me/applications | 
 *ApplicationsApi* | [**listRecommendedApplicants**](doc//ApplicationsApi.md#listrecommendedapplicants) | **GET** /stores/me/applications/recommended | 
-*ApplicationsApi* | [**skipRecommendedApplicant**](doc//ApplicationsApi.md#skiprecommendedapplicant) | **POST** /stores/me/applications/{id}/skip | 
 *BlocksApi* | [**blockConversationMember**](doc//BlocksApi.md#blockconversationmember) | **POST** /conversations/{id}/block | 이 방의 상대를 차단한다. 두 사람 사이의 모든 방이 닫히고 계약 전 협업이 끝난다. 상대에게는 알리지 않는다.
 *BrandsApi* | [**getMyBrand**](doc//BrandsApi.md#getmybrand) | **GET** /brands/me | 
 *BrandsApi* | [**upsertMyBrand**](doc//BrandsApi.md#upsertmybrand) | **PUT** /brands/me | 

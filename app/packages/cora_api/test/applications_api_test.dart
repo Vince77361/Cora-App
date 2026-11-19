@@ -43,12 +43,5 @@ void main() {
     test('test listRecommendedApplicants', () async {
       // TODO
     });
-
-    //
-    //
-    //Future skipRecommendedApplicant(String id) async
-    test('test skipRecommendedApplicant', () async {
-      // TODO
-    });
   });
 }
