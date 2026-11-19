@@ -34,6 +34,20 @@ void main() {
     expect(container.read(provider).finished, isTrue);
   });
 
+  test('keeps the last match on the state once the final is played', () {
+    final provider = worldCupViewModelProvider(args);
+    final vm = container.read(provider.notifier);
+    vm.pick(container.read(provider).bracket.match.a);
+    vm.pick(container.read(provider).bracket.match.a);
+    final last = container.read(provider).bracket.match;
+    vm.pick(last.a);
+
+    final state = container.read(provider);
+    expect(state.finished, isTrue);
+    expect(state.shown, last);
+    expect(state.stage, '결승 · 1 / 1');
+  });
+
   test('ignores a pick for someone who is not in the current match', () {
     final provider = worldCupViewModelProvider(args);
     final vm = container.read(provider.notifier);

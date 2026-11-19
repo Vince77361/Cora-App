@@ -11,10 +11,20 @@ final worldCupRandomProvider = Provider<Random>((ref) => Random());
 
 /// 월드컵이 한창일 때의 상태. [step]은 고른 횟수라 같은 대진 객체가 바뀌어도 화면이 새로 그려진다.
 class WorldCupState {
-  const WorldCupState(this.bracket, this.step);
+  const WorldCupState(
+    this.bracket,
+    this.step, {
+    required this.shown,
+    required this.stage,
+  });
 
   final WorldCupBracket<WorldCupCandidate> bracket;
   final int step;
+
+  /// 화면에 보이는 대결과 단계 글자. 끝난 대진은 대결을 읽을 수 없어서, 결승을 고른 뒤 결과 화면으로 바뀌는 동안
+  /// 나가는 대결 화면이 빈 바탕이 되지 않게 마지막 대결을 여기 남긴다.
+  final ({WorldCupCandidate a, WorldCupCandidate b}) shown;
+  final String stage;
 
   bool get finished => bracket.finished;
 }
@@ -32,14 +42,19 @@ class WorldCupViewModel extends Notifier<WorldCupState> {
   final WorldCupMatchArgs args;
 
   @override
-  WorldCupState build() => WorldCupState(
-    WorldCupBracket.start(
+  WorldCupState build() {
+    final bracket = WorldCupBracket<WorldCupCandidate>.start(
       args.saved,
       size: args.size,
       random: ref.read(worldCupRandomProvider),
-    ),
-    0,
-  );
+    );
+    return WorldCupState(
+      bracket,
+      0,
+      shown: bracket.match,
+      stage: bracket.roundLabel,
+    );
+  }
 
   /// [winner]를 고른다. 같은 프레임에 두 번 눌렸거나 끝난 뒤에 늦게 들어온 선택, 지금 대결에 없는 사람은 버린다
   /// (대진은 그런 선택을 오류로 막지만 화면에서는 일어날 수 있는 일이라 오류가 되지 않게 한다).
@@ -48,7 +63,13 @@ class WorldCupViewModel extends Notifier<WorldCupState> {
     if (bracket.finished) return;
     final match = bracket.match;
     if (winner != match.a && winner != match.b) return;
+    final before = state;
     bracket.pick(winner);
-    state = WorldCupState(bracket, state.step + 1);
+    state = WorldCupState(
+      bracket,
+      before.step + 1,
+      shown: bracket.finished ? before.shown : bracket.match,
+      stage: bracket.finished ? before.stage : bracket.roundLabel,
+    );
   }
 }

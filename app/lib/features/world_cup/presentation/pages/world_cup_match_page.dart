@@ -38,6 +38,9 @@ class WorldCupMatchPage extends ConsumerWidget {
   }
 
   void _pick(BuildContext context, WidgetRef ref, WorldCupCandidate winner) {
+    // 결승을 고른 뒤 결과 화면으로 바뀌는 동안(이 화면은 마지막 대결을 그대로 보인다) 다시 눌러도 결과를 두 번
+    // 열지 않는다.
+    if (ref.read(worldCupViewModelProvider(args)).finished) return;
     final vm = ref.read(worldCupViewModelProvider(args).notifier);
     vm.pick(winner);
     final bracket = ref.read(worldCupViewModelProvider(args)).bracket;
@@ -56,10 +59,8 @@ class WorldCupMatchPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final state = ref.watch(worldCupViewModelProvider(args));
-    // 마지막 선택으로 결과로 바뀌는 사이에는 끝난 대진이라 대결을 읽을 수 없다.
-    if (state.finished) return Scaffold(backgroundColor: c.background);
-    final bracket = state.bracket;
-    final match = bracket.match;
+    // 끝난 대진은 대결을 읽을 수 없어서 상태가 들고 있는 마지막 대결을 그린다.
+    final match = state.shown;
     final bottomInset = math.max(
       16.0,
       MediaQuery.viewPaddingOf(context).bottom,
@@ -85,7 +86,7 @@ class WorldCupMatchPage extends ConsumerWidget {
                   top: 0,
                   height: 64,
                   child: _Header(
-                    stage: bracket.roundLabel,
+                    stage: state.stage,
                     onQuit: () => _quit(context),
                   ),
                 ),
