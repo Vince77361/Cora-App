@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:cora/core/ui/swipe_deck/swipe_physics.dart' show SwipeOutcome;
 import 'package:cora/features/discovery/domain/campaign_detail.dart';
 import 'package:cora/features/discovery/domain/discovery_card.dart';
 import 'package:cora/features/discovery/domain/discovery_repository.dart';
 import 'package:cora/features/discovery/domain/discovery_target.dart';
+import 'package:cora/features/discovery/domain/featured_post_ref.dart';
 import 'package:cora/features/discovery/domain/pass_reason.dart';
 import 'package:cora/features/discovery/domain/reward_proposal.dart';
 import 'package:cora/features/principles/domain/principles.dart'
@@ -45,6 +48,9 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
 
   bool failFetch = false;
   bool failDecide = false;
+
+  /// 설정하면 [decide]가 이 Completer가 끝날 때까지 기다린다(카드가 날아가는 중의 상태를 보려고).
+  Completer<void>? holdDecide;
   bool failSetReason = false;
   bool failUndo = false;
 
@@ -112,6 +118,8 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
     String? note,
     RewardProposal? proposal,
   }) async {
+    final hold = holdDecide;
+    if (hold != null) await hold.future;
     if (failDecide) throw const DiscoveryFailure();
     decisions.add((
       target: target,
@@ -155,6 +163,7 @@ CreatorCard creatorCard(
   FeeBand feeBand = FeeBand.w300k,
   List<String> tags = const ['얼굴출연없음', '소품'],
   List<MatchReason> reasons = const [MatchReason.field, MatchReason.fee],
+  List<FeaturedPostRef> posts = const [],
 }) => CreatorCard(
   creatorId: id,
   displayName: name,
@@ -162,6 +171,7 @@ CreatorCard creatorCard(
   feeBand: feeBand,
   tags: tags,
   reasons: reasons,
+  posts: posts,
 );
 
 PreviewCard previewCard(

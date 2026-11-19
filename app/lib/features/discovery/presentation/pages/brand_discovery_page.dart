@@ -248,7 +248,10 @@ class _DeckSection extends StatelessWidget {
                   card: card,
                   position: state.positionOf(card),
                   total: state.total,
-                  onOpenDetail: onTap,
+                  // 덱의 `onTap`은 날아가는 카드를 막지만 뷰어가 부르는 이 길은 덱을 거치지 않아 같은 검사를 한다.
+                  onOpenDetail: () {
+                    if (!controller.busy) onTap();
+                  },
                 ),
                 empty: const SizedBox.shrink(),
               ),

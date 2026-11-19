@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_colors.dart';
 import 'package:cora/core/theme/cora_theme.dart';
@@ -5,8 +7,10 @@ import 'package:cora/core/ui/cora_bottom_nav.dart';
 import 'package:cora/core/ui/cora_state_view.dart';
 import 'package:cora/core/ui/swipe_deck/swipe_physics.dart' show SwipeOutcome;
 import 'package:cora/features/discovery/domain/discovery_repository.dart';
+import 'package:cora/features/discovery/domain/featured_post_ref.dart';
 import 'package:cora/features/discovery/domain/pass_reason.dart';
 import 'package:cora/features/discovery/presentation/pages/brand_discovery_page.dart';
+import 'package:cora/features/discovery/presentation/widgets/featured_post_viewer.dart';
 import 'package:cora/features/discovery/presentation/widgets/discovery_toast.dart';
 import 'package:cora/features/notifications/domain/notification_repository.dart';
 import 'package:flutter/material.dart';
@@ -90,6 +94,30 @@ FakeDiscoveryRepository _three() => FakeDiscoveryRepository(
     creatorCard('c3', name: '하루 한 컵', headline: null, tags: const []),
   ],
 );
+
+/// 대표 게시물 두 개씩을 가진 카드 둘.
+FakeDiscoveryRepository _withPosts() => FakeDiscoveryRepository(
+  cards: [
+    for (final id in ['c1', 'c2'])
+      creatorCard(
+        id,
+        name: '크리에이터 $id',
+        posts: [
+          FeaturedPostRef(photoUrl: null, caption: '$id 첫 게시물'),
+          FeaturedPostRef(photoUrl: null, caption: '$id 둘째 게시물'),
+        ],
+      ),
+  ],
+);
+
+/// 맨 위 카드의 (위쪽 사진 자리, 아래쪽 글자 덮개 자리). 덮개 기준은 카드 높이의 55%라 그 위아래 한 점씩이다.
+({Offset photo, Offset cover}) _zones(WidgetTester tester) {
+  final rect = tester.getRect(find.byType(FeaturedPostViewer).last);
+  return (
+    photo: Offset(rect.right - 40, rect.top + rect.height * 0.3),
+    cover: Offset(rect.center.dx, rect.top + rect.height * 0.7),
+  );
+}
 
 Future<void> _swipe(WidgetTester tester, String name, Offset by) async {
   await tester.drag(find.text(name), by);
@@ -531,6 +559,42 @@ void main() {
       expect(opened, ['/brand/creators/c1']);
     },
   );
+
+  testWidgets('with posts the text cover opens the detail once and a tap above '
+      'only turns the post', (tester) async {
+    final opened = await _pump(tester, _withPosts());
+    final zones = _zones(tester);
+
+    await tester.tapAt(zones.photo);
+    await tester.pumpAndSettle();
+    expect(opened, isEmpty);
+    expect(find.text('c1 둘째 게시물'), findsOneWidget);
+
+    await tester.tapAt(zones.cover);
+    await tester.pumpAndSettle();
+    // 덱의 탭과 게시물 뷰어의 탭이 겹쳐 두 번 열리지 않는다.
+    expect(opened, ['/brand/creators/c1']);
+  });
+
+  testWidgets('a tap on the cover while the card is flying away does not open '
+      'a detail', (tester) async {
+    final repo = _withPosts();
+    final opened = await _pump(tester, repo);
+    final zones = _zones(tester);
+    final hold = Completer<void>();
+    repo.holdDecide = hold;
+
+    await tester.tap(find.bySemanticsLabel('하트'));
+    // 카드가 다 날아가고 저장 응답을 기다리는 중이다.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tapAt(zones.cover);
+    await tester.pump();
+    expect(opened, isEmpty);
+
+    hold.complete();
+    await tester.pumpAndSettle();
+    expect(opened, isEmpty);
+  });
 
   testWidgets('the chat menu item opens the conversation list', (tester) async {
     final opened = await _pump(tester, _three());
