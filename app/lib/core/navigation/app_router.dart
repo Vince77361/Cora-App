@@ -690,14 +690,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      // 대표 게시물(G6). 나갈 때 저장 여부를 물어야 해서 iOS 가장자리 밀기 뒤로 가기는 끈다(밀기는 PopScope를 거치지 않는다).
+      // 대표 게시물(G6). 바뀐 것이 있으면 화면의 PopScope(canPop: false)가 iOS 가장자리 밀기를 스스로 막고
+      // (`Route.popGestureEnabled`), 바뀐 것이 없으면 밀어서 나갈 수 있다. 그래서 밀기를 따로 끄지 않는다.
       GoRoute(
         path: AppRoutes.creatorFeaturedPosts,
-        pageBuilder: (context, state) => CoraTransitions.push(
-          const FeaturedPostsPage(),
-          key: state.pageKey,
-          backSwipe: false,
-        ),
+        pageBuilder: (context, state) =>
+            CoraTransitions.push(const FeaturedPostsPage(), key: state.pageKey),
       ),
       GoRoute(
         path: AppRoutes.creatorFeaturedPostsPick,

@@ -1,11 +1,13 @@
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_featured_post_tokens.dart';
+import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/core/ui/cora_step_header.dart';
 import 'package:cora/features/featured_posts/domain/featured_post.dart';
 import 'package:cora/features/featured_posts/domain/featured_posts_repository.dart';
 import 'package:cora/features/featured_posts/presentation/pages/featured_posts_page.dart';
 import 'package:cora/features/instagram_connect/domain/instagram_connection.dart';
 import 'package:cora/features/instagram_connect/domain/instagram_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -64,7 +66,15 @@ List<String> _captionOrder(WidgetTester tester) {
 }
 
 void main() {
-  setUpAll(loadAppFonts);
+  setUpAll(() async {
+    await loadAppFonts();
+    // 앱 테마는 처음 읽을 때 한 번만 만들어지고 그때의 플랫폼을 담는다. iOS 가장자리 밀기 시험이 iOS 테마를 쓰도록
+    // 이 파일의 테마를 iOS로 만들어 둔다(밀기 감지기는 iOS 테마에서만 붙는다).
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    coraLightTheme.platform;
+    coraDarkTheme.platform;
+    debugDefaultTargetPlatformOverride = null;
+  });
 
   testWidgets(
     'shows four empty numbered slots and both source buttons when empty',
@@ -256,6 +266,44 @@ void main() {
 
     expect(repo.saved, hasLength(1));
     expect(topPath(tester), isNot(AppRoutes.creatorFeaturedPosts));
+  });
+
+  group('iOS edge swipe back', () {
+    Future<void> swipeBack(WidgetTester tester) async {
+      final gesture = await tester.startGesture(const Offset(5, 300));
+      for (var i = 1; i <= 6; i++) {
+        await gesture.moveBy(
+          const Offset(20, 0),
+          timeStamp: Duration(milliseconds: 10 * i),
+        );
+        await tester.pump();
+      }
+      await gesture.up(timeStamp: const Duration(milliseconds: 70));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('leaves by swiping when nothing changed', (tester) async {
+      await _open(tester, _four());
+
+      await swipeBack(tester);
+
+      expect(find.text('바꾼 내용을 저장할까요?'), findsNothing);
+      expect(topPath(tester), isNot(AppRoutes.creatorFeaturedPosts));
+    });
+
+    testWidgets('does not leave by swiping while there are unsaved changes', (
+      tester,
+    ) async {
+      await _open(tester, _four());
+      await _tapPost(tester, 2);
+      await tester.tap(find.text('대표 게시물에서 빼기'));
+      await tester.pumpAndSettle();
+
+      await swipeBack(tester);
+
+      expect(topPath(tester), AppRoutes.creatorFeaturedPosts);
+      expect(find.text('3 / 4'), findsOneWidget);
+    });
   });
 
   testWidgets('paints the card scrim and caption shadow from the tokens', (
