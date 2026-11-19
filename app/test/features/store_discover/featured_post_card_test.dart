@@ -2,11 +2,13 @@ import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/features/discovery/domain/discovery_card.dart';
 import 'package:cora/features/discovery/domain/featured_post_ref.dart';
 import 'package:cora/features/discovery/presentation/widgets/creator_swipe_card.dart';
+import 'package:cora/features/discovery/presentation/widgets/featured_post_viewer.dart';
 import 'package:cora/features/discovery/presentation/widgets/swipe_progress_bar.dart';
 import 'package:cora/features/principles/domain/principles.dart' show FeeBand;
 import 'package:cora/features/store_discover/domain/store_creator_card.dart';
 import 'package:cora/features/store_discover/presentation/widgets/featured_post_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
@@ -29,6 +31,13 @@ Future<void> _pumpCard(WidgetTester tester, Widget card) async {
   await tester.pumpAndSettle();
 }
 
+/// 스크린 리더가 [finder]의 노드에 [action]을 보낸 것처럼 부른다.
+void _perform(WidgetTester tester, Finder finder, SemanticsAction action) =>
+    tester.binding.pipelineOwner.semanticsOwner!.performAction(
+      tester.getSemantics(finder).id,
+      action,
+    );
+
 void main() {
   setUpAll(loadAppFonts);
 
@@ -41,6 +50,52 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('하루 한 컵 게시물 2'), findsOneWidget);
     expect(find.text('하루 한 컵 게시물 1'), findsNothing);
+  });
+
+  testWidgets('a screen reader can move between posts with increase and '
+      'decrease', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await _pumpCard(tester, FeaturedPostCard(card: storeCard('c1')));
+    // 뷰어가 만든 조절 가능한 항목(값이 있는 `Semantics`).
+    final viewer = find.descendant(
+      of: find.byType(FeaturedPostViewer),
+      matching: find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.value != null,
+      ),
+    );
+
+    // 처음에는 이전이 없고 다음만 있다.
+    var node = tester.getSemantics(viewer);
+    expect(node.value, '1 / 4');
+    expect(node.getSemanticsData().hasAction(SemanticsAction.increase), isTrue);
+    expect(
+      node.getSemanticsData().hasAction(SemanticsAction.decrease),
+      isFalse,
+    );
+
+    _perform(tester, viewer, SemanticsAction.increase);
+    await tester.pumpAndSettle();
+    expect(find.text('하루 한 컵 게시물 2'), findsOneWidget);
+    node = tester.getSemantics(viewer);
+    expect(node.value, '2 / 4');
+    expect(node.getSemanticsData().hasAction(SemanticsAction.decrease), isTrue);
+
+    _perform(tester, viewer, SemanticsAction.decrease);
+    await tester.pumpAndSettle();
+    expect(find.text('하루 한 컵 게시물 1'), findsOneWidget);
+
+    // 맨 끝에서는 다음이 없다.
+    for (var i = 0; i < 3; i++) {
+      _perform(tester, viewer, SemanticsAction.increase);
+      await tester.pumpAndSettle();
+    }
+    node = tester.getSemantics(viewer);
+    expect(node.value, '4 / 4');
+    expect(
+      node.getSemanticsData().hasAction(SemanticsAction.increase),
+      isFalse,
+    );
+    semantics.dispose();
   });
 
   testWidgets('only a focus or only followers still reads well', (
