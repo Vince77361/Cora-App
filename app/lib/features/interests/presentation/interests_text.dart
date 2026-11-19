@@ -1,24 +1,23 @@
 import '../../../core/text/josa.dart';
 
-/// 관심·보류(03), 후보 비교(04), 서로 관심(05)의 문구. 캔버스 글자 그대로이고, 아래 표시한 것만 캔버스에
+/// 저장함(03), 후보 비교(04), 서로 관심(05)의 문구. 캔버스 글자 그대로이고, 아래 표시한 것만 캔버스에
 /// 없어 계획·설계의 문구를 쓴다.
 abstract final class InterestsTexts {
   // 03 머리와 탭(캔버스 Likes)
-  static const title = '관심·보류';
+  static const title = '저장함';
   static const brandPill = '브랜드 관점';
   static const creatorPill = '크리에이터 관점';
-  static const brandDescription = '저장은 나만 보고, 관심은 상대에게 전해져요. 비교할 후보를 골라요.';
-  static const creatorDescription = '저장은 나만 보고, 관심은 상대에게 전해져요.';
+  static const brandDescription = '저장은 나만 보고, 하트는 상대에게 전해져요. 비교할 후보를 골라요.';
+  static const creatorDescription = '저장은 나만 보고, 하트는 상대에게 전해져요.';
   static const tabListLabel = '후보 분류';
   static String tabSaved(int n) => '저장 $n';
-  static String tabMutual(int n) => '서로 관심 $n';
   static String tabSent(int n) => '보낸 관심 $n';
-  static String tabHeld(int n) => '보류 $n';
+  static String tabProposals(int n) => '보낸 제안 $n';
 
   // 카드 표지
   static const badgeMutual = '서로 관심';
   static const badgeWaiting = '응답 대기';
-  static const badgeHeld = '보류';
+  static const badgeHeld = '저장';
 
   // 비교 동그라미
   static const pickedLabel = '비교에 선택됨';
@@ -35,9 +34,13 @@ abstract final class InterestsTexts {
   static String compareButton(int n) => '선택한 $n명 비교하기';
   static const compareNeedTwo = '비교할 후보 2명을 골라 주세요.';
 
-  // 빈 목록(F8 공용 위젯, 계획)
-  static const emptyTitle = '아직 담은 후보가 없어요.';
-  static const emptyBody = '발견에서 마음에 드는 카드를 오른쪽으로 밀어 보세요.';
+  // 탭이 비었을 때(F8 공용 위젯, 캔버스 밖, 설계 4.3).
+  static const emptySavedTitle = '아직 저장한 후보가 없어요.';
+  static const emptySavedBody = '카드를 위로 밀거나 저장 버튼을 눌러 보세요.';
+  static const emptySentTitle = '아직 보낸 하트가 없어요.';
+  static const emptySentBody = '카드를 오른쪽으로 밀거나 하트 버튼을 눌러 보세요.';
+  static const emptyProposalsTitle = '아직 보낸 제안이 없어요.';
+  static const emptyProposalsBody = '마음에 드는 크리에이터에게 제안해 보세요.';
 
   // 캔버스와 계획에 없는 문구: 불러오기 실패와 저장 실패 안내, 보류 카드를 눌렀을 때의 시트.
   static const loadFailedTitle = '관심 목록을 불러오지 못했어요';

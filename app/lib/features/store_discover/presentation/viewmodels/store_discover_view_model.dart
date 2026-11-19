@@ -8,12 +8,14 @@ import '../../../discovery/presentation/viewmodels/brand_discovery_view_model.da
     show DiscoveryToast, DiscoveryToastKind;
 import '../../domain/store_creator_card.dart';
 import '../../domain/store_discover_repository.dart';
+import '../../../store_interests/presentation/viewmodels/store_interests_view_model.dart'
+    show storeSavedPeopleProvider;
 
 export '../../../discovery/domain/undo_result.dart';
 
-/// 머리 북마크의 저장 수 배지. 사장님 저장함이 생기기 전에는 늘 0이고(0이면 배지를 숨긴다), 저장함 작업이
-/// 서버의 저장 수로 바꿔 끼운다.
-final storeSavedCountProvider = Provider<int>((ref) => 0);
+/// 머리 북마크의 저장 수 배지는 사장님 저장함이 읽은 저장 목록의 수다(0이면 배지를 숨긴다).
+export '../../../store_interests/presentation/viewmodels/store_interests_view_model.dart'
+    show storeSavedCountProvider;
 
 /// 사장님의 전체 둘러보기. 화면을 떠나면 버리고 다시 열 때 오늘 목록을 새로 읽는다.
 final storeDiscoverViewModelProvider =
@@ -108,6 +110,8 @@ class StoreDiscoverViewModel extends AsyncNotifier<StoreDiscoverState> {
     state = AsyncData(
       latest.copyWith(done: {...latest.done, card.creatorId}, toast: toast),
     );
+    // 저장(HOLD)이 늘거나 하트·넘김으로 바뀌면 머리 북마크의 저장 수가 따라가야 한다.
+    ref.invalidate(storeSavedPeopleProvider);
   }
 
   /// 넘긴 [creatorId]에 이유를 남긴다. 실패하면 던진다.
@@ -127,6 +131,8 @@ class StoreDiscoverViewModel extends AsyncNotifier<StoreDiscoverState> {
     }
     if (!ref.mounted) return UndoResult.undone;
     if (creatorId == null) return UndoResult.nothing;
+    // 되돌린 결정이 저장이었을 수 있어 머리 북마크의 저장 수를 다시 읽는다.
+    ref.invalidate(storeSavedPeopleProvider);
     final latest = state.value ?? current;
     if (latest.done.contains(creatorId)) {
       state = AsyncData(

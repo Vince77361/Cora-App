@@ -65,7 +65,9 @@ class InterestGridCard extends StatelessWidget {
                 background: c.photoPlaceholder,
                 alignment: const Alignment(0, -0.4),
               ),
-              Positioned(left: 8, top: 8, child: _Badge(state: card.state)),
+              // 저장한 카드에는 표지가 없다. 저장 탭이 이미 저장이라고 말한다.
+              if (card.state != InterestState.held)
+                Positioned(left: 8, top: 8, child: _Badge(state: card.state)),
               Positioned(
                 left: 0,
                 right: 0,
@@ -129,7 +131,7 @@ class InterestGridCard extends StatelessWidget {
   }
 }
 
-/// 왼쪽 위 표지. `서로 관심`은 #5C7A00 바탕에 하트, `응답 대기`·`보류`는 어두운 반투명 바탕이다.
+/// 왼쪽 위 표지. `서로 관심`은 #5C7A00 바탕에 하트, `응답 대기`는 어두운 반투명 바탕이다.
 class _Badge extends StatelessWidget {
   const _Badge({required this.state});
 
@@ -139,11 +141,9 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final mutual = state == InterestState.mutual;
-    final label = switch (state) {
-      InterestState.mutual => InterestsTexts.badgeMutual,
-      InterestState.waiting => InterestsTexts.badgeWaiting,
-      InterestState.held => InterestsTexts.badgeHeld,
-    };
+    final label = mutual
+        ? InterestsTexts.badgeMutual
+        : InterestsTexts.badgeWaiting;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: mutual ? c.interestChipMutual : c.interestChipWait,

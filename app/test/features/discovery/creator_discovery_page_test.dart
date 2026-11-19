@@ -258,7 +258,7 @@ void main() {
 
       await tester.tap(find.text('저장함'));
       await tester.pumpAndSettle();
-      expect(opened, ['/creator/interests?tab=held']);
+      expect(opened, ['/creator/interests?tab=saved']);
     },
   );
 

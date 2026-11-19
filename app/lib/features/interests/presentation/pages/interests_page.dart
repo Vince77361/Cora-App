@@ -16,12 +16,18 @@ import '../../../discovery/domain/discovery_card.dart' show CreatorCard;
 import '../../../discovery/presentation/discovery_text.dart';
 import '../../../discovery/presentation/widgets/brand_bottom_nav.dart';
 import '../../../discovery/presentation/widgets/discovery_toast.dart';
+import '../../../proposals/domain/offer_version.dart' show ProposalParty;
+import '../../../proposals/domain/proposal.dart';
+import '../../../proposals/presentation/proposal_text.dart';
+import '../../../proposals/presentation/viewmodels/proposals_view_model.dart';
 import '../../../received_proposals/domain/received_proposal.dart';
 import '../../../received_proposals/presentation/pages/received_proposal_page.dart'
     show ReceivedProposalResult;
 import '../../../received_proposals/presentation/viewmodels/received_proposals_view_model.dart';
 import '../../../received_proposals/presentation/widgets/received_proposals_group.dart';
 import '../../../store_browse/presentation/widgets/creator_bottom_nav.dart';
+import '../../../store_interests/presentation/widgets/interest_list_row.dart';
+import '../../../store_interests/presentation/store_interests_text.dart';
 import '../../domain/interest_card.dart';
 import '../interests_text.dart';
 import '../viewmodels/interests_view_model.dart';
@@ -32,8 +38,9 @@ import '../widgets/interest_status_box.dart';
 import '../widgets/interest_tabs.dart';
 import 'match_sheet.dart';
 
-/// 03 관심·보류. 내가 저장한(관심 + 보류) 후보를 두 줄 격자로 보여 준다. 브랜드는 카드 오른쪽 위 동그라미로
-/// 비교할 후보를 두 장까지 고르고 아래 버튼으로 04를 연다. 크리에이터의 03은 같은 화면이고 비교가 없다.
+/// 03 저장함. 내가 저장한(HOLD) 후보와 하트를 보낸(LIKE) 후보를 탭으로 갈라 두 줄 격자로 보여 준다. 브랜드는 카드
+/// 오른쪽 위 동그라미로 비교할 후보를 두 장까지 고르고 아래 버튼으로 04를 연다. 브랜드에는 `보낸 제안` 탭도 있다
+/// (제안함의 줄). 크리에이터의 03은 `저장`과 `보낸 관심` 두 탭이고 비교가 없다.
 ///
 /// [matchId]가 있으면(토스트의 `확인하기`, 알림의 서로 관심) 화면이 열린 뒤 그 협업의 05를 시트로 연다.
 class InterestsPage extends ConsumerStatefulWidget {
@@ -59,8 +66,18 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
   /// 그사이 다른 카드를 눌러 화면을 밀지 못하게 한다.
   bool _openingMatch = false;
 
-  InterestsScope get _scope =>
-      (isBrand: widget.isBrand, tab: widget.initialTab);
+  /// 크리에이터에게는 보낸 제안 탭이 없다(역제안은 협업 탭의 받은 오퍼에 이미 있다). 그 탭을 가리키는 링크는 저장이다.
+  InterestTab get _initialTab =>
+      !widget.isBrand && widget.initialTab == InterestTab.proposals
+      ? InterestTab.saved
+      : widget.initialTab;
+
+  InterestsScope get _scope => (isBrand: widget.isBrand, tab: _initialTab);
+
+  /// 이 역할이 가진 탭들(탭 줄의 차례).
+  List<InterestTab> get _tabs => widget.isBrand
+      ? InterestTab.values
+      : const [InterestTab.saved, InterestTab.sent];
 
   InterestsViewModel get _vm =>
       ref.read(interestsViewModelProvider(_scope).notifier);
@@ -181,6 +198,14 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
     }
   }
 
+  /// 브랜드 줄(보낸 제안): 조건 합의(12)를 연다. 돌아오면 목록을 새로 읽는다.
+  Future<void> _openContractRow(InboxRow row) async {
+    if (row is! BrandContractRow) return;
+    await context.push(AppRoutes.collaborationAgreement(row.collaborationId));
+    if (!mounted) return;
+    ref.invalidate(proposalsViewModelProvider(ProposalParty.brand));
+  }
+
   Future<void> _compare(InterestsState state) async {
     if (!state.canCompare) return;
     final [a, b] = state.selected;
@@ -199,6 +224,12 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
         : (ref.watch(receivedProposalsViewModelProvider).value ??
               const <ReceivedProposal>[]);
 
+    // 브랜드의 보낸 제안(맨 오른쪽 탭): 제안함(F3)의 브랜드 줄. 읽지 못하면 줄이 없고 수가 0이다.
+    final proposalsAsync = widget.isBrand
+        ? ref.watch(proposalsViewModelProvider(ProposalParty.brand))
+        : null;
+    final proposalRows = proposalsAsync?.value?.active ?? const <InboxRow>[];
+
     final Widget body;
     if (state == null) {
       body = Padding(
@@ -210,12 +241,25 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
               )
             : const CoraStateView.loading(),
       );
+    } else if (state.tab == InterestTab.proposals) {
+      body = _ProposalsBody(
+        async: proposalsAsync!,
+        rows: proposalRows,
+        onOpen: _openContractRow,
+        onRetry: () =>
+            ref.invalidate(proposalsViewModelProvider(ProposalParty.brand)),
+      );
     } else if (state.visible.isEmpty) {
-      body = const Padding(
-        padding: EdgeInsets.only(top: 16),
+      final tab = state.tab;
+      body = Padding(
+        padding: const EdgeInsets.only(top: 16),
         child: CoraStateView.empty(
-          title: InterestsTexts.emptyTitle,
-          description: InterestsTexts.emptyBody,
+          title: tab == InterestTab.saved
+              ? InterestsTexts.emptySavedTitle
+              : InterestsTexts.emptySentTitle,
+          description: tab == InterestTab.saved
+              ? InterestsTexts.emptySavedBody
+              : InterestsTexts.emptySentBody,
         ),
       );
     } else {
@@ -285,14 +329,12 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
                           InterestsTexts.tabSaved(
                             state.count(InterestTab.saved),
                           ),
-                          InterestsTexts.tabMutual(
-                            state.count(InterestTab.mutual),
-                          ),
                           InterestsTexts.tabSent(state.count(InterestTab.sent)),
-                          InterestsTexts.tabHeld(state.count(InterestTab.held)),
+                          if (widget.isBrand)
+                            InterestsTexts.tabProposals(proposalRows.length),
                         ],
-                        selected: InterestTab.values.indexOf(state.tab),
-                        onChanged: (i) => _vm.selectTab(InterestTab.values[i]),
+                        selected: _tabs.indexOf(state.tab),
+                        onChanged: (i) => _vm.selectTab(_tabs[i]),
                       ),
                     ),
                   Expanded(
@@ -317,7 +359,10 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
               ),
             ),
           ),
-          if (widget.isBrand && state != null && state.visible.isNotEmpty)
+          if (widget.isBrand &&
+              state != null &&
+              state.tab != InterestTab.proposals &&
+              state.visible.isNotEmpty)
             Positioned(
               left: 16,
               right: 16,
@@ -527,6 +572,63 @@ class _CompareButton extends StatelessWidget {
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// 브랜드의 `보낸 제안` 탭(캔버스 M19G2TabsB의 보낸 제안 줄 모양): 제안함(F3)의 브랜드 줄을 `응답할 차례`가 먼저인
+/// 순서 그대로 보인다. 설명과 단추 글자는 제안함과 같은 함수(`rowSubtitle`)가 만든다.
+class _ProposalsBody extends StatelessWidget {
+  const _ProposalsBody({
+    required this.async,
+    required this.rows,
+    required this.onOpen,
+    required this.onRetry,
+  });
+
+  final AsyncValue<ProposalsState> async;
+  final List<InboxRow> rows;
+  final void Function(InboxRow row) onOpen;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!async.hasValue) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: async.hasError
+            ? CoraStateView.loadFailed(
+                title: StoreInterestsTexts.loadFailedTitle,
+                onRetry: onRetry,
+              )
+            : const CoraStateView.loading(),
+      );
+    }
+    if (rows.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 16),
+        child: CoraStateView.empty(
+          title: InterestsTexts.emptyProposalsTitle,
+          description: InterestsTexts.emptyProposalsBody,
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 120),
+      children: [
+        for (final row in rows)
+          InterestListRow(
+            name: row.name,
+            photoUrl: row.photoUrl,
+            meta: rowSubtitle(row),
+            actionLabel: row.group == ProposalGroup.myTurn
+                ? StoreInterestsTexts.respond
+                : StoreInterestsTexts.waitingButton,
+            actionHot: row.group == ProposalGroup.myTurn,
+            onAction: () => onOpen(row),
+            onTap: () => onOpen(row),
+          ),
       ],
     );
   }

@@ -77,8 +77,8 @@ void main() {
 
     expect(topPath(tester), AppRoutes.brandInterests);
     expect(find.byType(InterestsPage), findsOneWidget);
-    expect(find.text('관심·보류'), findsOneWidget);
-    expect(find.text('저장 1'), findsOneWidget);
+    expect(find.text('저장함'), findsOneWidget);
+    expect(find.text('보낸 관심 1'), findsOneWidget);
 
     // 발견 메뉴는 제자리에서 돌아온다.
     await tester.tap(_navLabel('발견'));
@@ -92,7 +92,11 @@ void main() {
       tester,
       overrides: [
         interestsRepositoryProvider.overrideWithValue(
-          FakeInterestsRepository(cards: [campaignCard('k1', name: '모아 스튜디오')]),
+          FakeInterestsRepository(
+            cards: [
+              campaignCard('k1', name: '모아 스튜디오', state: InterestState.held),
+            ],
+          ),
         ),
       ],
     );
@@ -123,7 +127,8 @@ void main() {
 
     routerOf(tester).push(AppRoutes.brandSaved);
     await tester.pumpAndSettle();
-    expect(find.text('저장 2'), findsOneWidget);
+    expect(find.text('저장 1'), findsOneWidget);
+    expect(find.text('보낸 관심 1'), findsOneWidget);
 
     routerOf(tester).push('${AppRoutes.brandInterests}?tab=held');
     await tester.pumpAndSettle();
@@ -204,7 +209,7 @@ void main() {
     );
     await _pumpBrand(tester, interests: interests);
 
-    routerOf(tester).push(AppRoutes.brandInterests);
+    routerOf(tester).push(AppRoutes.brandSent);
     await tester.pumpAndSettle();
     await tester.tap(find.text('선택한 2명 비교하기'));
     await tester.pumpAndSettle();

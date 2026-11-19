@@ -171,7 +171,7 @@ void main() {
       );
 
       expect(find.textContaining('받은 제안'), findsNothing);
-      expect(find.text('관심·보류'), findsOneWidget);
+      expect(find.text('저장함'), findsOneWidget);
     });
 
     testWidgets('a long content title stays on one line with an ellipsis and '
@@ -294,7 +294,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('브랜드가 좋아한 점'), findsNothing);
-      expect(find.text('관심·보류'), findsOneWidget);
+      expect(find.text('저장함'), findsOneWidget);
     });
 
     testWidgets('sending interest carries my one line as the note', (
@@ -363,7 +363,7 @@ void main() {
       );
       await tester.tap(find.bySemanticsLabel('닫기'));
       await tester.pumpAndSettle();
-      expect(find.text('관심·보류'), findsOneWidget);
+      expect(find.text('저장함'), findsOneWidget);
       expect(
         env.router.routerDelegate.currentConfiguration.matches,
         hasLength(1),

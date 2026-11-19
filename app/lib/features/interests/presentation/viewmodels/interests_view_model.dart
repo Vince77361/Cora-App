@@ -7,26 +7,26 @@ import '../../domain/interests_repository.dart';
 import '../../domain/match_info.dart';
 import '../interests_text.dart';
 
-/// 03의 탭. 저장은 관심과 보류를 합친 것이라 목록 하나에서 앱이 가른다.
+/// 03의 탭. 서버는 저장한 카드를 목록 하나로 주고 앱이 상태로 가른다: 저장은 `held`(HOLD), 보낸 관심은
+/// `waiting` + `mutual`(LIKE, 서로 관심 포함)이다. 보낸 제안은 카드가 아니라 제안함(F3)의 줄이고 브랜드에만 있다.
 enum InterestTab {
   saved,
-  mutual,
   sent,
-  held;
+  proposals;
 
-  /// `?tab=` 쿼리 값. 모르는 값은 저장 탭이다.
+  /// `?tab=` 쿼리 값. 모르는 값은 저장 탭이다. 옛 값(`held`는 저장, `mutual`은 보낸 관심)은 새 탭으로 읽는다.
   static InterestTab fromQuery(String? value) => switch (value) {
-    'mutual' => InterestTab.mutual,
-    'sent' => InterestTab.sent,
-    'held' => InterestTab.held,
+    'sent' || 'mutual' => InterestTab.sent,
+    'proposals' || 'offers' => InterestTab.proposals,
     _ => InterestTab.saved,
   };
 
+  /// 이 탭의 카드 자리에 [state]인 카드가 들어가는가. 보낸 제안 탭에는 카드가 없다.
   bool includes(InterestState state) => switch (this) {
-    InterestTab.saved => true,
-    InterestTab.mutual => state == InterestState.mutual,
-    InterestTab.sent => state == InterestState.waiting,
-    InterestTab.held => state == InterestState.held,
+    InterestTab.saved => state == InterestState.held,
+    InterestTab.sent =>
+      state == InterestState.waiting || state == InterestState.mutual,
+    InterestTab.proposals => false,
   };
 }
 
@@ -83,7 +83,7 @@ class InterestsState {
 /// 03을 여는 방식. 브랜드만 비교를 하고, [tab]은 처음 고를 탭이다(`?tab=`).
 typedef InterestsScope = ({bool isBrand, InterestTab tab});
 
-/// 03 관심·보류의 상태. 화면을 떠나면 버리고 다시 열 때 목록을 새로 읽는다. 처음 열 때 브랜드는 저장 탭의
+/// 03 저장함의 상태. 화면을 떠나면 버리고 다시 열 때 목록을 새로 읽는다. 처음 열 때 브랜드는 처음 연 탭의
 /// 위 두 장이 비교에 골라져 있다(크리에이터에게는 비교가 없어 [InterestsState.selected]를 쓰지 않는다).
 final interestsViewModelProvider = AsyncNotifierProvider.autoDispose
     .family<InterestsViewModel, InterestsState, InterestsScope>(
@@ -108,7 +108,13 @@ class InterestsViewModel extends AsyncNotifier<InterestsState> {
       cards: cards,
       tab: scope.tab,
       selected: scope.isBrand
-          ? [for (final c in cards.take(maxCompared)) c.id]
+          ? [
+              for (final c
+                  in cards
+                      .where((c) => scope.tab.includes(c.state))
+                      .take(maxCompared))
+                c.id,
+            ]
           : const [],
     );
   }

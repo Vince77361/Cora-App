@@ -121,7 +121,7 @@ void main() {
       await tester.tap(_navItem('관심'));
       await tester.pumpAndSettle();
       expect(currentPath(tester), AppRoutes.creatorInterests);
-      expect(find.text('관심·보류'), findsOneWidget);
+      expect(find.text('저장함'), findsOneWidget);
       expect(find.text('준비 중이에요.'), findsNothing);
     });
   });

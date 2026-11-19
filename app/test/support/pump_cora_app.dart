@@ -21,6 +21,7 @@ import 'package:cora/features/proposals/domain/proposal_repository.dart';
 import 'package:cora/features/received_proposals/domain/received_proposals_repository.dart';
 import 'package:cora/features/server_config/domain/server_config_repository.dart';
 import 'package:cora/features/store_discover/domain/store_discover_repository.dart';
+import 'package:cora/features/store_interests/domain/store_interests_repository.dart';
 import 'package:cora/features/store_home/domain/store_home_repository.dart';
 import 'package:cora/features/wallet/domain/wallet_repository.dart';
 import 'package:cora/features/store_onboarding/domain/content_draft_repository_provider.dart';
@@ -51,6 +52,7 @@ import '../features/received_proposals/fake_received_proposals_repository.dart';
 import '../features/server_config/fake_server_config_repository.dart';
 import '../features/store_discover/fake_store_discover_repository.dart';
 import '../features/store_home/fake_store_home_repository.dart';
+import '../features/store_interests/fake_store_interests_repository.dart';
 import '../features/store_onboarding/fake_content_draft_repository.dart';
 import '../features/store_onboarding/fake_store_repository.dart';
 import '../features/wallet/fake_wallet_repository.dart';
@@ -142,7 +144,12 @@ Widget coraAppWith(
         storeDiscoverRepositoryProvider.overrideWithValue(
           FakeStoreDiscoverRepository(cards: [storeCard('c1')]),
         ),
-      // 03 관심·보류가 저장한 후보를 읽는다. 기본은 저장한 후보가 없는 계정이다.
+      // 사장님의 저장함(G2)과 둘러보기 머리의 저장 수. 기본은 저장한 후보가 없는 계정이다.
+      if (!_overrides(overrides, storeInterestsRepositoryProvider))
+        storeInterestsRepositoryProvider.overrideWithValue(
+          FakeStoreInterestsRepository(),
+        ),
+      // 03 저장함이 저장한 후보를 읽는다. 기본은 저장한 후보가 없는 계정이다.
       if (!_overrides(overrides, interestsRepositoryProvider))
         interestsRepositoryProvider.overrideWithValue(
           FakeInterestsRepository(),

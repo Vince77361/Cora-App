@@ -122,7 +122,7 @@ class _CreatorDiscoveryPageState extends ConsumerState<CreatorDiscoveryPage> {
         creator: true,
         message: CreatorDiscoveryTexts.holdToast,
         action: CreatorDiscoveryTexts.holdToastAction,
-        onAction: () => context.push(AppRoutes.creatorHeld),
+        onAction: () => context.push(AppRoutes.creatorSaved),
         onDismiss: dismiss,
       ),
       CreatorToastKind.match => DiscoveryToastBanner(

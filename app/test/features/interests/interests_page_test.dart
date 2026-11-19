@@ -11,6 +11,9 @@ import 'package:cora/features/discovery/domain/discovery_card.dart'
 import 'package:cora/features/discovery/domain/discovery_repository.dart';
 import 'package:cora/features/interests/domain/interest_card.dart';
 import 'package:cora/features/interests/domain/interests_repository.dart';
+import 'package:cora/features/negotiation/domain/negotiation_repository.dart';
+import 'package:cora/features/proposals/domain/proposal.dart'
+    show ProposalGroup;
 import 'package:cora/features/interests/presentation/pages/interests_page.dart';
 import 'package:cora/features/interests/presentation/viewmodels/interests_view_model.dart'
     show InterestTab;
@@ -26,6 +29,7 @@ import 'package:go_router/go_router.dart';
 import '../../support/load_app_fonts.dart';
 import '../../support/pump_cora_app.dart';
 import '../discovery/fake_discovery_repository.dart';
+import '../negotiation/fake_negotiation_repository.dart';
 import '../received_proposals/fake_received_proposals_repository.dart';
 import 'fake_interests_repository.dart';
 
@@ -36,6 +40,7 @@ Future<({List<String> opened, FakeInterestsRepository repo})> _pump(
   FakeInterestsRepository repo, {
   FakeDiscoveryRepository? discovery,
   FakeReceivedProposalsRepository? received,
+  FakeNegotiationRepository? negotiation,
   bool isBrand = true,
   String? query,
   ThemeData? theme,
@@ -102,6 +107,10 @@ Future<({List<String> opened, FakeInterestsRepository repo})> _pump(
         builder: (context, state) => stub(state),
       ),
       GoRoute(
+        path: AppRoutes.collaborationAgreementPattern,
+        builder: (context, state) => stub(state),
+      ),
+      GoRoute(
         path: '/creator/campaigns/:id',
         builder: (context, state) => stub(state),
       ),
@@ -132,6 +141,9 @@ Future<({List<String> opened, FakeInterestsRepository repo})> _pump(
     ProviderScope(
       overrides: [
         interestsRepositoryProvider.overrideWithValue(repo),
+        negotiationRepositoryProvider.overrideWithValue(
+          negotiation ?? FakeNegotiationRepository(),
+        ),
         if (received != null)
           receivedProposalsRepositoryProvider.overrideWithValue(received),
         discoveryRepositoryProvider.overrideWithValue(
@@ -152,7 +164,7 @@ Future<({List<String> opened, FakeInterestsRepository repo})> _pump(
   return (opened: opened, repo: repo);
 }
 
-/// 캔버스 Likes의 견본: 서로 관심 하나, 응답 대기 하나, 보류 하나.
+/// 캔버스 Likes의 견본: 서로 관심 하나, 응답 대기 하나, 저장(HOLD) 하나. 탭은 저장 1, 보낸 관심 2다.
 FakeInterestsRepository _three() => FakeInterestsRepository(
   cards: [
     brandCard(
@@ -184,56 +196,133 @@ Finder _notPicked() => find.bySemanticsLabel('비교에 고르기');
 void main() {
   setUpAll(loadAppFonts);
 
-  testWidgets('shows counts on each tab and filters the grid', (tester) async {
+  testWidgets('brand tabs are 저장, 보낸 관심, 보낸 제안 and the saved tab holds '
+      'only saved cards', (tester) async {
     await _pump(tester, _three());
 
-    expect(find.text('저장 3'), findsOneWidget);
-    expect(find.text('서로 관심 1'), findsOneWidget);
-    expect(find.text('보낸 관심 1'), findsOneWidget);
-    expect(find.text('보류 1'), findsOneWidget);
-    expect(find.text('서윤의 작은 취향'), findsOneWidget);
-    expect(find.text('민의 옷장 기록'), findsOneWidget);
+    expect(find.text('저장 1'), findsOneWidget);
+    expect(find.text('보낸 관심 2'), findsOneWidget);
+    expect(find.text('보낸 제안 0'), findsOneWidget);
+    // 옛 탭 글자는 없다.
+    expect(find.textContaining('보류'), findsNothing);
+    expect(find.textContaining('서로 관심 '), findsNothing);
     expect(find.text('하루 한 컵'), findsOneWidget);
+    expect(find.text('서윤의 작은 취향'), findsNothing);
+    expect(find.text('민의 옷장 기록'), findsNothing);
 
-    await tester.tap(find.text('서로 관심 1'));
+    await tester.tap(find.text('보낸 관심 2'));
     await tester.pumpAndSettle();
     expect(find.text('서윤의 작은 취향'), findsOneWidget);
-    expect(find.text('민의 옷장 기록'), findsNothing);
+    expect(find.text('민의 옷장 기록'), findsOneWidget);
     expect(find.text('하루 한 컵'), findsNothing);
 
-    await tester.tap(find.text('보낸 관심 1'));
-    await tester.pumpAndSettle();
-    expect(find.text('민의 옷장 기록'), findsOneWidget);
-    expect(find.text('서윤의 작은 취향'), findsNothing);
-
-    await tester.tap(find.text('보류 1'));
+    await tester.tap(find.text('저장 1'));
     await tester.pumpAndSettle();
     expect(find.text('하루 한 컵'), findsOneWidget);
     expect(find.text('민의 옷장 기록'), findsNothing);
   });
 
-  testWidgets('the tab query opens that tab', (tester) async {
-    await _pump(tester, _three(), query: 'tab=held');
+  testWidgets('creator tabs are 저장 and 보낸 관심', (tester) async {
+    await _pump(
+      tester,
+      FakeInterestsRepository(
+        cards: [
+          campaignCard('k1', name: '모아 스튜디오', state: InterestState.mutual),
+          campaignCard('k2', name: '느린 시계', state: InterestState.held),
+        ],
+      ),
+      isBrand: false,
+    );
 
+    expect(find.text('저장 1'), findsOneWidget);
+    expect(find.text('보낸 관심 1'), findsOneWidget);
+    expect(find.textContaining('보낸 제안'), findsNothing);
+    expect(find.text('느린 시계'), findsOneWidget);
+    expect(find.text('모아 스튜디오'), findsNothing);
+
+    await tester.tap(find.text('보낸 관심 1'));
+    await tester.pumpAndSettle();
+    expect(find.text('모아 스튜디오'), findsOneWidget);
+    expect(find.text('느린 시계'), findsNothing);
+  });
+
+  testWidgets('the tab query opens that tab', (tester) async {
+    await _pump(tester, _three(), query: 'tab=sent');
+
+    expect(find.text('서윤의 작은 취향'), findsOneWidget);
+    expect(find.text('하루 한 컵'), findsNothing);
+  });
+
+  testWidgets('the old query values open the matching new tab', (tester) async {
+    await _pump(tester, _three(), query: 'tab=held');
     expect(find.text('하루 한 컵'), findsOneWidget);
     expect(find.text('서윤의 작은 취향'), findsNothing);
+  });
+
+  testWidgets('the brand proposals tab lists the brand proposal rows', (
+    tester,
+  ) async {
+    final env = await _pump(
+      tester,
+      _three(),
+      negotiation: FakeNegotiationRepository()
+        ..inbox = [
+          brandContractRow(collaborationId: 'c-turn', name: '모아 스튜디오'),
+          brandContractRow(
+            collaborationId: 'c-wait',
+            name: '느린 시계',
+            group: ProposalGroup.waiting,
+            counter: false,
+          ),
+        ],
+    );
+
+    expect(find.text('보낸 제안 2'), findsOneWidget);
+    await tester.tap(find.text('보낸 제안 2'));
+    await tester.pumpAndSettle();
+    expect(find.text('모아 스튜디오'), findsOneWidget);
+    expect(find.text('응답하기'), findsOneWidget);
+    expect(find.text('느린 시계'), findsOneWidget);
+    expect(find.text('대기'), findsOneWidget);
+    // 비교 버튼은 후보 카드의 탭에만 있다.
+    expect(find.textContaining('비교하기'), findsNothing);
+
+    await tester.tap(find.text('느린 시계'));
+    await tester.pumpAndSettle();
+    expect(env.opened, ['/collaborations/c-wait/agreement']);
+  });
+
+  testWidgets('an empty brand proposals tab shows its sentence', (
+    tester,
+  ) async {
+    await _pump(tester, _three());
+
+    await tester.tap(find.text('보낸 제안 0'));
+    await tester.pumpAndSettle();
+    expect(find.text('아직 보낸 제안이 없어요.'), findsOneWidget);
+    expect(find.text('마음에 드는 크리에이터에게 제안해 보세요.'), findsOneWidget);
   });
 
   testWidgets('the card shows the badge, the headline and the cash line', (
     tester,
   ) async {
-    await _pump(tester, _three());
+    await _pump(tester, _three(), query: 'tab=sent');
 
-    // 표지(서로 관심은 탭 이름과 겹치므로 카드 안에서만 센다).
+    // 표지. 저장 카드에는 표지가 없다(탭이 저장이라고 말한다).
     expect(find.text('서로 관심'), findsOneWidget);
     expect(find.text('응답 대기'), findsOneWidget);
-    expect(find.text('보류'), findsOneWidget);
     expect(find.text('출근 전 30초, 오늘의 손목 루틴'), findsOneWidget);
     expect(find.text('같은 니트, 세 가지 액세서리'), findsOneWidget);
-    expect(find.text('아침 한 컵의 기록'), findsOneWidget);
-    // 서로 관심: 최신 판본의 제작비와 시작일. 응답 대기: 내 제안 금액, 일정 협의. 보류: 희망 제작비 구간.
+    // 서로 관심: 최신 판본의 제작비와 시작일. 응답 대기: 내 제안 금액, 일정 협의.
     expect(find.text('30만 원, 11월 16일 이후'), findsOneWidget);
     expect(find.text('35만 원, 일정 협의'), findsOneWidget);
+
+    await tester.tap(find.text('저장 1'));
+    await tester.pumpAndSettle();
+    expect(find.text('보류'), findsNothing);
+    expect(find.text('저장'), findsNothing);
+    expect(find.text('아침 한 컵의 기록'), findsOneWidget);
+    // 저장: 희망 제작비 구간.
     expect(find.text('40만 원대, 일정 협의'), findsOneWidget);
   });
 
@@ -259,10 +348,10 @@ void main() {
 
     expect(discovery.decisions.single.outcome, SwipeOutcome.pass);
     expect(find.text('하루 한 컵'), findsNothing);
-    expect(find.text('저장 2'), findsOneWidget);
+    expect(find.text('저장 0'), findsOneWidget);
   });
 
-  testWidgets('the first tab is labelled saved and counts likes and holds', (
+  testWidgets('the first tab is labelled saved and counts holds only', (
     tester,
   ) async {
     await _pump(
@@ -275,18 +364,24 @@ void main() {
       ),
     );
 
-    expect(find.text('저장 2'), findsOneWidget);
+    expect(find.text('저장 1'), findsOneWidget);
     expect(find.text('보낸 관심 1'), findsOneWidget);
-    expect(find.text('보류 1'), findsOneWidget);
-    expect(find.text('서로 관심 0'), findsOneWidget);
+    expect(find.text('보낸 제안 0'), findsOneWidget);
   });
 
-  testWidgets('the top two saved cards start selected for comparison', (
+  testWidgets('keeps the compare checks on the brand cards of the open tab', (
     tester,
   ) async {
-    await _pump(tester, _three());
+    await _pump(tester, _three(), query: 'tab=sent');
 
+    // 처음 연 탭의 위 두 장이 비교에 골라져 있다.
     expect(_picked(), findsNWidgets(2));
+    expect(_notPicked(), findsNothing);
+    expect(find.text('선택한 2명 비교하기'), findsOneWidget);
+
+    // 저장 탭의 카드에도 비교 동그라미가 붙는다.
+    await tester.tap(find.text('저장 1'));
+    await tester.pumpAndSettle();
     expect(_notPicked(), findsOneWidget);
     expect(find.text('선택한 2명 비교하기'), findsOneWidget);
   });
@@ -294,30 +389,32 @@ void main() {
   testWidgets('tapping the circle toggles the comparison check', (
     tester,
   ) async {
-    await _pump(tester, _three());
+    await _pump(tester, _three(), query: 'tab=sent');
 
     // 고른 첫 카드를 풀면 하나 남고 버튼은 꺼진다.
     await tester.tap(_picked().first);
     await tester.pumpAndSettle();
     expect(_picked(), findsOneWidget);
-    expect(_notPicked(), findsNWidgets(2));
+    expect(_notPicked(), findsOneWidget);
     expect(find.text('선택한 1명 비교하기'), findsOneWidget);
 
-    // 다른 카드를 고르면 다시 두 장이다.
-    await tester.tap(_notPicked().last);
+    // 다시 고르면 두 장이다.
+    await tester.tap(_notPicked());
     await tester.pumpAndSettle();
     expect(_picked(), findsNWidgets(2));
     expect(find.text('선택한 2명 비교하기'), findsOneWidget);
   });
 
   testWidgets('a third selection is refused with a message', (tester) async {
-    await _pump(tester, _three());
+    await _pump(tester, _three(), query: 'tab=sent');
+    await tester.tap(find.text('저장 1'));
+    await tester.pumpAndSettle();
 
     await tester.tap(_notPicked());
     await tester.pump();
 
     expect(find.text('비교는 2명까지예요.'), findsOneWidget);
-    expect(_picked(), findsNWidgets(2));
+    expect(_picked(), findsNothing);
     expect(_notPicked(), findsOneWidget);
 
     // 알림은 3초 뒤에 사라진다.
@@ -328,7 +425,7 @@ void main() {
 
   testWidgets('compare is enabled only with two selected cards and shows the '
       'count', (tester) async {
-    final env = await _pump(tester, _three());
+    final env = await _pump(tester, _three(), query: 'tab=sent');
 
     expect(find.text('비교할 후보 2명을 골라 주세요.'), findsNothing);
     await tester.tap(find.text('선택한 2명 비교하기'));
@@ -340,9 +437,9 @@ void main() {
   testWidgets('returning from 04 after a proposal matched refreshes the '
       'list', (tester) async {
     final repo = _three();
-    await _pump(tester, repo);
-    expect(find.text('서로 관심 1'), findsOneWidget);
-    expect(find.text('보낸 관심 1'), findsOneWidget);
+    await _pump(tester, repo, query: 'tab=sent');
+    expect(find.text('서윤의 작은 취향과 서로 관심'), findsOneWidget);
+    expect(find.text('민의 옷장 기록은 상대의 응답을 기다리고 있어요.'), findsOneWidget);
 
     await tester.tap(find.text('선택한 2명 비교하기'));
     await tester.pumpAndSettle();
@@ -366,14 +463,14 @@ void main() {
         .pop();
     await tester.pumpAndSettle();
 
-    expect(find.text('서로 관심 2'), findsOneWidget);
-    expect(find.text('보낸 관심 0'), findsOneWidget);
+    expect(find.text('민의 옷장 기록과 서로 관심'), findsOneWidget);
+    expect(find.textContaining('응답을 기다리고'), findsNothing);
   });
 
   testWidgets('compare is off and explains itself unless two are selected', (
     tester,
   ) async {
-    final env = await _pump(tester, _three());
+    final env = await _pump(tester, _three(), query: 'tab=sent');
     await tester.tap(_picked().first);
     await tester.pumpAndSettle();
 
@@ -386,7 +483,7 @@ void main() {
   testWidgets('selection follows the list order, not the tapping order', (
     tester,
   ) async {
-    final env = await _pump(tester, _three());
+    final env = await _pump(tester, _three(), query: 'tab=sent');
     await tester.tap(_picked().first);
     await tester.pumpAndSettle();
     // 두 번째로 풀린 c1을 다시 고르면 c2, c1 순으로 고른 셈이지만 표는 c1, c2다.
@@ -413,7 +510,7 @@ void main() {
     expect(_picked(), findsNothing);
     expect(_notPicked(), findsNothing);
     expect(find.textContaining('비교'), findsNothing);
-    expect(find.text('저장은 나만 보고, 관심은 상대에게 전해져요.'), findsOneWidget);
+    expect(find.text('저장은 나만 보고, 하트는 상대에게 전해져요.'), findsOneWidget);
   });
 
   testWidgets('the brand description tells to pick candidates to compare', (
@@ -421,13 +518,13 @@ void main() {
   ) async {
     await _pump(tester, _three());
 
-    expect(find.text('저장은 나만 보고, 관심은 상대에게 전해져요. 비교할 후보를 골라요.'), findsOneWidget);
+    expect(find.text('저장은 나만 보고, 하트는 상대에게 전해져요. 비교할 후보를 골라요.'), findsOneWidget);
   });
 
   testWidgets('a mutual candidate shows the box and opens the terms screen', (
     tester,
   ) async {
-    final env = await _pump(tester, _three());
+    final env = await _pump(tester, _three(), query: 'tab=sent');
 
     expect(find.text('서윤의 작은 취향과 서로 관심'), findsOneWidget);
     expect(find.text('민의 옷장 기록은 상대의 응답을 기다리고 있어요.'), findsOneWidget);
@@ -477,8 +574,8 @@ void main() {
     expect(discovery.decisions.single.outcome, SwipeOutcome.like);
     expect(discovery.decisions.single.target.id, 'c3');
     expect(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
-    expect(find.text('보류 0'), findsOneWidget);
-    expect(find.text('보낸 관심 2'), findsOneWidget);
+    expect(find.text('저장 0'), findsOneWidget);
+    expect(find.text('보낸 관심 3'), findsOneWidget);
   });
 
   testWidgets('a held card turned into a like that matches opens the match '
@@ -515,7 +612,7 @@ void main() {
   testWidgets('tapping a card outside the circle opens the creator detail', (
     tester,
   ) async {
-    final env = await _pump(tester, _three());
+    final env = await _pump(tester, _three(), query: 'tab=sent');
 
     await tester.tap(find.text('민의 옷장 기록'));
     await tester.pumpAndSettle();
@@ -523,13 +620,14 @@ void main() {
     expect(env.opened, ['/brand/creators/c2']);
   });
 
-  testWidgets('the creator side opens the campaign for a saved card', (
+  testWidgets('the creator side opens the campaign for a sent-heart card', (
     tester,
   ) async {
     final env = await _pump(
       tester,
       FakeInterestsRepository(cards: [campaignCard('k1', name: '모아 스튜디오')]),
       isBrand: false,
+      query: 'tab=sent',
     );
 
     await tester.tap(find.text('모아 스튜디오'));
@@ -542,9 +640,16 @@ void main() {
     await _pump(tester, FakeInterestsRepository());
 
     expect(find.byType(CoraStateView), findsOneWidget);
-    expect(find.text('아직 담은 후보가 없어요.'), findsOneWidget);
-    expect(find.text('발견에서 마음에 드는 카드를 오른쪽으로 밀어 보세요.'), findsOneWidget);
+    expect(find.text('아직 저장한 후보가 없어요.'), findsOneWidget);
+    expect(find.text('카드를 위로 밀거나 저장 버튼을 눌러 보세요.'), findsOneWidget);
+    // 둘러보기로 가는 버튼은 사장님의 저장함에만 있다.
+    expect(find.text('전체 둘러보기'), findsNothing);
     expect(find.textContaining('비교하기'), findsNothing);
+
+    await tester.tap(find.text('보낸 관심 0'));
+    await tester.pumpAndSettle();
+    expect(find.text('아직 보낸 하트가 없어요.'), findsOneWidget);
+    expect(find.text('카드를 오른쪽으로 밀거나 하트 버튼을 눌러 보세요.'), findsOneWidget);
   });
 
   testWidgets('an empty tab shows the empty message but keeps the tabs', (
@@ -555,18 +660,21 @@ void main() {
       FakeInterestsRepository(cards: [brandCard('c2', name: '민의 옷장 기록')]),
     );
 
-    await tester.tap(find.text('보류 0'));
-    await tester.pumpAndSettle();
+    // 저장한 카드가 없는 첫 탭은 비어 있고, 탭은 그대로다.
+    expect(find.text('아직 저장한 후보가 없어요.'), findsOneWidget);
+    expect(find.text('저장 0'), findsOneWidget);
+    expect(find.text('보낸 관심 1'), findsOneWidget);
 
-    expect(find.text('아직 담은 후보가 없어요.'), findsOneWidget);
-    expect(find.text('저장 1'), findsOneWidget);
+    await tester.tap(find.text('보낸 관심 1'));
+    await tester.pumpAndSettle();
+    expect(find.text('민의 옷장 기록'), findsOneWidget);
   });
 
   testWidgets('a failed load can be retried', (tester) async {
     final repo = FakeInterestsRepository(
       cards: [brandCard('c2', name: '민의 옷장 기록')],
     )..failFetch = true;
-    await _pump(tester, repo);
+    await _pump(tester, repo, query: 'tab=sent');
 
     expect(find.text('관심 목록을 불러오지 못했어요'), findsOneWidget);
 
@@ -638,7 +746,7 @@ void main() {
       expect(find.text('서로를 골랐어요.'), findsNothing);
       expect(find.text('잠시 뒤 다시 시도해 주세요.'), findsOneWidget);
       // 03은 그대로 남아 있다.
-      expect(find.text('저장 3'), findsOneWidget);
+      expect(find.text('저장 1'), findsOneWidget);
     });
   });
 
@@ -661,7 +769,7 @@ void main() {
     }
 
     FakeInterestsRepository creatorRepo() => FakeInterestsRepository(
-      cards: [campaignCard('k1', name: '모아 스튜디오')],
+      cards: [campaignCard('k1', name: '모아 스튜디오', state: InterestState.held)],
       match: matchInfo(isBrand: false),
     );
 
@@ -747,7 +855,7 @@ void main() {
     await _pump(tester, _three(), theme: coraDarkTheme);
 
     final tab = find
-        .ancestor(of: find.text('저장 3'), matching: find.byType(DecoratedBox))
+        .ancestor(of: find.text('저장 1'), matching: find.byType(DecoratedBox))
         .first;
     final box = tester.widget<DecoratedBox>(tab).decoration as BoxDecoration;
     expect(box.color, CoraColors.dark.quietSelected);
@@ -764,7 +872,8 @@ void main() {
       routes: [
         GoRoute(
           path: AppRoutes.brandInterests,
-          builder: (context, state) => const InterestsPage(isBrand: true),
+          builder: (context, state) =>
+              const InterestsPage(isBrand: true, initialTab: InterestTab.sent),
         ),
         GoRoute(
           path: AppRoutes.brandCreatorPattern,
@@ -780,6 +889,9 @@ void main() {
       ProviderScope(
         overrides: [
           interestsRepositoryProvider.overrideWithValue(_three()),
+          negotiationRepositoryProvider.overrideWithValue(
+            FakeNegotiationRepository(),
+          ),
           discoveryRepositoryProvider.overrideWithValue(
             FakeDiscoveryRepository(),
           ),
@@ -800,9 +912,9 @@ void main() {
   testWidgets('the tabs and the terms link have screen reader names', (
     tester,
   ) async {
-    await _pump(tester, _three());
+    await _pump(tester, _three(), query: 'tab=sent');
 
-    for (final label in ['저장 3', '서로 관심 1', '보낸 관심 1', '보류 1']) {
+    for (final label in ['저장 1', '보낸 관심 2', '보낸 제안 0']) {
       expect(find.bySemanticsLabel(label), findsOneWidget, reason: label);
     }
     expect(find.bySemanticsLabel('협업 조건 확인'), findsOneWidget);
@@ -824,7 +936,7 @@ void main() {
     expect(discovery.decisions.single.outcome, SwipeOutcome.pass);
     expect(find.text('넘겼어요. 상대에게는 알리지 않아요.'), findsOneWidget);
     expect(find.text('하루 한 컵'), findsNothing);
-    expect(find.text('저장 2'), findsOneWidget);
+    expect(find.text('저장 0'), findsOneWidget);
   });
 
   testWidgets('a held card turned into a like without a reload moves to the '
@@ -840,7 +952,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('하트를 보냈어요. 상대도 고르면 알려드려요.'), findsOneWidget);
-    expect(find.text('보류 0'), findsOneWidget);
-    expect(find.text('보낸 관심 2'), findsOneWidget);
+    expect(find.text('저장 0'), findsOneWidget);
+    expect(find.text('보낸 관심 3'), findsOneWidget);
   });
 }

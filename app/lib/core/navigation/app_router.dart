@@ -60,6 +60,9 @@ import '../../features/wallet/presentation/pages/wallet_page.dart';
 import '../../features/offers/presentation/pages/send_offer_page.dart';
 import '../../features/store_browse/presentation/pages/store_detail_page.dart';
 import '../../features/store_discover/presentation/pages/store_discover_page.dart';
+import '../../features/store_interests/presentation/pages/store_interests_page.dart';
+import '../../features/store_interests/presentation/viewmodels/store_interests_view_model.dart'
+    show StoreInterestTab;
 import '../../features/store_home/presentation/pages/store_home_page.dart';
 import '../../features/trial_compare/presentation/pages/trial_compare_page.dart';
 import '../../features/view_report/presentation/pages/view_evidence_page.dart';
@@ -409,11 +412,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             CoraTransitions.push(const StoreDiscoverPage(), key: state.pageKey),
       ),
-      // 사장님의 저장함(G2)은 다음 작업이 화면과 함께 만든다. 그 전까지는 준비 중 화면이다.
+      // 사장님의 저장함(G2). 둘러보기 머리의 북마크와 알림이 연다. `?tab=saved|sent|offers`가 처음 탭이다.
       GoRoute(
         path: AppRoutes.storeInterests,
         pageBuilder: (context, state) => CoraTransitions.push(
-          const CoraComingSoonPage(title: '저장함'),
+          StoreInterestsPage(
+            initialTab: StoreInterestTab.fromQuery(
+              state.uri.queryParameters[AppRoutes.tabParam],
+            ),
+          ),
           key: state.pageKey,
         ),
       ),

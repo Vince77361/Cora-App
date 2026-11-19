@@ -122,7 +122,7 @@ abstract final class AppRoutes {
   /// [brandCreator]의 라우트 패턴.
   static const brandCreatorPattern = '/brand/creators/:id';
 
-  /// 관심·보류 목록(03).
+  /// 저장함(03).
   static const brandInterests = '/brand/interests';
 
   /// 03의 저장 탭. 01의 `저장한 후보 보기`가 연다.
@@ -136,7 +136,7 @@ abstract final class AppRoutes {
   static String brandMatch(String collaborationId) =>
       '$brandInterests?$matchParam=${Uri.encodeQueryComponent(collaborationId)}';
 
-  /// 03이 읽는 쿼리 이름. `tab`은 처음 고를 탭(`saved`, `mutual`, `sent`, `held`), `match`는 시트로 열 협업.
+  /// 03이 읽는 쿼리 이름. `tab`은 처음 고를 탭(`saved`, `sent`, 브랜드만 `proposals`), `match`는 시트로 열 협업.
   static const tabParam = 'tab';
   static const matchParam = 'match';
 
@@ -147,11 +147,11 @@ abstract final class AppRoutes {
   /// [brandCompare]의 라우트 패턴(쿼리는 패턴에 쓰지 않는다).
   static const brandComparePattern = '$brandInterests/compare';
 
-  /// 크리에이터의 관심·보류 목록(03, 크리에이터 쪽).
+  /// 크리에이터의 저장함(03, 크리에이터 쪽).
   static const creatorInterests = '/creator/interests';
 
-  /// 크리에이터의 03 저장(`held`) 탭. 08의 저장 알림 `저장함`이 연다.
-  static const creatorHeld = '$creatorInterests?$tabParam=held';
+  /// 크리에이터의 03 저장 탭. 08의 저장 알림 `저장함`이 연다.
+  static const creatorSaved = '$creatorInterests?$tabParam=saved';
 
   /// 크리에이터의 03 보낸 관심 탭. 08의 하트 알림 `보낸 관심`이 연다.
   static const creatorSent = '$creatorInterests?$tabParam=sent';
