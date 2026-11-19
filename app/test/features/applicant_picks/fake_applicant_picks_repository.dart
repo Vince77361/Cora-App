@@ -120,8 +120,6 @@ class FakeApplicantPicksRepository implements ApplicantPicksRepository {
   PicksSource source;
   int fetchCalls = 0;
   bool failFetch = false;
-  bool failSkip = false;
-  final skipped = <String>[];
 
   @override
   Future<ApplicantPicks> fetchPicks() async {
@@ -132,11 +130,5 @@ class FakeApplicantPicksRepository implements ApplicantPicksRepository {
       totalNew: totalNew,
       source: source,
     );
-  }
-
-  @override
-  Future<void> skip(String applicationId) async {
-    if (failSkip) throw const ApplicantPicksFailure();
-    skipped.add(applicationId);
   }
 }

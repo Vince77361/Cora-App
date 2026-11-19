@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/ui/cora_state_view.dart';
+import 'package:cora/features/store_home/presentation/pages/store_applicants_page.dart';
 import 'package:cora/features/store_onboarding/presentation/viewmodels/my_store_view_model.dart';
 import 'package:cora/features/trial_compare/domain/trial_info.dart';
 import 'package:cora/features/trial_compare/presentation/pages/trial_compare_page.dart';
@@ -110,26 +111,39 @@ void main() {
     expect(find.text('잠시 문제가 생겼어요. 다시 시도해 주세요.'), findsOneWidget);
   });
 
-  testWidgets(
-    'G3 sends the next month offer through the picks when somebody applied',
-    (tester) async {
-      await pumpTrialCompare(
-        tester,
-        home: FakeStoreHomeRepository(applicants: sampleApplicants()),
-      );
+  testWidgets('G3 opens the applicants screen to send the next month offer '
+      'when somebody applied', (tester) async {
+    await pumpTrialCompare(
+      tester,
+      home: FakeStoreHomeRepository(applicants: sampleApplicants()),
+    );
 
-      await tester.tap(find.text('다음 달은 Cora로 오퍼 보내기'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('다음 달은 Cora로 오퍼 보내기'));
+    await tester.pumpAndSettle();
 
-      expect(topPath(tester), AppRoutes.storeApplicantPicks);
-      expect(find.text('좋아요하고 오퍼'), findsOneWidget);
-    },
-  );
+    expect(topPath(tester), AppRoutes.storeApplicants);
+    expect(find.byType(StoreApplicantsPage), findsOneWidget);
+  });
 
   testWidgets('G3 goes to the applicants screen when nobody applied yet', (
     tester,
   ) async {
     await pumpTrialCompare(tester, home: FakeStoreHomeRepository());
+
+    await tester.tap(find.text('다음 달은 Cora로 오퍼 보내기'));
+    await tester.pumpAndSettle();
+
+    expect(topPath(tester), AppRoutes.storeApplicants);
+  });
+
+  testWidgets('G3 still opens the applicants screen when the new applications '
+      'cannot be read', (tester) async {
+    // 지원 줄은 있지만 프로필이 모두 지워진 경계(홈 추천 출처 ALL)나 홈 읽기 실패에서도 막다른 곳이 없다.
+    await pumpTrialCompare(
+      tester,
+      home: FakeStoreHomeRepository(applicants: sampleApplicants())
+        ..failFetch = true,
+    );
 
     await tester.tap(find.text('다음 달은 Cora로 오퍼 보내기'));
     await tester.pumpAndSettle();

@@ -44,10 +44,6 @@ class ApiApplicantPicksRepository implements ApplicantPicksRepository {
     );
   });
 
-  @override
-  Future<void> skip(String applicationId) =>
-      _guard(() => _applications.skipRecommendedApplicant(applicationId));
-
   /// 어떤 실패든 [ApplicantPicksFailure] 하나로 모은다. 서버 오류 본문과 예외 메시지는 버린다.
   static Future<T> _guard<T>(Future<T> Function() call) async {
     try {

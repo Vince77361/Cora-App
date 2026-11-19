@@ -87,9 +87,6 @@ abstract final class AppRoutes {
   /// 지원자 목록. 사장님 홈의 `지원자 보기`와 지원 알림이 연다(홈 위로 밀려 들어온다).
   static const storeApplicants = '/store/applicants';
 
-  /// 지원자 추천 3명을 한 장씩 보는 옛 화면(G2). 홈에서 가는 길은 없어졌고 마지막 작업에서 지운다.
-  static const storeApplicantPicks = '/store/applicants/picks';
-
   /// 지난 3개월 비교(G3)와 체험단 계약 정보 입력. 홈의 체험단 줄과 내 가게가 연다.
   static const storeTrialCompare = '/store/trial-compare';
   static const storeTrialInfo = '/store/me/trial-info';

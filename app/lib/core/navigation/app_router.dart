@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/applicant_picks/presentation/pages/applicant_picks_page.dart';
 import '../../features/auth/domain/auth_session.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/phone_verify_page.dart';
@@ -489,14 +488,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.storeApplicants,
         pageBuilder: (context, state) => CoraTransitions.push(
           const StoreApplicantsPage(),
-          key: state.pageKey,
-        ),
-      ),
-      // 지원자 추천(G2). 옛 한 장씩 보는 화면이다.
-      GoRoute(
-        path: AppRoutes.storeApplicantPicks,
-        pageBuilder: (context, state) => CoraTransitions.push(
-          const ApplicantPicksPage(),
           key: state.pageKey,
         ),
       ),

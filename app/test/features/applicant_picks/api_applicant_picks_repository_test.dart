@@ -108,26 +108,11 @@ void main() {
     },
   );
 
-  test('skips a pick with a POST', () async {
-    final fake = FakeHttpClient()
-      ..statusCode = 204
-      ..body = '';
-
-    await _repo(fake).skip('a1');
-
-    expect(fake.requests.single.method, 'POST');
-    expect(fake.requests.single.url.path, '/stores/me/applications/a1/skip');
-  });
-
   test('maps any failure to a plain failure', () async {
     final fake = FakeHttpClient()
       ..statusCode = 404
       ..body = '{"error":{"code":"NOT_FOUND","message":"없어요","details":null}}';
 
-    await expectLater(
-      _repo(fake).skip('a1'),
-      throwsA(isA<ApplicantPicksFailure>()),
-    );
     await expectLater(
       _repo(fake).fetchPicks(),
       throwsA(isA<ApplicantPicksFailure>()),

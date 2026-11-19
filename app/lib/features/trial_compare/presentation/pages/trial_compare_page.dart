@@ -11,7 +11,6 @@ import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_pill_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
-import '../../../store_home/presentation/viewmodels/store_home_view_model.dart';
 import '../../domain/trial_compare_repository.dart';
 import '../../domain/trial_comparison.dart';
 import '../trial_compare_text.dart';
@@ -83,23 +82,9 @@ class _TrialComparePageState extends ConsumerState<TrialComparePage> {
     _leave();
   }
 
-  /// `다음 달은 Cora로 오퍼 보내기`: 새 지원이 있으면 추천(G2)으로, 없으면 지원자 화면으로 간다. 받는 사람이
-  /// 없으면 오퍼 보내기(A5)를 열 수 없다.
-  Future<void> _sendNext() async {
-    var hasApplicants = false;
-    try {
-      final home = await ref.read(storeHomeViewModelProvider.future);
-      hasApplicants = home.summary.newApplications > 0;
-    } on Object {
-      hasApplicants = false;
-    }
-    if (!mounted) return;
-    if (hasApplicants) {
-      context.push(AppRoutes.storeApplicantPicks);
-    } else {
-      context.push(AppRoutes.storeApplicants);
-    }
-  }
+  /// `다음 달은 Cora로 오퍼 보내기`: 지원자 보기로 간다. 새 지원이 있든 없든(지원 줄은 있으나 프로필이 모두 지워진
+  /// 경계 포함) 같은 곳이라 홈의 숫자를 읽지 않는다. 받는 사람이 없어도 그 화면이 빈 상태를 보여 준다.
+  void _sendNext() => context.push(AppRoutes.storeApplicants);
 
   @override
   Widget build(BuildContext context) {
