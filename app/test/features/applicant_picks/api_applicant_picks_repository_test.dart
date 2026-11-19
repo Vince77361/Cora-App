@@ -32,16 +32,19 @@ void main() {
     () async {
       final fake = FakeHttpClient()
         ..body = jsonEncode({
+          'source': 'APPLICANTS',
           'totalNew': 5,
           'items': [
             {
               'applicationId': 'a1',
+              'appliedAt': '2026-11-11T00:01:00.000Z',
               'creator': _creator(instagramConnected: true, followers: 640),
               'pitch': '한 줄',
               'reasons': ['같은 구·군'],
             },
             {
               'applicationId': 'a2',
+              'appliedAt': '2026-11-11T00:02:00.000Z',
               // 연동을 끊은 크리에이터의 오래된 팔로워 값은 보이지 않는다.
               'creator': _creator(instagramConnected: false, followers: 900),
               'pitch': null,
@@ -61,6 +64,31 @@ void main() {
       expect(picks.items.first.reasons, ['같은 구·군']);
       expect(picks.items.last.creator.followers, isNull);
       expect(picks.items.last.pitch, isNull);
+    },
+  );
+
+  test(
+    'leaves out picks taken from all creators, which have no application',
+    () async {
+      final fake = FakeHttpClient()
+        ..body = jsonEncode({
+          'source': 'ALL',
+          'totalNew': 0,
+          'items': [
+            {
+              'applicationId': null,
+              'appliedAt': null,
+              'creator': _creator(instagramConnected: true, followers: 640),
+              'pitch': null,
+              'reasons': [],
+            },
+          ],
+        });
+
+      final picks = await _repo(fake).fetchPicks();
+
+      expect(picks.items, isEmpty);
+      expect(picks.totalNew, 0);
     },
   );
 

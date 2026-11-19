@@ -4764,7 +4764,15 @@
       "RecommendedApplicantModel": {
         "properties": {
           "applicationId": {
+            "description": "지원 번호. 전체 크리에이터에서 뽑은 사람(ALL)은 null.",
             "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "appliedAt": {
+            "description": "지원한 시각(ISO 8601). 전체 크리에이터에서 뽑은 사람은 null.",
+            "format": "date-time",
+            "nullable": true,
             "type": "string"
           },
           "creator": {
@@ -4786,6 +4794,7 @@
         "required": [
           "applicationId",
           "creator",
+          "appliedAt",
           "pitch",
           "reasons"
         ],
@@ -4794,22 +4803,39 @@
       "RecommendedApplicantsModel": {
         "properties": {
           "items": {
-            "description": "점수 높은 순 최대 3명. 추천에서 넘긴 지원은 뺀다.",
+            "description": "점수 높은 순 최대 3명.",
             "items": {
               "$ref": "#/components/schemas/RecommendedApplicantModel"
             },
             "type": "array"
           },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecommendedSource"
+              }
+            ],
+            "description": "APPLICANTS = 이 가게에 지원 중인 사람 중에서, ALL = 지원자가 없어 Cora 크리에이터 전체에서 뽑았다."
+          },
           "totalNew": {
-            "description": "지원 중인 새 지원자 수(추천에서 넘긴 사람도 센다).",
+            "description": "지원 중인 새 지원자 수. ALL이면 0이다.",
             "type": "integer"
           }
         },
         "required": [
+          "source",
           "totalNew",
           "items"
         ],
         "type": "object"
+      },
+      "RecommendedSource": {
+        "description": "APPLICANTS = 이 가게에 지원 중인 사람 중에서, ALL = 지원자가 없어 Cora 크리에이터 전체에서 뽑았다.",
+        "enum": [
+          "APPLICANTS",
+          "ALL"
+        ],
+        "type": "string"
       },
       "ReplaceFeaturedPostsDto": {
         "properties": {

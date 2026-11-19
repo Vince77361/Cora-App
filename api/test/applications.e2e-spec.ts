@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { IndustryCategory, PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { PushPort } from '../src/integrations/push/push.port';
 import { createTestApp, httpOf } from './helpers/create-test-app';
@@ -565,9 +565,11 @@ describe('applications', () => {
         .set(auth);
 
     interface RecommendedBody {
+      source: 'APPLICANTS' | 'ALL';
       totalNew: number;
       items: {
-        applicationId: string;
+        applicationId: string | null;
+        appliedAt: string | null;
         pitch: string | null;
         reasons: string[];
         creator: { displayName: string; followers: number | null };
@@ -597,9 +599,11 @@ describe('applications', () => {
       const body = res.body as RecommendedBody;
       // 성동 3+2+1+2=8, 강남 1, 부산 한 줄 1, 부산 0. 강남과 부산 한 줄은 먼저 지원한 순이다.
       expect(names(body)).toEqual(['성동', '강남', '부산 한 줄']);
+      expect(body.source).toBe('APPLICANTS');
       expect(body.totalNew).toBe(4);
       expect(body.items[0]).toEqual({
         applicationId: expect.any(String) as string,
+        appliedAt: at(3).toISOString(),
         creator: expect.objectContaining({ displayName: '성동' }) as unknown,
         pitch: '김 오르는 첫 숟가락을 찍을게요',
         reasons: [
@@ -662,16 +666,18 @@ describe('applications', () => {
 
     it('returns fewer than three, and an empty list with a zero total, when fewer applied', async () => {
       expect((await recommended().expect(200)).body).toEqual({
+        source: 'ALL',
         totalNew: 0,
         items: [],
       });
       await seedApplicant(storeId, '한 명', BUSAN);
       const body = (await recommended().expect(200)).body as RecommendedBody;
+      expect(body.source).toBe('APPLICANTS');
       expect(body.totalNew).toBe(1);
       expect(names(body)).toEqual(['한 명']);
     });
 
-    it('leaves a skipped applicant out of the picks but in the applicant list', async () => {
+    it('ignores the old skipped-from-picks mark', async () => {
       const near = await seedApplicant(
         storeId,
         '성동',
@@ -682,18 +688,162 @@ describe('applications', () => {
       await seedApplicant(storeId, '부산', BUSAN, 'APPLIED', at(2));
       await skip(near).expect(204);
       const body = (await recommended().expect(200)).body as RecommendedBody;
-      expect(names(body)).toEqual(['부산']);
+      expect(names(body)).toEqual(['성동', '부산']);
       expect(body.totalNew).toBe(2);
       const row = await prisma.application.findUniqueOrThrow({
         where: { id: near },
       });
       expect(row.status).toBe('APPLIED');
       expect(row.skippedFromPicksAt).not.toBeNull();
-      const list = (await applicants().expect(200)).body as ApplicantBody[];
-      expect(list.map((a) => a.creator.displayName).sort()).toEqual([
-        '부산',
-        '성동',
-      ]);
+    });
+
+    describe('when nobody applied', () => {
+      // 대표 게시물이 있는 크리에이터를 DB에 바로 만든다. 가입 시각은 같은 점수의 순서를 정하는 값이다.
+      async function seedPooled(
+        name: string,
+        region: { regionSido: string; regionSigungu: string | null },
+        opts: {
+          joinedMinute?: number;
+          // 대표 게시물 1번의 한 줄(없으면 한 줄 없는 게시물).
+          line?: string;
+          noPost?: boolean;
+          blocked?: IndustryCategory[];
+          followers?: number;
+        } = {},
+      ): Promise<string> {
+        const userId = randomUUID();
+        const joined = at(opts.joinedMinute ?? 0);
+        await prisma.user.create({
+          data: { id: userId, role: 'CREATOR', createdAt: joined },
+        });
+        await prisma.creatorProfile.create({
+          data: { userId, displayName: name, ...region },
+        });
+        if (!opts.noPost) {
+          await prisma.featuredPost.create({
+            data: {
+              creatorId: userId,
+              position: 1,
+              source: 'GALLERY',
+              kind: 'PHOTO',
+              mediaPath: `featured-posts/${userId}/a.jpg`,
+              caption: opts.line ?? null,
+            },
+          });
+        }
+        if (opts.blocked) {
+          await prisma.creatorPrinciples.create({
+            data: {
+              creatorId: userId,
+              fields: [],
+              blockedIndustries: opts.blocked,
+              faceOk: false,
+              scriptOk: true,
+              honestReview: true,
+              feeBand: 'W300K',
+              trialDays: 'D7',
+            },
+          });
+        }
+        if (opts.followers !== undefined) {
+          await prisma.instagramConnection.create({
+            data: {
+              creatorId: userId,
+              handle: `h_${userId.slice(0, 8)}`,
+              followers: opts.followers,
+              refreshedAt: joined,
+            },
+          });
+        }
+        return userId;
+      }
+
+      it('falls back to the best three of all creators with a featured post, without application ids', async () => {
+        await seedPooled('부산 최근', BUSAN, { joinedMinute: 9 });
+        await seedPooled('부산 중간', BUSAN, { joinedMinute: 5 });
+        await seedPooled('부산 오래', BUSAN, { joinedMinute: 1 });
+        await seedPooled('강남', GANGNAM, { joinedMinute: 2, followers: 77 });
+        await seedPooled('성동', SEONGDONG, {
+          joinedMinute: 3,
+          line: '성수 한 컷',
+        });
+        const body = (await recommended().expect(200)).body as RecommendedBody;
+        // 성동 3+1, 강남 1, 부산끼리는 점수가 같아 가장 최근에 가입한 순이다.
+        expect(body.source).toBe('ALL');
+        expect(body.totalNew).toBe(0);
+        expect(names(body)).toEqual(['성동', '강남', '부산 최근']);
+        expect(body.items[0]).toMatchObject({
+          applicationId: null,
+          appliedAt: null,
+          pitch: null,
+          reasons: ['같은 동네예요'],
+        });
+        // 팔로워는 점수에 안 들지만 화면에는 그대로 보인다.
+        expect(body.items[1].creator.followers).toBe(77);
+      });
+
+      // 지원 행을 직접 만든 크리에이터에게도 대표 게시물을 붙인다(없으면 어차피 풀에 못 든다).
+      async function seedAppliedWithPost(
+        forStoreId: string,
+        name: string,
+        status: 'APPLIED' | 'OFFERED' | 'CANCELLED',
+        minute: number,
+      ): Promise<void> {
+        const { userId } = await seedApplicantWithUser(
+          forStoreId,
+          name,
+          BUSAN,
+          status,
+          at(minute),
+          {},
+        );
+        await prisma.featuredPost.create({
+          data: {
+            creatorId: userId,
+            position: 1,
+            source: 'GALLERY',
+            kind: 'PHOTO',
+            mediaPath: `featured-posts/${userId}/a.jpg`,
+          },
+        });
+      }
+
+      it('excludes creators who avoid the store industry, have no featured post, or already have an open offer', async () => {
+        // 내 가게는 음식·카페 업종이다.
+        await seedPooled('보이는 사람', BUSAN, { joinedMinute: 1 });
+        await seedPooled('업종을 피함', SEONGDONG, { blocked: ['FOOD_CAFE'] });
+        await seedPooled('게시물 없음', SEONGDONG, { noPost: true });
+        await seedAppliedWithPost(storeId, '오퍼 받음', 'OFFERED', 5);
+        const working = await seedPooled('협업 중', SEONGDONG);
+        await seedCollaboration(working, 'COUNTING');
+        // 지원을 취소했거나 다른 가게에 지원한 사람은 나온다.
+        await seedAppliedWithPost(storeId, '취소함', 'CANCELLED', 6);
+        const other = await seedStore();
+        await seedAppliedWithPost(other.id, '다른 가게 지원', 'APPLIED', 7);
+        const body = (await recommended().expect(200)).body as RecommendedBody;
+        expect(body.source).toBe('ALL');
+        expect(names(body).sort()).toEqual(
+          ['다른 가게 지원', '보이는 사람', '취소함'].sort(),
+        );
+      });
+
+      it('is stable across calls on the same day, and switches to the applicants once someone applies', async () => {
+        for (let i = 0; i < 5; i += 1) {
+          await seedPooled(`부산 ${i}`, BUSAN, { joinedMinute: i });
+        }
+        const first = (await recommended().expect(200)).body as RecommendedBody;
+        const second = (await recommended().expect(200))
+          .body as RecommendedBody;
+        expect(first.items).toHaveLength(3);
+        expect(second).toEqual(first);
+
+        await seedApplicant(storeId, '지원자', BUSAN, 'APPLIED', at(30));
+        const after = (await recommended().expect(200)).body as RecommendedBody;
+        expect(after.source).toBe('APPLICANTS');
+        expect(names(after)).toEqual(['지원자']);
+        expect(after.items[0].applicationId).toEqual(expect.any(String));
+        expect(after.items[0].appliedAt).toBe(at(30).toISOString());
+      });
     });
 
     it('keeps the first skip time when skipping twice', async () => {

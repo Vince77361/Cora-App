@@ -14,13 +14,17 @@ class RecommendedApplicantsModel {
   /// Returns a new [RecommendedApplicantsModel] instance.
   RecommendedApplicantsModel({
     this.items = const [],
+    required this.source_,
     required this.totalNew,
   });
 
-  /// 점수 높은 순 최대 3명. 추천에서 넘긴 지원은 뺀다.
+  /// 점수 높은 순 최대 3명.
   List<RecommendedApplicantModel> items;
 
-  /// 지원 중인 새 지원자 수(추천에서 넘긴 사람도 센다).
+  /// APPLICANTS = 이 가게에 지원 중인 사람 중에서, ALL = 지원자가 없어 Cora 크리에이터 전체에서 뽑았다.
+  RecommendedSource source_;
+
+  /// 지원 중인 새 지원자 수. ALL이면 0이다.
   int totalNew;
 
   @override
@@ -28,20 +32,22 @@ class RecommendedApplicantsModel {
       identical(this, other) ||
       other is RecommendedApplicantsModel &&
           _deepEquality.equals(other.items, items) &&
+          other.source_ == source_ &&
           other.totalNew == totalNew;
 
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
-      (items.hashCode) + (totalNew.hashCode);
+      (items.hashCode) + (source_.hashCode) + (totalNew.hashCode);
 
   @override
   String toString() =>
-      'RecommendedApplicantsModel[items=$items, totalNew=$totalNew]';
+      'RecommendedApplicantsModel[items=$items, source_=$source_, totalNew=$totalNew]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
     json[r'items'] = this.items;
+    json[r'source'] = this.source_;
     json[r'totalNew'] = this.totalNew;
     return json;
   }
@@ -61,6 +67,10 @@ class RecommendedApplicantsModel {
             'Required key "RecommendedApplicantsModel[items]" is missing from JSON.');
         assert(json[r'items'] != null,
             'Required key "RecommendedApplicantsModel[items]" has a null value in JSON.');
+        assert(json.containsKey(r'source'),
+            'Required key "RecommendedApplicantsModel[source]" is missing from JSON.');
+        assert(json[r'source'] != null,
+            'Required key "RecommendedApplicantsModel[source]" has a null value in JSON.');
         assert(json.containsKey(r'totalNew'),
             'Required key "RecommendedApplicantsModel[totalNew]" is missing from JSON.');
         assert(json[r'totalNew'] != null,
@@ -70,6 +80,7 @@ class RecommendedApplicantsModel {
 
       return RecommendedApplicantsModel(
         items: RecommendedApplicantModel.listFromJson(json[r'items']),
+        source_: RecommendedSource.fromJson(json[r'source'])!,
         totalNew: mapValueOfType<int>(json, r'totalNew')!,
       );
     }
@@ -128,6 +139,7 @@ class RecommendedApplicantsModel {
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
     'items',
+    'source',
     'totalNew',
   };
 }

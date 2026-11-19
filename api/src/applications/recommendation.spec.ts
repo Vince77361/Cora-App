@@ -1,10 +1,11 @@
 import {
   INDUSTRY_KEYWORDS,
+  pickFromAllCreators,
   pickRecommended,
   reasonsFor,
   scoreApplicant,
 } from './recommendation';
-import type { Candidate } from './recommendation';
+import type { AllPoolCandidate, Candidate } from './recommendation';
 
 const STORE = {
   regionSido: '서울특별시',
@@ -25,7 +26,6 @@ function candidate(id: string, minute: number, over: Partial<Candidate> = {}) {
     ...BASE,
     id,
     createdAt: new Date(Date.UTC(2026, 10, 11, 0, minute)),
-    skippedFromPicksAt: null,
     ...over,
   } satisfies Candidate;
 }
@@ -169,18 +169,71 @@ describe('recommendation', () => {
     expect(pickRecommended([], STORE)).toEqual([]);
   });
 
-  it('leaves a skipped applicant out of the picks', () => {
-    const picked = pickRecommended(
+  it('does not know the old skipped-from-picks mark', () => {
+    // 한 장씩 보는 화면이 없어져 넘긴 표시는 점수·순서에 쓰이지 않는다(옛 행에 값이 남아 있어도 그대로 뽑힌다).
+    const marked = {
+      ...candidate('marked', 1, {
+        regionSido: '서울특별시',
+        regionSigungu: '성동구',
+      }),
+      skippedFromPicksAt: new Date(),
+    };
+    const picked = pickRecommended([marked, candidate('other', 2)], STORE);
+    expect(picked.map((c) => c.id)).toEqual(['marked', 'other']);
+  });
+});
+
+function poolMember(
+  id: string,
+  joinedMinute: number,
+  over: Partial<AllPoolCandidate> = {},
+): AllPoolCandidate {
+  return {
+    ...BASE,
+    id,
+    joinedAt: new Date(Date.UTC(2026, 10, 11, 0, joinedMinute)),
+    ...over,
+  };
+}
+
+describe('pickFromAllCreators', () => {
+  it('orders by score, then the most recent join, then id', () => {
+    const picked = pickFromAllCreators(
       [
-        candidate('skipped', 1, {
+        poolMember('old', 1),
+        poolMember('new', 9),
+        poolMember('mid-b', 5),
+        poolMember('mid-a', 5),
+        poolMember('local', 0, {
           regionSido: '서울특별시',
           regionSigungu: '성동구',
-          skippedFromPicksAt: new Date(),
         }),
-        candidate('kept', 2),
       ],
       STORE,
+      10,
     );
-    expect(picked.map((c) => c.id)).toEqual(['kept']);
+    expect(picked.map((c) => c.id)).toEqual([
+      'local',
+      'new',
+      'mid-a',
+      'mid-b',
+      'old',
+    ]);
+  });
+
+  it('counts a featured-post line as the pitch point', () => {
+    const picked = pickFromAllCreators(
+      [poolMember('plain', 9), poolMember('lined', 1, { hasPitch: true })],
+      STORE,
+    );
+    expect(picked.map((c) => c.id)).toEqual(['lined', 'plain']);
+  });
+
+  it('returns at most three and does not change the input', () => {
+    const many = ['a', 'b', 'c', 'd', 'e'].map((id, i) => poolMember(id, i));
+    const before = many.map((c) => c.id);
+    expect(pickFromAllCreators(many, STORE)).toHaveLength(3);
+    expect(many.map((c) => c.id)).toEqual(before);
+    expect(pickFromAllCreators([], STORE)).toEqual([]);
   });
 });

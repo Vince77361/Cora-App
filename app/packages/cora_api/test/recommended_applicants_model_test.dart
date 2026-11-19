@@ -16,13 +16,19 @@ void main() {
   // final instance = RecommendedApplicantsModel();
 
   group('test RecommendedApplicantsModel', () {
-    // 점수 높은 순 최대 3명. 추천에서 넘긴 지원은 뺀다.
+    // 점수 높은 순 최대 3명.
     // List<RecommendedApplicantModel> items (default value: const [])
     test('to test the property `items`', () async {
       // TODO
     });
 
-    // 지원 중인 새 지원자 수(추천에서 넘긴 사람도 센다).
+    // APPLICANTS = 이 가게에 지원 중인 사람 중에서, ALL = 지원자가 없어 Cora 크리에이터 전체에서 뽑았다.
+    // RecommendedSource source_
+    test('to test the property `source_`', () async {
+      // TODO
+    });
+
+    // 지원 중인 새 지원자 수. ALL이면 0이다.
     // int totalNew
     test('to test the property `totalNew`', () async {
       // TODO

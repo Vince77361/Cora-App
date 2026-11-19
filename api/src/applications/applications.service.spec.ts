@@ -6,6 +6,7 @@ import { FakeVisibility } from '../../test/support/fake-visibility';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { AppError } from '../common/errors/app-error';
 import { CreatorsService } from '../creators/creators.service';
+import type { CreatorCardSource } from '../creators/dto/creator-card-source';
 import type {
   CreatorProfileModel,
   CreatorSummaryModel,
@@ -166,6 +167,9 @@ class FakeCollaborations extends CollaborationsRepository {
     super(null as never, null as never);
   }
 
+  // 끝나지 않은 협업이 있는 크리에이터(가게 주인이 맡긴 것).
+  readonly open = new Set<string>();
+
   countByCreators(creatorIds: string[]): Promise<Map<string, number>> {
     const map = new Map<string, number>();
     for (const id of creatorIds) {
@@ -173,6 +177,15 @@ class FakeCollaborations extends CollaborationsRepository {
       if (n) map.set(id, n);
     }
     return Promise.resolve(map);
+  }
+
+  listOpenCreatorIds(
+    _commissionerId: string,
+    creatorIds: string[],
+  ): Promise<Set<string>> {
+    return Promise.resolve(
+      new Set(creatorIds.filter((id) => this.open.has(id))),
+    );
   }
 }
 
@@ -252,6 +265,61 @@ class FakeCreatorsService extends CreatorsService {
 
   getSummary(userId: string): Promise<CreatorSummaryModel | null> {
     return Promise.resolve(this.profiles.get(userId) ?? null);
+  }
+
+  getSummaries(userIds: string[]): Promise<Map<string, CreatorSummaryModel>> {
+    return Promise.resolve(
+      new Map(
+        userIds.flatMap((id) => {
+          const profile = this.profiles.get(id);
+          return profile ? [[id, profile] as const] : [];
+        }),
+      ),
+    );
+  }
+
+  // 전체 둘러보기 풀. 대표 게시물 한 줄(headline)과 가입 시각만 손으로 정한다.
+  readonly cards = new Map<
+    string,
+    { posts: number; headline: string | null; joinedAt: Date }
+  >();
+
+  addCard(
+    userId: string,
+    opts: {
+      posts?: number;
+      headline?: string | null;
+      joinedMinute?: number;
+    } = {},
+  ): void {
+    this.cards.set(userId, {
+      posts: opts.posts ?? 1,
+      headline: opts.headline ?? null,
+      joinedAt: new Date(Date.UTC(2026, 9, 1, 0, opts.joinedMinute ?? 0)),
+    });
+  }
+
+  listCardSources(): Promise<CreatorCardSource[]> {
+    return Promise.resolve(
+      [...this.cards].map(([userId, card]) => ({
+        userId,
+        displayName: this.profiles.get(userId)?.displayName ?? '',
+        instagramHandle: null,
+        headline: card.headline,
+        photoUrl: null,
+        posts: Array.from({ length: card.posts }, (_, i) => ({
+          id: `${userId}-${i}`,
+          position: i + 1,
+          source: 'GALLERY' as const,
+          kind: 'PHOTO' as const,
+          photoUrl: 'https://img.test/p.jpg',
+          mediaUrl: 'https://img.test/p.jpg',
+          caption: i === 0 ? card.headline : null,
+          instagramMediaId: null,
+        })),
+        joinedAt: card.joinedAt,
+      })),
+    );
   }
 
   getActor(userId: string): ReturnType<CreatorsService['getActor']> {
@@ -728,17 +796,130 @@ describe('ApplicationsService', () => {
       ]);
     });
 
-    it('leaves a skipped applicant out of the picks but in the applicant list', async () => {
+    it('picks up to three live applicants by score when there are applicants', async () => {
+      users.role = 'STORE';
+      const near = await applicant(['서울특별시', '성동구']);
+      // 지원자가 있으면 전체 풀의 사람은 섞이지 않는다.
+      const poolOnly = randomUUID();
+      creators.add(poolOnly, '서울특별시', '성동구');
+      creators.addCard(poolOnly, { headline: '풀에만 있음' });
+      const res = await service.listRecommended(OWNER);
+      expect(res.source).toBe('APPLICANTS');
+      expect(res.items.map((i) => i.applicationId)).toEqual([near]);
+      expect(res.items[0].appliedAt).toBe(repo.rows[0].createdAt.toISOString());
+    });
+
+    it('ignores the old skipped-from-picks mark', async () => {
       users.role = 'STORE';
       const near = await applicant(['서울특별시', '성동구']);
       const far = await applicant(['부산광역시', '해운대구']);
+      // 한 장씩 보던 화면이 없어져 넘긴 표시는 이 응답에서 쓰지 않는다.
       await service.skipRecommended(OWNER, near);
       const res = await service.listRecommended(OWNER);
-      expect(res.items.map((i) => i.applicationId)).toEqual([far]);
+      expect(res.items.map((i) => i.applicationId)).toEqual([near, far]);
       expect(res.totalNew).toBe(2);
-      expect(repo.rows.find((r) => r.id === near)?.status).toBe('APPLIED');
-      const list = await service.listApplicants(OWNER);
-      expect(list.map((a) => a.applicationId)).toContain(near);
+    });
+  });
+
+  describe('listRecommended when nobody applied', () => {
+    const SEONGDONG: [string, string] = ['서울특별시', '성동구'];
+    const BUSAN: [string, string] = ['부산광역시', '해운대구'];
+
+    // 대표 게시물이 있는 크리에이터를 전체 풀에 올린다.
+    function pooled(
+      region: [string, string | null],
+      opts: {
+        focus?: string;
+        headline?: string | null;
+        posts?: number;
+        finished?: number;
+        joinedMinute?: number;
+      } = {},
+    ): string {
+      const userId = randomUUID();
+      creators.add(userId, region[0], region[1], opts.focus ?? null);
+      creators.addCard(userId, {
+        posts: opts.posts,
+        headline: opts.headline,
+        joinedMinute: opts.joinedMinute,
+      });
+      if (opts.finished) collaborations.finished.set(userId, opts.finished);
+      return userId;
+    }
+    const idsOf = (res: { items: { creator: { userId: string } }[] }) =>
+      res.items.map((i) => i.creator.userId);
+
+    beforeEach(() => {
+      users.role = 'STORE';
+    });
+
+    it('falls back to all creators when nobody applied', async () => {
+      const near = pooled(SEONGDONG, { headline: '성수 카페' });
+      const far = pooled(BUSAN, { joinedMinute: 5 });
+      const res = await service.listRecommended(OWNER);
+      expect(res.source).toBe('ALL');
+      expect(res.totalNew).toBe(0);
+      expect(idsOf(res)).toEqual([near, far]);
+      // 지원이 없으니 지원 번호와 시각이 없다.
+      expect(res.items[0]).toMatchObject({
+        applicationId: null,
+        appliedAt: null,
+        pitch: null,
+        reasons: ['같은 동네예요'],
+      });
+    });
+
+    it('excludes creators who avoid the store industry, have no featured post, or already have an open offer', async () => {
+      const ok = pooled(BUSAN);
+      const avoiding = pooled(SEONGDONG);
+      visibility.hiddenCreators.add(avoiding);
+      pooled(SEONGDONG, { posts: 0 });
+      const offered = pooled(SEONGDONG);
+      await repo.create(store.id, offered);
+      await repo.markOffered(store.id, offered);
+      const collaborating = pooled(SEONGDONG);
+      collaborations.open.add(collaborating);
+      const res = await service.listRecommended(OWNER);
+      expect(res.source).toBe('ALL');
+      expect(idsOf(res)).toEqual([ok]);
+    });
+
+    it('scores a featured-post line like a pitch, and breaks ties by the most recent join', async () => {
+      const olderPlain = pooled(BUSAN, { joinedMinute: 1 });
+      const newerPlain = pooled(BUSAN, { joinedMinute: 9 });
+      const lined = pooled(BUSAN, { joinedMinute: 0, headline: '한 줄' });
+      const res = await service.listRecommended(OWNER);
+      expect(idsOf(res)).toEqual([lined, newerPlain, olderPlain]);
+    });
+
+    it('returns at most three', async () => {
+      for (let i = 0; i < 5; i += 1) pooled(BUSAN, { joinedMinute: i });
+      expect((await service.listRecommended(OWNER)).items).toHaveLength(3);
+    });
+
+    it('returns fewer than three when fewer exist', async () => {
+      pooled(BUSAN);
+      expect((await service.listRecommended(OWNER)).items).toHaveLength(1);
+      creators.cards.clear();
+      expect(await service.listRecommended(OWNER)).toEqual({
+        source: 'ALL',
+        totalNew: 0,
+        items: [],
+      });
+    });
+
+    it('is stable across calls on the same day', async () => {
+      for (let i = 0; i < 6; i += 1) pooled(BUSAN, { joinedMinute: i });
+      const first = await service.listRecommended(OWNER);
+      clock.set(new Date('2026-11-14T14:59:00.000Z'));
+      expect(await service.listRecommended(OWNER)).toEqual(first);
+    });
+
+    it('leaves out a creator whose profile was removed', async () => {
+      const gone = pooled(SEONGDONG);
+      creators.profiles.delete(gone);
+      const ok = pooled(BUSAN);
+      expect(idsOf(await service.listRecommended(OWNER))).toEqual([ok]);
     });
   });
 

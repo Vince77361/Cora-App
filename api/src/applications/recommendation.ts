@@ -49,7 +49,12 @@ export interface StoreFacts {
 export interface Candidate extends ApplicantFacts {
   id: string;
   createdAt: Date;
-  skippedFromPicksAt: Date | null;
+}
+
+// 지원자가 없을 때 쓰는 전체 크리에이터 풀의 한 명. hasPitch는 대표 게시물 1번의 한 줄이 있는지다.
+export interface AllPoolCandidate extends ApplicantFacts {
+  id: string;
+  joinedAt: Date;
 }
 
 function sameDistrict(a: ApplicantFacts, store: StoreFacts): boolean {
@@ -98,19 +103,38 @@ export function reasonsFor(a: ApplicantFacts, store: StoreFacts): string[] {
   return reasons;
 }
 
-// 점수 높은 순, 같으면 먼저 지원한 순(그래도 같으면 id 순으로 결과를 고정한다). 추천에서 넘긴 지원은 뺀다.
+// 점수 높은 순, 같으면 먼저 지원한 순(그래도 같으면 id 순으로 결과를 고정한다).
+// 옛 "추천에서 넘김" 표시는 보지 않는다: 한 장씩 보던 화면이 없어졌다(계획 Ruling 5).
 export function pickRecommended<T extends Candidate>(
   applicants: T[],
   store: StoreFacts,
   limit: number = RECOMMEND_POLICY.picks,
 ): T[] {
   return applicants
-    .filter((a) => a.skippedFromPicksAt === null)
     .map((a) => ({ a, score: scoreApplicant(a, store) }))
     .sort(
       (x, y) =>
         y.score - x.score ||
         x.a.createdAt.getTime() - y.a.createdAt.getTime() ||
+        x.a.id.localeCompare(y.a.id),
+    )
+    .slice(0, limit)
+    .map(({ a }) => a);
+}
+
+// 지원자가 없을 때: 같은 점수 식으로 전체 풀을 줄 세운다. 같으면 최근 가입순, 그래도 같으면 id 순.
+// 날짜·시드 없이 정렬이 결정적이라 같은 날 같은 가게는 같은 결과다.
+export function pickFromAllCreators<T extends AllPoolCandidate>(
+  pool: T[],
+  store: StoreFacts,
+  limit: number = RECOMMEND_POLICY.picks,
+): T[] {
+  return pool
+    .map((a) => ({ a, score: scoreApplicant(a, store) }))
+    .sort(
+      (x, y) =>
+        y.score - x.score ||
+        y.a.joinedAt.getTime() - x.a.joinedAt.getTime() ||
         x.a.id.localeCompare(y.a.id),
     )
     .slice(0, limit)

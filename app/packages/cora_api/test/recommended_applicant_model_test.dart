@@ -16,8 +16,15 @@ void main() {
   // final instance = RecommendedApplicantModel();
 
   group('test RecommendedApplicantModel', () {
+    // 지원 번호. 전체 크리에이터에서 뽑은 사람(ALL)은 null.
     // String applicationId
     test('to test the property `applicationId`', () async {
+      // TODO
+    });
+
+    // 지원한 시각(ISO 8601). 전체 크리에이터에서 뽑은 사람은 null.
+    // DateTime appliedAt
+    test('to test the property `appliedAt`', () async {
       // TODO
     });
 

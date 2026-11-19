@@ -222,6 +222,7 @@ part 'model/received_offer_model.dart';
 part 'model/received_offer_tab.dart';
 part 'model/recommended_applicant_model.dart';
 part 'model/recommended_applicants_model.dart';
+part 'model/recommended_source.dart';
 part 'model/replace_featured_posts_dto.dart';
 part 'model/report_created_model.dart';
 part 'model/report_reason.dart';

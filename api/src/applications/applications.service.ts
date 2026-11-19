@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, Store } from '@prisma/client';
+import { Application, Prisma, Store } from '@prisma/client';
 import { CollaborationsRepository } from '../collaborations/collaborations.repository';
 import { Clock } from '../common/clock';
 import { AppError } from '../common/errors/app-error';
@@ -16,9 +16,15 @@ import { ApplicationsRepository } from './applications.repository';
 import { ApplicantModel } from './dto/applicant.model';
 import { ApplyDto } from './dto/apply.dto';
 import { ApplicationModel } from './dto/application.model';
-import { RecommendedApplicantsModel } from './dto/recommended-applicants.model';
-import { pickRecommended, reasonsFor } from './recommendation';
-import type { Candidate } from './recommendation';
+import {
+  RecommendedApplicantModel,
+  RecommendedApplicantsModel,
+} from './dto/recommended-applicants.model';
+import {
+  pickFromAllCreators,
+  pickRecommended,
+  reasonsFor,
+} from './recommendation';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -189,18 +195,38 @@ export class ApplicationsService {
     return items.sort((a, b) => a.tier - b.tier).map(({ item }) => item);
   }
 
-  // 사장님 홈의 지원자 추천 3명. 점수는 서버가 계산한다(recommendation.ts). 넘긴 지원은 여기서만 빠지고 목록에는 남는다.
+  // 사장님 홈의 추천 3명. 점수는 서버가 계산한다(recommendation.ts).
+  // 이 가게에 지원 중인 사람이 있으면 그 중에서(옛 "추천에서 넘김" 표시는 보지 않는다), 없으면 Cora 크리에이터 전체에서 뽑는다.
   async listRecommended(userId: string): Promise<RecommendedApplicantsModel> {
     await this.assertRole(userId, 'STORE', '가게 계정만 쓸 수 있어요.');
     const store = await this.stores.requireMyStore(userId);
     const rows = await this.visibleApplied(store);
-    // 넘기지 않은 지원자만 읽는다. 프로필이 지워진 지원자는 보여 줄 것이 없어 뺀다.
-    const open = rows.filter((row) => row.skippedFromPicksAt === null);
-    const summaries = await Promise.all(
-      open.map((row) => this.creators.getSummary(row.creatorId)),
+    const applicants = await this.pickAmongApplicants(store, rows);
+    if (applicants.length > 0) {
+      return {
+        source: 'APPLICANTS',
+        // 새 지원 수는 홈의 "새 지원"과 같다.
+        totalNew: rows.length,
+        items: applicants,
+      };
+    }
+    return {
+      source: 'ALL',
+      totalNew: rows.length,
+      items: await this.pickAmongAllCreators(store),
+    };
+  }
+
+  // 프로필이 지워진 지원자는 보여 줄 것이 없어 뺀다.
+  private async pickAmongApplicants(
+    store: Store,
+    rows: Application[],
+  ): Promise<RecommendedApplicantModel[]> {
+    const summaries = await this.creators.getSummaries(
+      rows.map((row) => row.creatorId),
     );
-    const found = open.flatMap((row, index) => {
-      const creator = summaries[index];
+    const found = rows.flatMap((row) => {
+      const creator = summaries.get(row.creatorId);
       return creator ? [{ row, creator }] : [];
     });
     const finished = await this.collaborations.countByCreators(
@@ -210,7 +236,6 @@ export class ApplicationsService {
     const entries = found.map(({ row, creator }) => ({
       id: row.id,
       createdAt: row.createdAt,
-      skippedFromPicksAt: row.skippedFromPicksAt,
       regionSido: creator.regionSido,
       regionSigungu: creator.regionSigungu,
       contentFocus: creator.contentFocus,
@@ -219,20 +244,65 @@ export class ApplicationsService {
       creator,
       pitch: row.pitch,
     }));
-    const picked = pickRecommended<Candidate & (typeof entries)[number]>(
-      entries,
-      store,
+    return pickRecommended(entries, store).map((entry) => ({
+      applicationId: entry.id,
+      creator: entry.creator,
+      appliedAt: entry.createdAt.toISOString(),
+      pitch: entry.pitch,
+      reasons: reasonsFor(entry, store),
+    }));
+  }
+
+  // 풀: 대표 게시물이 1개 이상인 Cora 크리에이터 → 이 가게의 업종을 피하는 사람 제외(공통 모델 3장)
+  // → 이미 지원·오퍼 중이거나 끝나지 않은 협업이 있는 사람 제외. 한 줄은 대표 게시물 1번의 한 줄이다.
+  private async pickAmongAllCreators(
+    store: Store,
+  ): Promise<RecommendedApplicantModel[]> {
+    const pool = (await this.creators.listCardSources()).filter(
+      (source) => source.posts.length > 0,
     );
-    return {
-      // 새 지원 수는 넘긴 사람도 센다. 홈의 "새 지원"과 같다.
-      totalNew: rows.length,
-      items: picked.map((entry) => ({
-        applicationId: entry.id,
-        creator: entry.creator,
-        pitch: entry.pitch,
-        reasons: reasonsFor(entry, store),
-      })),
-    };
+    const poolIds = pool.map((source) => source.userId);
+    const [visibleIds, summaries, open, live] = await Promise.all([
+      this.visibility.filterCreators(poolIds, {
+        userId: store.ownerId,
+        kind: 'STORE',
+        industry: store.industry,
+      }),
+      this.creators.getSummaries(poolIds),
+      this.collaborations.listOpenCreatorIds(store.ownerId, poolIds),
+      this.applications.listLiveCreatorIds(store.id),
+    ]);
+    const visible = new Set(visibleIds);
+    const found = pool.flatMap((source) => {
+      const creator = summaries.get(source.userId);
+      return creator &&
+        visible.has(source.userId) &&
+        !open.has(source.userId) &&
+        !live.has(source.userId)
+        ? [{ source, creator }]
+        : [];
+    });
+    const finished = await this.collaborations.countByCreators(
+      found.map(({ creator }) => creator.userId),
+      ['SETTLED'],
+    );
+    const entries = found.map(({ source, creator }) => ({
+      id: creator.userId,
+      joinedAt: source.joinedAt,
+      regionSido: creator.regionSido,
+      regionSigungu: creator.regionSigungu,
+      contentFocus: creator.contentFocus,
+      hasPitch: source.headline !== null,
+      finishedCount: finished.get(creator.userId) ?? 0,
+      creator,
+    }));
+    return pickFromAllCreators(entries, store).map((entry) => ({
+      applicationId: null,
+      creator: entry.creator,
+      appliedAt: null,
+      pitch: null,
+      reasons: reasonsFor(entry, store),
+    }));
   }
 
   // 지원 상태는 바꾸지 않고 추천에서만 뺀다. 내 가게의 지원 중 지원이 아니면 404(남의 것과 없는 것을 가르지 않는다).

@@ -217,6 +217,9 @@ String parameterToString(dynamic value) {
   if (value is ReceivedOfferTab) {
     return ReceivedOfferTabTypeTransformer().encode(value).toString();
   }
+  if (value is RecommendedSource) {
+    return RecommendedSourceTypeTransformer().encode(value).toString();
+  }
   if (value is ReportReason) {
     return ReportReasonTypeTransformer().encode(value).toString();
   }

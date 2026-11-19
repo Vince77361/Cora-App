@@ -340,6 +340,7 @@ Class | Method | HTTP request | Description
  - [ReceivedOfferTab](doc//ReceivedOfferTab.md)
  - [RecommendedApplicantModel](doc//RecommendedApplicantModel.md)
  - [RecommendedApplicantsModel](doc//RecommendedApplicantsModel.md)
+ - [RecommendedSource](doc//RecommendedSource.md)
  - [ReplaceFeaturedPostsDto](doc//ReplaceFeaturedPostsDto.md)
  - [ReportCreatedModel](doc//ReportCreatedModel.md)
  - [ReportReason](doc//ReportReason.md)

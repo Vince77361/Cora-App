@@ -524,6 +524,8 @@ class ApiClient {
           return RecommendedApplicantModel.fromJson(value);
         case 'RecommendedApplicantsModel':
           return RecommendedApplicantsModel.fromJson(value);
+        case 'RecommendedSource':
+          return RecommendedSourceTypeTransformer().decode(value);
         case 'ReplaceFeaturedPostsDto':
           return ReplaceFeaturedPostsDto.fromJson(value);
         case 'ReportCreatedModel':

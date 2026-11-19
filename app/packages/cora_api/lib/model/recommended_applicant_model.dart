@@ -14,12 +14,17 @@ class RecommendedApplicantModel {
   /// Returns a new [RecommendedApplicantModel] instance.
   RecommendedApplicantModel({
     required this.applicationId,
+    required this.appliedAt,
     required this.creator,
     required this.pitch,
     this.reasons = const [],
   });
 
-  String applicationId;
+  /// 지원 번호. 전체 크리에이터에서 뽑은 사람(ALL)은 null.
+  String? applicationId;
+
+  /// 지원한 시각(ISO 8601). 전체 크리에이터에서 뽑은 사람은 null.
+  DateTime? appliedAt;
 
   CreatorSummaryModel creator;
 
@@ -34,6 +39,7 @@ class RecommendedApplicantModel {
       identical(this, other) ||
       other is RecommendedApplicantModel &&
           other.applicationId == applicationId &&
+          other.appliedAt == appliedAt &&
           other.creator == creator &&
           other.pitch == pitch &&
           _deepEquality.equals(other.reasons, reasons);
@@ -41,18 +47,28 @@ class RecommendedApplicantModel {
   @override
   int get hashCode =>
       // ignore: unnecessary_parenthesis
-      (applicationId.hashCode) +
+      (applicationId == null ? 0 : applicationId!.hashCode) +
+      (appliedAt == null ? 0 : appliedAt!.hashCode) +
       (creator.hashCode) +
       (pitch == null ? 0 : pitch!.hashCode) +
       (reasons.hashCode);
 
   @override
   String toString() =>
-      'RecommendedApplicantModel[applicationId=$applicationId, creator=$creator, pitch=$pitch, reasons=$reasons]';
+      'RecommendedApplicantModel[applicationId=$applicationId, appliedAt=$appliedAt, creator=$creator, pitch=$pitch, reasons=$reasons]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
-    json[r'applicationId'] = this.applicationId;
+    if (this.applicationId != null) {
+      json[r'applicationId'] = this.applicationId;
+    } else {
+      json[r'applicationId'] = null;
+    }
+    if (this.appliedAt != null) {
+      json[r'appliedAt'] = this.appliedAt!.toUtc().toIso8601String();
+    } else {
+      json[r'appliedAt'] = null;
+    }
     json[r'creator'] = this.creator;
     if (this.pitch != null) {
       json[r'pitch'] = this.pitch;
@@ -76,8 +92,8 @@ class RecommendedApplicantModel {
       assert(() {
         assert(json.containsKey(r'applicationId'),
             'Required key "RecommendedApplicantModel[applicationId]" is missing from JSON.');
-        assert(json[r'applicationId'] != null,
-            'Required key "RecommendedApplicantModel[applicationId]" has a null value in JSON.');
+        assert(json.containsKey(r'appliedAt'),
+            'Required key "RecommendedApplicantModel[appliedAt]" is missing from JSON.');
         assert(json.containsKey(r'creator'),
             'Required key "RecommendedApplicantModel[creator]" is missing from JSON.');
         assert(json[r'creator'] != null,
@@ -92,7 +108,8 @@ class RecommendedApplicantModel {
       }());
 
       return RecommendedApplicantModel(
-        applicationId: mapValueOfType<String>(json, r'applicationId')!,
+        applicationId: mapValueOfType<String>(json, r'applicationId'),
+        appliedAt: mapDateTime(json, r'appliedAt', r''),
         creator: CreatorSummaryModel.fromJson(json[r'creator'])!,
         pitch: mapValueOfType<String>(json, r'pitch'),
         reasons: json[r'reasons'] is Iterable
@@ -157,6 +174,7 @@ class RecommendedApplicantModel {
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
     'applicationId',
+    'appliedAt',
     'creator',
     'pitch',
     'reasons',
