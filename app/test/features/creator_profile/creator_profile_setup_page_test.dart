@@ -135,6 +135,51 @@ void main() {
     expect(find.text('2 / 4'), findsOneWidget);
   });
 
+  testWidgets(
+    'discards the edits of the featured posts opened from the setup row when leaving without saving',
+    (tester) async {
+      await _pump(
+        tester,
+        featured: FakeFeaturedPostsRepository(
+          posts: [savedPost(1), savedPost(2), savedPost(3), savedPost(4)],
+        ),
+      );
+      expect(find.text('4 / 4'), findsOneWidget);
+
+      await tester.ensureVisible(
+        find.byKey(CreatorProfileSetupPage.featuredPostsTileKey),
+      );
+      await tester.tap(
+        find.byKey(CreatorProfileSetupPage.featuredPostsTileKey),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('게시물 2'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('대표 게시물에서 빼기'));
+      await tester.pumpAndSettle();
+      expect(find.text('3 / 4'), findsOneWidget);
+
+      await systemBack(tester);
+      await tester.tap(find.text('저장 안 함'));
+      await tester.pumpAndSettle();
+
+      // 설정 화면의 줄은 서버에 있는 개수로 돌아온다.
+      expect(topPath(tester), isNot(AppRoutes.creatorFeaturedPosts));
+      expect(find.text('4 / 4'), findsOneWidget);
+
+      // 다시 열면 바뀐 내용이 남아 있지 않다(저장하기가 없다).
+      await tester.ensureVisible(
+        find.byKey(CreatorProfileSetupPage.featuredPostsTileKey),
+      );
+      await tester.tap(
+        find.byKey(CreatorProfileSetupPage.featuredPostsTileKey),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('저장하기'), findsNothing);
+      expect(find.text('게시물 2'), findsOneWidget);
+    },
+  );
+
   testWidgets('does not send the card values when saving', (tester) async {
     final repo = FakeCreatorProfileRepository();
     await _pump(tester, repo: repo);

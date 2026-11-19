@@ -150,6 +150,17 @@ class FeaturedPostsViewModel extends AsyncNotifier<FeaturedPostsState> {
     return s.copyWith(items: next);
   });
 
+  /// 저장하지 않은 바뀜을 버리고 서버에 있는 목록([FeaturedPostsState.original])으로 되돌린다. 프로필 설정 화면이 이
+  /// autoDispose provider를 계속 보고 있어 화면을 나가도 상태가 남으므로, `저장 안 함`을 고른 쪽이 직접 부른다.
+  /// 저장 중에는 되돌리지 않는다.
+  void discard() {
+    final current = state.value;
+    if (current == null || current.saving) return;
+    state = AsyncData(
+      current.copyWith(items: current.original, clearError: true),
+    );
+  }
+
   /// 목록 전체를 한 번에 저장한다. 저장되면(또는 바뀐 것이 없으면) true. 실패하면 목록을 그대로 두고 false.
   Future<bool> save() async {
     final current = state.value;

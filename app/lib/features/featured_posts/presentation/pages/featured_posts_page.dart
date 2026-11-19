@@ -54,6 +54,8 @@ class _FeaturedPostsPageState extends ConsumerState<FeaturedPostsPage> {
     if (choice == LeaveChoice.save) {
       if (await _vm.save() && mounted) context.pop();
     } else {
+      // 프로필 설정이 이 VM을 살려 두고 있어도 버린 바뀜이 남지 않게 먼저 되돌린다.
+      _vm.discard();
       context.pop();
     }
   }
