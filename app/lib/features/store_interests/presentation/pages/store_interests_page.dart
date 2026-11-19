@@ -222,6 +222,15 @@ class _StoreInterestsPageState extends ConsumerState<StoreInterestsPage> {
               )
             : const CoraStateView.loading(),
       );
+    } else if (_tab == StoreInterestTab.offers && state.offersFailed) {
+      // 저장과 보낸 관심은 읽혔고 제안함만 실패했다. 이 탭만 다시 시도한다.
+      body = Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: CoraStateView.loadFailed(
+          title: StoreInterestsTexts.offersLoadFailedTitle,
+          onRetry: () => unawaited(_vm.retryOffers()),
+        ),
+      );
     } else if (state.count(_tab) == 0) {
       body = Padding(
         padding: const EdgeInsets.only(top: 16),

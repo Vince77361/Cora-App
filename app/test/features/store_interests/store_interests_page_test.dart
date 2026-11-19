@@ -304,6 +304,36 @@ void main() {
     expect(find.text('서윤의 작은 취향'), findsOneWidget);
   });
 
+  testWidgets(
+    'still shows the saved and sent tabs when only the sent proposals '
+    'cannot be read, and retries just that tab',
+    (tester) async {
+      final interests = _board();
+      final proposals = _offers()..failFetch = true;
+      await _pump(tester, interests: interests, proposals: proposals);
+
+      // 저장과 보낸 관심은 그대로 보인다. 제안 수만 0이다.
+      expect(find.text('서윤의 작은 취향'), findsOneWidget);
+      expect(find.text('저장 3'), findsOneWidget);
+      expect(find.text('보낸 관심 2'), findsOneWidget);
+      expect(find.text('보낸 제안 0'), findsOneWidget);
+      await _tab(tester, '보낸 관심 2');
+      expect(find.text('하루 한 컵'), findsOneWidget);
+
+      await _tab(tester, '보낸 제안 0');
+      expect(find.text('보낸 제안을 불러오지 못했어요'), findsOneWidget);
+      final savedCalls = interests.savedCalls;
+      proposals.failFetch = false;
+      await tester.tap(find.text('다시 시도'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('오늘의 한 그릇'), findsOneWidget);
+      expect(find.text('보낸 제안 2'), findsOneWidget);
+      // 제안만 다시 읽는다.
+      expect(interests.savedCalls, savedCalls);
+    },
+  );
+
   testWidgets('keeps 찾기 highlighted in the menu and goes back', (tester) async {
     final shown = await _pump(tester);
 

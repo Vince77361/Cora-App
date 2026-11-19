@@ -47,6 +47,7 @@ abstract final class StoreInterestsTexts {
 
   /// 불러오기 실패(캔버스 밖).
   static const loadFailedTitle = '저장함을 불러오지 못했어요';
+  static const offersLoadFailedTitle = '보낸 제안을 불러오지 못했어요';
 
   /// 크리에이터 상세가 아직 없어서 열리는 준비 중 화면의 제목(캔버스 밖).
   static const creatorDetailSoon = '크리에이터 상세';

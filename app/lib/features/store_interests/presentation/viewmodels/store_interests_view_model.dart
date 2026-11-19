@@ -24,6 +24,7 @@ class StoreInterestsState {
     required this.saved,
     required this.sent,
     required this.offers,
+    this.offersFailed = false,
   });
 
   final List<StoreInterest> saved;
@@ -31,6 +32,9 @@ class StoreInterestsState {
 
   /// 내가 보낸 제안 가운데 진행 중인 것(제안함 F3의 진행 중 탭). 내가 응답할 차례가 먼저다.
   final List<ProposalRow> offers;
+
+  /// 제안함을 읽지 못했다. 저장과 보낸 관심은 따로 읽은 것이라 그대로 보이고, 보낸 제안 탭만 다시 시도를 보인다.
+  final bool offersFailed;
 
   int count(StoreInterestTab tab) => switch (tab) {
     StoreInterestTab.saved => saved.length,
@@ -64,32 +68,68 @@ class StoreInterestsViewModel extends AsyncNotifier<StoreInterestsState> {
   @override
   Future<StoreInterestsState> build() => _load();
 
-  Future<StoreInterestsState> _load() async {
+  Future<StoreInterestsState> _load({List<ProposalRow>? keepOffers}) async {
     final repo = ref.read(storeInterestsRepositoryProvider);
-    final offersRepo = ref.read(proposalRepositoryProvider);
-    // 하나라도 실패하면 첫 실패를 그대로 던진다(레코드의 `.wait`는 실패를 감싸서 쓰지 않는다).
+    // 제안함(F3)만 실패를 따로 받는다: 저장·보낸 관심은 저장함의 본문이라 하나라도 실패하면 첫 실패를 그대로
+    // 던지지만(레코드의 `.wait`는 실패를 감싸서 쓰지 않는다), 제안함이 실패했다고 그 둘까지 못 보게 하지는 않는다.
+    final offersFuture = _fetchOffers();
     final results = await Future.wait<Object>([
       repo.fetchSaved(),
       repo.fetchSent(),
-      offersRepo.fetch(ProposalTab.active),
     ]);
+    final offers = await offersFuture;
     return StoreInterestsState(
       saved: results[0] as List<StoreInterest>,
       sent: results[1] as List<StoreInterest>,
-      offers: _myTurnFirst(results[2] as List<ProposalRow>),
+      offers: offers?.rows ?? keepOffers ?? const [],
+      offersFailed: offers == null && keepOffers == null,
     );
+  }
+
+  /// 제안함을 읽는다. 실패하면 null이다.
+  Future<({List<ProposalRow> rows})?> _fetchOffers() async {
+    try {
+      final rows = await ref
+          .read(proposalRepositoryProvider)
+          .fetch(ProposalTab.active);
+      return (rows: _myTurnFirst(rows));
+    } catch (_) {
+      return null;
+    }
   }
 
   /// 제안이나 오퍼를 보내고 돌아온 뒤, 또는 이미 읽어 둔 목록이 있는 채 화면이 열릴 때 새로 읽는다. 실패하면
   /// 보던 내용을 그대로 둔다.
   Future<void> refresh() async {
     try {
-      final fresh = await _load();
+      final current = state.value;
+      final fresh = await _load(
+        keepOffers: current == null || current.offersFailed
+            ? null
+            : current.offers,
+      );
       if (!ref.mounted) return;
       state = AsyncData(fresh);
     } catch (_) {
       // 보던 값 유지.
     }
+  }
+
+  /// 보낸 제안 탭의 `다시 시도`: 제안함만 다시 읽는다.
+  Future<void> retryOffers() async {
+    final current = state.value;
+    if (current == null) return;
+    final offers = await _fetchOffers();
+    if (!ref.mounted) return;
+    final latest = state.value ?? current;
+    state = AsyncData(
+      StoreInterestsState(
+        saved: latest.saved,
+        sent: latest.sent,
+        offers: offers?.rows ?? const [],
+        offersFailed: offers == null,
+      ),
+    );
   }
 
   void reload() => ref.invalidateSelf();
