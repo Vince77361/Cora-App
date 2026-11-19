@@ -355,6 +355,17 @@ void main() {
     expect(find.text('go saved box'), findsOneWidget);
   });
 
+  testWidgets('reads the saved and sent lists only once when opened', (
+    tester,
+  ) async {
+    final repo = _board();
+    await _pump(tester, interests: repo);
+
+    // 둘러보기는 저장 수만 따로 읽을 뿐 저장함의 세 목록은 열 때 한 번만 읽는다.
+    expect(repo.savedCalls, 1);
+    expect(repo.sentCalls, 1);
+  });
+
   testWidgets('exposes the saved count for the header badge', (tester) async {
     await _pump(tester);
     final container = ProviderScope.containerOf(

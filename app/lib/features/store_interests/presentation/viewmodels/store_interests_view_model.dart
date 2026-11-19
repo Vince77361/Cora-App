@@ -98,8 +98,7 @@ class StoreInterestsViewModel extends AsyncNotifier<StoreInterestsState> {
     }
   }
 
-  /// 제안이나 오퍼를 보내고 돌아온 뒤, 또는 이미 읽어 둔 목록이 있는 채 화면이 열릴 때 새로 읽는다. 실패하면
-  /// 보던 내용을 그대로 둔다.
+  /// 오퍼를 보내고 돌아온 뒤 새로 읽는다. 실패하면 보던 내용을 그대로 둔다.
   Future<void> refresh() async {
     try {
       final current = state.value;

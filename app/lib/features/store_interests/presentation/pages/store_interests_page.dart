@@ -47,18 +47,6 @@ class _StoreInterestsPageState extends ConsumerState<StoreInterestsPage> {
   StoreInterestsViewModel get _vm =>
       ref.read(storeInterestsViewModelProvider.notifier);
 
-  @override
-  void initState() {
-    super.initState();
-    // 둘러보기가 이미 읽어 둔 목록이 있으면 옛 값일 수 있어 새로 읽는다(처음 읽는 중이면 그대로 둔다).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (ref.read(storeInterestsViewModelProvider).hasValue) {
-        unawaited(_vm.refresh());
-      }
-    });
-  }
-
   void _back() {
     if (context.canPop()) {
       context.pop();
