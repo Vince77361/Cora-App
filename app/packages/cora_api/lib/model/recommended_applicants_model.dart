@@ -24,7 +24,7 @@ class RecommendedApplicantsModel {
   /// APPLICANTS = 이 가게에 지원 중인 사람 중에서, ALL = 지원자가 없어 Cora 크리에이터 전체에서 뽑았다.
   RecommendedSource source_;
 
-  /// 지원 중인 새 지원자 수. ALL이면 0이다.
+  /// 지원 중인 새 지원자 수. ALL이면 보여 줄 지원자가 없다(보통 0, 지원 줄은 있는데 프로필이 모두 지워졌으면 0보다 클 수 있다). 홈은 이 수가 아니라 source로 가른다.
   int totalNew;
 
   @override

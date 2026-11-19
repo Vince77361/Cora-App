@@ -254,7 +254,8 @@ export class ApplicationsService {
   }
 
   // 풀: 대표 게시물이 1개 이상인 Cora 크리에이터 → 이 가게의 업종을 피하는 사람 제외(공통 모델 3장)
-  // → 이미 지원·오퍼 중이거나 끝나지 않은 협업이 있는 사람 제외. 한 줄은 대표 게시물 1번의 한 줄이다.
+  // → 이미 지원·오퍼 중이거나 끝나지 않은 협업이 있는 사람 제외 → 이 사장님이 이미 하트·저장·넘긴 사람 제외
+  // (설계 5.2: 전체 둘러보기의 조건 5.3을 따른다). 한 줄은 대표 게시물 1번의 한 줄이다.
   private async pickAmongAllCreators(
     store: Store,
   ): Promise<RecommendedApplicantModel[]> {
@@ -262,7 +263,7 @@ export class ApplicationsService {
       (source) => source.posts.length > 0,
     );
     const poolIds = pool.map((source) => source.userId);
-    const [visibleIds, summaries, open, live] = await Promise.all([
+    const [visibleIds, summaries, open, live, decided] = await Promise.all([
       this.visibility.filterCreators(poolIds, {
         userId: store.ownerId,
         kind: 'STORE',
@@ -271,6 +272,7 @@ export class ApplicationsService {
       this.creators.getSummaries(poolIds),
       this.collaborations.listOpenCreatorIds(store.ownerId, poolIds),
       this.applications.listLiveCreatorIds(store.id),
+      this.applications.listDecidedCreatorIds(store.ownerId),
     ]);
     const visible = new Set(visibleIds);
     const found = pool.flatMap((source) => {
@@ -278,7 +280,8 @@ export class ApplicationsService {
       return creator &&
         visible.has(source.userId) &&
         !open.has(source.userId) &&
-        !live.has(source.userId)
+        !live.has(source.userId) &&
+        !decided.has(source.userId)
         ? [{ source, creator }]
         : [];
     });

@@ -30,6 +30,8 @@ class FakeApplicationsRepository extends ApplicationsRepository {
   readonly rows: Application[] = [];
   // 사장님이 하트를 보낸 크리에이터. 결정 저장소의 읽기를 대신한다.
   readonly hearts = new Set<string>();
+  // 사장님(ownerId)이 이미 하트·저장·넘긴 크리에이터. 결정 저장소의 읽기를 대신한다.
+  readonly decided = new Map<string, Set<string>>();
   seq = 0;
 
   constructor() {
@@ -74,6 +76,10 @@ class FakeApplicationsRepository extends ApplicationsRepository {
 
   hasStoreHeart(_ownerId: string, creatorId: string): Promise<boolean> {
     return Promise.resolve(this.hearts.has(creatorId));
+  }
+
+  listDecidedCreatorIds(ownerId: string): Promise<Set<string>> {
+    return Promise.resolve(new Set(this.decided.get(ownerId) ?? []));
   }
 
   cancelApplied(storeId: string, creatorId: string): Promise<boolean> {
@@ -920,6 +926,34 @@ describe('ApplicationsService', () => {
       creators.profiles.delete(gone);
       const ok = pooled(BUSAN);
       expect(idsOf(await service.listRecommended(OWNER))).toEqual([ok]);
+    });
+
+    // 하트(LIKE)·저장(HOLD)·넘김(PASS)은 모두 사장님이 이미 정한 사람이라 같은 읽기로 거른다.
+    it('leaves out creators the owner already decided on, whether liked, saved or passed', async () => {
+      const decided = [pooled(SEONGDONG), pooled(SEONGDONG), pooled(SEONGDONG)];
+      const ok = pooled(BUSAN);
+      repo.decided.set(OWNER, new Set(decided));
+      const res = await service.listRecommended(OWNER);
+      expect(res.source).toBe('ALL');
+      expect(idsOf(res)).toEqual([ok]);
+    });
+
+    it('does not leave out creators another owner decided on', async () => {
+      const theirs = pooled(SEONGDONG);
+      repo.decided.set(randomUUID(), new Set([theirs]));
+      expect(idsOf(await service.listRecommended(OWNER))).toEqual([theirs]);
+    });
+
+    it('falls back to all creators with a positive total when every applicant profile was removed', async () => {
+      const gone = await repo.create(store.id, randomUUID());
+      const alsoGone = await repo.create(store.id, randomUUID());
+      expect(gone && alsoGone).toBeTruthy();
+      const ok = pooled(BUSAN);
+      const res = await service.listRecommended(OWNER);
+      // 지원 줄은 있는데 보여 줄 프로필이 없어 풀로 내려간다. 홈은 totalNew가 아니라 source로 가른다.
+      expect(res.source).toBe('ALL');
+      expect(res.totalNew).toBe(2);
+      expect(idsOf(res)).toEqual([ok]);
     });
   });
 

@@ -45,6 +45,21 @@ export class ApplicationsRepository {
     return row !== null;
   }
 
+  // 사장님이 이미 결정한(하트 LIKE, 저장 HOLD, 넘김 PASS) 크리에이터. 홈 추천이 전체 풀에서 이들을 거른다.
+  // hasStoreHeart와 같은 사유로(순환) 결정 모듈을 거치지 않고 여기서 읽는다.
+  async listDecidedCreatorIds(ownerId: string): Promise<Set<string>> {
+    const rows = await this.prisma.swipeDecision.findMany({
+      where: {
+        actorId: ownerId,
+        targetKind: 'CREATOR',
+        campaignId: null,
+        deletedAt: null,
+      },
+      select: { targetId: true },
+    });
+    return new Set(rows.map((r) => r.targetId));
+  }
+
   // 같은 가게·크리에이터의 살아 있는 지원은 부분 유니크 인덱스가 하나로 막는다.
   // 미리 읽은 뒤 동시에 만들어 unique 위반(P2002)이 나면 null로 돌려 서비스가 409로 바꾸게 한다.
   async create(

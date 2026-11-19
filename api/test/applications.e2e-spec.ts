@@ -827,6 +827,44 @@ describe('applications', () => {
         );
       });
 
+      it('leaves out creators the owner already liked, saved or passed, but not ones another store owner decided on', async () => {
+        const liked = await seedPooled('하트함', SEONGDONG);
+        const saved = await seedPooled('저장함', SEONGDONG);
+        const passed = await seedPooled('넘김', SEONGDONG);
+        const deleted = await seedPooled('취소한 결정', SEONGDONG);
+        const byOther = await seedPooled('남이 정함', BUSAN);
+        await seedPooled('안 정함', BUSAN);
+        const decide = (
+          actorId: string,
+          targetId: string,
+          decision: 'LIKE' | 'HOLD' | 'PASS',
+          over: { deletedAt?: Date } = {},
+        ) =>
+          prisma.swipeDecision.create({
+            data: {
+              actorId,
+              targetKind: 'CREATOR',
+              targetId,
+              campaignId: null,
+              decision,
+              ...(decision === 'PASS' ? { passReason: 'MOOD' as const } : {}),
+              ...over,
+            },
+          });
+        await decide(USER_A, liked, 'LIKE');
+        await decide(USER_A, saved, 'HOLD');
+        await decide(USER_A, passed, 'PASS');
+        // 지워진 결정은 되돌린 것이라 다시 나온다.
+        await decide(USER_A, deleted, 'LIKE', { deletedAt: new Date() });
+        const other = await seedStore();
+        await decide(other.ownerId, byOther, 'PASS');
+        const body = (await recommended().expect(200)).body as RecommendedBody;
+        expect(body.source).toBe('ALL');
+        expect(names(body).sort()).toEqual(
+          ['남이 정함', '안 정함', '취소한 결정'].sort(),
+        );
+      });
+
       it('is stable across calls on the same day, and switches to the applicants once someone applies', async () => {
         for (let i = 0; i < 5; i += 1) {
           await seedPooled(`부산 ${i}`, BUSAN, { joinedMinute: i });
