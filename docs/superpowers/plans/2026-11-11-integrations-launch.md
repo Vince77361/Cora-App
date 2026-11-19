@@ -860,6 +860,7 @@ testWidgets('fits at 1.3x text scale', ...);
 | campaigns | — | 마감 |
 | creators·brands | — | 이름 `탈퇴한 사용자`, 사진·소개·채널 정보 지움 |
 | portfolio | — | 콘텐츠 `deletedAt`, 파일 삭제 |
+| creators(대표 게시물) | — | `featured_posts` 행을 먼저 지우고(`creator_id` FK가 `ON DELETE RESTRICT`라 프로필·사용자 행보다 먼저 지워야 한다) 저장소 `featured-posts/<userId>/` 파일 삭제 |
 | drafts | — | 초안 파일 삭제(버전 행·댓글은 남김) |
 | instagram | — | 연결과 토큰 지움 |
 | conversations | — | 그 사람과의 방을 읽기 전용(`USER_DELETED`) |
