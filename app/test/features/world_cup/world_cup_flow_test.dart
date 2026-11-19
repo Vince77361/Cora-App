@@ -149,6 +149,28 @@ void main() {
       expect(args.creator!.displayName, champion.name);
     });
 
+    testWidgets('reads the saved box again after coming back from the offer '
+        'form the champion opened', (tester) async {
+      await pump(tester);
+      await tester.tap(find.text('월드컵 하기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('8강'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('시작하기'));
+      await tester.pumpAndSettle();
+      await _pickFirst(tester, 7);
+      await tester.tap(find.text('제안하기'));
+      await tester.pumpAndSettle();
+      expect(find.text('offer form'), findsOneWidget);
+      final readsBefore = interests.savedCalls;
+
+      // 오퍼를 보냈다면 저장함의 제안 수와 목록이 달라졌으므로 돌아오면 새로 읽는다(저장 줄의 `제안하기`와 같다).
+      Navigator.of(tester.element(find.text('offer form'))).pop();
+      await tester.pumpAndSettle();
+
+      expect(interests.savedCalls, readsBefore + 1);
+    });
+
     testWidgets('shows the first featured post line and photo on the cards '
         'when the creator has one', (tester) async {
       await pump(

@@ -125,6 +125,9 @@ class _StoreInterestsPageState extends ConsumerState<StoreInterestsPage> {
             AppRoutes.storeOfferNew(creator.creatorId),
             extra: _offerArgs(creator),
           );
+          // 오퍼를 보냈다면 보낸 제안 수와 목록이 달라졌다. 저장 줄의 `제안하기`(`_propose`)처럼 돌아오면 새로
+          // 읽는다. 이 State의 `mounted`를 본다(결과 화면의 context가 아니다).
+          if (mounted) unawaited(_vm.refresh());
         }
         return null;
       },
