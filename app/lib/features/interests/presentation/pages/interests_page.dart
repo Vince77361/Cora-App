@@ -202,7 +202,9 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
     }
   }
 
-  /// 브랜드 줄(보낸 제안): 조건 합의(12)를 연다. 돌아오면 목록을 새로 읽는다.
+  /// 브랜드 줄(보낸 제안): 조건 합의(12)를 연다. 돌아오면 목록을 새로 읽는다. 브랜드 제안함은 가게 오퍼 줄을 읽지
+  /// 않아서(`ProposalsViewModel._load`) 줄이 항상 [BrandContractRow]다. 아래 검사는 타입을 좁히려는 것이지
+  /// 다른 줄을 조용히 무시하려는 것이 아니다.
   Future<void> _openContractRow(InboxRow row) async {
     if (row is! BrandContractRow) return;
     await context.push(AppRoutes.collaborationAgreement(row.collaborationId));
