@@ -360,6 +360,28 @@ void main() {
       );
     });
 
+    // Ruling T9-1: 저장 줄의 `제안하기`는 캔버스(`.cta.subtle`)대로 약한 색이고, 응답할 차례인 제안 줄의
+    // `응답하기`만 형광이다. 라이트와 다크 모두 고정한다.
+    for (final (name, theme) in [
+      ('light', coraLightTheme),
+      ('dark', coraDarkTheme),
+    ]) {
+      testWidgets('keeps 제안하기 quiet and 응답하기 highlighted in $name mode', (
+        tester,
+      ) async {
+        await _pump(tester, theme: theme);
+        final c = theme.extension<CoraColors>()!;
+
+        expect(_buttonBackground(tester, '제안하기'), c.surface);
+        expect(_buttonText(tester, '제안하기').color, c.text);
+
+        await _tab(tester, '보낸 제안 2');
+        expect(_buttonBackground(tester, '응답하기'), c.highlightAction);
+        expect(_buttonText(tester, '응답하기').color, c.onHighlightAction);
+        expect(_buttonBackground(tester, '대기'), c.surface);
+      });
+    }
+
     testWidgets('does not overflow at 1.3x with long names', (tester) async {
       final repo = FakeStoreInterestsRepository(
         saved: [
@@ -397,3 +419,15 @@ Color? _tabBackground(WidgetTester tester, String label) {
   );
   return (box.decoration as BoxDecoration).color;
 }
+
+Color? _buttonBackground(WidgetTester tester, String label) {
+  final box = tester.widget<DecoratedBox>(
+    find
+        .ancestor(of: find.text(label), matching: find.byType(DecoratedBox))
+        .first,
+  );
+  return (box.decoration as BoxDecoration).color;
+}
+
+TextStyle _buttonText(WidgetTester tester, String label) =>
+    tester.widget<Text>(find.text(label).first).style!;

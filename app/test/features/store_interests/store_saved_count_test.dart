@@ -98,4 +98,32 @@ void main() {
     expect(interests.savedCalls, before + 1);
     expect(find.bySemanticsLabel('저장함, 2명'), findsOneWidget);
   });
+
+  testWidgets('reads the saved list again after undoing a decision so the '
+      'count goes back', (tester) async {
+    final interests = FakeStoreInterestsRepository(saved: [storeInterest('a')]);
+    await pumpDiscover(
+      tester,
+      discover: FakeStoreDiscoverRepository(
+        cards: [
+          storeCard('c1'),
+          storeCard('c2', name: '민의 옷장 기록'),
+        ],
+      ),
+      interests: interests,
+    );
+    interests.saved = [storeInterest('a'), storeInterest('c1')];
+    await tester.drag(find.text('하루 한 컵 게시물 1'), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel('저장함, 2명'), findsOneWidget);
+    final before = interests.savedCalls;
+
+    // 서버에서 마지막 저장이 되돌려져 저장 목록이 줄어든다.
+    interests.saved = [storeInterest('a')];
+    await tester.tap(find.bySemanticsLabel('되돌리기'));
+    await tester.pumpAndSettle();
+
+    expect(interests.savedCalls, before + 1);
+    expect(find.bySemanticsLabel('저장함, 1명'), findsOneWidget);
+  });
 }
