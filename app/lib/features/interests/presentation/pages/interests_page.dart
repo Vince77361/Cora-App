@@ -28,6 +28,11 @@ import '../../../received_proposals/presentation/widgets/received_proposals_grou
 import '../../../store_browse/presentation/widgets/creator_bottom_nav.dart';
 import '../../../store_interests/presentation/widgets/interest_list_row.dart';
 import '../../../store_interests/presentation/store_interests_text.dart';
+import '../../../negotiation/presentation/terms_text.dart' show cashLabel;
+import '../../../world_cup/domain/world_cup_candidate.dart';
+import '../../../world_cup/presentation/widgets/world_cup_banner.dart';
+import '../../../world_cup/presentation/world_cup_flow.dart';
+import '../reward_proposal_entry.dart';
 import '../../domain/interest_card.dart';
 import '../interests_text.dart';
 import '../viewmodels/interests_view_model.dart';
@@ -206,6 +211,56 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
     ref.invalidate(proposalsViewModelProvider(ProposalParty.brand));
   }
 
+  /// 이상형 월드컵(G3): 저장한 카드 전부를 후보로 넘긴다. 설명 줄은 이 목록에 분야·팔로워가 없어 제작비를 쓴다.
+  /// 우승자에게 `제안하기`는 보상 제안(F1)이고, 보낸 뒤에는 결과 화면에 04와 같은 안내를 띄운다.
+  Future<void> _startWorldCup(List<InterestCard> saved) {
+    return startWorldCup(
+      context,
+      saved: [
+        for (final (i, card) in saved.indexed)
+          WorldCupCandidate(
+            id: card.id,
+            name: card.name,
+            headline: card.headline,
+            photoUrl: card.photoUrl,
+            meta: cashLabel(card.fee, card.feeBand),
+            savedOrder: i + 1,
+          ),
+      ],
+      onPropose: _proposeToWinner,
+    );
+  }
+
+  Future<WorldCupNotice?> _proposeToWinner(
+    BuildContext flowContext,
+    WorldCupCandidate winner,
+  ) async {
+    final outcome = await openRewardProposal(
+      flowContext,
+      BeforeMatch(
+        winner.id,
+        recipientName: winner.name,
+        recipientPhotoUrl: winner.photoUrl,
+      ),
+    );
+    // 보냈으면 그 후보는 저장이 아니라 보낸 관심이 됐으니 03의 목록을 새로 읽는다.
+    if (outcome is ProposalSent || outcome is ProposalMatched) {
+      unawaited(_refreshAfterReturn());
+    }
+    return switch (outcome) {
+      ProposalSent() => WorldCupNotice(
+        message: InterestsTexts.proposalSent(winner.name),
+      ),
+      ProposalMatched(:final collaborationId) => WorldCupNotice(
+        message: DiscoveryTexts.matchToast(winner.name),
+        actionLabel: DiscoveryTexts.matchToastAction,
+        // 월드컵 화면이 맨 위라 이 화면의 시트가 아니라 05 링크를 연다(04의 안내와 같다).
+        onAction: () => flowContext.push(AppRoutes.brandMatch(collaborationId)),
+      ),
+      ProposalStale() || ProposalDismissed() => null,
+    };
+  }
+
   Future<void> _compare(InterestsState state) async {
     if (!state.canCompare) return;
     final [a, b] = state.selected;
@@ -266,6 +321,13 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
       body = _List(
         state: state,
         isBrand: widget.isBrand,
+        // 브랜드의 저장 탭에서 4명 이상 저장했을 때만 월드컵 배너가 나온다(크리에이터는 제안할 수 없다).
+        onWorldCup:
+            widget.isBrand &&
+                state.tab == InterestTab.saved &&
+                WorldCupBanner.shownFor(state.visible.length)
+            ? () => _startWorldCup(state.visible)
+            : null,
         onTapCard: _openCard,
         onTogglePick: (card) => _vm.togglePick(card),
         onOpenTerms: (card) async {
@@ -443,6 +505,7 @@ class _List extends StatelessWidget {
   const _List({
     required this.state,
     required this.isBrand,
+    required this.onWorldCup,
     required this.onTapCard,
     required this.onTogglePick,
     required this.onOpenTerms,
@@ -450,6 +513,9 @@ class _List extends StatelessWidget {
 
   final InterestsState state;
   final bool isBrand;
+
+  /// 월드컵 배너를 누르면 하는 일. null이면 배너가 없다.
+  final VoidCallback? onWorldCup;
   final void Function(InterestCard card) onTapCard;
   final void Function(InterestCard card) onTogglePick;
   final void Function(InterestCard card) onOpenTerms;
@@ -465,10 +531,22 @@ class _List extends StatelessWidget {
       for (final c in cards)
         if (c.state == InterestState.waiting) c,
     ];
+    final worldCup = onWorldCup;
     return CustomScrollView(
       slivers: [
+        // 격자 위의 월드컵 배너(캔버스 M19G3Banner의 모양, 위치는 캔버스 밖: 탭 아래 14, 좌우 16).
+        if (worldCup != null)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: WorldCupBanner(
+                savedCount: cards.length,
+                onStart: worldCup,
+              ),
+            ),
+          ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          padding: EdgeInsets.fromLTRB(16, worldCup == null ? 16 : 12, 16, 0),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,

@@ -320,6 +320,11 @@ abstract final class AppRoutes {
   /// 열 때 `extra`로 넘긴다. 넘기지 않으면 제자리에서 나타난다(진입과 구별할 수 없어서).
   static const stacked = 'stacked';
 
+  /// 이상형 월드컵의 대결과 결과(G3). 사장님과 브랜드의 저장함이 `extra`로 판 정보를 넘겨 연다. 상태가 `extra`에만
+  /// 있어서 앱을 다시 켠 뒤에는 열 수 없다(첫 화면으로 보낸다).
+  static const worldCupMatch = '/world-cup/match';
+  static const worldCupResult = '/world-cup/result';
+
   /// 대화 목록. 세 역할의 하단 메뉴 `대화`가 제자리에서 연다.
   static const chats = '/chats';
 

@@ -16,6 +16,10 @@ import '../../../proposals/domain/proposal.dart';
 import '../../../proposals/presentation/proposal_text.dart';
 import '../../../store_discover/presentation/pages/store_discover_page.dart';
 import '../../../store_home/domain/applicant.dart' show CreatorSummary;
+import '../../../store_discover/presentation/store_discover_text.dart';
+import '../../../world_cup/domain/world_cup_candidate.dart';
+import '../../../world_cup/presentation/widgets/world_cup_banner.dart';
+import '../../../world_cup/presentation/world_cup_flow.dart';
 import '../../domain/store_interest.dart';
 import '../store_interests_text.dart';
 import '../viewmodels/store_interests_view_model.dart';
@@ -82,16 +86,47 @@ class _StoreInterestsPageState extends ConsumerState<StoreInterestsPage> {
   Future<void> _propose(StoreInterest creator) async {
     await context.push(
       AppRoutes.storeOfferNew(creator.creatorId),
-      extra: SendOfferArgs(
-        creator: CreatorSummary(
-          userId: creator.creatorId,
-          displayName: creator.name,
-          contentFocus: creator.contentFocus,
-          photoUrl: creator.photoUrl,
-        ),
-      ),
+      extra: _offerArgs(creator),
     );
     if (mounted) unawaited(_vm.refresh());
+  }
+
+  static SendOfferArgs _offerArgs(StoreInterest creator) => SendOfferArgs(
+    creator: CreatorSummary(
+      userId: creator.creatorId,
+      displayName: creator.name,
+      contentFocus: creator.contentFocus,
+      photoUrl: creator.photoUrl,
+    ),
+  );
+
+  /// 이상형 월드컵(G3): 저장한 사람 전부를 후보로 넘긴다. 서버 목록에 한 줄 설명(대표 게시물)이 없어 한 줄은 비워 둔다.
+  /// 우승자에게 `제안하기`는 저장 줄의 `제안하기`와 같은 오퍼 작성(A5)이다.
+  Future<void> _startWorldCup(List<StoreInterest> saved) {
+    final byId = {for (final p in saved) p.creatorId: p};
+    return startWorldCup(
+      context,
+      saved: [
+        for (final (i, p) in saved.indexed)
+          WorldCupCandidate(
+            id: p.creatorId,
+            name: p.name,
+            photoUrl: p.photoUrl,
+            meta: StoreDiscoverTexts.infoLine(p.contentFocus, p.followers),
+            savedOrder: i + 1,
+          ),
+      ],
+      onPropose: (context, winner) async {
+        final creator = byId[winner.id];
+        if (creator != null) {
+          await context.push(
+            AppRoutes.storeOfferNew(creator.creatorId),
+            extra: _offerArgs(creator),
+          );
+        }
+        return null;
+      },
+    );
   }
 
   /// 크리에이터 상세. 사장님이 크리에이터 상세를 볼 화면이 아직 없어 준비 중 화면을 연다.
@@ -194,7 +229,20 @@ class _StoreInterestsPageState extends ConsumerState<StoreInterestsPage> {
       body = ListView(
         // 하단 메뉴(아래 20 + 높이 64) 밑으로 마지막 줄이 가려지지 않게 한다.
         padding: const EdgeInsets.fromLTRB(8, 10, 8, 120),
-        children: _rows(state),
+        children: [
+          // 저장이 4명 이상이면 저장 탭 맨 위에 월드컵 배너(캔버스 M19G3Banner: 탭 아래 14, 좌우 16, 목록과 6 사이).
+          if (_tab == StoreInterestTab.saved &&
+              WorldCupBanner.shownFor(state.saved.length)) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+              child: WorldCupBanner(
+                savedCount: state.saved.length,
+                onStart: () => _startWorldCup(state.saved),
+              ),
+            ),
+          ],
+          ..._rows(state),
+        ],
       );
     }
 

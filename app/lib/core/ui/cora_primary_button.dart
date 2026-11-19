@@ -31,6 +31,7 @@ class CoraPrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.look = CoraPrimaryButtonLook.standard,
     this.fitLabel = false,
+    this.buttonHeight = height,
   });
 
   final String label;
@@ -39,6 +40,9 @@ class CoraPrimaryButton extends StatelessWidget {
 
   /// true이면 좁은 자리에서 글자를 말줄임표 대신 줄여서 한 줄에 맞춘다(A7처럼 버튼이 둘 나란히 있는 곳).
   final bool fitLabel;
+
+  /// 정적 [height]와 이름이 겹치지 않게 `buttonHeight`라 부른다. 월드컵의 몇 강 시트는 56이다.
+  final double buttonHeight;
 
   static const double height = 58;
 
@@ -78,7 +82,7 @@ class CoraPrimaryButton extends StatelessWidget {
             final background = Color.lerp(offColor, onColor, t)!;
             final foreground = Color.lerp(c.textSecondary, onForeground, t)!;
             return SizedBox(
-              height: height,
+              height: buttonHeight,
               width: double.infinity,
               child: DecoratedBox(
                 decoration: BoxDecoration(

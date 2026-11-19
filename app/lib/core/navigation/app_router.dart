@@ -61,6 +61,9 @@ import '../../features/offers/presentation/pages/send_offer_page.dart';
 import '../../features/store_browse/presentation/pages/store_detail_page.dart';
 import '../../features/store_discover/presentation/pages/store_discover_page.dart';
 import '../../features/store_interests/presentation/pages/store_interests_page.dart';
+import '../../features/world_cup/presentation/pages/world_cup_match_page.dart';
+import '../../features/world_cup/presentation/pages/world_cup_result_page.dart';
+import '../../features/world_cup/presentation/world_cup_flow.dart';
 import '../../features/store_interests/presentation/viewmodels/store_interests_view_model.dart'
     show StoreInterestTab;
 import '../../features/store_home/presentation/pages/store_home_page.dart';
@@ -273,6 +276,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _entryPage(
           state,
           CoraComingSoonPage(title: state.pathParameters['title']!),
+        ),
+      ),
+      // 이상형 월드컵(G3)의 대결과 결과. 저장함이 판 정보를 `extra`로 넘겨 연다. 정보 없이 열리면(앱을 다시 켠 뒤 등)
+      // 첫 화면으로 보낸다.
+      GoRoute(
+        path: AppRoutes.worldCupMatch,
+        redirect: (context, state) =>
+            state.extra is WorldCupMatchArgs ? null : AppRoutes.splash,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          WorldCupMatchPage(args: state.extra! as WorldCupMatchArgs),
+          key: state.pageKey,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.worldCupResult,
+        redirect: (context, state) =>
+            state.extra is WorldCupResultArgs ? null : AppRoutes.splash,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          WorldCupResultPage(args: state.extra! as WorldCupResultArgs),
+          key: state.pageKey,
         ),
       ),
       // 대화 목록. 세 역할의 하단 메뉴 `대화`가 제자리에서 연다.
