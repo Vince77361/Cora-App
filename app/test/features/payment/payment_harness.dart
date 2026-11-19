@@ -1,4 +1,5 @@
 import 'package:cora/core/config/app_config.dart';
+import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/features/offers/domain/offer_view.dart';
 import 'package:cora/features/payment/presentation/checkout_launcher.dart';
 import 'package:cora/features/payment/domain/payment_repository.dart';
@@ -6,6 +7,7 @@ import 'package:cora/features/payment/presentation/viewmodels/payment_view_model
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/pump_cora_app.dart';
 import '../store_home/fake_store_home_repository.dart';
 import '../store_home/store_home_harness.dart';
 import 'fake_payment_repository.dart';
@@ -39,9 +41,10 @@ Future<void> pumpPayment(
   List<Override> overrides = const [],
   bool open = true,
 }) async {
+  final repo = home ?? homeWithPayableOffer();
   await pumpStoreHome(
     tester,
-    home: home ?? homeWithPayableOffer(),
+    home: repo,
     env: env,
     overrides: [
       paymentRepositoryProvider.overrideWithValue(
@@ -54,8 +57,18 @@ Future<void> pumpPayment(
     ],
   );
   if (!open) return;
-  await tester.tap(find.text('보낸 오퍼 1'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('결제하기'));
+  // 홈은 보낸 오퍼를 보이지 않으므로 결제 대기 오퍼의 협업으로 결제 화면을 바로 연다.
+  await openPaymentOf(tester, repo);
+}
+
+/// [home]의 첫 결제 대기 오퍼 협업으로 A8을 연다.
+Future<void> openPaymentOf(
+  WidgetTester tester,
+  FakeStoreHomeRepository home,
+) async {
+  final id = home.sentOffers
+      .firstWhere((o) => o.collaborationId != null)
+      .collaborationId!;
+  routerOf(tester).push(AppRoutes.storePay(id));
   await tester.pumpAndSettle();
 }

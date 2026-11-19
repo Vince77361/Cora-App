@@ -21,6 +21,7 @@ FakeStoreRepository storeWithTrial({
   store: sampleStore(
     status: StoreStatus.published,
     step: StoreOnboardingStep.done,
+    defaultTerms: sampleRecruitTerms,
     trialInfo:
         info ??
         TrialInfo(

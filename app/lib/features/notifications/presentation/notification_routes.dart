@@ -9,11 +9,6 @@ abstract final class NotificationRoutes {
   static const notifications = '/notifications';
   static const settings = '/settings/notifications';
   static const wallet = '/creator/wallet';
-
-  /// 사장님 홈을 열면서 고를 탭. 홈이 쿼리(`?tab=`)로 읽는다.
-  static const tabParam = AppRoutes.tabParam;
-  static const applicantsTab = 'applicants';
-  static const sentOffersTab = 'sent-offers';
 }
 
 /// 알림이 가리키는 곳([targetKind], [targetId])을 앱 경로로 바꾼다. 서버는 앱 주소를 모르고 종류와
@@ -24,13 +19,19 @@ String? locationFor(String targetKind, String? targetId, UserRole role) {
   // 서버는 역할을 가리지 않고 종류만 내려 주므로, 그 화면이 있는 역할에게만 경로를 준다.
   switch (targetKind) {
     case 'STORE_APPLICANTS':
-      return role == UserRole.store
-          ? '${AppRoutes.store}?${NotificationRoutes.tabParam}=${NotificationRoutes.applicantsTab}'
-          : null;
+      // 새 지원. 홈에서 떼어 낸 지원자 화면이 연다.
+      return role == UserRole.store ? AppRoutes.storeApplicants : null;
     case 'STORE_SENT_OFFERS':
-      return role == UserRole.store
-          ? '${AppRoutes.store}?${NotificationRoutes.tabParam}=${NotificationRoutes.sentOffersTab}'
-          : null;
+      // 보낸 오퍼는 홈에서 빠지고 `오퍼` 탭(제안함)으로 갔다.
+      return role == UserRole.store ? AppRoutes.storeProposals : null;
+    case 'STORE_INTERESTS':
+      // 서로 관심(사장님 쪽). 저장함의 `보낸 관심`을 연다.
+      return role == UserRole.store ? AppRoutes.storeSent : null;
+    case 'STORE_DETAIL':
+      // 서로 관심(크리에이터 쪽). 서버는 가게 id를 준다.
+      return id == null || role != UserRole.creator
+          ? null
+          : AppRoutes.creatorStore(id);
     case 'OFFER_INBOX':
       return role == UserRole.creator ? AppRoutes.creatorOffers : null;
     case 'PAYMENT':

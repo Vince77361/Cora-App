@@ -24,10 +24,10 @@ void main() {
 
     expect(find.text(_compare), findsOneWidget);
     expect(find.text(_hint), findsNothing);
-    // 체험단 줄은 바로가기 둘 아래, 탭 위에 있다.
+    // 체험단 줄은 크리에이터 모집 상자 아래, 추천 3명 위에 있다.
     final banner = tester.getTopLeft(find.text(_compare)).dy;
-    expect(banner, greaterThan(tester.getBottomLeft(find.text('지원자 추천')).dy));
-    expect(banner, lessThan(tester.getTopLeft(find.text('지원한 크리에이터 3')).dy));
+    expect(banner, greaterThan(tester.getBottomLeft(find.text('지원자 보기')).dy));
+    expect(banner, lessThan(tester.getTopLeft(find.text('추천 3명')).dy));
 
     await tester.tap(find.text(_compare));
     await tester.pumpAndSettle();
@@ -65,11 +65,7 @@ void main() {
     // 한 번 보이면 서버에 봤다고 알린다(다음에 홈을 열 때부터 나오지 않는다).
     expect(trial.hintsSeen, 1);
 
-    // 탭을 바꾸고 다시 읽어도 또 알리지 않고, 이 화면의 줄은 그대로 눌린다.
-    containerOf(tester)
-        .read(storeHomeViewModelProvider.notifier)
-        .selectTab(StoreHomeTab.sentOffers);
-    await tester.pump();
+    // 다시 읽어도 또 알리지 않고, 이 화면의 줄은 그대로 눌린다.
     await containerOf(
       tester,
     ).read(storeHomeViewModelProvider.notifier).refresh();

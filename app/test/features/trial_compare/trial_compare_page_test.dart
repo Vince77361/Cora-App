@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/ui/cora_state_view.dart';
-import 'package:cora/features/store_home/presentation/viewmodels/store_home_view_model.dart';
 import 'package:cora/features/store_onboarding/presentation/viewmodels/my_store_view_model.dart';
 import 'package:cora/features/trial_compare/domain/trial_info.dart';
 import 'package:cora/features/trial_compare/presentation/pages/trial_compare_page.dart';
@@ -127,7 +126,7 @@ void main() {
     },
   );
 
-  testWidgets('G3 goes to the applicants tab when nobody applied yet', (
+  testWidgets('G3 goes to the applicants screen when nobody applied yet', (
     tester,
   ) async {
     await pumpTrialCompare(tester, home: FakeStoreHomeRepository());
@@ -135,11 +134,7 @@ void main() {
     await tester.tap(find.text('다음 달은 Cora로 오퍼 보내기'));
     await tester.pumpAndSettle();
 
-    expect(topPath(tester), AppRoutes.store);
-    expect(
-      containerOf(tester).read(storeHomeViewModelProvider).value!.tab,
-      StoreHomeTab.applicants,
-    );
+    expect(topPath(tester), AppRoutes.storeApplicants);
   });
 
   testWidgets('G3 asks for the contract info when there is none', (

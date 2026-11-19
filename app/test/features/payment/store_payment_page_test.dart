@@ -455,18 +455,16 @@ void main() {
   });
 
   testWidgets('does not overflow at 1.3x text scale', (tester) async {
+    final home = homeWithPayableOffer();
     await pumpStoreHome(
       tester,
-      home: homeWithPayableOffer(),
+      home: home,
       smallPhoneLargeText: true,
       overrides: [
         paymentRepositoryProvider.overrideWithValue(FakePaymentRepository()),
       ],
     );
-    await tester.tap(find.text('보낸 오퍼 1'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('결제하기'));
-    await tester.pumpAndSettle();
+    await openPaymentOf(tester, home);
 
     expect(find.byType(StorePaymentPage), findsOneWidget);
     expect(tester.takeException(), isNull);

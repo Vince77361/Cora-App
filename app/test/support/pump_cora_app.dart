@@ -2,6 +2,8 @@ import 'package:cora/app.dart';
 import 'package:cora/core/config/app_config.dart';
 import 'package:cora/core/config/app_config_provider.dart';
 import 'package:cora/core/navigation/app_router.dart';
+import 'package:cora/features/applicant_picks/domain/applicant_pick.dart';
+import 'package:cora/features/applicant_picks/domain/applicant_picks_repository.dart';
 import 'package:cora/features/auth/domain/auth_repository_provider.dart';
 import 'package:cora/features/brand_onboarding/domain/brand_repository.dart';
 import 'package:cora/features/brand_onboarding/domain/campaign_repository.dart';
@@ -33,6 +35,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/applicant_picks/fake_applicant_picks_repository.dart';
 import '../features/auth/fake_auth_repository.dart';
 import '../features/brand_onboarding/fake_brand_repository.dart';
 import '../features/brand_onboarding/fake_campaign_repository.dart';
@@ -94,6 +97,11 @@ Widget coraAppWith(
       if (!_overrides(overrides, storeHomeRepositoryProvider))
         storeHomeRepositoryProvider.overrideWithValue(
           FakeStoreHomeRepository(),
+        ),
+      // 사장님 홈의 `추천 3명`이 읽는다. 기본은 추천이 없는 계정이다.
+      if (!_overrides(overrides, applicantPicksRepositoryProvider))
+        applicantPicksRepositoryProvider.overrideWithValue(
+          FakeApplicantPicksRepository(picks: [], source: PicksSource.all),
         ),
       // 사장님 홈이 보낸 오퍼 줄의 협업 단계를 읽는다.
       if (!_overrides(overrides, collaborationRepositoryProvider))

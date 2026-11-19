@@ -66,6 +66,7 @@ import '../../features/world_cup/presentation/pages/world_cup_result_page.dart';
 import '../../features/world_cup/presentation/world_cup_flow.dart';
 import '../../features/store_interests/presentation/viewmodels/store_interests_view_model.dart'
     show StoreInterestTab;
+import '../../features/store_home/presentation/pages/store_applicants_page.dart';
 import '../../features/store_home/presentation/pages/store_home_page.dart';
 import '../../features/trial_compare/presentation/pages/trial_compare_page.dart';
 import '../../features/view_report/presentation/pages/view_evidence_page.dart';
@@ -73,7 +74,6 @@ import '../../features/view_report/presentation/pages/view_report_page.dart';
 import '../../features/trial_compare/presentation/pages/trial_info_page.dart';
 import '../../features/store_result/presentation/pages/store_result_page.dart';
 import '../../features/store_home/presentation/pages/store_me_page.dart';
-import '../../features/store_home/presentation/viewmodels/store_home_view_model.dart';
 import '../../features/store_onboarding/presentation/pages/content_drafts_page.dart';
 import '../../features/store_onboarding/presentation/pages/recruit_terms_page.dart';
 import '../../features/store_onboarding/presentation/pages/store_edit_page.dart';
@@ -350,18 +350,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // 가게 사장님 흐름.
       GoRoute(
         path: AppRoutes.store,
-        pageBuilder: (context, state) => _entryPage(
-          state,
-          // 알림함이 `?tab=`으로 열 탭을 알려 준다.
-          StoreHomePage(
-            initialTab: switch (state.uri.queryParameters[NotificationRoutes
-                .tabParam]) {
-              NotificationRoutes.applicantsTab => StoreHomeTab.applicants,
-              NotificationRoutes.sentOffersTab => StoreHomeTab.sentOffers,
-              _ => null,
-            },
-          ),
-        ),
+        pageBuilder: (context, state) =>
+            _entryPage(state, const StoreHomePage()),
       ),
       GoRoute(
         path: AppRoutes.storeOnboardingLinks,
@@ -494,7 +484,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
         ),
       ),
-      // 지원자 추천(G2). 사장님 홈 위로 밀려 들어온다.
+      // 지원자 목록. 홈의 `지원자 보기`와 지원 알림이 연다. 홈 위로 밀려 들어온다.
+      GoRoute(
+        path: AppRoutes.storeApplicants,
+        pageBuilder: (context, state) => CoraTransitions.push(
+          const StoreApplicantsPage(),
+          key: state.pageKey,
+        ),
+      ),
+      // 지원자 추천(G2). 옛 한 장씩 보는 화면이다.
       GoRoute(
         path: AppRoutes.storeApplicantPicks,
         pageBuilder: (context, state) => CoraTransitions.push(

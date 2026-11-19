@@ -1,9 +1,7 @@
-import 'package:cora/features/offers/domain/offer_view.dart';
+import 'package:cora/features/offer_terms/domain/offer_terms.dart';
 import 'package:cora/features/store_home/domain/applicant.dart';
 import 'package:cora/features/store_home/presentation/store_home_text.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'fake_store_home_repository.dart';
 
 void main() {
   // 날짜는 휴대폰의 달력 날짜로 센다. 정오로 두어 시간대가 달라도 같은 날이다.
@@ -35,28 +33,70 @@ void main() {
     expect(applicantMeta(noFocus, now), '어제 지원');
   });
 
-  test('describes each sent offer state', () {
-    final waiting = sentOffer(view: OfferView.waiting);
-    expect(sentOfferMeta(waiting), '답을 기다려요');
-    expect(sentOfferAction(waiting), isNull);
+  test('writes the followers short like the canvas', () {
+    expect(followersShort(640), '640');
+    expect(followersShort(3100), '3,100');
+    expect(followersShort(9999), '9,999');
+    expect(followersShort(10000), '1만');
+    expect(followersShort(18000), '1.8만');
+    expect(followersShort(123456), '12.3만');
+  });
 
-    final accepted = sentOffer(view: OfferView.accepted, paymentDaysLeft: 3);
-    expect(sentOfferMeta(accepted), '수락함, 결제를 기다려요 · 3일 남음');
-    expect(sentOfferAction(accepted), '결제하기');
+  group('pickDescription', () {
+    const focus = '리빙 릴스';
 
-    final noDays = sentOffer(view: OfferView.accepted);
-    expect(sentOfferMeta(noDays), '수락함, 결제를 기다려요');
+    test('says when the creator applied after the focus', () {
+      expect(
+        pickDescription(
+          contentFocus: focus,
+          appliedAt: DateTime(2026, 11, 11, 9),
+          followers: 640,
+          now: now,
+        ),
+        '리빙 릴스\n오늘 지원',
+      );
+    });
 
-    final declined = sentOffer(view: OfferView.declined);
-    expect(sentOfferMeta(declined), '거절함');
-    expect(sentOfferAction(declined), '다시 찾기');
+    test('says the followers when there is no application', () {
+      expect(
+        pickDescription(contentFocus: focus, followers: 640, now: now),
+        '리빙 릴스\n팔로워 640',
+      );
+    });
 
-    final expired = sentOffer(view: OfferView.expired);
-    expect(sentOfferMeta(expired), '기한이 지났어요');
-    expect(sentOfferAction(expired), isNull);
+    test('leaves out what is missing', () {
+      expect(
+        pickDescription(appliedAt: DateTime(2026, 11, 10, 9), now: now),
+        '어제 지원',
+      );
+      expect(
+        pickDescription(contentFocus: ' ', followers: 3100, now: now),
+        '팔로워 3,100',
+      );
+      expect(pickDescription(contentFocus: focus, now: now), focus);
+    });
+  });
 
-    final cancelled = sentOffer(view: OfferView.cancelled);
-    expect(sentOfferMeta(cancelled), '취소했어요');
-    expect(sentOfferAction(cancelled), isNull);
+  group('recruit box lines', () {
+    test('joins the reward elements and details the view pay', () {
+      const reward = Reward(
+        voucher: Voucher(name: '식사권', value: 40000, people: 2),
+        viewPay: ViewPay(ratePerThousand: 2000, cap: 60000),
+      );
+      expect(recruitHeadline(reward), '식사권 2인 + 조회수 수당');
+      expect(recruitDetail(reward), '1,000회당 2,000원, 최대 60,000원');
+    });
+
+    test(
+      'has no detail without a view pay and no headline without a reward',
+      () {
+        expect(
+          recruitHeadline(const Reward(fixedCash: 30000)),
+          '고정 현금 30,000원',
+        );
+        expect(recruitDetail(const Reward(fixedCash: 30000)), isNull);
+        expect(recruitHeadline(const Reward()), isNull);
+      },
+    );
   });
 }

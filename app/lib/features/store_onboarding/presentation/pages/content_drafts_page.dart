@@ -21,7 +21,6 @@ import '../../domain/content_draft.dart';
 import '../../domain/my_store.dart';
 import '../../domain/store_repository.dart';
 import '../viewmodels/content_drafts_view_model.dart';
-import '../../../notifications/presentation/notification_routes.dart';
 import '../viewmodels/my_store_view_model.dart';
 import '../widgets/inline_action_text.dart';
 
@@ -98,11 +97,9 @@ class _ContentDraftsPageState extends ConsumerState<ContentDraftsPage> {
   }
 
   Future<void> _makeOffer() async {
-    // 공개된 가게는 받는 사람을 골라야 오퍼를 쓸 수 있어서 지원자 탭으로 간다.
+    // 공개된 가게는 받는 사람을 골라야 오퍼를 쓸 수 있어서 지원자 화면으로 간다.
     if (!widget.onboarding) {
-      context.go(
-        '${AppRoutes.store}?${NotificationRoutes.tabParam}=${NotificationRoutes.applicantsTab}',
-      );
+      context.push(AppRoutes.storeApplicants);
       return;
     }
     setState(() {

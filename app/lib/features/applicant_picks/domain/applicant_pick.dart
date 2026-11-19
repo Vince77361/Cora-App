@@ -25,17 +25,31 @@ class PickCreator {
   final int? followers;
 }
 
-/// 가게와 잘 맞는 지원 한 건. 점수에 팔로워 수는 들지 않는다(서버가 정한다).
+/// 추천 3명이 어디서 뽑혔는지. 서버가 정한다(`APPLICANTS`·`ALL`).
+enum PicksSource {
+  /// 이 가게에 지원 중인 사람 가운데서.
+  applicants,
+
+  /// 지원자가 없어 Cora 크리에이터 전체에서.
+  all,
+}
+
+/// 가게와 잘 맞는 추천 한 명. 점수에 팔로워 수는 들지 않는다(서버가 정한다). 전체 크리에이터에서
+/// 뽑았으면 지원이 없어서 [applicationId]·[appliedAt]·[pitch]가 null이다.
 class ApplicantPick {
   const ApplicantPick({
-    required this.applicationId,
+    this.applicationId,
     required this.creator,
+    this.appliedAt,
     this.pitch,
     this.reasons = const [],
   });
 
-  final String applicationId;
+  final String? applicationId;
   final PickCreator creator;
+
+  /// 지원한 때. 지원자 중에서 뽑았을 때만 있다.
+  final DateTime? appliedAt;
 
   /// 크리에이터가 지원하며 쓴 한 줄. 없을 수 있다.
   final String? pitch;
@@ -46,8 +60,16 @@ class ApplicantPick {
 
 /// 추천 3명과 새 지원 수(넘긴 사람도 센다. 사장님 홈의 `새 지원`과 같다).
 class ApplicantPicks {
-  const ApplicantPicks({required this.items, required this.totalNew});
+  const ApplicantPicks({
+    required this.items,
+    required this.totalNew,
+    this.source = PicksSource.applicants,
+  });
 
   final List<ApplicantPick> items;
   final int totalNew;
+
+  /// 지원자 쪽인지 전체 크리에이터 쪽인지. 홈의 `지원 있음`·`지원 없음`은 [totalNew]가 아니라 이것으로 가른다
+  /// (지원 줄은 있어도 프로필이 모두 지워졌으면 [totalNew]가 0보다 커도 전체 쪽이다).
+  final PicksSource source;
 }

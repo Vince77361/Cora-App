@@ -22,6 +22,7 @@ MyStore sampleStore({
   String? recruitLine,
   TrialInfo? trialInfo,
   TrialBannerKind? trialBanner,
+  OfferTerms? defaultTerms,
 }) => MyStore(
   id: 'store-1',
   status: status,
@@ -45,6 +46,7 @@ MyStore sampleStore({
   recruitLine: recruitLine,
   trialInfo: trialInfo,
   trialBanner: trialBanner,
+  defaultTerms: defaultTerms,
   sourceLinks:
       sourceLinks ??
       const [

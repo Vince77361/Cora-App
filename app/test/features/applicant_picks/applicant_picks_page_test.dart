@@ -3,11 +3,9 @@ import 'package:cora/core/ui/cora_state_view.dart';
 import 'package:cora/features/applicant_picks/domain/applicant_pick.dart';
 import 'package:cora/features/applicant_picks/presentation/applicant_picks_text.dart';
 import 'package:cora/features/applicant_picks/presentation/pages/applicant_picks_page.dart';
-import 'package:cora/features/store_home/presentation/viewmodels/store_home_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/load_app_fonts.dart';
-import '../../support/pump_cora_app.dart';
 import '../store_home/store_home_harness.dart';
 import 'applicant_picks_harness.dart';
 import 'fake_applicant_picks_repository.dart';
@@ -64,14 +62,10 @@ void main() {
       expect(find.text('지원자 목록에서 나머지를 볼 수 있어요.'), findsOneWidget);
       expect(find.text('넘기기'), findsNothing);
 
-      // 지원자 목록 보기: 사장님 홈의 지원자 탭으로 간다.
+      // 지원자 목록 보기: 지원자 화면으로 간다.
       await tester.tap(find.text('지원자 목록 보기'));
       await tester.pumpAndSettle();
-      expect(topPath(tester), AppRoutes.store);
-      expect(
-        containerOf(tester).read(storeHomeViewModelProvider).value!.tab,
-        StoreHomeTab.applicants,
-      );
+      expect(topPath(tester), AppRoutes.storeApplicants);
     },
   );
 
@@ -154,7 +148,7 @@ void main() {
     expect(find.text('추천을 모두 봤어요.'), findsNothing);
   });
 
-  testWidgets('G2 opens the find tab placeholder from the header', (
+  testWidgets('G2 opens the whole browse screen from the header', (
     tester,
   ) async {
     await pumpApplicantPicks(tester);
@@ -162,7 +156,21 @@ void main() {
     await tester.tap(find.text('탐색'));
     await tester.pumpAndSettle();
 
-    expect(topPath(tester), startsWith('/store/coming-soon/'));
+    expect(topPath(tester), AppRoutes.storeDiscover);
+  });
+
+  testWidgets('G2 leaves out creators taken from all creators', (tester) async {
+    await pumpApplicantPicks(
+      tester,
+      picks: FakeApplicantPicksRepository(
+        picks: sampleAllPicks(),
+        totalNew: 0,
+        source: PicksSource.all,
+      ),
+    );
+
+    expect(find.text('아직 지원한 크리에이터가 없어요.'), findsOneWidget);
+    expect(find.text('넘기기'), findsNothing);
   });
 
   testWidgets('G2 offers a retry when loading fails', (tester) async {

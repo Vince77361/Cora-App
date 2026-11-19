@@ -99,17 +99,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         ? null
         : locationFor(n.targetKind, n.targetId, role);
     if (location == null || !_routable(location)) return;
-    // 사장님 홈은 이미 아래에 있으므로 닫고 돌아가면서 열 탭(경로)을 홈에 넘긴다. 아래에 홈이 없을
-    // 때(알림함이 첫 화면)만 이동한다.
-    if (Uri.parse(location).path == AppRoutes.store) {
-      if (context.canPop()) {
-        context.pop(location);
-      } else {
-        context.go(location);
-      }
-    } else {
-      context.push(location, extra: AppRoutes.stacked);
-    }
+    context.push(location, extra: AppRoutes.stacked);
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cora/features/applicant_picks/data/api_applicant_picks_repository.dart';
+import 'package:cora/features/applicant_picks/domain/applicant_pick.dart';
 import 'package:cora/features/applicant_picks/domain/applicant_picks_repository.dart';
 import 'package:cora_api/api.dart' as api;
 import 'package:flutter_test/flutter_test.dart';
@@ -59,7 +60,10 @@ void main() {
         fake.requests.single.url.path,
         '/stores/me/applications/recommended',
       );
+      expect(picks.source, PicksSource.applicants);
       expect(picks.totalNew, 5);
+      expect(picks.items.first.applicationId, 'a1');
+      expect(picks.items.first.appliedAt, DateTime.utc(2026, 11, 11, 0, 1));
       expect(picks.items.first.creator.followers, 640);
       expect(picks.items.first.reasons, ['같은 구·군']);
       expect(picks.items.last.creator.followers, isNull);
@@ -68,7 +72,7 @@ void main() {
   );
 
   test(
-    'leaves out picks taken from all creators, which have no application',
+    'keeps picks taken from all creators with no application or applied time',
     () async {
       final fake = FakeHttpClient()
         ..body = jsonEncode({
@@ -82,13 +86,25 @@ void main() {
               'pitch': null,
               'reasons': [],
             },
+            {
+              'applicationId': null,
+              'appliedAt': null,
+              'creator': _creator(instagramConnected: false, followers: 900),
+              'pitch': null,
+              'reasons': [],
+            },
           ],
         });
 
       final picks = await _repo(fake).fetchPicks();
 
-      expect(picks.items, isEmpty);
+      expect(picks.source, PicksSource.all);
       expect(picks.totalNew, 0);
+      expect(picks.items, hasLength(2));
+      expect(picks.items.first.applicationId, isNull);
+      expect(picks.items.first.appliedAt, isNull);
+      expect(picks.items.first.creator.followers, 640);
+      expect(picks.items.last.creator.followers, isNull);
     },
   );
 

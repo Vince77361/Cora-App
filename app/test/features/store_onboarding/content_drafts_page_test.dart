@@ -3,9 +3,6 @@ import 'dart:async';
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/ui/cora_secondary_button.dart';
 import 'package:cora/core/ui/cora_coming_soon_page.dart';
-import 'package:cora/features/store_home/presentation/pages/store_home_page.dart';
-import 'package:cora/features/store_home/presentation/viewmodels/store_home_view_model.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cora/features/store_onboarding/domain/content_draft.dart';
 import 'package:cora/features/store_onboarding/domain/my_store.dart';
 import 'package:cora/features/store_onboarding/presentation/pages/content_drafts_page.dart';
@@ -357,7 +354,7 @@ void main() {
     expect(find.text('카드뉴스'), findsOneWidget);
   });
 
-  testWidgets('"오퍼 만들기" on the owner home drafts opens the applicants tab', (
+  testWidgets('"오퍼 만들기" on the owner home drafts opens the applicants screen', (
     tester,
   ) async {
     final stores = FakeStoreRepository(
@@ -373,17 +370,10 @@ void main() {
     await tester.tap(find.text('오퍼 만들기'));
     await tester.pumpAndSettle();
 
-    // 공개된 가게는 등록 단계를 다시 올리지 않고 사장님 홈의 지원자 탭으로 간다.
+    // 공개된 가게는 등록 단계를 다시 올리지 않고 지원자 화면으로 간다.
     expect(stores.advanced, isEmpty);
-    expect(find.byType(StoreHomePage), findsOneWidget);
+    expect(topPath(tester), AppRoutes.storeApplicants);
     expect(find.byType(ContentDraftsPage), findsNothing);
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(StoreHomePage)),
-    );
-    expect(
-      container.read(storeHomeViewModelProvider).value?.tab,
-      StoreHomeTab.applicants,
-    );
   });
 
   // 캔버스: 사진 없는 슬라이드의 톤은 (장면 번호 + 다시 만든 횟수) % 2로 고른다.

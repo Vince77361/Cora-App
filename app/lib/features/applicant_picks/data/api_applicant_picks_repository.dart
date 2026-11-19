@@ -16,28 +16,30 @@ class ApiApplicantPicksRepository implements ApplicantPicksRepository {
     if (m == null) throw const ApplicantPicksFailure();
     return ApplicantPicks(
       totalNew: m.totalNew,
-      // 한 장씩 보며 넘기던 이 화면은 지원자만 다룬다. 지원자가 없을 때 서버가 전체 크리에이터에서 뽑은 사람(`applicationId`
-      // null)은 이 화면에 올리지 않는다(홈의 추천 3명은 따로 만든다).
+      source: switch (m.source_) {
+        api.RecommendedSource.ALL => PicksSource.all,
+        _ => PicksSource.applicants,
+      },
       items: [
         for (final item in m.items)
-          if (item.applicationId != null)
-            ApplicantPick(
-              applicationId: item.applicationId!,
-              pitch: item.pitch,
-              reasons: List.of(item.reasons),
-              creator: PickCreator(
-                userId: item.creator.userId,
-                displayName: item.creator.displayName,
-                photoUrl: item.creator.photoUrl,
-                contentFocus: item.creator.contentFocus,
-                regionSido: item.creator.regionSido,
-                regionSigungu: item.creator.regionSigungu,
-                // 연동하지 않은 크리에이터의 팔로워는 보이지 않는다.
-                followers: item.creator.instagramConnected
-                    ? item.creator.followers
-                    : null,
-              ),
+          ApplicantPick(
+            applicationId: item.applicationId,
+            appliedAt: item.appliedAt,
+            pitch: item.pitch,
+            reasons: List.of(item.reasons),
+            creator: PickCreator(
+              userId: item.creator.userId,
+              displayName: item.creator.displayName,
+              photoUrl: item.creator.photoUrl,
+              contentFocus: item.creator.contentFocus,
+              regionSido: item.creator.regionSido,
+              regionSigungu: item.creator.regionSigungu,
+              // 연동하지 않은 크리에이터의 팔로워는 보이지 않는다.
+              followers: item.creator.instagramConnected
+                  ? item.creator.followers
+                  : null,
             ),
+          ),
       ],
     );
   });

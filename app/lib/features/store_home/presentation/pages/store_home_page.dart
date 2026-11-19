@@ -10,69 +10,42 @@ import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/time/clock.dart';
 import '../../../../core/ui/cora_bottom_nav.dart';
-import '../../../../core/ui/cora_list_row.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_pressable.dart';
-import '../../../../core/ui/cora_segmented_tabs.dart';
 import '../../../../core/ui/cora_state_view.dart';
-import '../../../notifications/presentation/notification_routes.dart';
+import '../../../applicant_picks/domain/applicant_pick.dart';
 import '../../../notifications/presentation/viewmodels/unread_count_view_model.dart';
 import '../../../notifications/presentation/widgets/notification_bell.dart';
-import '../../../offers/domain/offer_view.dart';
+import '../../../offers/presentation/pages/send_offer_page.dart';
 import '../../../store_onboarding/presentation/viewmodels/my_store_view_model.dart';
 import '../../../trial_compare/domain/trial_compare_repository.dart';
 import '../../../trial_compare/domain/trial_info.dart';
-import '../../domain/sent_offer.dart';
+import '../../domain/applicant.dart';
 import '../store_home_text.dart';
-import '../viewmodels/home_draft_count_view_model.dart';
+import '../viewmodels/store_home_picks_view_model.dart';
 import '../viewmodels/store_home_view_model.dart';
+import '../widgets/browse_all_card.dart';
+import '../widgets/recommended_picks.dart';
+import '../widgets/recruit_box.dart';
 
-/// A9 사장님 홈(NStoreHome / DarkNStoreHome). 숫자 세 칸, 바로가기, `지원한 크리에이터`와
-/// `보낸 오퍼` 목록. 아래로 당기면 숫자와 두 목록을 함께 새로 읽는다.
+/// 사장님 첫 화면(M19G4Applied·M19G4Empty / DarkM19G4*). 머리, `크리에이터 모집` 상자, 조건부 체험단 줄,
+/// `추천 3명`, `전체 둘러보기`. 아래로 당기면 숫자와 추천을 함께 새로 읽는다.
 class StoreHomePage extends ConsumerStatefulWidget {
-  const StoreHomePage({super.key, this.initialTab});
-
-  /// 열면서 고를 탭. 알림함이 `지원` 알림과 `보낸 오퍼` 알림에서 이 탭으로 보낸다. 없으면 그대로 둔다.
-  final StoreHomeTab? initialTab;
+  const StoreHomePage({super.key});
 
   static const title = '사장님 홈';
   static const storePage = '가게 페이지';
-  static const newApplications = '새 지원';
-  static const sentOffers = '보낸 오퍼';
-  static const inProgress = '진행 중';
-  static const picksLabel = '지원자 추천';
-  static const picksNone = '새 지원이 오면 알려드려요';
-  static const draftsLabel = '이번 주 가게 게시물';
   static const compareBanner = '체험단 계약이 한 달 남았어요 · 비교 보기';
   static const hintBanner = '체험단 계약 정보를 넣으면 비교해 드려요.';
 
-  /// 지원자 추천 칸의 값. 추천은 최대 3명이라 새 지원이 3명보다 적으면 그 수를 말한다.
-  static String picksValue(int newApplications) {
-    if (newApplications <= 0) return picksNone;
-    final shown = newApplications < 3 ? newApplications : 3;
-    return '$shown명 보고 좋아요';
-  }
-
-  /// 이번 주 가게 게시물 칸의 값. 저장된 초안 수를 말하고, 읽지 못했거나 없으면 `AI 초안 보기`(캔버스 밖).
-  static String draftsValue(int? count) =>
-      count == null || count <= 0 ? 'AI 초안 보기' : 'AI 초안 $count개 준비';
-  static const sendOffer = '오퍼 보내기';
-  static const emptyApplicants = '아직 지원한 크리에이터가 없어요.';
-  static const emptyApplicantsDescription = '가게가 공개되면 지원이 도착해요.';
-  static const emptySentOffers = '아직 보낸 오퍼가 없어요.';
+  /// 추천 제목 아래 안내. 지원자 중에서 뽑았을 때와 전체에서 뽑았을 때가 다르다.
+  static String appliedIntro({required int applied, required int picked}) =>
+      '지원한 $applied명 중 가게와 잘 맞는 $picked명이에요.';
+  static String allIntro({required int picked}) =>
+      'Cora 크리에이터 중 가게와 잘 맞는 $picked명이에요.';
 
   /// 캔버스에 없는 상태의 문구.
   static const loadFailed = '사장님 홈을 불러오지 못했어요.';
-
-  /// `?tab=` 값이 가리키는 탭. 모르는 값이면 null.
-  static StoreHomeTab? tabFor(String? param) => switch (param) {
-    NotificationRoutes.applicantsTab => StoreHomeTab.applicants,
-    NotificationRoutes.sentOffersTab => StoreHomeTab.sentOffers,
-    _ => null,
-  };
-
-  static String applicantsTab(int count) => '지원한 크리에이터 $count';
-  static String sentOffersTab(int count) => '보낸 오퍼 $count';
 
   /// 하단 메뉴 항목의 자리(`CoraNavItems.store`의 순서).
   static const navHome = 0;
@@ -90,56 +63,27 @@ class StoreHomePage extends ConsumerStatefulWidget {
 
 class _StoreHomePageState extends ConsumerState<StoreHomePage> {
   Timer? _noticeTimer;
-
-  /// 홈을 아직 읽는 중에 받은 [StoreHomePage.initialTab]. 다 읽으면 고른다.
-  StoreHomeTab? _pendingTab;
-
-  @override
-  void initState() {
-    super.initState();
-    _pendingTab = widget.initialTab;
-    if (_pendingTab != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _applyPendingTab());
-    }
-  }
-
-  @override
-  void didUpdateWidget(StoreHomePage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // 라우터가 같은 값으로 페이지를 다시 만들 때마다 고른 탭을 되돌리지 않도록, 값이 바뀔 때만 따른다.
-    if (widget.initialTab != null &&
-        widget.initialTab != oldWidget.initialTab) {
-      _pendingTab = widget.initialTab;
-      // 위젯을 짓는 도중에는 provider를 바꿀 수 없어서 프레임이 끝난 뒤에 고른다.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _applyPendingTab());
-    }
-  }
-
-  void _applyPendingTab() {
-    final tab = _pendingTab;
-    if (tab == null || !mounted) return;
-    if (!ref.read(storeHomeViewModelProvider).hasValue) return;
-    _pendingTab = null;
-    ref.read(storeHomeViewModelProvider.notifier).selectTab(tab);
-  }
+  final _scroll = ScrollController();
 
   @override
   void dispose() {
     _noticeTimer?.cancel();
+    _scroll.dispose();
     super.dispose();
   }
 
-  /// 알림함에서 돌아왔을 때. 알림함에서 결제하거나 취소를 요청했을 수 있어서 홈을 서버에서 다시 읽고,
-  /// 홈으로 가는 알림을 눌렀으면 그 탭을 고른다.
+  /// 알림함에서 돌아왔을 때. 알림함에서 결제하거나 취소를 요청했을 수 있어서 홈을 서버에서 다시 읽는다.
   void _onBellReturn(Object? result) {
-    final vm = ref.read(storeHomeViewModelProvider.notifier);
-    if (result is String) {
-      final tab = StoreHomePage.tabFor(
-        Uri.parse(result).queryParameters[NotificationRoutes.tabParam],
-      );
-      if (tab != null) vm.selectTab(tab);
-    }
-    unawaited(vm.refresh());
+    unawaited(_refreshAll());
+  }
+
+  Future<void> _refreshAll() {
+    // 당겨 새로 읽을 때 종의 점도 서버 값으로 다시 맞춘다.
+    ref.invalidate(unreadCountViewModelProvider);
+    return Future.wait([
+      ref.read(storeHomeViewModelProvider.notifier).refresh(),
+      ref.read(storeHomePicksViewModelProvider.notifier).refresh(),
+    ]);
   }
 
   void _onNotice(String? message) {
@@ -150,15 +94,19 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
     });
   }
 
-  /// 아직 만들지 않은 화면. 홈 위로 밀려 들어온다.
-  void _comingSoon(String title) =>
-      context.push(AppRoutes.storeComingSoon(title), extra: AppRoutes.stacked);
-
   void _onNav(int index) {
-    final vm = ref.read(storeHomeViewModelProvider.notifier);
     switch (index) {
       case StoreHomePage.navHome:
-        vm.selectTab(StoreHomeTab.applicants);
+        // 이미 홈이라서 맨 위로 올라간다.
+        if (_scroll.hasClients) {
+          unawaited(
+            _scroll.animateTo(
+              0,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+            ),
+          );
+        }
       case StoreHomePage.navFind:
         // 하단 메뉴의 `찾기`는 전체 둘러보기(G1)다. 홈 위로 밀려 들어온다.
         context.push(AppRoutes.storeDiscover);
@@ -172,53 +120,25 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
     }
   }
 
-  /// 제안 상세를 연다. 돌아오면 숫자와 오퍼 줄을 서버에서 다시 읽는다(상세에서 답했을 수 있다).
-  void _openProposal(SentOffer offer) {
-    context.push(AppRoutes.storeProposal(offer.id)).then((_) {
-      if (mounted) ref.read(storeHomeViewModelProvider.notifier).refresh();
-    });
-  }
-
-  /// 보낸 오퍼 줄의 버튼. `응답하기`는 제안 상세를, `결제하기`는 결제 화면을 열고, `다시 찾기`는 아직 만들지 않은
-  /// 화면이다.
-  void _onSentOfferAction(SentOffer offer) {
-    if (offer.needsMyAnswer) {
-      _openProposal(offer);
-      return;
-    }
-    final collaborationId = offer.collaborationId;
-    if (offer.view == OfferView.accepted && collaborationId != null) {
-      // 결제 화면을 닫고 돌아오면(결제했든 그냥 나왔든) 숫자와 오퍼 줄을 서버에서 다시 읽는다.
-      context.push(AppRoutes.storePay(collaborationId)).then((_) {
-        if (mounted) ref.read(storeHomeViewModelProvider.notifier).refresh();
-      });
-      return;
-    }
-    final label = sentOfferAction(offer);
-    if (label != null) _comingSoon(label);
-  }
-
-  /// 줄을 눌렀을 때. 결제가 끝난 오퍼는 협업 진행 화면을, 그 밖의 아직 열린 오퍼는 제안 상세를 연다
-  /// (취소는 제안 상세의 `제안 취소`가 한다).
-  void _onSentOffer(SentOffer offer) {
-    final collaborationId = offer.collaborationId;
-    final state = ref.read(storeHomeViewModelProvider).value;
-    if (collaborationId != null &&
-        sentOfferPaid(offer, state?.collaborations[collaborationId])) {
-      // 협업 화면에서 취소를 요청했거나 돌아오면 줄을 서버 값으로 다시 읽는다.
-      context.push(AppRoutes.storeCollaboration(collaborationId)).then((_) {
-        if (mounted) ref.read(storeHomeViewModelProvider.notifier).refresh();
-      });
-      return;
-    }
-    if (!offer.cancellable) return;
-    _openProposal(offer);
+  /// 추천 칸의 `제안하기`. 지원자가 아닐 수 있어서 받는 사람을 함께 넘긴다.
+  void _offerTo(ApplicantPick pick) {
+    final c = pick.creator;
+    context.push(
+      AppRoutes.storeOfferNew(c.userId),
+      extra: SendOfferArgs(
+        creator: CreatorSummary(
+          userId: c.userId,
+          displayName: c.displayName,
+          contentFocus: c.contentFocus,
+          photoUrl: c.photoUrl,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     ref.listen(storeHomeNoticeProvider, (_, next) => _onNotice(next));
-    ref.listen(storeHomeViewModelProvider, (_, _) => _applyPendingTab());
     final async = ref.watch(storeHomeViewModelProvider);
     final notice = ref.watch(storeHomeNoticeProvider);
     return Scaffold(
@@ -229,9 +149,10 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
             child: switch (async) {
               AsyncData(:final value) => _Body(
                 state: value,
-                onSentOffer: _onSentOffer,
-                onSentOfferAction: _onSentOfferAction,
+                controller: _scroll,
+                onRefresh: _refreshAll,
                 onBellReturn: _onBellReturn,
+                onOffer: _offerTo,
               ),
               AsyncError() => CoraStateView.loadFailed(
                 title: StoreHomePage.loadFailed,
@@ -266,15 +187,17 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
 class _Body extends ConsumerWidget {
   const _Body({
     required this.state,
-    required this.onSentOffer,
-    required this.onSentOfferAction,
+    required this.controller,
+    required this.onRefresh,
     required this.onBellReturn,
+    required this.onOffer,
   });
 
   final StoreHomeState state;
-  final ValueChanged<SentOffer> onSentOffer;
-  final ValueChanged<SentOffer> onSentOfferAction;
+  final ScrollController controller;
+  final Future<void> Function() onRefresh;
   final ValueChanged<Object?> onBellReturn;
+  final ValueChanged<ApplicantPick> onOffer;
 
   /// 하단 메뉴(높이 64, 아래 20)에 가려지지 않게 목록 끝에 두는 여백.
   static const double _navClearance = 20 + 64 + 24;
@@ -282,86 +205,45 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
-    final vm = ref.read(storeHomeViewModelProvider.notifier);
     final now = ref.watch(clockProvider).now();
-    final summary = state.summary;
-    final sentTab = state.tab == StoreHomeTab.sentOffers;
-    final trialBanner = ref.watch(
-      myStoreViewModelProvider.select((s) => s.value?.trialBanner),
-    );
+    final store = ref.watch(myStoreViewModelProvider).value;
+    final picks = ref.watch(storeHomePicksViewModelProvider).value;
+    final newApplications = state.summary.newApplications;
+    final terms = store?.defaultTerms;
+    // `지원 있음`·`지원 없음`은 서버가 말한 출처로 가른다(지원 줄은 있어도 프로필이 모두 지워졌으면 전체에서
+    // 뽑는다). 추천을 아직 못 읽었으면 `새 지원` 숫자로 임시로 정한다.
+    final applied = picks == null
+        ? newApplications > 0
+        : picks.source == PicksSource.applicants;
+    final trialBanner = store?.trialBanner;
+    final shownCount = newApplications > 0
+        ? newApplications
+        : (picks?.items.length ?? 0);
     return RefreshIndicator(
-      onRefresh: () {
-        // 당겨 새로 읽을 때 종의 점과 초안 수도 서버 값으로 다시 맞춘다.
-        ref.invalidate(unreadCountViewModelProvider);
-        ref.invalidate(homeDraftCountProvider);
-        return vm.refresh();
-      },
+      onRefresh: onRefresh,
       color: c.text,
       backgroundColor: c.background,
       child: ListView(
+        controller: controller,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: _navClearance),
         children: [
           _Header(onBellReturn: onBellReturn),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 8,
-                children: [
-                  Expanded(
-                    // 캔버스는 첫 칸의 이름만 본문색이고 나머지는 보조색이다.
-                    child: _Count(
-                      label: StoreHomePage.newApplications,
-                      value: summary.newApplications,
-                      emphasized: true,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Count(
-                      label: StoreHomePage.sentOffers,
-                      value: summary.sentOffers,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Count(
-                      label: StoreHomePage.inProgress,
-                      value: summary.inProgress,
-                    ),
-                  ),
-                ],
+            child: RecruitBox(
+              headline: terms == null ? null : recruitHeadline(terms.reward),
+              detail: terms == null ? null : recruitDetail(terms.reward),
+              hasApplicants: applied,
+              newApplications: shownCount,
+              onFix: () => context.push(
+                AppRoutes.storeOnboardingTerms,
+                extra: AppRoutes.stacked,
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 8,
-                children: [
-                  Expanded(
-                    child: _Shortcut(
-                      label: StoreHomePage.picksLabel,
-                      value: StoreHomePage.picksValue(summary.newApplications),
-                      onTap: () => context.push(AppRoutes.storeApplicantPicks),
-                    ),
-                  ),
-                  Expanded(
-                    child: _Shortcut(
-                      label: StoreHomePage.draftsLabel,
-                      // 읽는 동안에는 값을 비워 두어 `AI 초안 보기`가 잠깐 보였다 바뀌지 않게 한다.
-                      value: switch (ref.watch(homeDraftCountProvider)) {
-                        AsyncData(:final value) => StoreHomePage.draftsValue(
-                          value,
-                        ),
-                        _ => '',
-                      },
-                      onTap: () => context.push(AppRoutes.storeDrafts),
-                    ),
-                  ),
-                ],
+              onOpenApplicants: () => context.push(AppRoutes.storeApplicants),
+              onSetTerms: () => context.push(
+                AppRoutes.storeOnboardingTerms,
+                extra: AppRoutes.stacked,
               ),
             ),
           ),
@@ -370,29 +252,28 @@ class _Body extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: _TrialBanner(kind: trialBanner),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-            child: CoraSegmentedTabs(
-              labels: [
-                StoreHomePage.applicantsTab(state.applicants.length),
-                StoreHomePage.sentOffersTab(state.sentOffers.length),
-              ],
-              selected: sentTab ? 1 : 0,
-              onChanged: (i) => vm.selectTab(
-                i == 1 ? StoreHomeTab.sentOffers : StoreHomeTab.applicants,
+          // 모집 조건을 정하지 않은 가게에는 추천을 보이지 않는다(캔버스 밖).
+          if (terms != null && picks != null && picks.items.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              child: RecommendedPicks(
+                picks: picks.items,
+                applied: applied,
+                now: now,
+                intro: applied
+                    ? StoreHomePage.appliedIntro(
+                        applied: shownCount,
+                        picked: picks.items.length,
+                      )
+                    : StoreHomePage.allIntro(picked: picks.items.length),
+                onOffer: onOffer,
               ),
             ),
-          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 10, 8, 0),
-            child: sentTab
-                ? _SentOffers(
-                    state: state,
-                    now: now,
-                    onTap: onSentOffer,
-                    onAction: onSentOfferAction,
-                  )
-                : _Applicants(state: state, now: now),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: BrowseAllCard(
+              onTap: () => context.push(AppRoutes.storeDiscover),
+            ),
           ),
         ],
       ),
@@ -491,117 +372,6 @@ class _Header extends ConsumerWidget {
   }
 }
 
-/// 숫자 칸(NStoreHome `<dl>`의 칸): 안쪽 14, 모서리 20, `surface` 바탕, 이름 12, 값 24/900.
-class _Count extends StatelessWidget {
-  const _Count({
-    required this.label,
-    required this.value,
-    this.emphasized = false,
-  });
-
-  final String label;
-  final int value;
-  final bool emphasized;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Semantics(
-      container: true,
-      label: label,
-      value: '$value',
-      child: ExcludeSemantics(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: c.surface,
-            borderRadius: BorderRadius.circular(CoraRadius.field),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: CoraTextStyles.fieldLabel.copyWith(
-                    color: emphasized ? c.text : c.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$value',
-                  style: CoraTextStyles.digit.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: c.text,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 바로가기 칸(캔버스 NStoreHome `<a>`): 안쪽 14, 모서리 20, `surface` 바탕, 이름 12 보조색 → 2 → 값 15/700.
-/// 값이 비어 있으면(읽는 중) 같은 높이의 빈 줄을 둔다.
-class _Shortcut extends StatelessWidget {
-  const _Shortcut({
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Semantics(
-      container: true,
-      button: true,
-      label: '$label, $value',
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: CoraPressable(
-          onTap: onTap,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: c.surface,
-              borderRadius: BorderRadius.circular(CoraRadius.field),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 2,
-                children: [
-                  Text(
-                    label,
-                    style: CoraTextStyles.fieldLabel.copyWith(
-                      color: c.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    value,
-                    style: CoraTextStyles.amountSmall.copyWith(color: c.text),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// 체험단 줄(캔버스 NStoreHome `<a>`): 안쪽 12/16, 모서리 18, `surface`, 글자 13과 오른쪽 `›`.
 /// `COMPARE`는 비교(G3)를, `HINT`는 계약 정보 입력을 연다. 안내(`HINT`)는 한 번 보이면 서버에 봤다고 알려
 /// 다시 나오지 않게 한다.
@@ -676,100 +446,6 @@ class _TrialBannerState extends ConsumerState<_TrialBanner> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// 캔버스 NStoreHome 목록 사진의 `object-position: 50% 25%`(사람 사진은 얼굴이 위쪽에 있다).
-const _faceAlignment = Alignment(0, -0.5);
-
-class _Applicants extends StatelessWidget {
-  const _Applicants({required this.state, required this.now});
-
-  final StoreHomeState state;
-  final DateTime now;
-
-  @override
-  Widget build(BuildContext context) {
-    if (state.applicants.isEmpty) {
-      return const _Empty(
-        title: StoreHomePage.emptyApplicants,
-        description: StoreHomePage.emptyApplicantsDescription,
-      );
-    }
-    return Column(
-      children: [
-        for (final applicant in state.applicants)
-          CoraListRow(
-            photoUrl: applicant.creator.photoUrl,
-            photoAlignment: _faceAlignment,
-            title: applicant.creator.displayName,
-            subtitle: applicantMeta(applicant, now),
-            actionLabel: StoreHomePage.sendOffer,
-            actionHighlighted: true,
-            onAction: () =>
-                context.push(AppRoutes.storeOfferNew(applicant.creator.userId)),
-          ),
-      ],
-    );
-  }
-}
-
-class _SentOffers extends StatelessWidget {
-  const _SentOffers({
-    required this.state,
-    required this.now,
-    required this.onTap,
-    required this.onAction,
-  });
-
-  final StoreHomeState state;
-  final DateTime now;
-  final ValueChanged<SentOffer> onTap;
-
-  /// `결제하기`, `다시 찾기`를 눌렀을 때.
-  final ValueChanged<SentOffer> onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    if (state.sentOffers.isEmpty) {
-      return const _Empty(title: StoreHomePage.emptySentOffers);
-    }
-    return Column(
-      children: [for (final offer in state.sentOffers) _sentRow(offer)],
-    );
-  }
-
-  Widget _sentRow(SentOffer offer) {
-    final collaboration = state.collaborations[offer.collaborationId];
-    final paid = sentOfferPaid(offer, collaboration);
-    return CoraListRow(
-      photoUrl: offer.creator.photoUrl,
-      photoAlignment: _faceAlignment,
-      title: offer.creator.displayName,
-      subtitle: sentOfferMeta(offer, collaboration: collaboration, now: now),
-      actionLabel: sentOfferAction(offer, collaboration: collaboration),
-      // 캔버스에서 강조색 버튼은 결제하기뿐이다. 내가 답할 차례의 `응답하기`도 같게 강조한다(F3의 알약처럼).
-      actionHighlighted:
-          (offer.view == OfferView.accepted && !paid) || offer.needsMyAnswer,
-      onAction: () => onAction(offer),
-      onTap: offer.cancellable || paid ? () => onTap(offer) : null,
-    );
-  }
-}
-
-/// 목록이 비었을 때. F8의 빈 상태 카드를 탭 줄 아래에 둔다(놓는 자리는 캔버스에 없다).
-class _Empty extends StatelessWidget {
-  const _Empty({required this.title, this.description});
-
-  final String title;
-  final String? description;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: CoraStateView.empty(title: title, description: description),
     );
   }
 }

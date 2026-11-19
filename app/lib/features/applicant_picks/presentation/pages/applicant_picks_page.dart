@@ -9,13 +9,11 @@ import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_shadows.dart';
 import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_bottom_nav.dart';
 import '../../../../core/ui/cora_network_photo.dart';
 import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_pill_button.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_state_view.dart';
-import '../../../notifications/presentation/notification_routes.dart';
 import '../../../offers/presentation/pages/send_offer_page.dart';
 import '../../../store_browse/presentation/widgets/photo_overlays.dart';
 import '../../../store_home/domain/applicant.dart';
@@ -48,10 +46,8 @@ class ApplicantPicksPage extends ConsumerWidget {
     }
   }
 
-  /// 지원자 목록(사장님 홈의 지원자 탭)으로 간다.
-  void _openList(BuildContext context) => context.go(
-    '${AppRoutes.store}?${NotificationRoutes.tabParam}=${NotificationRoutes.applicantsTab}',
-  );
+  /// 지원자 목록 화면으로 간다.
+  void _openList(BuildContext context) => context.go(AppRoutes.storeApplicants);
 
   void _openOffer(BuildContext context, ApplicantPick pick) {
     final c = pick.creator;
@@ -84,10 +80,7 @@ class ApplicantPicksPage extends ConsumerWidget {
               extent: 64,
               onBack: () => _leave(context),
               trailing: _ExploreLink(
-                onTap: () => context.push(
-                  AppRoutes.storeComingSoon(CoraNavItems.store[1].label),
-                  extra: AppRoutes.stacked,
-                ),
+                onTap: () => context.push(AppRoutes.storeDiscover),
               ),
             ),
             Expanded(

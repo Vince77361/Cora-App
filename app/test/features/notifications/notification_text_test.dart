@@ -101,15 +101,34 @@ void main() {
   });
 
   group('locationFor', () {
-    test('sends store notifications to the home tabs', () {
+    test('routes applicant notifications to the applicants screen and '
+        'sent-offer notifications to the offers tab', () {
       expect(
         locationFor('STORE_APPLICANTS', null, UserRole.store),
-        '/store?tab=applicants',
+        '/store/applicants',
       );
       expect(
         locationFor('STORE_SENT_OFFERS', null, UserRole.store),
-        '/store?tab=sent-offers',
+        '/store/proposals',
       );
+      // 사장님 화면이 없는 역할에게는 경로가 없다.
+      expect(locationFor('STORE_APPLICANTS', null, UserRole.creator), isNull);
+      expect(locationFor('STORE_SENT_OFFERS', null, UserRole.brand), isNull);
+    });
+
+    test('sends a mutual interest to the store saved box and the creator to '
+        'the store', () {
+      expect(
+        locationFor('STORE_INTERESTS', null, UserRole.store),
+        '/store/interests?tab=sent',
+      );
+      expect(locationFor('STORE_INTERESTS', null, UserRole.creator), isNull);
+      expect(
+        locationFor('STORE_DETAIL', 's-1', UserRole.creator),
+        '/creator/stores/s-1',
+      );
+      expect(locationFor('STORE_DETAIL', null, UserRole.creator), isNull);
+      expect(locationFor('STORE_DETAIL', 's-1', UserRole.store), isNull);
     });
 
     test('sends an offer to the received offers', () {

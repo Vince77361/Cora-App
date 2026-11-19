@@ -11,7 +11,6 @@ import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_pill_button.dart';
 import '../../../../core/ui/cora_state_view.dart';
-import '../../../notifications/presentation/notification_routes.dart';
 import '../../../store_home/presentation/viewmodels/store_home_view_model.dart';
 import '../../domain/trial_compare_repository.dart';
 import '../../domain/trial_comparison.dart';
@@ -84,7 +83,7 @@ class _TrialComparePageState extends ConsumerState<TrialComparePage> {
     _leave();
   }
 
-  /// `다음 달은 Cora로 오퍼 보내기`: 새 지원이 있으면 추천(G2)으로, 없으면 홈의 지원자 탭으로 간다. 받는 사람이
+  /// `다음 달은 Cora로 오퍼 보내기`: 새 지원이 있으면 추천(G2)으로, 없으면 지원자 화면으로 간다. 받는 사람이
   /// 없으면 오퍼 보내기(A5)를 열 수 없다.
   Future<void> _sendNext() async {
     var hasApplicants = false;
@@ -98,9 +97,7 @@ class _TrialComparePageState extends ConsumerState<TrialComparePage> {
     if (hasApplicants) {
       context.push(AppRoutes.storeApplicantPicks);
     } else {
-      context.go(
-        '${AppRoutes.store}?${NotificationRoutes.tabParam}=${NotificationRoutes.applicantsTab}',
-      );
+      context.push(AppRoutes.storeApplicants);
     }
   }
 

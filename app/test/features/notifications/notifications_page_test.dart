@@ -11,7 +11,6 @@ import 'package:cora/features/notifications/presentation/notification_routes.dar
 import 'package:cora/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:cora/features/onboarding/domain/user_role.dart';
 import 'package:cora/features/proposals/domain/proposal_repository.dart';
-import 'package:cora/features/store_home/presentation/viewmodels/store_home_view_model.dart';
 import 'package:cora/features/store_result/domain/store_result_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -328,33 +327,32 @@ void main() {
     expect(repo.readIds, ['collab', 'offer']);
   });
 
-  testWidgets('goes back to the store home tab named by the notification', (
-    tester,
-  ) async {
+  testWidgets('opens the screen named by a store notification over the '
+      'notifications', (tester) async {
     final repo = FakeNotificationRepository(
       items: [
         _note('sent', kind: 'STORE_SENT_OFFERS'),
         _note('apply', kind: 'STORE_APPLICANTS'),
+        _note('mutual', kind: 'STORE_INTERESTS'),
       ],
     );
     await pumpStoreNotifications(tester, repo: repo);
 
     await tester.tap(find.text('sent 문구'));
     await tester.pumpAndSettle();
-    expect(topPath(tester), AppRoutes.store);
-    expect(
-      containerOf(tester).read(storeHomeViewModelProvider).value!.tab,
-      StoreHomeTab.sentOffers,
-    );
+    expect(topPath(tester), AppRoutes.storeProposals);
 
-    await openNotifications(tester);
+    routerOf(tester).pop();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('apply 문구'));
     await tester.pumpAndSettle();
-    expect(topPath(tester), startsWith(AppRoutes.store));
-    expect(
-      containerOf(tester).read(storeHomeViewModelProvider).value!.tab,
-      StoreHomeTab.applicants,
-    );
+    expect(topPath(tester), AppRoutes.storeApplicants);
+
+    routerOf(tester).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('mutual 문구'));
+    await tester.pumpAndSettle();
+    expect(topPath(tester), AppRoutes.storeInterests);
   });
 
   testWidgets('refreshes the store home and the bell after paying from a '
@@ -388,32 +386,6 @@ void main() {
     expect(home.fetchCalls, greaterThan(fetchesBefore));
     // 알림함에서 읽은 줄이 종 점에도 반영된다.
     expect(find.byKey(NotificationBell.dotKey), findsNothing);
-  });
-
-  testWidgets('switches to the applicants tab again after a manual tab '
-      'change', (tester) async {
-    final repo = FakeNotificationRepository(
-      items: [_note('apply', kind: 'STORE_APPLICANTS')],
-    );
-    await pumpStoreNotifications(tester, repo: repo);
-    StoreHomeTab tab() =>
-        containerOf(tester).read(storeHomeViewModelProvider).value!.tab;
-
-    await tester.tap(find.text('apply 문구'));
-    await tester.pumpAndSettle();
-    expect(tab(), StoreHomeTab.applicants);
-
-    // 손으로 보낸 오퍼 탭으로 바꾼 뒤 같은 알림을 다시 누른다.
-    containerOf(tester)
-        .read(storeHomeViewModelProvider.notifier)
-        .selectTab(StoreHomeTab.sentOffers);
-    await tester.pump();
-    await openNotifications(tester);
-    await tester.tap(find.text('apply 문구'));
-    await tester.pumpAndSettle();
-
-    expect(topPath(tester), startsWith(AppRoutes.store));
-    expect(tab(), StoreHomeTab.applicants);
   });
 
   testWidgets('only marks a row read when its kind is unknown', (tester) async {

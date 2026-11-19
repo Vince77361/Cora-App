@@ -41,6 +41,9 @@ Future<FakeStoreHomeRepository> _openSendOffer(
     stores: stores,
     smallPhoneLargeText: smallPhoneLargeText,
   );
+  // 지원자 화면의 첫 줄에서 연다.
+  routerOf(tester).push(AppRoutes.storeApplicants);
+  await tester.pumpAndSettle();
   await tester.tap(find.text('오퍼 보내기').first);
   await tester.pumpAndSettle();
   expect(topPath(tester), AppRoutes.storeOfferNew('c1'));
@@ -168,20 +171,22 @@ void main() {
     expect(topPath(tester), AppRoutes.storeOfferNew('c1'));
   });
 
-  testWidgets('the back button returns to the home without sending', (
-    tester,
-  ) async {
-    final home = await _openSendOffer(tester);
+  testWidgets(
+    'the back button returns to the applicants screen without sending',
+    (tester) async {
+      final home = await _openSendOffer(tester);
 
-    await tester.tap(find.bySemanticsLabel('뒤로'));
-    await tester.pumpAndSettle();
-    // 첫 단계의 이전 버튼은 흐리고 아무 일도 하지 않는다(캔버스 NOffer).
-    expect(find.byType(SendOfferPage), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('뒤로'));
+      await tester.pumpAndSettle();
+      // 첫 단계의 이전 버튼은 흐리고 아무 일도 하지 않는다(캔버스 NOffer).
+      expect(find.byType(SendOfferPage), findsOneWidget);
 
-    await systemBack(tester);
-    expect(topPath(tester), AppRoutes.store);
-    expect(home.sent, isEmpty);
-  });
+      // 지원자 화면에서 열었으므로 그 화면으로 돌아간다.
+      await systemBack(tester);
+      expect(topPath(tester), AppRoutes.storeApplicants);
+      expect(home.sent, isEmpty);
+    },
+  );
 
   testWidgets('says so when the creator is not among the applicants', (
     tester,

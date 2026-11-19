@@ -49,7 +49,15 @@ class ApplicantPicksViewModel extends AsyncNotifier<ApplicantPicksState> {
   @override
   Future<ApplicantPicksState> build() async {
     final picks = await ref.read(applicantPicksRepositoryProvider).fetchPicks();
-    return ApplicantPicksState(items: picks.items, totalNew: picks.totalNew);
+    // 한 장씩 보며 넘기던 이 화면은 지원자만 다룬다. 지원자가 없을 때 서버가 전체 크리에이터에서 뽑은 사람(지원이
+    // 없다)은 올리지 않는다(홈의 추천 3명이 따로 보인다).
+    return ApplicantPicksState(
+      items: [
+        for (final pick in picks.items)
+          if (pick.applicationId != null) pick,
+      ],
+      totalNew: picks.totalNew,
+    );
   }
 
   /// 지금 추천을 넘기고 다음 추천을 보인다. 서버가 넘겼다고 답한 뒤에 넘어가고, 실패하면 그 자리에 머문다.
@@ -59,7 +67,9 @@ class ApplicantPicksViewModel extends AsyncNotifier<ApplicantPicksState> {
     if (current == null || pick == null || current.busy) return;
     state = AsyncData(current.copyWith(busy: true, skipFailed: false));
     try {
-      await ref.read(applicantPicksRepositoryProvider).skip(pick.applicationId);
+      await ref
+          .read(applicantPicksRepositoryProvider)
+          .skip(pick.applicationId!);
     } on ApplicantPicksFailure {
       if (ref.mounted) {
         state = AsyncData(current.copyWith(busy: false, skipFailed: true));
