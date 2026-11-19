@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:cora/core/navigation/app_routes.dart';
 import 'package:cora/core/theme/cora_featured_post_tokens.dart';
 import 'package:cora/core/theme/cora_theme.dart';
+import 'package:cora/core/ui/cora_primary_button.dart';
 import 'package:cora/core/ui/cora_step_header.dart';
 import 'package:cora/features/featured_posts/domain/featured_post.dart';
 import 'package:cora/features/featured_posts/domain/featured_posts_repository.dart';
@@ -265,6 +268,43 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repo.saved, hasLength(1));
+    expect(topPath(tester), isNot(AppRoutes.creatorFeaturedPosts));
+  });
+
+  testWidgets('blocks the save button and every edit while saving', (
+    tester,
+  ) async {
+    final hold = Completer<void>();
+    final repo = _four()..holdSave = hold;
+    await _open(tester, repo);
+    await _tapPost(tester, 2);
+    await tester.tap(find.text('대표 게시물에서 빼기'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('저장하기'));
+    await tester.pump();
+    // 연타해도 서버에는 한 번만 간다.
+    await tester.tap(find.text('저장하기'), warnIfMissed: false);
+    await tester.pump();
+    expect(repo.saved, hasLength(1));
+    final button = tester.widget<CoraPrimaryButton>(
+      find.ancestor(
+        of: find.text('저장하기'),
+        matching: find.byType(CoraPrimaryButton),
+      ),
+    );
+    expect(button.onPressed, isNull);
+
+    // 저장하는 동안에는 시트에서 골라도 목록이 바뀌지 않는다.
+    await _tapPost(tester, 3);
+    await tester.tap(find.text('대표 게시물에서 빼기'));
+    await tester.pumpAndSettle();
+    expect(find.text('3 / 4'), findsOneWidget);
+
+    hold.complete();
+    await tester.pumpAndSettle();
+    expect(repo.saved, hasLength(1));
+    expect(repo.saved.single.map((p) => p.id), ['post-1', 'post-3', 'post-4']);
     expect(topPath(tester), isNot(AppRoutes.creatorFeaturedPosts));
   });
 
