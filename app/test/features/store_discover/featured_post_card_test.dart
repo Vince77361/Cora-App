@@ -33,7 +33,7 @@ Future<void> _pumpCard(WidgetTester tester, Widget card) async {
 
 /// 스크린 리더가 [finder]의 노드에 [action]을 보낸 것처럼 부른다.
 void _perform(WidgetTester tester, Finder finder, SemanticsAction action) =>
-    tester.binding.pipelineOwner.semanticsOwner!.performAction(
+    tester.binding.rootPipelineOwner.semanticsOwner!.performAction(
       tester.getSemantics(finder).id,
       action,
     );
