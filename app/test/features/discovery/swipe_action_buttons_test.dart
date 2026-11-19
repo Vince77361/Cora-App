@@ -100,16 +100,20 @@ void main() {
     expect(dim.opacity, 0.45);
   });
 
-  testWidgets('keeps every label inside its button at 1.3x text size', (
+  testWidgets('keeps every label inside its 60px button at 2x text size', (
     tester,
   ) async {
-    await _pump(tester, textScale: 1.3);
+    // 2배에서는 글자가 60을 넘으려 하므로 `FittedBox`가 줄이지 않으면 화면상 너비가 60을 넘는다
+    // (`getRect`는 `FittedBox`의 변환을 곱한 화면상 상자를 돌려준다).
+    await _pump(tester, textScale: 2);
 
     expect(tester.takeException(), isNull);
     for (final label in ['되돌리기', '넘기기', '저장', '하트']) {
       final box = tester.getRect(find.text(label));
-      expect(box.width, lessThanOrEqualTo(60));
+      expect(box.width, lessThanOrEqualTo(60), reason: label);
     }
+    // 줄어든 글자는 그래도 한 줄이다.
+    expect(tester.getRect(find.text('되돌리기')).height, lessThan(30));
   });
 
   testWidgets('keeps the same layout in the dark theme', (tester) async {

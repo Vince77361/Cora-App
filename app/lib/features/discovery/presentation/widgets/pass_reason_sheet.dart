@@ -161,6 +161,7 @@ class _PassReasonSheetState extends State<PassReasonSheet> {
                 Semantics(
                   container: true,
                   button: true,
+                  label: DiscoveryTexts.reasonSave,
                   enabled: canSave && !_busy,
                   onTap: canSave && !_busy ? _save : null,
                   child: ExcludeSemantics(
@@ -176,7 +177,9 @@ class _PassReasonSheetState extends State<PassReasonSheet> {
                         ),
                         child: Text(
                           DiscoveryTexts.reasonSave,
+                          // 꺼진 글자 굵기는 공용 `CoraPrimaryButton`의 꺼진 모양(500)과 같다.
                           style: CoraTextStyles.button.copyWith(
+                            fontWeight: canSave ? null : FontWeight.w500,
                             color: canSave ? c.onAccent : c.textSecondary,
                           ),
                         ),
@@ -187,6 +190,7 @@ class _PassReasonSheetState extends State<PassReasonSheet> {
                 Semantics(
                   container: true,
                   button: true,
+                  label: DiscoveryTexts.reasonSkip,
                   enabled: !_busy,
                   onTap: _busy ? null : _skip,
                   child: ExcludeSemantics(
