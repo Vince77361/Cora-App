@@ -44,11 +44,11 @@ abstract final class AppRoutes {
   static String storeOfferNew(String creatorId) =>
       '/store/offers/new/${Uri.encodeComponent(creatorId)}';
 
-  /// 협업 [collaborationId]의 결제(A8). 보낸 오퍼 줄의 `결제하기`로 열고, 홈 위에 밀려 들어온다.
+  /// 협업 [collaborationId]의 결제(A8). 제안함과 제안 상세에서 열고, 홈 위에 밀려 들어온다.
   static String storePay(String collaborationId) =>
       '/store/collaborations/${Uri.encodeComponent(collaborationId)}/pay';
 
-  /// 협업 [collaborationId]의 사장님 진행 화면. 보낸 오퍼 줄을 눌러 열고, 홈 위에 밀려 들어온다.
+  /// 협업 [collaborationId]의 사장님 진행 화면. 제안 상세의 합의한 줄에서 열고, 홈 위에 밀려 들어온다.
   static String storeCollaboration(String collaborationId) =>
       '/store/collaborations/${Uri.encodeComponent(collaborationId)}';
 
@@ -97,7 +97,7 @@ abstract final class AppRoutes {
   /// 제안함(F3). 사장님 하단 메뉴의 `오퍼`가 열고, 오퍼를 보낸 뒤에도 여기로 온다.
   static const storeProposals = '/store/proposals';
 
-  /// 제안 [offerId]의 상세. 제안함과 보낸 오퍼 줄이 연다.
+  /// 제안 [offerId]의 상세. 제안함이 연다.
   static String storeProposal(String offerId) =>
       '$storeProposals/${Uri.encodeComponent(offerId)}';
 

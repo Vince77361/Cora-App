@@ -29,7 +29,7 @@ import '../widgets/inline_action_text.dart';
 /// 탭 세 개(카드뉴스, 릴스 대본, 블로그 글)마다 장면 세 장과 본문 글이 있다. 설명 끝의 `다시 만들기`는
 /// 지금 보고 있는 탭만 다시 만든다. 아래 버튼은 `가게 계정에 올리기`(준비 중 화면)와 `오퍼 만들기`다.
 /// [onboarding]이 false이면 등록이 끝난 뒤 사장님 홈에서 다시 연 화면이라 머리글의 `3 / 3`·진행
-/// 막대가 없고, `오퍼 만들기`는 사장님 홈의 지원자 탭으로 간다(받는 사람을 골라야 오퍼 작성이 열린다).
+/// 막대가 없고, `오퍼 만들기`는 지원자 보기(`/store/applicants`)로 간다(받는 사람을 골라야 오퍼 작성이 열린다).
 class ContentDraftsPage extends ConsumerStatefulWidget {
   const ContentDraftsPage({super.key, this.onboarding = true});
 

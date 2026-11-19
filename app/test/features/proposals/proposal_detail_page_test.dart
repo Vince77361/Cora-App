@@ -309,6 +309,22 @@ void main() {
     expect(repo.endedWith, [(offerId: 'p1', reason: EndReason.terms)]);
   });
 
+  testWidgets('ending a proposal makes the store home read its numbers again', (
+    tester,
+  ) async {
+    // 홈의 `새 지원` 숫자와 제안 상세가 찾는 결제 남은 날이 제안이 끝나면 낡는다.
+    final home = FakeStoreHomeRepository();
+    final repo = _repo(proposalDetail(group: ProposalGroup.waiting));
+    await _openStoreDetail(tester, repo, home: home);
+    final before = home.fetchCalls;
+    await tester.tap(find.text('제안 취소'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('조건이 맞지 않아요'));
+    await tester.pumpAndSettle();
+    expect(repo.endedWith, [(offerId: 'p1', reason: EndReason.terms)]);
+    expect(home.fetchCalls, greaterThan(before));
+  });
+
   group('agreed proposal', () {
     ProposalDetail agreed({ProposalParty party = ProposalParty.store}) =>
         proposalDetail(

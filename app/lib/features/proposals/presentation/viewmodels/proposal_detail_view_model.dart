@@ -95,8 +95,8 @@ class ProposalDetailViewModel extends AsyncNotifier<ProposalDetailState> {
     );
   }
 
-  /// 제안이 바뀌면 제안함 목록과 사장님 홈의 보낸 오퍼 줄도 낡는다. 홈은 무효화하면 처음 탭으로 돌아가서, 살아 있을
-  /// 때만 보던 탭을 지키는 새로 읽기를 부른다(아직 만들어지지 않았으면 다음에 열릴 때 새로 읽는다).
+  /// 제안이 바뀌면 제안함 목록과 사장님 홈의 `새 지원` 숫자(와 제안 상세가 결제 남은 날을 찾는 보낸 오퍼 목록)도
+  /// 낡는다. 홈은 무효화하지 않고 새로 읽어서 보던 화면을 지킨다(아직 만들어지지 않았으면 다음에 열릴 때 읽는다).
   void _invalidateLists() {
     ref.invalidate(proposalsViewModelProvider);
     if (ref.read(storeHomeViewModelProvider.exists)) {

@@ -103,7 +103,7 @@ Widget coraAppWith(
         applicantPicksRepositoryProvider.overrideWithValue(
           FakeApplicantPicksRepository(picks: [], source: PicksSource.all),
         ),
-      // 사장님 홈이 보낸 오퍼 줄의 협업 단계를 읽는다.
+      // 제안 상세와 제안함이 협업 단계를 읽는다.
       if (!_overrides(overrides, collaborationRepositoryProvider))
         collaborationRepositoryProvider.overrideWithValue(
           FakeCollaborationRepository(),

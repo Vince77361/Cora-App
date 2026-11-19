@@ -31,7 +31,7 @@ FakeStoreHomeRepository homeWithPayableOffer() => FakeStoreHomeRepository(
   ],
 );
 
-/// 사장님 홈에서 `결제하기`를 눌러 A8을 연다. [launcher]를 주지 않으면 실제 결제창 열기를 쓴다.
+/// 사장님 홈 위에 결제 경로(A8)를 직접 연다. [launcher]를 주지 않으면 실제 결제창 열기를 쓴다.
 Future<void> pumpPayment(
   WidgetTester tester, {
   FakePaymentRepository? payments,
