@@ -16,8 +16,6 @@ abstract final class StoreInterestsTexts {
   static const profile = '프로필';
   static const respond = '응답하기';
   static const waitingButton = '대기';
-  static const chipMutual = '서로 관심';
-  static const chipWaiting = '응답 대기';
 
   /// 줄 설명: `{분야}, 팔로워 {n}명`. 분야나 팔로워가 없으면 있는 쪽만 보이고 둘 다 없으면 비운다(캔버스 밖).
   /// 만 명 이상은 캔버스처럼 `1.2만명`으로 줄인다.

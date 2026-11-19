@@ -10,7 +10,8 @@ import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_bottom_nav.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../../core/ui/cora_step_header.dart';
-import '../../../interests/presentation/widgets/interest_tabs.dart';
+import '../../../../core/ui/interest_list_row.dart';
+import '../../../../core/ui/interest_tabs.dart';
 import '../../../offers/presentation/pages/send_offer_page.dart';
 import '../../../proposals/domain/proposal.dart';
 import '../../../proposals/presentation/proposal_text.dart';
@@ -23,7 +24,6 @@ import '../../../world_cup/presentation/world_cup_flow.dart';
 import '../../domain/store_interest.dart';
 import '../store_interests_text.dart';
 import '../viewmodels/store_interests_view_model.dart';
-import '../widgets/interest_list_row.dart';
 
 /// 사장님의 저장함(G2, 캔버스 M19G2TabsB). 내가 저장한 크리에이터, 하트를 보낸 크리에이터, 내가 보낸 제안을 세 탭의
 /// 줄 목록으로 본다. 하단 메뉴에 저장함이 없어 둘러보기 머리의 북마크와 알림이 연다.

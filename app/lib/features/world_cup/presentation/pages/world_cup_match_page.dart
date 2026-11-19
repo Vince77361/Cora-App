@@ -9,7 +9,7 @@ import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/theme/cora_world_cup_tokens.dart';
 import '../../../../core/ui/cora_pressable.dart';
-import '../../../interests/presentation/widgets/interest_icons.dart'
+import '../../../../core/ui/interest_icons.dart'
     show ClosePainter, InterestIcon;
 import '../../domain/world_cup_candidate.dart';
 import '../viewmodels/world_cup_view_model.dart';

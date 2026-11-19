@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/cora_colors.dart';
-import '../../../../core/theme/cora_store_interests_tokens.dart';
-import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_network_photo.dart';
-import '../../../../core/ui/cora_pressable.dart';
-import '../../../interests/presentation/widgets/interest_icons.dart';
-import '../store_interests_text.dart';
+import '../theme/cora_colors.dart';
+import '../theme/cora_store_interests_tokens.dart';
+import '../theme/cora_text_styles.dart';
+import 'cora_network_photo.dart';
+import 'cora_pressable.dart';
+import 'interest_icons.dart';
 
 /// 이름 옆 표지.
 enum InterestRowChip { none, mutual, waiting }
 
-/// 저장함의 줄 하나(캔버스 M19G2TabsB `.row`): 안쪽 위아래 9·좌우 12, 사진 46 원 + 이름(15/500)과 표지 + 설명(12 보조색,
+/// 저장함의 줄 하나(캔버스 M19G2TabsB `.row`). 사장님 저장함과 브랜드 03의 보낸 제안 탭이 함께 쓴다: 안쪽 위아래 9·좌우 12, 사진 46 원 + 이름(15/500)과 표지 + 설명(12 보조색,
 /// 줄 높이 1.4) + 오른쪽 단추(높이 38, 13/500). 단추가 형광이면 `highlightAction`, 아니면 `surface`다. 줄 전체를 누르면
 /// [onTap], 단추는 따로 [onAction]이다. 사진이 없으면 이름 첫 글자를 사진 바탕 위에 보인다.
 class InterestListRow extends StatelessWidget {
@@ -37,6 +36,10 @@ class InterestListRow extends StatelessWidget {
   final bool actionHot;
   final VoidCallback? onAction;
   final VoidCallback? onTap;
+
+  /// 이름 옆 표지 글자.
+  static const chipMutual = '서로 관심';
+  static const chipWaiting = '응답 대기';
 
   static const double photoSize = 46;
   static const double actionHeight = 38;
@@ -166,9 +169,7 @@ class _Chip extends StatelessWidget {
           children: [
             if (mutual) InterestIcon(HeartFillPainter(foreground), size: 11),
             Text(
-              mutual
-                  ? StoreInterestsTexts.chipMutual
-                  : StoreInterestsTexts.chipWaiting,
+              mutual ? InterestListRow.chipMutual : InterestListRow.chipWaiting,
               maxLines: 1,
               style: CoraTextStyles.caption.copyWith(
                 fontSize: 11,

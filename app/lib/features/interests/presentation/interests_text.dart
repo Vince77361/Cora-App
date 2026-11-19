@@ -39,6 +39,9 @@ abstract final class InterestsTexts {
   static const emptySavedBody = '카드를 위로 밀거나 저장 버튼을 눌러 보세요.';
   static const emptySentTitle = '아직 보낸 하트가 없어요.';
   static const emptySentBody = '카드를 오른쪽으로 밀거나 하트 버튼을 눌러 보세요.';
+  // 보낸 제안 탭 줄의 단추(제안함 F3과 같은 글자).
+  static const respond = '응답하기';
+  static const waitingButton = '대기';
   static const emptyProposalsTitle = '아직 보낸 제안이 없어요.';
   static const emptyProposalsBody = '마음에 드는 크리에이터에게 제안해 보세요.';
 

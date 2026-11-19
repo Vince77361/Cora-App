@@ -7,7 +7,7 @@ import '../../../../core/ui/cora_pressable.dart';
 import '../../../negotiation/presentation/terms_text.dart';
 import '../../domain/interest_card.dart';
 import '../interests_text.dart';
-import 'interest_icons.dart';
+import '../../../../core/ui/interest_icons.dart';
 
 /// 03의 카드 한 장(캔버스 Likes): 높이 272, 모서리 14. 왼쪽 위 표지, 오른쪽 위 비교 동그라미(브랜드만),
 /// 아래 이름·콘텐츠 한 줄·`{금액}, {가능한 날} 이후`가 어두운 그라데이션 위에 얹힌다.

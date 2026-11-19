@@ -16,7 +16,7 @@ import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_state_view.dart';
 import '../../../chat/presentation/widgets/chat_glyphs.dart';
 import '../../../discovery/presentation/creator_discovery_text.dart';
-import '../../../interests/presentation/widgets/interest_icons.dart';
+import '../../../../core/ui/interest_icons.dart';
 import '../../domain/received_proposal.dart';
 import '../received_proposals_text.dart';
 import '../viewmodels/received_proposal_view_model.dart';

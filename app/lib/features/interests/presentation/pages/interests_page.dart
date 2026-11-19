@@ -26,8 +26,7 @@ import '../../../received_proposals/presentation/pages/received_proposal_page.da
 import '../../../received_proposals/presentation/viewmodels/received_proposals_view_model.dart';
 import '../../../received_proposals/presentation/widgets/received_proposals_group.dart';
 import '../../../store_browse/presentation/widgets/creator_bottom_nav.dart';
-import '../../../store_interests/presentation/widgets/interest_list_row.dart';
-import '../../../store_interests/presentation/store_interests_text.dart';
+import '../../../../core/ui/interest_list_row.dart';
 import '../../../negotiation/presentation/terms_text.dart' show cashLabel;
 import '../../../world_cup/domain/world_cup_candidate.dart';
 import '../../../world_cup/presentation/widgets/world_cup_banner.dart';
@@ -38,9 +37,9 @@ import '../interests_text.dart';
 import '../viewmodels/interests_view_model.dart';
 import '../widgets/hold_sheet.dart';
 import '../widgets/interest_grid_card.dart';
-import '../widgets/interest_icons.dart';
+import '../../../../core/ui/interest_icons.dart';
 import '../widgets/interest_status_box.dart';
-import '../widgets/interest_tabs.dart';
+import '../../../../core/ui/interest_tabs.dart';
 import 'match_sheet.dart';
 
 /// 03 저장함. 내가 저장한(HOLD) 후보와 하트를 보낸(LIKE) 후보를 탭으로 갈라 두 줄 격자로 보여 준다. 브랜드는 카드
@@ -387,6 +386,7 @@ class _InterestsPageState extends ConsumerState<InterestsPage> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                       child: InterestTabs(
+                        semanticLabel: InterestsTexts.tabListLabel,
                         labels: [
                           InterestsTexts.tabSaved(
                             state.count(InterestTab.saved),
@@ -677,7 +677,7 @@ class _ProposalsBody extends StatelessWidget {
         padding: const EdgeInsets.only(top: 16),
         child: async.hasError
             ? CoraStateView.loadFailed(
-                title: StoreInterestsTexts.loadFailedTitle,
+                title: InterestsTexts.loadFailedTitle,
                 onRetry: onRetry,
               )
             : const CoraStateView.loading(),
@@ -701,8 +701,8 @@ class _ProposalsBody extends StatelessWidget {
             photoUrl: row.photoUrl,
             meta: rowSubtitle(row),
             actionLabel: row.group == ProposalGroup.myTurn
-                ? StoreInterestsTexts.respond
-                : StoreInterestsTexts.waitingButton,
+                ? InterestsTexts.respond
+                : InterestsTexts.waitingButton,
             actionHot: row.group == ProposalGroup.myTurn,
             onAction: () => onOpen(row),
             onTap: () => onOpen(row),

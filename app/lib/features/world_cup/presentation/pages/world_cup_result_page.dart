@@ -12,7 +12,7 @@ import '../../../../core/ui/cora_pressable.dart';
 import '../../../../core/ui/cora_primary_button.dart';
 import '../../../../core/ui/cora_secondary_button.dart';
 import '../../../discovery/presentation/widgets/discovery_toast.dart';
-import '../../../interests/presentation/widgets/interest_icons.dart'
+import '../../../../core/ui/interest_icons.dart'
     show ClosePainter, InterestIcon;
 import '../../domain/world_cup_candidate.dart';
 import '../widgets/world_cup_card.dart';

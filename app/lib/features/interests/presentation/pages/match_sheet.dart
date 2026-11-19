@@ -21,7 +21,7 @@ import '../../../discovery/presentation/widgets/discovery_toast.dart';
 import '../../domain/match_info.dart';
 import '../interests_text.dart';
 import '../reward_proposal_entry.dart';
-import '../widgets/interest_icons.dart';
+import '../../../../core/ui/interest_icons.dart';
 
 /// 시트가 어떻게 닫혔는가. [moved]는 버튼으로 다른 화면(06, 07)에 갔다는 뜻이고, 그 밖에는 내리거나 바깥을
 /// 눌러 닫은 것이다.

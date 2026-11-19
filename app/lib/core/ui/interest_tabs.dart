@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/cora_colors.dart';
-import '../../../../core/theme/cora_shadows.dart';
-import '../../../../core/theme/cora_text_styles.dart';
-import '../../../../core/ui/cora_pressable.dart';
-import '../interests_text.dart';
+import '../theme/cora_colors.dart';
+import '../theme/cora_shadows.dart';
+import '../theme/cora_text_styles.dart';
+import 'cora_pressable.dart';
 
 /// 03의 탭(캔버스 Likes `role="tablist"`): 높이 36, 좌우 안쪽 14, 사이 6. 고른 탭은 `quietSelected` 바탕에
 /// 작은 그림자(라이트 흰색, 다크 `#2A2D33`), 나머지는 `surface` 바탕이고 글자는 둘 다 `text` 13/500이다.
@@ -21,7 +20,7 @@ class InterestTabs extends StatelessWidget {
     this.height = 36,
     this.selectedColor,
     this.selectedShadow = true,
-    this.semanticLabel = InterestsTexts.tabListLabel,
+    required this.semanticLabel,
   });
 
   final List<String> labels;
