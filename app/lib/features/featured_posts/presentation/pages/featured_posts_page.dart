@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/media/photo_picker.dart';
 import '../../../../core/navigation/app_routes.dart';
 import '../../../../core/theme/cora_colors.dart';
-import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_page_header.dart';
 import '../../../../core/ui/cora_primary_button.dart';
@@ -18,6 +17,8 @@ import '../featured_posts_text.dart';
 import '../viewmodels/featured_posts_view_model.dart';
 import '../widgets/featured_post_buttons.dart';
 import '../widgets/featured_post_icon.dart';
+import '../widgets/how_to_sheet.dart';
+import '../widgets/leave_sheet.dart';
 import '../widgets/personal_account_notice.dart';
 import '../widgets/post_row.dart';
 import '../widgets/post_sheet.dart';
@@ -30,8 +31,6 @@ class FeaturedPostsPage extends ConsumerStatefulWidget {
   @override
   ConsumerState<FeaturedPostsPage> createState() => _FeaturedPostsPageState();
 }
-
-enum _LeaveChoice { save, discard }
 
 class _FeaturedPostsPageState extends ConsumerState<FeaturedPostsPage> {
   /// 시트가 열려 있는 동안 라임 고리를 두를 칸.
@@ -50,17 +49,9 @@ class _FeaturedPostsPageState extends ConsumerState<FeaturedPostsPage> {
   }
 
   Future<void> _askLeave() async {
-    final choice = await showModalBottomSheet<_LeaveChoice>(
-      context: context,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: context.colors.scrim.withValues(alpha: 0.4),
-      elevation: 0,
-      showDragHandle: false,
-      builder: (context) => const _LeaveSheet(),
-    );
+    final choice = await showLeaveSheet(context);
     if (!mounted || choice == null) return;
-    if (choice == _LeaveChoice.save) {
+    if (choice == LeaveChoice.save) {
       if (await _vm.save() && mounted) context.pop();
     } else {
       context.pop();
@@ -136,15 +127,7 @@ class _FeaturedPostsPageState extends ConsumerState<FeaturedPostsPage> {
     }
   }
 
-  Future<void> _showHowTo() => showModalBottomSheet<void>(
-    context: context,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    barrierColor: context.colors.scrim.withValues(alpha: 0.4),
-    elevation: 0,
-    showDragHandle: false,
-    builder: (context) => const _HowToSheet(),
-  );
+  Future<void> _showHowTo() => showHowToSheet(context);
 
   @override
   Widget build(BuildContext context) {
@@ -401,109 +384,6 @@ class _Body extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 바뀐 것이 있는 채로 나갈 때 묻는 시트(캔버스 밖, 설계 7.1). 시트 밖을 누르면 머문다.
-class _LeaveSheet extends StatelessWidget {
-  const _LeaveSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: c.background,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(CoraRadius.xxl),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 28, 16, bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          spacing: 8,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-              child: Semantics(
-                header: true,
-                child: Text(
-                  FeaturedPostsText.leaveAsk,
-                  style: CoraTextStyles.heading.copyWith(color: c.text),
-                ),
-              ),
-            ),
-            CoraPrimaryButton(
-              label: FeaturedPostsText.save,
-              look: CoraPrimaryButtonLook.accent,
-              onPressed: () => Navigator.of(context).pop(_LeaveChoice.save),
-            ),
-            FeaturedPostButton(
-              label: FeaturedPostsText.leaveDiscard,
-              onPressed: () => Navigator.of(context).pop(_LeaveChoice.discard),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// `프로페셔널 계정으로 바꾸는 방법` 안내 시트(캔버스 밖, 설계 7.4).
-class _HowToSheet extends StatelessWidget {
-  const _HowToSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final bottom = math.max(32.0, MediaQuery.viewPaddingOf(context).bottom);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: c.background,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(CoraRadius.xxl),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 28, 16, bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Semantics(
-                    header: true,
-                    child: Text(
-                      FeaturedPostsText.howToTitle,
-                      style: CoraTextStyles.heading.copyWith(color: c.text),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    FeaturedPostsText.howToSteps,
-                    style: CoraTextStyles.bodySmall.copyWith(
-                      color: c.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            FeaturedPostButton(
-              label: FeaturedPostsText.howToClose,
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

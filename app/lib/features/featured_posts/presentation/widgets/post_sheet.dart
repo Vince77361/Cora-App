@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/cora_colors.dart';
 import '../../../../core/theme/cora_featured_post_tokens.dart';
-import '../../../../core/theme/cora_shapes.dart';
 import '../../../../core/theme/cora_text_styles.dart';
 import '../../../../core/ui/cora_pressable.dart';
 import '../featured_posts_text.dart';
 import 'featured_post_icon.dart';
+import 'featured_post_sheet_frame.dart';
 
 /// 게시물을 눌러 나오는 시트에서 고른 것.
 enum PostSheetAction {
@@ -25,23 +25,11 @@ Future<PostSheetAction?> showPostSheet(
   required int number,
   required bool canMoveToFront,
 }) {
-  return showModalBottomSheet<PostSheetAction>(
-    context: context,
-    useSafeArea: true,
-    // 바탕은 시트 안에서 칠한다. 시트가 열린 채 밝기가 바뀌어도 따라가게 한다.
-    backgroundColor: Colors.transparent,
+  return showFeaturedPostSheet<PostSheetAction>(
+    context,
     barrierColor: CoraFeaturedPostTokens.sheetBarrier,
-    elevation: 0,
-    showDragHandle: false,
-    builder: (context) => DecoratedBox(
-      decoration: BoxDecoration(
-        color: context.colors.background,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(CoraRadius.xxl),
-        ),
-      ),
-      child: PostSheet(number: number, canMoveToFront: canMoveToFront),
-    ),
+    builder: (context) =>
+        PostSheet(number: number, canMoveToFront: canMoveToFront),
   );
 }
 
