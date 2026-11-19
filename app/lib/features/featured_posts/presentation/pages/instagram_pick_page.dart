@@ -143,8 +143,11 @@ class _Content extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
                   child: Text(
-                    '${FeaturedPostsText.pickOwner(state.handle)} '
-                    '${FeaturedPostsText.pickRule}',
+                    // 연결 정보를 읽지 못해 아이디가 없으면 `@ 계정의…` 대신 규칙만 보인다.
+                    state.handle.isEmpty
+                        ? FeaturedPostsText.pickRule
+                        : '${FeaturedPostsText.pickOwner(state.handle)} '
+                              '${FeaturedPostsText.pickRule}',
                     style: CoraTextStyles.bodySmall.copyWith(
                       height: 1.6,
                       color: c.textSecondary,

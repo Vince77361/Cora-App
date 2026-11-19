@@ -73,6 +73,27 @@ void main() {
     expect(find.byType(CoraNetworkPhoto), findsNWidgets(6));
   });
 
+  testWidgets('hides the account line when the connection cannot be read', (
+    tester,
+  ) async {
+    final instagram = FakeInstagramRepository(connection: _connected);
+    await pumpCreatorApp(
+      tester,
+      instagram: instagram,
+      overrides: [featuredPostsRepositoryProvider.overrideWithValue(_repo())],
+    );
+    routerOf(tester).push(AppRoutes.creatorFeaturedPosts);
+    await tester.pumpAndSettle();
+    // 대표 게시물 화면이 연동을 확인한 뒤에 연결 정보가 사라졌다.
+    instagram.connection = null;
+    await tester.tap(find.text('인스타에서 고르기'));
+    await tester.pumpAndSettle();
+
+    expect(topPath(tester), AppRoutes.creatorFeaturedPostsPick);
+    expect(find.textContaining('@'), findsNothing);
+    expect(find.text('대표 게시물로 보여줄 것만 골라요. 최대 4개예요.'), findsOneWidget);
+  });
+
   testWidgets(
     'numbers picks in the order tapped and disables the add button at zero',
     (tester) async {
