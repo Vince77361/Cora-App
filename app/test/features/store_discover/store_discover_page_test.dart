@@ -4,7 +4,6 @@ import 'package:cora/core/theme/cora_theme.dart';
 import 'package:cora/core/ui/cora_bottom_nav.dart';
 import 'package:cora/core/ui/cora_state_view.dart';
 import 'package:cora/core/ui/swipe_deck/swipe_deck.dart';
-import 'package:cora/core/ui/swipe_deck/swipe_physics.dart' show SwipeOutcome;
 import 'package:cora/features/discovery/domain/featured_post_ref.dart';
 import 'package:cora/features/discovery/domain/pass_reason.dart';
 import 'package:cora/features/discovery/presentation/widgets/swipe_progress_bar.dart';
