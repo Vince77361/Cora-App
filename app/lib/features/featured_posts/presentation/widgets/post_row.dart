@@ -206,7 +206,7 @@ class _PostCard extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Color(0x0017181C),
+                        CoraFeaturedPostTokens.photoScrimStart,
                         CoraFeaturedPostTokens.photoScrimEnd,
                       ],
                     ),
@@ -276,7 +276,7 @@ class _PostCard extends StatelessWidget {
                     color: c.onPhoto,
                     shadows: const [
                       Shadow(
-                        color: Color(0x80000000),
+                        color: CoraFeaturedPostTokens.captionShadow,
                         offset: Offset(0, 1),
                         blurRadius: 4,
                       ),

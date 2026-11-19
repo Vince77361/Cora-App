@@ -1,4 +1,5 @@
 import 'package:cora/core/navigation/app_routes.dart';
+import 'package:cora/core/theme/cora_featured_post_tokens.dart';
 import 'package:cora/core/ui/cora_step_header.dart';
 import 'package:cora/features/featured_posts/domain/featured_post.dart';
 import 'package:cora/features/featured_posts/domain/featured_posts_repository.dart';
@@ -255,6 +256,32 @@ void main() {
 
     expect(repo.saved, hasLength(1));
     expect(topPath(tester), isNot(AppRoutes.creatorFeaturedPosts));
+  });
+
+  testWidgets('paints the card scrim and caption shadow from the tokens', (
+    tester,
+  ) async {
+    await _open(tester, _four());
+
+    final gradients = tester
+        .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .map((w) => w.decoration)
+        .whereType<BoxDecoration>()
+        .map((d) => d.gradient)
+        .whereType<LinearGradient>();
+    expect(
+      gradients.where(
+        (g) =>
+            g.colors.first == CoraFeaturedPostTokens.photoScrimStart &&
+            g.colors.last == CoraFeaturedPostTokens.photoScrimEnd,
+      ),
+      hasLength(4),
+    );
+    final caption = tester.widget<Text>(find.text('게시물 1'));
+    expect(
+      caption.style!.shadows!.single.color,
+      CoraFeaturedPostTokens.captionShadow,
+    );
   });
 
   testWidgets('leaves without asking when nothing changed', (tester) async {
