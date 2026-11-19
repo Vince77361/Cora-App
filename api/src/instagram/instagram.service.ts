@@ -5,7 +5,6 @@ import { CollaborationsRepository } from '../collaborations/collaborations.repos
 import { Clock } from '../common/clock';
 import { SecretBox } from '../common/crypto/secret-box';
 import { AppError } from '../common/errors/app-error';
-import { firstLine } from '../creators/featured-post-rules';
 import { CreatorsService } from '../creators/creators.service';
 import { FeaturedPostsService } from '../creators/featured-posts.service';
 import {
@@ -216,7 +215,7 @@ export class InstagramService {
       kind: post.kind,
       mediaPath: path,
       thumbnailPath: isVideo ? path : null,
-      caption: firstLine(post.caption),
+      caption: this.featuredPosts.captionFromInstagram(post.caption),
       instagramMediaId: post.id,
       photoUrl: this.storage.publicUrl(path),
     };

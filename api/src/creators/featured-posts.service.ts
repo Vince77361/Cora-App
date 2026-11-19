@@ -9,7 +9,11 @@ import { UploadsService } from '../uploads/uploads.service';
 import { UsersService } from '../users/users.service';
 import { FeaturedPostModel } from './dto/featured-post.model';
 import type { ReplaceFeaturedPostsDto } from './dto/replace-featured-posts.dto';
-import { FeaturedPostDraft, validateReplacement } from './featured-post-rules';
+import {
+  FeaturedPostDraft,
+  firstLine,
+  validateReplacement,
+} from './featured-post-rules';
 import {
   FeaturedPostPlanItem,
   FeaturedPostRow,
@@ -30,6 +34,11 @@ export class FeaturedPostsService {
     private readonly storage: StoragePort,
     private readonly clock: Clock,
   ) {}
+
+  // 인스타그램 글에서 카드에 쓸 한 줄(첫 줄, 40자까지)을 뽑는다. 인스타 모듈이 creators의 내부 규칙 파일을 직접 import하지 않도록 서비스로 내보낸다.
+  captionFromInstagram(text: string | null): string | null {
+    return firstLine(text);
+  }
 
   async listMine(userId: string): Promise<FeaturedPostModel[]> {
     await this.assertCreator(userId);
