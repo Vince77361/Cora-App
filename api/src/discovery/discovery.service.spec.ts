@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { PassReason, Store, SwipeDecision } from '@prisma/client';
 import { FakeClock } from '../../test/support/fake-clock';
 import { FakeVisibility } from '../../test/support/fake-visibility';
@@ -323,6 +324,7 @@ describe('DiscoveryService for a store owner', () => {
   });
 
   it('keeps the heart when the mutual interest notification fails', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
     const { service, repository, liveApplicants, notifyFails } = build();
     liveApplicants.add(CREATOR);
     notifyFails.current = true;
@@ -331,6 +333,8 @@ describe('DiscoveryService for a store owner', () => {
       decision: 'LIKE',
     });
     expect(repository.rows).toHaveLength(1);
+    // 실패는 삼키지 않고 경고로 남긴다.
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a store decision on a hidden creator with 404', async () => {

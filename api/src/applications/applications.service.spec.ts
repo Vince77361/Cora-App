@@ -331,13 +331,17 @@ class FakeCreatorsService extends CreatorsService {
 class FakeNotifications extends NotificationsService {
   readonly sent: NotifyInput[] = [];
   fail = false;
+  // 이 종류의 알림만 실패시킨다(다른 알림은 그대로 남는지 보려고).
+  failKind: string | null = null;
 
   constructor() {
     super(null as never, null as never, null as never);
   }
 
   notify(input: NotifyInput): Promise<void> {
-    if (this.fail) return Promise.reject(new Error('notify down'));
+    if (this.fail || input.kind === this.failKind) {
+      return Promise.reject(new Error('notify down'));
+    }
     this.sent.push(input);
     return Promise.resolve();
   }
@@ -496,13 +500,17 @@ describe('ApplicationsService', () => {
     });
 
     it('keeps the application when the notification fails', async () => {
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
       repo.hearts.add(CREATOR);
-      push.fail = true;
+      push.failKind = 'MUTUAL_INTEREST';
 
       await expect(service.apply(CREATOR, store.id)).resolves.toMatchObject({
         status: 'APPLIED',
       });
       expect(repo.rows).toHaveLength(1);
+      // 서로 관심 알림만 실패하고 지원 알림은 그대로 남는다. 실패는 삼키지 않고 경고로 남긴다(양쪽에 하나씩 보내므로 두 번).
+      expect(push.sent.map((n) => n.kind)).toEqual(['APPLICATION_RECEIVED']);
+      expect(warn).toHaveBeenCalledTimes(2);
     });
   });
 
