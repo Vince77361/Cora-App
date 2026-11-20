@@ -328,6 +328,24 @@ export class PrismaMockSeedDb implements MockSeedDb {
     const keptApplicationIds = keptOffers.flatMap((o) =>
       o.applicationId ? [o.applicationId] : [],
     );
+    // 남긴 지원 중 이 가게의 살아 있는(APPLIED, OFFERED) 지원과 같은 크리에이터의 목업 지원은 새로 만들지 않는다.
+    // 같은 가게·크리에이터의 살아 있는 지원은 부분 유니크 인덱스로 하나뿐이라, 만들면 시드가 P2002로 실패한다.
+    // 오퍼 시드는 지원을 가리키지 않아서(applicationId 없음) 남긴 지원을 그대로 두면 이어지는 곳이 깨지지 않는다.
+    const keptLiveApplications = await this.prisma.application.findMany({
+      where: {
+        id: { in: keptApplicationIds },
+        storeId,
+        status: { in: ['APPLIED', 'OFFERED'] },
+        deletedAt: null,
+      },
+      select: { creatorId: true },
+    });
+    const keptLiveCreatorIds = new Set(
+      keptLiveApplications.map((a) => a.creatorId),
+    );
+    const newApplications = input.applications.filter(
+      (a) => !keptLiveCreatorIds.has(a.creatorId),
+    );
 
     await this.prisma.$transaction([
       this.prisma.ledgerEntry.deleteMany({ where: ofSeed }),
@@ -364,7 +382,7 @@ export class PrismaMockSeedDb implements MockSeedDb {
         where: { creatorId: { in: mockCreatorIds } },
       }),
       this.prisma.application.createMany({
-        data: input.applications.map((a) => ({
+        data: newApplications.map((a) => ({
           storeId,
           creatorId: a.creatorId,
           status: 'APPLIED' as const,

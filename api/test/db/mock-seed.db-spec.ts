@@ -383,4 +383,52 @@ describe('PrismaMockSeedDb', () => {
       await prisma.collaboration.count({ where: { id: collaboration.id } }),
     ).toBe(1);
   });
+
+  it('does not recreate a mock applicant whose live application a kept offer points to', async () => {
+    await run();
+    const store = await prisma.store.findFirstOrThrow();
+    // 시연 중 앱으로 맺은 협업이 붙은 오퍼가 살아 있는 지원(APPLIED)을 가리킨다. 시드는 이 지원을 지우지 않는다.
+    const kept = await prisma.application.findFirstOrThrow({
+      where: { storeId: store.id, status: 'APPLIED' },
+      orderBy: { createdAt: 'asc' },
+    });
+    const offer = await prisma.offer.create({
+      data: {
+        storeId: store.id,
+        creatorId: kept.creatorId,
+        applicationId: kept.id,
+        status: 'ACCEPTED',
+        turn: 'CREATOR',
+        initiatedBy: 'STORE',
+        expiresAt: new Date(),
+        closedAt: new Date(),
+      },
+    });
+    await prisma.collaboration.create({
+      data: {
+        kind: 'STORE_OFFER',
+        stage: 'SETTLED',
+        commissionerId: store.ownerId,
+        creatorId: kept.creatorId,
+        offerId: offer.id,
+        storeId: store.id,
+        terms: {},
+        settlementMethod: 'PER_VIEW',
+      },
+    });
+
+    // 남긴 지원과 같은 (가게, 크리에이터)의 목업 지원을 또 만들면 부분 유니크 인덱스에 걸렸다.
+    await expect(run()).resolves.toBeUndefined();
+
+    const sameCreator = await prisma.application.findMany({
+      where: { storeId: store.id, creatorId: kept.creatorId },
+    });
+    expect(sameCreator.map((a) => a.id)).toEqual([kept.id]);
+    expect(
+      (await prisma.offer.findUniqueOrThrow({ where: { id: offer.id } }))
+        .applicationId,
+    ).toBe(kept.id);
+    // 나머지 목업 지원자 4명은 그대로 새로 만들어진다.
+    expect(await prisma.application.count()).toBe(5);
+  });
 });
